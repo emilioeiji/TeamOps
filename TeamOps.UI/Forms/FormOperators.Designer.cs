@@ -23,6 +23,7 @@
         private System.Windows.Forms.CheckBox chkHasEnd;
         private System.Windows.Forms.CheckBox chkTrainer;
         private System.Windows.Forms.CheckBox chkStatus;
+        private System.Windows.Forms.Button btnNew;
         private System.Windows.Forms.Button btnAdd;
         private System.Windows.Forms.Button btnUpdate;
         private System.Windows.Forms.Button btnDelete;
@@ -59,6 +60,7 @@
             btnAdd = new Button();
             btnUpdate = new Button();
             btnDelete = new Button();
+            btnNew = new Button();
             ((System.ComponentModel.ISupportInitialize)dgvOperators).BeginInit();
             SuspendLayout();
             // 
@@ -235,7 +237,7 @@
             // 
             // btnAdd
             // 
-            btnAdd.Location = new Point(350, 360);
+            btnAdd.Location = new Point(440, 360);
             btnAdd.Name = "btnAdd";
             btnAdd.Size = new Size(80, 30);
             btnAdd.TabIndex = 20;
@@ -244,7 +246,7 @@
             // 
             // btnUpdate
             // 
-            btnUpdate.Location = new Point(440, 360);
+            btnUpdate.Location = new Point(530, 360);
             btnUpdate.Name = "btnUpdate";
             btnUpdate.Size = new Size(80, 30);
             btnUpdate.TabIndex = 21;
@@ -253,16 +255,26 @@
             // 
             // btnDelete
             // 
-            btnDelete.Location = new Point(530, 360);
+            btnDelete.Location = new Point(620, 360);
             btnDelete.Name = "btnDelete";
             btnDelete.Size = new Size(80, 30);
             btnDelete.TabIndex = 22;
             btnDelete.Text = "Delete";
             btnDelete.Click += btnDelete_Click;
             // 
+            // btnNew
+            // 
+            btnNew.Location = new Point(350, 360);
+            btnNew.Name = "btnNew";
+            btnNew.Size = new Size(80, 30);
+            btnNew.TabIndex = 23;
+            btnNew.Text = "New";
+            btnNew.Click += btnNew_Click;
+            // 
             // FormOperators
             // 
             ClientSize = new Size(800, 500);
+            Controls.Add(btnNew);
             Controls.Add(dgvOperators);
             Controls.Add(lblCodigoFJ);
             Controls.Add(txtCodigoFJ);

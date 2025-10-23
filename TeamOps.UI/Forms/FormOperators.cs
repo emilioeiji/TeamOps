@@ -89,11 +89,22 @@ namespace TeamOps.UI.Forms
             ClearForm();
             LoadOperators();
         }
+
+        private void btnNew_Click(object sender, EventArgs e)
+        {
+            ClearForm();
+            txtCodigoFJ.ReadOnly = false; // libera para novo cadastro
+            txtCodigoFJ.Focus();
+        }
+
         private void btnUpdate_Click(object sender, EventArgs e)
         {
             if (dgvOperators.CurrentRow?.DataBoundItem is Operator op)
             {
-                // 1) Validação de campos obrigatórios
+                // bloqueia apenas no update
+                txtCodigoFJ.ReadOnly = true;
+
+                // validações...
                 if (string.IsNullOrWhiteSpace(txtRomanji.Text) ||
                     string.IsNullOrWhiteSpace(txtNihongo.Text))
                 {
@@ -101,15 +112,11 @@ namespace TeamOps.UI.Forms
                     return;
                 }
 
-                // 2) Validar datas
                 if (chkHasEnd.Checked && dtpEnd.Value < dtpStart.Value)
                 {
                     MessageBox.Show("A data de término não pode ser anterior à data de início.");
                     return;
                 }
-
-                // 3) Não permitir alteração do CodigoFJ (PK)
-                txtCodigoFJ.ReadOnly = true;
 
                 op.NameRomanji = txtRomanji.Text.Trim();
                 op.NameNihongo = txtNihongo.Text.Trim();
@@ -172,6 +179,9 @@ namespace TeamOps.UI.Forms
             txtCodigoFJ.Clear();
             txtRomanji.Clear();
             txtNihongo.Clear();
+            cmbShift.SelectedIndex = -1;
+            cmbGroup.SelectedIndex = -1;
+            cmbSector.SelectedIndex = -1;
             chkTrainer.Checked = false;
             chkStatus.Checked = true;
             chkHasEnd.Checked = false;

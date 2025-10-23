@@ -67,6 +67,53 @@ CREATE TABLE IF NOT EXISTS Users (
     REFERENCES Operators (CodigoFJ) 
 );
 
+CREATE TABLE IF NOT EXISTS Locals (
+    Id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    NamePt   TEXT NOT NULL,
+    NameJp   TEXT NOT NULL,
+    SectorId INTEGER NOT NULL,
+    FOREIGN KEY (SectorId) REFERENCES Sectors(Id)
+);
+
+CREATE TABLE IF NOT EXISTS FollowUpReasons (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    NamePt TEXT NOT NULL,
+    NameJp TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS FollowUpTypes (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    NamePt TEXT NOT NULL,
+    NameJp TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS FollowUps (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Date DATETIME NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+
+    ShiftId INTEGER NOT NULL,
+    OperatorCodigoFJ TEXT NOT NULL,
+    ExecutorCodigoFJ TEXT NOT NULL,
+    WitnessCodigoFJ TEXT,
+
+    ReasonId INTEGER NOT NULL,
+    TypeId INTEGER NOT NULL,
+    LocalId INTEGER NOT NULL,
+    EquipmentId INTEGER NOT NULL,
+
+    Description TEXT NOT NULL,   -- Acompanhamento
+    Guidance TEXT NOT NULL,      -- Orientação
+
+    FOREIGN KEY (ShiftId) REFERENCES Shifts(Id),
+    FOREIGN KEY (OperatorCodigoFJ) REFERENCES Operators(CodigoFJ),
+    FOREIGN KEY (ExecutorCodigoFJ) REFERENCES Operators(CodigoFJ),
+    FOREIGN KEY (WitnessCodigoFJ) REFERENCES Operators(CodigoFJ),
+    FOREIGN KEY (ReasonId) REFERENCES FollowUpReasons(Id),
+    FOREIGN KEY (TypeId) REFERENCES FollowUpTypes(Id),
+    FOREIGN KEY (LocalId) REFERENCES Locals(Id),
+    FOREIGN KEY (EquipmentId) REFERENCES Equipments(Id)
+);
+
 CREATE INDEX IF NOT EXISTS IX_Operators_BadgeCode ON Operators(BadgeCode);
 CREATE INDEX IF NOT EXISTS IX_GL_Login ON GroupLeaders(Login);
 CREATE INDEX IF NOT EXISTS IX_Assignments_GL_Operator ON Assignments(GLId, OperatorId);
