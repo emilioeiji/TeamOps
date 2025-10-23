@@ -9,18 +9,20 @@ namespace TeamOps.Data
 {
     public static class DbSeeder
     {
-        public static void SeedDefaultGL(SqliteConnectionFactory factory)
+        public static void SeedDefaultAdmin(SqliteConnectionFactory factory)
         {
-            var repo = new GroupLeaderRepository(factory);
+            var repo = new UserRepository(factory);
             var admin = repo.GetByLogin("admin");
             if (admin is null)
             {
-                repo.Add(new GroupLeader
+                repo.Add(new User
                 {
                     Name = "Administrador",
                     Login = "admin",
-                    AccessLevel = AccessLevel.Admin
-                }, plainPassword: "admin");
+                    AccessLevel = AccessLevel.Admin,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin"),
+                    CreatedAt = DateTime.Now
+                });
             }
         }
     }

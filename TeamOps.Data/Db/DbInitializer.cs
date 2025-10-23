@@ -36,36 +36,13 @@ namespace TeamOps.Data.Db
 
         private static void ApplyInitialSchema(SqliteConnection conn)
         {
-            var sql = @"
-                CREATE TABLE IF NOT EXISTS Operators (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Name TEXT NOT NULL,
-                    BadgeCode TEXT UNIQUE NOT NULL,
-                    Status TEXT NOT NULL,
-                    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
-                );
+            // Caminho relativo ao diretório de saída (bin/Debug/netX/)
+            var sqlPath = Path.Combine(AppContext.BaseDirectory, "Migrations", "InitialSchema.sql");
 
-                CREATE TABLE IF NOT EXISTS GroupLeaders (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Name TEXT NOT NULL,
-                    Login TEXT UNIQUE NOT NULL,
-                    PasswordHash TEXT NOT NULL,
-                    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
-                );
+            if (!File.Exists(sqlPath))
+                throw new FileNotFoundException($"Arquivo de schema não encontrado: {sqlPath}");
 
-                CREATE TABLE IF NOT EXISTS Assignments (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    GLId INTEGER NOT NULL,
-                    OperatorId INTEGER NOT NULL,
-                    AssignedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (GLId) REFERENCES GroupLeaders(Id) ON DELETE CASCADE,
-                    FOREIGN KEY (OperatorId) REFERENCES Operators(Id) ON DELETE CASCADE
-                );
-
-                CREATE INDEX IF NOT EXISTS IX_Operators_BadgeCode ON Operators(BadgeCode);
-                CREATE INDEX IF NOT EXISTS IX_GL_Login ON GroupLeaders(Login);
-                CREATE INDEX IF NOT EXISTS IX_Assignments_GL_Operator ON Assignments(GLId, OperatorId);
-            ";
+            var sql = File.ReadAllText(sqlPath);
 
             using var cmd = conn.CreateCommand();
             cmd.CommandText = sql;

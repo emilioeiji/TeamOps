@@ -21,20 +21,39 @@ namespace TeamOps.UI.Forms
         private void FormAccessControl_Load(object sender, EventArgs e)
         {
             LoadUsers();
+            cmbAccessLevel.DataSource = Enum.GetValues(typeof(AccessLevel));
         }
 
         private void LoadUsers()
         {
             var users = _userRepo.GetAll();
             dgvUsers.DataSource = users;
+
+            // Oculta colunas sensíveis com verificação segura
+            var colFJ = dgvUsers.Columns["CodigoFJ"];
+            if (colFJ != null)
+                colFJ.Visible = false;
+
+            var colHash = dgvUsers.Columns["PasswordHash"];
+            if (colHash != null)
+                colHash.Visible = false;
         }
 
         private void btnUpdateAccess_Click(object sender, EventArgs e)
         {
             if (dgvUsers.CurrentRow?.DataBoundItem is User user)
             {
-                int newLevel = (int)numAccessLevel.Value;
-                user.AccessLevel = (AccessLevel)newLevel;
+                if (cmbAccessLevel.SelectedItem is AccessLevel selectedLevel)
+                {
+                    user.AccessLevel = selectedLevel;
+                    _userRepo.Update(user);
+                    MessageBox.Show("Nível de acesso atualizado com sucesso.");
+                    LoadUsers();
+                }
+                else
+                {
+                    MessageBox.Show("Selecione um nível de acesso válido.");
+                }
                 _userRepo.Update(user);
                 MessageBox.Show("Nível de acesso atualizado com sucesso.");
                 LoadUsers();

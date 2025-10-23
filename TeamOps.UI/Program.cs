@@ -31,7 +31,7 @@ namespace TeamOps.UI
             initializer.EnsureCreated();
 
             ConnectionFactory = new SqliteConnectionFactory(DbSettings);
-            TeamOps.Data.DbSeeder.SeedDefaultGL(ConnectionFactory);
+            TeamOps.Data.DbSeeder.SeedDefaultAdmin(ConnectionFactory);
 
             using (var loginForm = new Forms.FormLogin())
             {
