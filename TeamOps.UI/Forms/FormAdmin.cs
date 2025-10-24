@@ -34,5 +34,32 @@ namespace TeamOps.UI.Forms
                 new SectorRepository(Program.ConnectionFactory), "Sectors");
             form.ShowDialog();
         }
+        private void btnLocals_Click(object sender, EventArgs e)
+        {
+            var form = new FormLocals();
+            form.ShowDialog();
+        }
+
+        private void btnEquipments_Click(object sender, EventArgs e)
+        {
+            var form = new FormLookup<Equipment>(
+                new EquipmentRepository(Program.ConnectionFactory), "Equipments");
+            form.ShowDialog();
+        }
+
+        private void btnFollowUpReasons_Click(object sender, EventArgs e)
+        {
+            var form = new FormLookup<FollowUpReason>(
+                new FollowUpReasonRepository(Program.ConnectionFactory), "FollowUp Reasons");
+            form.ShowDialog();
+        }
+
+        private void btnFollowUpTypes_Click(object sender, EventArgs e)
+        {
+            var form = new FormLookup<FollowUpType>(
+                new FollowUpTypeRepository(Program.ConnectionFactory), "FollowUp Types");
+            form.ShowDialog();
+        }
+
     }
 }
