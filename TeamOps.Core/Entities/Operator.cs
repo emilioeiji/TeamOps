@@ -13,5 +13,6 @@
         public bool Trainer { get; set; }
         public bool Status { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public bool IsLeader { get; set; }
     }
 }

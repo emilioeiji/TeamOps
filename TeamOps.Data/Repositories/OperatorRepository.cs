@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Microsoft.Data.Sqlite;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Db;
@@ -20,8 +21,8 @@ namespace TeamOps.Data.Repositories
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 INSERT INTO Operators 
-                (CodigoFJ, NameRomanji, NameNihongo, ShiftId, GroupId, SectorId, StartDate, EndDate, Trainer, Status)
-                VALUES (@c, @r, @n, @s, @g, @sec, @start, @end, @t, @st)";
+                (CodigoFJ, NameRomanji, NameNihongo, ShiftId, GroupId, SectorId, StartDate, EndDate, Trainer, Status, IsLeader)
+                VALUES (@c, @r, @n, @s, @g, @sec, @start, @end, @t, @st, @leader)";
             cmd.Parameters.AddWithValue("@c", op.CodigoFJ);
             cmd.Parameters.AddWithValue("@r", op.NameRomanji);
             cmd.Parameters.AddWithValue("@n", op.NameNihongo);
@@ -29,9 +30,10 @@ namespace TeamOps.Data.Repositories
             cmd.Parameters.AddWithValue("@g", op.GroupId);
             cmd.Parameters.AddWithValue("@sec", op.SectorId);
             cmd.Parameters.AddWithValue("@start", op.StartDate);
-            cmd.Parameters.AddWithValue("@end", (object?)op.EndDate ?? DBNull.Value);   
+            cmd.Parameters.AddWithValue("@end", (object?)op.EndDate ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@t", op.Trainer ? 1 : 0);
             cmd.Parameters.AddWithValue("@st", op.Status ? 1 : 0);
+            cmd.Parameters.AddWithValue("@leader", op.IsLeader ? 1 : 0);
             cmd.ExecuteNonQuery();
         }
 
@@ -39,7 +41,11 @@ namespace TeamOps.Data.Repositories
         {
             using var conn = _factory.CreateOpenConnection();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT CodigoFJ, NameRomanji, NameNihongo, ShiftId, GroupId, SectorId, StartDate, EndDate, Trainer, Status, CreatedAt FROM Operators WHERE CodigoFJ = @c";
+            cmd.CommandText = @"
+                SELECT CodigoFJ, NameRomanji, NameNihongo, ShiftId, GroupId, SectorId, 
+                       StartDate, EndDate, Trainer, Status, CreatedAt, IsLeader
+                FROM Operators 
+                WHERE CodigoFJ = @c";
             cmd.Parameters.AddWithValue("@c", codigoFJ);
             using var reader = cmd.ExecuteReader();
             if (!reader.Read()) return null;
@@ -52,7 +58,12 @@ namespace TeamOps.Data.Repositories
             var list = new List<Operator>();
             using var conn = _factory.CreateOpenConnection();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT CodigoFJ, NameRomanji, NameNihongo, ShiftId, GroupId, SectorId, StartDate, EndDate, Trainer, Status, CreatedAt FROM Operators WHERE Status = 1 ORDER BY NameRomanji";
+            cmd.CommandText = @"
+                SELECT CodigoFJ, NameRomanji, NameNihongo, ShiftId, GroupId, SectorId, 
+                       StartDate, EndDate, Trainer, Status, CreatedAt, IsLeader
+                FROM Operators 
+                WHERE Status = 1 
+                ORDER BY NameRomanji";
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
                 list.Add(Map(reader));
@@ -66,7 +77,7 @@ namespace TeamOps.Data.Repositories
             cmd.CommandText = @"
                 UPDATE Operators
                 SET NameRomanji=@r, NameNihongo=@n, ShiftId=@s, GroupId=@g, SectorId=@sec,
-                    StartDate=@start, EndDate=@end, Trainer=@t, Status=@st
+                    StartDate=@start, EndDate=@end, Trainer=@t, Status=@st, IsLeader=@leader
                 WHERE CodigoFJ=@c";
             cmd.Parameters.AddWithValue("@c", op.CodigoFJ);
             cmd.Parameters.AddWithValue("@r", op.NameRomanji);
@@ -78,6 +89,7 @@ namespace TeamOps.Data.Repositories
             cmd.Parameters.AddWithValue("@end", (object?)op.EndDate ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@t", op.Trainer ? 1 : 0);
             cmd.Parameters.AddWithValue("@st", op.Status ? 1 : 0);
+            cmd.Parameters.AddWithValue("@leader", op.IsLeader ? 1 : 0);
             cmd.ExecuteNonQuery();
         }
 
@@ -90,7 +102,34 @@ namespace TeamOps.Data.Repositories
             cmd.ExecuteNonQuery();
         }
 
-        private Operator Map(SqliteDataReader reader)
+        public void SetLeader(string codigoFJ, bool isLeader)
+        {
+            using var conn = _factory.CreateOpenConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "UPDATE Operators SET IsLeader=@leader WHERE CodigoFJ=@c";
+            cmd.Parameters.AddWithValue("@leader", isLeader ? 1 : 0);
+            cmd.Parameters.AddWithValue("@c", codigoFJ);
+            cmd.ExecuteNonQuery();
+        }
+
+        public List<Operator> GetLeaders()
+        {
+            var list = new List<Operator>();
+            using var conn = _factory.CreateOpenConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT CodigoFJ, NameRomanji, NameNihongo, ShiftId, GroupId, SectorId, 
+                       StartDate, EndDate, Trainer, Status, CreatedAt, IsLeader
+                FROM Operators 
+                WHERE IsLeader = 1 
+                ORDER BY NameRomanji";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                list.Add(Map(reader));
+            return list;
+        }
+
+        private static Operator Map(SqliteDataReader reader)
         {
             return new Operator
             {
@@ -104,7 +143,8 @@ namespace TeamOps.Data.Repositories
                 EndDate = reader.IsDBNull(7) ? null : reader.GetDateTime(7),
                 Trainer = reader.GetBoolean(8),
                 Status = reader.GetBoolean(9),
-                CreatedAt = reader.GetDateTime(10)
+                CreatedAt = reader.GetDateTime(10),
+                IsLeader = reader.GetInt32(11) == 1
             };
         }
     }

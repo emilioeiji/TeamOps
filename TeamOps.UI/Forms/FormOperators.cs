@@ -82,7 +82,8 @@ namespace TeamOps.UI.Forms
                 StartDate = dtpStart.Value,
                 EndDate = chkHasEnd.Checked ? dtpEnd.Value : null,
                 Trainer = chkTrainer.Checked,
-                Status = chkStatus.Checked
+                Status = chkStatus.Checked,
+                IsLeader = chkIsLeader.Checked
             };
 
             _opRepo.Add(op);
@@ -127,6 +128,7 @@ namespace TeamOps.UI.Forms
                 op.EndDate = chkHasEnd.Checked ? dtpEnd.Value : null;
                 op.Trainer = chkTrainer.Checked;
                 op.Status = chkStatus.Checked;
+                op.IsLeader = chkIsLeader.Checked;
 
                 _opRepo.Update(op);
                 ClearForm();
@@ -171,7 +173,13 @@ namespace TeamOps.UI.Forms
                 }
                 chkTrainer.Checked = op.Trainer;
                 chkStatus.Checked = op.Status;
+                chkIsLeader.Checked = op.IsLeader;
             }
+        }
+
+        private void chkHasEnd_CheckedChanged(object sender, EventArgs e)
+        {
+            dtpEnd.Enabled = chkHasEnd.Checked;
         }
 
         private void ClearForm()
@@ -185,6 +193,7 @@ namespace TeamOps.UI.Forms
             chkTrainer.Checked = false;
             chkStatus.Checked = true;
             chkHasEnd.Checked = false;
+            chkIsLeader.Checked = false;
         }
     }
 }

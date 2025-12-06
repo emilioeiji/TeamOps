@@ -27,6 +27,8 @@
         private System.Windows.Forms.Button btnAdd;
         private System.Windows.Forms.Button btnUpdate;
         private System.Windows.Forms.Button btnDelete;
+        private System.Windows.Forms.CheckBox chkIsLeader;
+        private System.Windows.Forms.Label lblIsLeader;
 
         protected override void Dispose(bool disposing)
         {
@@ -57,6 +59,7 @@
             chkHasEnd = new CheckBox();
             chkTrainer = new CheckBox();
             chkStatus = new CheckBox();
+            chkIsLeader = new CheckBox();
             btnAdd = new Button();
             btnUpdate = new Button();
             btnDelete = new Button();
@@ -234,6 +237,13 @@
             chkStatus.Size = new Size(59, 19);
             chkStatus.TabIndex = 19;
             chkStatus.Text = "Active";
+            // chkIsLeader
+            chkIsLeader.AutoSize = true;
+            chkIsLeader.Location = new Point(510, 320); // mesma linha, à direita
+            chkIsLeader.Name = "chkIsLeader";
+            chkIsLeader.Size = new Size(60, 19);
+            chkIsLeader.TabIndex = 20;
+            chkIsLeader.Text = "Líder";
             // 
             // btnAdd
             // 
@@ -295,6 +305,8 @@
             Controls.Add(chkHasEnd);
             Controls.Add(chkTrainer);
             Controls.Add(chkStatus);
+            Controls.Add(lblIsLeader);
+            Controls.Add(chkIsLeader);
             Controls.Add(btnAdd);
             Controls.Add(btnUpdate);
             Controls.Add(btnDelete);
