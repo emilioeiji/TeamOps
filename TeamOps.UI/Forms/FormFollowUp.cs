@@ -1,9 +1,8 @@
 ﻿// Project: TeamOps.UI
 // File: Forms/FormFollowUp.cs
-using Microsoft.VisualBasic;
 using System;
+using System.Collections.Generic;
 using System.Windows.Forms;
-using TeamOps.Core.Common;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Repositories;
 
@@ -18,7 +17,11 @@ namespace TeamOps.UI.Forms
         private readonly FollowUpTypeRepository _typeRepo;
         private readonly LocalRepository _localRepo;
         private readonly EquipmentRepository _equipmentRepo;
-        private readonly SectorRepository _sectorRepo; // ✅ novo
+        // Remova SectorRepository se não for usar
+        // private readonly SectorRepository _sectorRepo;
+
+        private bool _isInitializing; // flag para evitar handler durante setup
+        private List<Operator> _allOperators = new(); // cache para reutilizar
 
         public FormFollowUp()
         {
@@ -31,21 +34,23 @@ namespace TeamOps.UI.Forms
             _typeRepo = new FollowUpTypeRepository(Program.ConnectionFactory);
             _localRepo = new LocalRepository(Program.ConnectionFactory);
             _equipmentRepo = new EquipmentRepository(Program.ConnectionFactory);
-            _sectorRepo = new SectorRepository(Program.ConnectionFactory); // ✅ novo
+            // _sectorRepo = new SectorRepository(Program.ConnectionFactory);
 
             this.Load += FormFollowUp_Load;
         }
 
         private void FormFollowUp_Load(object? sender, EventArgs e)
         {
+            // Carrega turnos
             cmbShift.DataSource = _shiftRepo.GetAll();
             cmbShift.DisplayMember = "NamePt";
             cmbShift.ValueMember = "Id";
             cmbShift.SelectedIndex = -1;
 
+            // Carrega todos operadores (para inicialização)
             var operadores = _operatorRepo.GetAll();
 
-            cmbOperator.DataSource = operadores;
+            cmbOperator.DataSource = operadores.ToList();
             cmbOperator.DisplayMember = "NameRomanji";
             cmbOperator.ValueMember = "CodigoFJ";
             cmbOperator.SelectedIndex = -1;
@@ -60,6 +65,7 @@ namespace TeamOps.UI.Forms
             cmbWitness.ValueMember = "CodigoFJ";
             cmbWitness.SelectedIndex = -1;
 
+            // Carrega demais combos
             cmbReason.DataSource = _reasonRepo.GetAll();
             cmbReason.DisplayMember = "NamePt";
             cmbReason.ValueMember = "Id";
@@ -80,22 +86,63 @@ namespace TeamOps.UI.Forms
             cmbEquipment.ValueMember = "Id";
             cmbEquipment.SelectedIndex = -1;
 
-            cmbSector.DataSource = _sectorRepo.GetAll();
-            cmbSector.DisplayMember = "NamePt";
-            cmbSector.ValueMember = "Id";
-            cmbSector.SelectedIndex = -1;
 
-            if (Program.CurrentUser != null && !string.IsNullOrEmpty(Program.CurrentUser.CodigoFJ))
+            if (Program.CurrentUser != null && !string.IsNullOrEmpty(Program.CurrentUser.Login))
             {
-                var operador = _operatorRepo.GetByCodigoFJ(Program.CurrentUser.CodigoFJ);
+                var codigoFJ = Program.CurrentUser.Login.ToUpper(); // normaliza
+                var operador = _operatorRepo.GetByCodigoFJ(codigoFJ);
+
                 if (operador != null)
                 {
-                    cmbExecutor.SelectedValue = operador.CodigoFJ; // seleciona pelo código
-                    cmbShift.SelectedValue = operador.ShiftId;     // seleciona turno
+                    // Seleciona turno
+                    cmbShift.SelectedValue = operador.ShiftId;
+
+                    // Filtra operadores pelo turno
+                    var operadoresDoTurno = _operatorRepo.GetByShift(operador.ShiftId);
+
+                    cmbExecutor.DataSource = operadoresDoTurno;
+                    cmbExecutor.DisplayMember = "NameRomanji";
+                    cmbExecutor.ValueMember = "CodigoFJ";
+
+                    // Seleciona executor pelo CodigoFJ
+                    cmbExecutor.SelectedValue = codigoFJ;
                 }
             }
         }
 
+
+        private void cmbShift_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            if (_isInitializing) return;
+
+            if (cmbShift.SelectedValue is int shiftId)
+            {
+                ApplyShiftFilter(shiftId);
+
+                // Não zere a seleção aqui; deixe o usuário escolher ou mantenha atual
+                // cmbOperator.SelectedIndex = -1;
+                // cmbExecutor.SelectedIndex = -1;
+                // cmbWitness.SelectedIndex = -1;
+            }
+        }
+
+        // Centraliza o filtro de operadores por turno
+        private void ApplyShiftFilter(int shiftId)
+        {
+            var operadores = _operatorRepo.GetByShift(shiftId);
+
+            cmbOperator.DataSource = operadores;
+            cmbOperator.DisplayMember = "NameRomanji";
+            cmbOperator.ValueMember = "CodigoFJ";
+
+            cmbExecutor.DataSource = operadores.ToList();
+            cmbExecutor.DisplayMember = "NameRomanji";
+            cmbExecutor.ValueMember = "CodigoFJ";
+
+            cmbWitness.DataSource = operadores.ToList();
+            cmbWitness.DisplayMember = "NameRomanji";
+            cmbWitness.ValueMember = "CodigoFJ";
+        }
 
         private void btnSalvar_Click(object? sender, EventArgs e)
         {
@@ -110,7 +157,7 @@ namespace TeamOps.UI.Forms
                 TypeId = Convert.ToInt32(cmbType.SelectedValue ?? 0),
                 LocalId = Convert.ToInt32(cmbLocal.SelectedValue ?? 0),
                 EquipmentId = Convert.ToInt32(cmbEquipment.SelectedValue ?? 0),
-                SectorId = Convert.ToInt32(cmbSector.SelectedValue ?? 0), // ✅ novo campo
+                // SectorId removido se não usar
                 Description = txtDescription.Text.Trim(),
                 Guidance = txtGuidance.Text.Trim()
             };
@@ -118,29 +165,6 @@ namespace TeamOps.UI.Forms
             _followUpRepo.Add(followUp);
             MessageBox.Show("Acompanhamento salvo com sucesso.");
             this.Close();
-        }
-
-        private void cmbShift_SelectedIndexChanged(object? sender, EventArgs e)
-        {
-            if (cmbShift.SelectedValue is int shiftId)
-            {
-                var operadores = _operatorRepo.GetByShift(shiftId);
-
-                cmbOperator.DataSource = operadores;
-                cmbOperator.DisplayMember = "NameRomanji";
-                cmbOperator.ValueMember = "CodigoFJ";
-                cmbOperator.SelectedIndex = -1;
-
-                cmbExecutor.DataSource = operadores.ToList();
-                cmbExecutor.DisplayMember = "NameRomanji";
-                cmbExecutor.ValueMember = "CodigoFJ";
-                cmbExecutor.SelectedIndex = -1;
-
-                cmbWitness.DataSource = operadores.ToList();
-                cmbWitness.DisplayMember = "NameRomanji";
-                cmbWitness.ValueMember = "CodigoFJ";
-                cmbWitness.SelectedIndex = -1;
-            }
         }
     }
 }
