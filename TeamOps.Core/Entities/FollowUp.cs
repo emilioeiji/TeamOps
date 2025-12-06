@@ -15,6 +15,8 @@
         public int LocalId { get; set; }
         public int EquipmentId { get; set; }
 
+        public int SectorId { get; set; }
+
         public string Description { get; set; } = "";
         public string Guidance { get; set; } = "";
     }

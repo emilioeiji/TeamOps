@@ -35,6 +35,7 @@ namespace TeamOps.UI.Forms
             lblDate = new Label();
             btnAdmin = new Button();
             btnAccessControl = new Button();
+            btnFollowUp = new Button();
             panelHeader.SuspendLayout();
             panelFooter.SuspendLayout();
             SuspendLayout();
@@ -57,7 +58,7 @@ namespace TeamOps.UI.Forms
             lblTitle.ForeColor = Color.White;
             lblTitle.Location = new Point(20, 20);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(364, 30);
+            lblTitle.Size = new Size(448, 37);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "TeamOps – Gestão de Operadores";
             // 
@@ -69,7 +70,7 @@ namespace TeamOps.UI.Forms
             lblUser.ForeColor = Color.White;
             lblUser.Location = new Point(1200, 30);
             lblUser.Name = "lblUser";
-            lblUser.Size = new Size(0, 19);
+            lblUser.Size = new Size(0, 23);
             lblUser.TabIndex = 1;
             // 
             // btnOperadores
@@ -85,7 +86,7 @@ namespace TeamOps.UI.Forms
             // btnAtribuir
             // 
             btnAtribuir.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnAtribuir.Location = new Point(320, 120);
+            btnAtribuir.Location = new Point(560, 220);
             btnAtribuir.Name = "btnAtribuir";
             btnAtribuir.Size = new Size(200, 80);
             btnAtribuir.TabIndex = 3;
@@ -119,7 +120,7 @@ namespace TeamOps.UI.Forms
             lblDate.ForeColor = Color.Black;
             lblDate.Location = new Point(20, 10);
             lblDate.Name = "lblDate";
-            lblDate.Size = new Size(0, 15);
+            lblDate.Size = new Size(0, 20);
             lblDate.TabIndex = 0;
             // 
             // btnAdmin
@@ -142,9 +143,20 @@ namespace TeamOps.UI.Forms
             btnAccessControl.Text = "Access";
             btnAccessControl.Click += btnAccessControl_Click;
             // 
+            // btnFollowUp
+            // 
+            btnFollowUp.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnFollowUp.Location = new Point(320, 120);
+            btnFollowUp.Name = "btnFollowUp";
+            btnFollowUp.Size = new Size(200, 80);
+            btnFollowUp.TabIndex = 5;
+            btnFollowUp.Text = "Cadastro Acompanhamento";
+            btnFollowUp.Click += btnFollowUp_Click_1;
+            // 
             // FormDashboard
             // 
             ClientSize = new Size(800, 450);
+            Controls.Add(btnFollowUp);
             Controls.Add(btnAccessControl);
             Controls.Add(btnOperadores);
             Controls.Add(btnAtribuir);
@@ -161,5 +173,6 @@ namespace TeamOps.UI.Forms
             panelFooter.PerformLayout();
             ResumeLayout(false);
         }
+        private Button btnFollowUp;
     }
 }

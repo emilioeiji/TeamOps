@@ -94,32 +94,31 @@ CREATE TABLE IF NOT EXISTS Equipments (
     NameJp TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS FollowUps (
-    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-    Date DATETIME NOT NULL DEFAULT (CURRENT_TIMESTAMP),
-
-    ShiftId INTEGER NOT NULL,
-    OperatorCodigoFJ TEXT NOT NULL,
-    ExecutorCodigoFJ TEXT NOT NULL,
-    WitnessCodigoFJ TEXT,
-
-    ReasonId INTEGER NOT NULL,
-    TypeId INTEGER NOT NULL,
-    LocalId INTEGER NOT NULL,
-    EquipmentId INTEGER NOT NULL,
-
-    Description TEXT NOT NULL,   -- Acompanhamento
-    Guidance TEXT NOT NULL,      -- Orientação
-
-    FOREIGN KEY (ShiftId) REFERENCES Shifts(Id),
-    FOREIGN KEY (OperatorCodigoFJ) REFERENCES Operators(CodigoFJ),
-    FOREIGN KEY (ExecutorCodigoFJ) REFERENCES Operators(CodigoFJ),
-    FOREIGN KEY (WitnessCodigoFJ) REFERENCES Operators(CodigoFJ),
-    FOREIGN KEY (ReasonId) REFERENCES FollowUpReasons(Id),
-    FOREIGN KEY (TypeId) REFERENCES FollowUpTypes(Id),
-    FOREIGN KEY (LocalId) REFERENCES Locals(Id),
-    FOREIGN KEY (EquipmentId) REFERENCES Equipments(Id)
+CREATE TABLE FollowUps (
+    Id               INTEGER  PRIMARY KEY AUTOINCREMENT,
+    Date             DATETIME NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+    ShiftId          INTEGER  NOT NULL,
+    OperatorCodigoFJ TEXT     NOT NULL,
+    ExecutorCodigoFJ TEXT     NOT NULL,
+    WitnessCodigoFJ  TEXT,
+    ReasonId         INTEGER  NOT NULL,
+    TypeId           INTEGER  NOT NULL,
+    LocalId          INTEGER  NOT NULL,
+    EquipmentId      INTEGER  NOT NULL,
+    SectorId         INTEGER  NOT NULL,
+    Description      TEXT     NOT NULL,
+    Guidance         TEXT     NOT NULL,
+    FOREIGN KEY (ShiftId)          REFERENCES Shifts (Id),
+    FOREIGN KEY (OperatorCodigoFJ) REFERENCES Operators (CodigoFJ),
+    FOREIGN KEY (ExecutorCodigoFJ) REFERENCES Operators (CodigoFJ),
+    FOREIGN KEY (WitnessCodigoFJ)  REFERENCES Operators (CodigoFJ),
+    FOREIGN KEY (ReasonId)         REFERENCES FollowUpReasons (Id),
+    FOREIGN KEY (TypeId)           REFERENCES FollowUpTypes (Id),
+    FOREIGN KEY (LocalId)          REFERENCES Locals (Id),
+    FOREIGN KEY (EquipmentId)      REFERENCES Equipments (Id),
+    FOREIGN KEY (SectorId)         REFERENCES Sectors (Id)
 );
+
 
 CREATE INDEX IF NOT EXISTS IX_Operators_BadgeCode ON Operators(BadgeCode);
 CREATE INDEX IF NOT EXISTS IX_GL_Login ON GroupLeaders(Login);

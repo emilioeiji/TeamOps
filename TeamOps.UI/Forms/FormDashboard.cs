@@ -61,6 +61,19 @@ namespace TeamOps.UI.Forms
             }
         }
 
+        private void btnFollowUp_Click(object sender, EventArgs e)
+        {
+            if (HasAccess(AccessLevel.KL))
+            {
+                var form = new FormFollowUp();
+                form.ShowDialog();
+            }
+            else
+            {
+                MessageBox.Show("Acesso negado. Apenas líderes ou administradores podem acessar relatórios.");
+            }
+        }
+
         private void btnAdmin_Click(object sender, EventArgs e)
         {
             if (HasAccess(AccessLevel.Admin))
@@ -84,6 +97,19 @@ namespace TeamOps.UI.Forms
             else
             {
                 MessageBox.Show("Acesso negado. Apenas administradores podem acessar o painel administrativo.");
+            }
+        }
+
+        private void btnFollowUp_Click_1(object sender, EventArgs e)
+        {
+            if (HasAccess(AccessLevel.KL))
+            {
+                var form = new FormFollowUp();
+                form.ShowDialog();
+            }
+            else
+            {
+                MessageBox.Show("Acesso negado. Apenas líderes ou administradores podem acessar relatórios.");
             }
         }
     }

@@ -39,14 +39,18 @@ namespace TeamOps.Data.Repositories
 
         public Operator? GetByCodigoFJ(string codigoFJ)
         {
+            if (string.IsNullOrWhiteSpace(codigoFJ))
+                return null; // evita passar null para o parâmetro
+
             using var conn = _factory.CreateOpenConnection();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                SELECT CodigoFJ, NameRomanji, NameNihongo, ShiftId, GroupId, SectorId, 
-                       StartDate, EndDate, Trainer, Status, CreatedAt, IsLeader
-                FROM Operators 
-                WHERE CodigoFJ = @c";
+        SELECT CodigoFJ, NameRomanji, NameNihongo, ShiftId, GroupId, SectorId, 
+               StartDate, EndDate, Trainer, Status, CreatedAt, IsLeader
+        FROM Operators 
+        WHERE CodigoFJ = @c";
             cmd.Parameters.AddWithValue("@c", codigoFJ);
+
             using var reader = cmd.ExecuteReader();
             if (!reader.Read()) return null;
 
@@ -146,6 +150,26 @@ namespace TeamOps.Data.Repositories
                 CreatedAt = reader.GetDateTime(10),
                 IsLeader = reader.GetInt32(11) == 1
             };
+        }
+
+        public List<Operator> GetByShift(int shiftId)
+        {
+            var list = new List<Operator>();
+            using var conn = _factory.CreateOpenConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+        SELECT CodigoFJ, NameRomanji, NameNihongo, ShiftId, GroupId, SectorId, 
+               StartDate, EndDate, Trainer, Status, CreatedAt, IsLeader
+        FROM Operators 
+        WHERE Status = 1 AND ShiftId = @shift
+        ORDER BY NameRomanji";
+            cmd.Parameters.AddWithValue("@shift", shiftId);
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                list.Add(Map(reader));
+
+            return list;
         }
     }
 }
