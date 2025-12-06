@@ -18,7 +18,7 @@ namespace TeamOps.UI.Forms
         private readonly LocalRepository _localRepo;
         private readonly EquipmentRepository _equipmentRepo;
         // Remova SectorRepository se não for usar
-        // private readonly SectorRepository _sectorRepo;
+        private readonly SectorRepository _sectorRepo;
 
         private bool _isInitializing; // flag para evitar handler durante setup
         private List<Operator> _allOperators = new(); // cache para reutilizar
@@ -34,13 +34,15 @@ namespace TeamOps.UI.Forms
             _typeRepo = new FollowUpTypeRepository(Program.ConnectionFactory);
             _localRepo = new LocalRepository(Program.ConnectionFactory);
             _equipmentRepo = new EquipmentRepository(Program.ConnectionFactory);
-            // _sectorRepo = new SectorRepository(Program.ConnectionFactory);
+            _sectorRepo = new SectorRepository(Program.ConnectionFactory);
 
             this.Load += FormFollowUp_Load;
         }
 
         private void FormFollowUp_Load(object? sender, EventArgs e)
         {
+            _isInitializing = true;
+
             // Carrega turnos
             cmbShift.DataSource = _shiftRepo.GetAll();
             cmbShift.DisplayMember = "NamePt";
@@ -86,6 +88,12 @@ namespace TeamOps.UI.Forms
             cmbEquipment.ValueMember = "Id";
             cmbEquipment.SelectedIndex = -1;
 
+            cmbSector.DataSource = _sectorRepo.GetAll();
+            cmbSector.DisplayMember = "NamePt";
+            cmbSector.ValueMember = "Id";
+            cmbSector.SelectedIndex = -1;
+
+            _isInitializing = false;
 
             if (Program.CurrentUser != null && !string.IsNullOrEmpty(Program.CurrentUser.Login))
             {
@@ -100,12 +108,13 @@ namespace TeamOps.UI.Forms
                     // Filtra operadores pelo turno
                     var operadoresDoTurno = _operatorRepo.GetByShift(operador.ShiftId);
 
+                    // 👉 Atualiza apenas o Executor
                     cmbExecutor.DataSource = operadoresDoTurno;
                     cmbExecutor.DisplayMember = "NameRomanji";
                     cmbExecutor.ValueMember = "CodigoFJ";
-
-                    // Seleciona executor pelo CodigoFJ
                     cmbExecutor.SelectedValue = codigoFJ;
+
+                    // 👉 Não mexe em cmbOperator nem cmbWitness
                 }
             }
         }
@@ -134,14 +143,17 @@ namespace TeamOps.UI.Forms
             cmbOperator.DataSource = operadores;
             cmbOperator.DisplayMember = "NameRomanji";
             cmbOperator.ValueMember = "CodigoFJ";
+            cmbOperator.SelectedIndex = -1;   // força sem seleção
 
             cmbExecutor.DataSource = operadores.ToList();
             cmbExecutor.DisplayMember = "NameRomanji";
             cmbExecutor.ValueMember = "CodigoFJ";
+            // aqui você deixa o executor ser selecionado pelo usuário logado
 
             cmbWitness.DataSource = operadores.ToList();
             cmbWitness.DisplayMember = "NameRomanji";
             cmbWitness.ValueMember = "CodigoFJ";
+            cmbWitness.SelectedIndex = -1;    // força sem seleção
         }
 
         private void btnSalvar_Click(object? sender, EventArgs e)
@@ -157,7 +169,7 @@ namespace TeamOps.UI.Forms
                 TypeId = Convert.ToInt32(cmbType.SelectedValue ?? 0),
                 LocalId = Convert.ToInt32(cmbLocal.SelectedValue ?? 0),
                 EquipmentId = Convert.ToInt32(cmbEquipment.SelectedValue ?? 0),
-                // SectorId removido se não usar
+                SectorId = Convert.ToInt32(cmbSector.SelectedValue ?? 0),
                 Description = txtDescription.Text.Trim(),
                 Guidance = txtGuidance.Text.Trim()
             };
@@ -166,5 +178,17 @@ namespace TeamOps.UI.Forms
             MessageBox.Show("Acompanhamento salvo com sucesso.");
             this.Close();
         }
+
+        private void cmbOperator_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (_isInitializing) return; // evita rodar durante o carregamento inicial
+
+            if (cmbOperator.SelectedItem is Operator operadorSelecionado)
+            {
+                // Atualiza setor automaticamente só quando o usuário realmente seleciona
+                cmbSector.SelectedValue = operadorSelecionado.SectorId;
+            }
+        }
+
     }
 }

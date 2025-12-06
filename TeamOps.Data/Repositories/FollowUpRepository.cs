@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Microsoft.Data.Sqlite;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Db;
@@ -21,8 +22,8 @@ namespace TeamOps.Data.Repositories
             cmd.CommandText = @"
                 INSERT INTO FollowUps 
                 (Date, ShiftId, OperatorCodigoFJ, ExecutorCodigoFJ, WitnessCodigoFJ,
-                 ReasonId, TypeId, LocalId, EquipmentId, Description, Guidance)
-                VALUES (@date, @shift, @op, @exec, @wit, @reason, @type, @local, @equip, @desc, @guide);
+                 ReasonId, TypeId, LocalId, EquipmentId, SectorId, Description, Guidance)
+                VALUES (@date, @shift, @op, @exec, @wit, @reason, @type, @local, @equip, @sector, @desc, @guide);
                 SELECT last_insert_rowid();";
 
             cmd.Parameters.AddWithValue("@date", f.Date);
@@ -34,6 +35,7 @@ namespace TeamOps.Data.Repositories
             cmd.Parameters.AddWithValue("@type", f.TypeId);
             cmd.Parameters.AddWithValue("@local", f.LocalId);
             cmd.Parameters.AddWithValue("@equip", f.EquipmentId);
+            cmd.Parameters.AddWithValue("@sector", f.SectorId); // ✅ incluído
             cmd.Parameters.AddWithValue("@desc", f.Description);
             cmd.Parameters.AddWithValue("@guide", f.Guidance);
 
@@ -47,7 +49,7 @@ namespace TeamOps.Data.Repositories
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 SELECT Id, Date, ShiftId, OperatorCodigoFJ, ExecutorCodigoFJ, WitnessCodigoFJ,
-                       ReasonId, TypeId, LocalId, EquipmentId, Description, Guidance
+                       ReasonId, TypeId, LocalId, EquipmentId, SectorId, Description, Guidance
                 FROM FollowUps
                 WHERE OperatorCodigoFJ = @op
                 ORDER BY Date DESC";
@@ -68,8 +70,9 @@ namespace TeamOps.Data.Repositories
                     TypeId = reader.GetInt32(7),
                     LocalId = reader.GetInt32(8),
                     EquipmentId = reader.GetInt32(9),
-                    Description = reader.GetString(10),
-                    Guidance = reader.GetString(11)
+                    SectorId = reader.GetInt32(10), // ✅ incluído
+                    Description = reader.GetString(11),
+                    Guidance = reader.GetString(12)
                 });
             }
             return list;

@@ -142,6 +142,7 @@ namespace TeamOps.UI.Forms
             cmbOperator.Name = "cmbOperator";
             cmbOperator.Size = new Size(228, 28);
             cmbOperator.TabIndex = 7;
+            cmbOperator.SelectedIndexChanged += cmbOperator_SelectedIndexChanged;
             // 
             // lblExecutor
             // 
