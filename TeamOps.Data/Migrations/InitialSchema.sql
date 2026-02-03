@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS Equipments (
     NameJp TEXT NOT NULL
 );
 
-CREATE TABLE FollowUps (
+CREATE TABLE IF NOT EXISTS FollowUps (
     Id               INTEGER  PRIMARY KEY AUTOINCREMENT,
     Date             DATETIME NOT NULL DEFAULT (CURRENT_TIMESTAMP),
     ShiftId          INTEGER  NOT NULL,
@@ -117,6 +117,60 @@ CREATE TABLE FollowUps (
     FOREIGN KEY (LocalId)          REFERENCES Locals (Id),
     FOREIGN KEY (EquipmentId)      REFERENCES Equipments (Id),
     FOREIGN KEY (SectorId)         REFERENCES Sectors (Id)
+);
+
+CREATE TABLE IF NOT EXISTS Categories (
+    Id     INTEGER PRIMARY KEY AUTOINCREMENT,
+    NamePt TEXT    NOT NULL,
+    NameJp TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS Hikitsugui (
+    Id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    Date            DATETIME NOT NULL,
+    ShiftId         INTEGER NOT NULL,
+    CreatorCodigoFJ TEXT NOT NULL,
+    CategoryId      INTEGER NOT NULL,
+    EquipmentId     INTEGER,
+    AreaId          INTEGER,
+    ForLeaders      INTEGER NOT NULL,   -- 0/1
+    ForOperators    INTEGER NOT NULL,   -- 0/1
+    Description     TEXT NOT NULL,
+    AttachmentPath  TEXT,               -- caminho da pasta do anexo
+    FOREIGN KEY (ShiftId)         REFERENCES Shifts(Id),
+    FOREIGN KEY (CreatorCodigoFJ) REFERENCES Operators(CodigoFJ),
+    FOREIGN KEY (CategoryId)      REFERENCES Categories(Id),
+    FOREIGN KEY (EquipmentId)     REFERENCES Equipment(Id),
+    FOREIGN KEY (AreaId)          REFERENCES Areas(Id)
+);
+
+CREATE TABLE IF NOT EXISTS HikitsuguiResponses (
+    Id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    HikitsuguiId    INTEGER NOT NULL,
+    Date            DATETIME NOT NULL,
+    ResponderCodigoFJ TEXT NOT NULL,
+    Message         TEXT NOT NULL,
+    FOREIGN KEY (HikitsuguiId) REFERENCES Hikitsugui(Id),
+    FOREIGN KEY (ResponderCodigoFJ) REFERENCES Operators(CodigoFJ)
+);
+
+CREATE TABLE IF NOT EXISTS HikitsuguiCorrections (
+    Id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    HikitsuguiId    INTEGER NOT NULL,
+    Date            DATETIME NOT NULL,
+    CorrectorCodigoFJ TEXT NOT NULL,
+    Correction      TEXT NOT NULL,
+    FOREIGN KEY (HikitsuguiId) REFERENCES Hikitsugui(Id),
+    FOREIGN KEY (CorrectorCodigoFJ) REFERENCES Operators(CodigoFJ)
+);
+
+CREATE TABLE IF NOT EXISTS HikitsuguiReads (
+    Id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    HikitsuguiId    INTEGER NOT NULL,
+    ReaderCodigoFJ  TEXT NOT NULL,
+    ReadAt          DATETIME NOT NULL,
+    FOREIGN KEY (HikitsuguiId) REFERENCES Hikitsugui(Id),
+    FOREIGN KEY (ReaderCodigoFJ) REFERENCES Operators(CodigoFJ)
 );
 
 
