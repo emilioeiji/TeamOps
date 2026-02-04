@@ -142,6 +142,64 @@ namespace TeamOps.Data.Repositories
         }
 
         // ---------------------------------------------------------
+        // GET FOR LEADER (Filtro por data + ForLeaders/ForOperators)
+        // ---------------------------------------------------------
+        public List<Hikitsugui> GetForLeader(DateTime start, DateTime end)
+        {
+            var list = new List<Hikitsugui>();
+
+            using var conn = _factory.CreateOpenConnection();
+            using var cmd = conn.CreateCommand();
+
+            cmd.CommandText = @"
+                SELECT 
+                    h.Id,
+                    h.Date,
+                    h.ShiftId,
+                    h.CreatorCodigoFJ,
+                    h.CategoryId,
+                    h.EquipmentId,
+                    h.LocalId,
+                    h.ForLeaders,
+                    h.ForOperators,
+                    h.Description,
+                    h.AttachmentPath,
+                    c.NamePt AS CategoryName
+                FROM Hikitsugui h
+                LEFT JOIN Categories c ON c.Id = h.CategoryId
+                WHERE h.Date >= @start
+                  AND h.Date <  @end
+                  AND (h.ForLeaders = 1 OR h.ForOperators = 1)
+                ORDER BY h.Date DESC";
+
+            cmd.Parameters.AddWithValue("@start", start);
+            cmd.Parameters.AddWithValue("@end", end);
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add(new Hikitsugui
+                {
+                    Id = reader.GetInt32(0),
+                    Date = reader.GetDateTime(1),
+                    ShiftId = reader.GetInt32(2),
+                    CreatorCodigoFJ = reader.GetString(3),
+                    CategoryId = reader.GetInt32(4),
+                    EquipmentId = reader.IsDBNull(5) ? null : reader.GetInt32(5),
+                    LocalId = reader.IsDBNull(6) ? null : reader.GetInt32(6),
+                    ForLeaders = reader.GetInt32(7) == 1,
+                    ForOperators = reader.GetInt32(8) == 1,
+                    Description = reader.GetString(9),
+                    AttachmentPath = reader.IsDBNull(10) ? null : reader.GetString(10),
+                    CategoryName = reader.IsDBNull(11) ? "" : reader.GetString(11)
+                });
+            }
+
+            return list;
+        }
+
+
+        // ---------------------------------------------------------
         // DELETE
         // ---------------------------------------------------------
         public void Delete(int id)

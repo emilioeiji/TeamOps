@@ -9,6 +9,7 @@ namespace TeamOps.Core.Entities
         public int ShiftId { get; set; }
         public string CreatorCodigoFJ { get; set; } = "";
         public int CategoryId { get; set; }
+        public string CategoryName { get; set; } = "";
         public int? EquipmentId { get; set; }
         public int? LocalId { get; set; }
         public bool ForLeaders { get; set; }

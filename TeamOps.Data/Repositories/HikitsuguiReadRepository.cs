@@ -38,6 +38,46 @@ namespace TeamOps.Data.Repositories
         }
 
         // ---------------------------------------------------------
+        // CHECK IF A USER HAS READ A HIKITSUGUI
+        // ---------------------------------------------------------
+        public bool HasRead(int hikitsuguiId, string codigoFJ)
+        {
+            using var conn = _factory.CreateOpenConnection();
+            using var cmd = conn.CreateCommand();
+
+            cmd.CommandText = @"
+                SELECT 1 
+                FROM HikitsuguiReads
+                WHERE HikitsuguiId = @h AND ReaderCodigoFJ = @c
+                LIMIT 1";
+
+            cmd.Parameters.AddWithValue("@h", hikitsuguiId);
+            cmd.Parameters.AddWithValue("@c", codigoFJ);
+
+            return cmd.ExecuteScalar() != null;
+        }
+
+        // ---------------------------------------------------------
+        // MARK AS READ (simple version)
+        // ---------------------------------------------------------
+        public void MarkAsRead(int hikitsuguiId, string codigoFJ)
+        {
+            using var conn = _factory.CreateOpenConnection();
+            using var cmd = conn.CreateCommand();
+
+            cmd.CommandText = @"
+                INSERT INTO HikitsuguiReads
+                (HikitsuguiId, ReaderCodigoFJ, ReadAt)
+                VALUES
+                (@h, @c, CURRENT_TIMESTAMP)";
+
+            cmd.Parameters.AddWithValue("@h", hikitsuguiId);
+            cmd.Parameters.AddWithValue("@c", codigoFJ);
+
+            cmd.ExecuteNonQuery();
+        }
+
+        // ---------------------------------------------------------
         // GET READERS FOR A HIKITSUGUI
         // ---------------------------------------------------------
         public List<HikitsuguiRead> GetByHikitsugui(int hikitsuguiId)
@@ -69,6 +109,58 @@ namespace TeamOps.Data.Repositories
 
             return list;
         }
+
+        public List<Hikitsugui> GetForLeader(DateTime start, DateTime end)
+        {
+            var list = new List<Hikitsugui>();
+
+            using var conn = _factory.CreateOpenConnection();
+            using var cmd = conn.CreateCommand();
+
+            cmd.CommandText = @"
+        SELECT 
+            h.Id,
+            h.Date,
+            h.ShiftId,
+            h.CreatorCodigoFJ,
+            h.CategoryId,
+            h.EquipmentId,
+            h.LocalId,
+            h.ForLeaders,
+            h.ForOperators,
+            h.Description,
+            c.NamePt AS CategoryName
+        FROM Hikitsugui h
+        LEFT JOIN Category c ON c.Id = h.CategoryId
+        WHERE h.Date BETWEEN @start AND @end
+        AND (h.ForLeaders = 1 OR h.ForOperators = 1)
+        ORDER BY h.Date DESC";
+
+            cmd.Parameters.AddWithValue("@start", start);
+            cmd.Parameters.AddWithValue("@end", end);
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add(new Hikitsugui
+                {
+                    Id = reader.GetInt32(0),
+                    Date = reader.GetDateTime(1),
+                    ShiftId = reader.GetInt32(2),
+                    CreatorCodigoFJ = reader.GetString(3),
+                    CategoryId = reader.GetInt32(4),
+                    EquipmentId = reader.IsDBNull(5) ? null : reader.GetInt32(5),
+                    LocalId = reader.IsDBNull(6) ? null : reader.GetInt32(6),
+                    ForLeaders = reader.GetBoolean(7),
+                    ForOperators = reader.GetBoolean(8),
+                    Description = reader.GetString(9),
+                    CategoryName = reader.IsDBNull(10) ? "" : reader.GetString(10)
+                });
+            }
+
+            return list;
+        }
+
 
         // ---------------------------------------------------------
         // DELETE

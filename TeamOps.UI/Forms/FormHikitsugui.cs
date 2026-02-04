@@ -1,13 +1,13 @@
-﻿#pragma warning disable IDE0290
-// Project: TeamOps.UI
+﻿// Project: TeamOps.UI
 // File: Forms/FormHikitsugui.cs
 
 using System;
 using System.IO;
+using System.Linq;
+using System.Collections.Generic;
 using System.Windows.Forms;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Repositories;
-using TeamOps.Data.Db;
 
 namespace TeamOps.UI.Forms
 {
@@ -20,16 +20,17 @@ namespace TeamOps.UI.Forms
         private readonly CategoryRepository _categoryRepository;
         private readonly EquipmentRepository _equipmentRepository;
         private readonly LocalRepository _localRepository;
+        private readonly HikitsuguiAttachmentRepository _attachmentRepository;
 
-        private string? _selectedAttachmentPath;
+        private List<string> _selectedAttachmentPaths = new();
 
         public FormHikitsugui(
-    Shift currentShift,
-    Operator currentOperator,
-    HikitsuguiRepository hikitsuguiRepository,
-    CategoryRepository categoryRepository,
-    EquipmentRepository equipmentRepository,
-    LocalRepository localRepository)
+            Shift currentShift,
+            Operator currentOperator,
+            HikitsuguiRepository hikitsuguiRepository,
+            CategoryRepository categoryRepository,
+            EquipmentRepository equipmentRepository,
+            LocalRepository localRepository)
         {
             InitializeComponent();
 
@@ -40,9 +41,11 @@ namespace TeamOps.UI.Forms
             _equipmentRepository = equipmentRepository;
             _localRepository = localRepository;
 
+            // 🔹 Novo: repositório de anexos
+            _attachmentRepository = new HikitsuguiAttachmentRepository(Program.ConnectionFactory);
+
             Load += FormHikitsugui_Load;
         }
-
 
         private void FormHikitsugui_Load(object? sender, EventArgs e)
         {
@@ -51,6 +54,29 @@ namespace TeamOps.UI.Forms
             CarregarEquipamentos();
             CarregarLocais();
             ConfigurarEventos();
+            ConfigurarListaDeAnexos();
+        }
+
+        private void ConfigurarListaDeAnexos()
+        {
+            lstAnexos.DoubleClick += (s, ev) =>
+            {
+                if (lstAnexos.SelectedIndex < 0)
+                    return;
+
+                string fileName = lstAnexos.SelectedItem.ToString();
+                string? fullPath = _selectedAttachmentPaths
+                    .FirstOrDefault(x => Path.GetFileName(x) == fileName);
+
+                if (fullPath != null)
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = fullPath,
+                        UseShellExecute = true
+                    });
+                }
+            };
         }
 
         private void ConfigurarEventos()
@@ -58,6 +84,12 @@ namespace TeamOps.UI.Forms
             btnSelecionarAnexo.Click += btnSelecionarAnexo_Click;
             btnSalvar.Click += btnSalvar_Click;
             btnCancelar.Click += btnCancelar_Click;
+
+            btnBold.Click += btnBold_Click;
+            btnItalic.Click += btnItalic_Click;
+            btnUnderline.Click += btnUnderline_Click;
+            btnBullet.Click += btnBullet_Click;
+            btnNumbered.Click += btnNumbered_Click;
         }
 
         private void CarregarCamposFixos()
@@ -71,7 +103,7 @@ namespace TeamOps.UI.Forms
         {
             var list = _categoryRepository.GetAll();
             cboCategoria.DataSource = list;
-            cboCategoria.DisplayMember = "NamePt"; // somente português
+            cboCategoria.DisplayMember = "NamePt";
             cboCategoria.ValueMember = "Id";
             cboCategoria.SelectedIndex = -1;
         }
@@ -94,21 +126,32 @@ namespace TeamOps.UI.Forms
             cboLocal.SelectedIndex = -1;
         }
 
+        // ---------------------------------------------------------
+        // SELEÇÃO DE ANEXOS (AGORA MULTIPLOS)
+        // ---------------------------------------------------------
         private void btnSelecionarAnexo_Click(object? sender, EventArgs e)
         {
             using var ofd = new OpenFileDialog
             {
-                Title = "Selecionar anexo / 添付ファイル選択",
-                Filter = "Todos os arquivos (*.*)|*.*"
+                Title = "Selecionar anexos / 添付ファイル選択",
+                Filter = "Todos os arquivos (*.*)|*.*",
+                Multiselect = true
             };
 
             if (ofd.ShowDialog() == DialogResult.OK)
             {
-                _selectedAttachmentPath = ofd.FileName;
-                lblAnexo.Text = Path.GetFileName(ofd.FileName);
+                _selectedAttachmentPaths = ofd.FileNames.ToList();
+                lblAnexo.Text = $"{_selectedAttachmentPaths.Count} arquivo(s) selecionado(s)";
+
+                lstAnexos.Items.Clear();
+                foreach (var file in _selectedAttachmentPaths)
+                    lstAnexos.Items.Add(Path.GetFileName(file));
             }
         }
 
+        // ---------------------------------------------------------
+        // SALVAR
+        // ---------------------------------------------------------
         private void btnSalvar_Click(object? sender, EventArgs e)
         {
             if (!ValidarCampos())
@@ -116,18 +159,21 @@ namespace TeamOps.UI.Forms
 
             var entity = MontarEntidade();
 
-            // 1) Salva sem anexo para obter o ID
+            // 1) Salva o Hikitsugui sem anexos para obter o ID
             int newId = _hikitsuguiRepository.Add(entity);
             entity.Id = newId;
 
-            // 2) Se houver anexo, salva na pasta e atualiza
-            if (!string.IsNullOrWhiteSpace(_selectedAttachmentPath))
+            // 2) Salva cada anexo individualmente
+            foreach (var file in _selectedAttachmentPaths)
             {
-                string caminho = SalvarAnexo(newId, _selectedAttachmentPath);
-                entity.AttachmentPath = caminho;
+                string destino = SalvarAnexo(newId, file);
 
-                string safePath = entity.AttachmentPath ?? "";
-                _hikitsuguiRepository.UpdateAttachmentPath(entity.Id, safePath);
+                _attachmentRepository.Add(new HikitsuguiAttachment
+                {
+                    HikitsuguiId = newId,
+                    FileName = Path.GetFileName(file),
+                    FilePath = destino
+                });
             }
 
             MessageBox.Show(
@@ -146,6 +192,63 @@ namespace TeamOps.UI.Forms
             Close();
         }
 
+        // ---------------------------------------------------------
+        // BOTOES
+        // ---------------------------------------------------------
+        private void btnBold_Click(object sender, EventArgs e)
+        {
+            if (txtDescricao.SelectionFont != null)
+            {
+                var current = txtDescricao.SelectionFont;
+                var newStyle = current.Style ^ FontStyle.Bold;
+                txtDescricao.SelectionFont = new Font(current, newStyle);
+            }
+        }
+        private void btnItalic_Click(object sender, EventArgs e)
+        {
+            if (txtDescricao.SelectionFont != null)
+            {
+                var current = txtDescricao.SelectionFont;
+                var newStyle = current.Style ^ FontStyle.Italic;
+                txtDescricao.SelectionFont = new Font(current, newStyle);
+            }
+        }
+        private void btnUnderline_Click(object sender, EventArgs e)
+        {
+            if (txtDescricao.SelectionFont != null)
+            {
+                var current = txtDescricao.SelectionFont;
+                var newStyle = current.Style ^ FontStyle.Underline;
+                txtDescricao.SelectionFont = new Font(current, newStyle);
+            }
+        }
+        private void btnBullet_Click(object sender, EventArgs e)
+        {
+            int start = txtDescricao.SelectionStart;
+            int line = txtDescricao.GetLineFromCharIndex(start);
+            int lineStart = txtDescricao.GetFirstCharIndexFromLine(line);
+
+            txtDescricao.SelectionStart = lineStart;
+            txtDescricao.SelectionLength = 0;
+
+            txtDescricao.SelectedText = "• ";
+        }
+        private void btnNumbered_Click(object sender, EventArgs e)
+        {
+            int start = txtDescricao.SelectionStart;
+            int line = txtDescricao.GetLineFromCharIndex(start);
+            int lineStart = txtDescricao.GetFirstCharIndexFromLine(line);
+
+            txtDescricao.SelectionStart = lineStart;
+            txtDescricao.SelectionLength = 0;
+
+            txtDescricao.SelectedText = $"{line + 1}. ";
+        }
+
+
+        // ---------------------------------------------------------
+        // VALIDAÇÃO
+        // ---------------------------------------------------------
         private bool ValidarCampos()
         {
             if (cboCategoria.SelectedIndex < 0)
@@ -165,6 +268,9 @@ namespace TeamOps.UI.Forms
             return true;
         }
 
+        // ---------------------------------------------------------
+        // MONTAR ENTIDADE
+        // ---------------------------------------------------------
         private Hikitsugui MontarEntidade()
         {
             return new Hikitsugui
@@ -177,11 +283,14 @@ namespace TeamOps.UI.Forms
                 LocalId = cboLocal.SelectedIndex >= 0 ? (int?)cboLocal.SelectedValue : null,
                 ForLeaders = chkLider.Checked,
                 ForOperators = chkOperador.Checked,
-                Description = txtDescricao.Text.Trim(),
-                AttachmentPath = null
+                Description = txtDescricao.Rtf,
+                AttachmentPath = null // agora sempre null
             };
         }
 
+        // ---------------------------------------------------------
+        // SALVAR ARQUIVOS
+        // ---------------------------------------------------------
         private string SalvarAnexo(int id, string origem)
         {
             string pastaBase = @"C:\TeamOps\Anexo\Hikitsugui";

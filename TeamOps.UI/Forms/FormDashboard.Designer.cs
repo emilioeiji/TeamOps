@@ -15,6 +15,7 @@
         private System.Windows.Forms.Button btnHikitsugui;
         private System.Windows.Forms.Panel panelFooter;
         private System.Windows.Forms.Label lblDate;
+        private System.Windows.Forms.Button btnHikitsuguiLeaderRead;
 
         protected override void Dispose(bool disposing)
         {
@@ -37,11 +38,10 @@
             btnHikitsugui = new Button();
             panelFooter = new Panel();
             lblDate = new Label();
-
+            btnHikitsuguiLeaderRead = new Button();
             panelHeader.SuspendLayout();
             panelFooter.SuspendLayout();
             SuspendLayout();
-
             // 
             // panelHeader
             // 
@@ -53,7 +53,6 @@
             panelHeader.Name = "panelHeader";
             panelHeader.Size = new Size(800, 80);
             panelHeader.TabIndex = 0;
-
             // 
             // lblTitle
             // 
@@ -65,7 +64,6 @@
             lblTitle.Size = new Size(448, 37);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "TeamOps – Gestão de Operadores";
-
             // 
             // lblUser
             // 
@@ -77,7 +75,6 @@
             lblUser.Name = "lblUser";
             lblUser.Size = new Size(0, 23);
             lblUser.TabIndex = 1;
-
             // 
             // btnOperadores
             // 
@@ -88,51 +85,6 @@
             btnOperadores.TabIndex = 2;
             btnOperadores.Text = "Gerenciar Operadores";
             btnOperadores.Click += btnOperadores_Click;
-
-            // 
-            // btnRelatorios
-            // 
-            btnRelatorios.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnRelatorios.Location = new Point(560, 120);
-            btnRelatorios.Name = "btnRelatorios";
-            btnRelatorios.Size = new Size(200, 80);
-            btnRelatorios.TabIndex = 3;
-            btnRelatorios.Text = "Relatórios";
-            btnRelatorios.Click += btnRelatorios_Click;
-
-            // 
-            // btnFollowUp
-            // 
-            btnFollowUp.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnFollowUp.Location = new Point(320, 120);
-            btnFollowUp.Name = "btnFollowUp";
-            btnFollowUp.Size = new Size(200, 80);
-            btnFollowUp.TabIndex = 4;
-            btnFollowUp.Text = "Acompanhamento";
-            btnFollowUp.Click += btnFollowUp_Click;
-
-            // 
-            // btnAdmin
-            // 
-            btnAdmin.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnAdmin.Location = new Point(80, 220);
-            btnAdmin.Name = "btnAdmin";
-            btnAdmin.Size = new Size(200, 80);
-            btnAdmin.TabIndex = 5;
-            btnAdmin.Text = "Admin";
-            btnAdmin.Click += btnAdmin_Click;
-
-            // 
-            // btnAccessControl
-            // 
-            btnAccessControl.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnAccessControl.Location = new Point(320, 220);
-            btnAccessControl.Name = "btnAccessControl";
-            btnAccessControl.Size = new Size(200, 80);
-            btnAccessControl.TabIndex = 6;
-            btnAccessControl.Text = "Access";
-            btnAccessControl.Click += btnAccessControl_Click;
-
             // 
             // btnAtribuir
             // 
@@ -143,7 +95,46 @@
             btnAtribuir.TabIndex = 7;
             btnAtribuir.Text = "Atribuir Operadores";
             btnAtribuir.Click += btnAtribuir_Click;
-
+            // 
+            // btnRelatorios
+            // 
+            btnRelatorios.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnRelatorios.Location = new Point(560, 120);
+            btnRelatorios.Name = "btnRelatorios";
+            btnRelatorios.Size = new Size(200, 80);
+            btnRelatorios.TabIndex = 3;
+            btnRelatorios.Text = "Relatórios";
+            btnRelatorios.Click += btnRelatorios_Click;
+            // 
+            // btnAdmin
+            // 
+            btnAdmin.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnAdmin.Location = new Point(80, 220);
+            btnAdmin.Name = "btnAdmin";
+            btnAdmin.Size = new Size(200, 80);
+            btnAdmin.TabIndex = 5;
+            btnAdmin.Text = "Admin";
+            btnAdmin.Click += btnAdmin_Click;
+            // 
+            // btnAccessControl
+            // 
+            btnAccessControl.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnAccessControl.Location = new Point(320, 220);
+            btnAccessControl.Name = "btnAccessControl";
+            btnAccessControl.Size = new Size(200, 80);
+            btnAccessControl.TabIndex = 6;
+            btnAccessControl.Text = "Access";
+            btnAccessControl.Click += btnAccessControl_Click;
+            // 
+            // btnFollowUp
+            // 
+            btnFollowUp.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnFollowUp.Location = new Point(320, 120);
+            btnFollowUp.Name = "btnFollowUp";
+            btnFollowUp.Size = new Size(200, 80);
+            btnFollowUp.TabIndex = 4;
+            btnFollowUp.Text = "Acompanhamento";
+            btnFollowUp.Click += btnFollowUp_Click;
             // 
             // btnHikitsugui
             // 
@@ -154,7 +145,6 @@
             btnHikitsugui.TabIndex = 8;
             btnHikitsugui.Text = "Hikitsugui / 引継ぎ";
             btnHikitsugui.Click += btnHikitsugui_Click;
-
             // 
             // panelFooter
             // 
@@ -165,7 +155,6 @@
             panelFooter.Name = "panelFooter";
             panelFooter.Size = new Size(800, 40);
             panelFooter.TabIndex = 9;
-
             // 
             // lblDate
             // 
@@ -176,11 +165,21 @@
             lblDate.Name = "lblDate";
             lblDate.Size = new Size(0, 20);
             lblDate.TabIndex = 0;
-
+            // 
+            // btnHikitsuguiLeaderRead
+            // 
+            btnHikitsuguiLeaderRead.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnHikitsuguiLeaderRead.Location = new Point(560, 320);
+            btnHikitsuguiLeaderRead.Name = "btnHikitsuguiLeaderRead";
+            btnHikitsuguiLeaderRead.Size = new Size(200, 80);
+            btnHikitsuguiLeaderRead.TabIndex = 0;
+            btnHikitsuguiLeaderRead.Text = "Leitura Hikitsugui (Líder)";
+            btnHikitsuguiLeaderRead.Click += btnHikitsuguiLeaderRead_Click;
             // 
             // FormDashboard
             // 
             ClientSize = new Size(800, 450);
+            Controls.Add(btnHikitsuguiLeaderRead);
             Controls.Add(btnHikitsugui);
             Controls.Add(btnFollowUp);
             Controls.Add(btnAccessControl);
@@ -193,7 +192,6 @@
             Name = "FormDashboard";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "TeamOps - Dashboard";
-
             panelHeader.ResumeLayout(false);
             panelHeader.PerformLayout();
             panelFooter.ResumeLayout(false);

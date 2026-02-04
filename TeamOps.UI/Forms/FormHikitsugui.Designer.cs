@@ -3,6 +3,12 @@
     partial class FormHikitsugui
     {
         private System.ComponentModel.IContainer components = null;
+        private System.Windows.Forms.ListBox lstAnexos;
+        private System.Windows.Forms.Button btnBold;
+        private System.Windows.Forms.Button btnItalic;
+        private System.Windows.Forms.Button btnUnderline;
+        private System.Windows.Forms.Button btnBullet;
+        private System.Windows.Forms.Button btnNumbered;
 
         protected override void Dispose(bool disposing)
         {
@@ -15,256 +21,306 @@
 
         private void InitializeComponent()
         {
-            this.lblShift = new System.Windows.Forms.Label();
-            this.txtShift = new System.Windows.Forms.TextBox();
-            this.lblCreator = new System.Windows.Forms.Label();
-            this.txtCreator = new System.Windows.Forms.TextBox();
-            this.lblDate = new System.Windows.Forms.Label();
-            this.txtDate = new System.Windows.Forms.TextBox();
-
-            this.lblCategoria = new System.Windows.Forms.Label();
-            this.cboCategoria = new System.Windows.Forms.ComboBox();
-
-            this.lblEquipamento = new System.Windows.Forms.Label();
-            this.cboEquipamento = new System.Windows.Forms.ComboBox();
-
-            this.lblLocal = new System.Windows.Forms.Label();
-            this.cboLocal = new System.Windows.Forms.ComboBox();
-
-            this.chkLider = new System.Windows.Forms.CheckBox();
-            this.chkOperador = new System.Windows.Forms.CheckBox();
-
-            this.lblDescricao = new System.Windows.Forms.Label();
-            this.txtDescricao = new System.Windows.Forms.TextBox();
-
-            this.lblAnexoTitulo = new System.Windows.Forms.Label();
-            this.lblAnexo = new System.Windows.Forms.Label();
-            this.btnSelecionarAnexo = new System.Windows.Forms.Button();
-
-            this.btnSalvar = new System.Windows.Forms.Button();
-            this.btnCancelar = new System.Windows.Forms.Button();
-
-            this.SuspendLayout();
-
+            lblShift = new Label();
+            txtShift = new TextBox();
+            lblCreator = new Label();
+            txtCreator = new TextBox();
+            lblDate = new Label();
+            txtDate = new TextBox();
+            lblCategoria = new Label();
+            cboCategoria = new ComboBox();
+            lblEquipamento = new Label();
+            cboEquipamento = new ComboBox();
+            lblLocal = new Label();
+            cboLocal = new ComboBox();
+            chkLider = new CheckBox();
+            chkOperador = new CheckBox();
+            lblDescricao = new Label();
+            txtDescricao = new RichTextBox();
+            lblAnexoTitulo = new Label();
+            lblAnexo = new Label();
+            btnSelecionarAnexo = new Button();
+            btnSalvar = new Button();
+            btnCancelar = new Button();
+            lstAnexos = new ListBox();
+            btnBold = new Button();
+            btnItalic = new Button();
+            btnUnderline = new Button();
+            btnBullet = new Button();
+            btnNumbered = new Button();
+            SuspendLayout();
             // 
             // lblShift
             // 
-            this.lblShift.AutoSize = true;
-            this.lblShift.Location = new System.Drawing.Point(20, 20);
-            this.lblShift.Name = "lblShift";
-            this.lblShift.Size = new System.Drawing.Size(110, 15);
-            this.lblShift.Text = "Turno / シフト";
-
+            lblShift.AutoSize = true;
+            lblShift.Location = new Point(20, 20);
+            lblShift.Name = "lblShift";
+            lblShift.Size = new Size(91, 20);
+            lblShift.TabIndex = 1;
+            lblShift.Text = "Turno / シフト";
             // 
             // txtShift
             // 
-            this.txtShift.Location = new System.Drawing.Point(150, 17);
-            this.txtShift.Name = "txtShift";
-            this.txtShift.ReadOnly = true;
-            this.txtShift.Size = new System.Drawing.Size(250, 23);
-
+            txtShift.Location = new Point(169, 17);
+            txtShift.Name = "txtShift";
+            txtShift.ReadOnly = true;
+            txtShift.Size = new Size(250, 27);
+            txtShift.TabIndex = 2;
             // 
             // lblCreator
             // 
-            this.lblCreator.AutoSize = true;
-            this.lblCreator.Location = new System.Drawing.Point(20, 55);
-            this.lblCreator.Name = "lblCreator";
-            this.lblCreator.Size = new System.Drawing.Size(130, 15);
-            this.lblCreator.Text = "Criador / 作成者";
-
+            lblCreator.AutoSize = true;
+            lblCreator.Location = new Point(20, 55);
+            lblCreator.Name = "lblCreator";
+            lblCreator.Size = new Size(117, 20);
+            lblCreator.TabIndex = 3;
+            lblCreator.Text = "Criador / 作成者";
             // 
             // txtCreator
             // 
-            this.txtCreator.Location = new System.Drawing.Point(150, 52);
-            this.txtCreator.Name = "txtCreator";
-            this.txtCreator.ReadOnly = true;
-            this.txtCreator.Size = new System.Drawing.Size(250, 23);
-
+            txtCreator.Location = new Point(169, 52);
+            txtCreator.Name = "txtCreator";
+            txtCreator.ReadOnly = true;
+            txtCreator.Size = new Size(250, 27);
+            txtCreator.TabIndex = 4;
             // 
             // lblDate
             // 
-            this.lblDate.AutoSize = true;
-            this.lblDate.Location = new System.Drawing.Point(20, 90);
-            this.lblDate.Name = "lblDate";
-            this.lblDate.Size = new System.Drawing.Size(120, 15);
-            this.lblDate.Text = "Data / 日付";
-
+            lblDate.AutoSize = true;
+            lblDate.Location = new Point(20, 90);
+            lblDate.Name = "lblDate";
+            lblDate.Size = new Size(85, 20);
+            lblDate.TabIndex = 5;
+            lblDate.Text = "Data / 日付";
             // 
             // txtDate
             // 
-            this.txtDate.Location = new System.Drawing.Point(150, 87);
-            this.txtDate.Name = "txtDate";
-            this.txtDate.ReadOnly = true;
-            this.txtDate.Size = new System.Drawing.Size(250, 23);
-
+            txtDate.Location = new Point(169, 87);
+            txtDate.Name = "txtDate";
+            txtDate.ReadOnly = true;
+            txtDate.Size = new Size(250, 27);
+            txtDate.TabIndex = 6;
             // 
             // lblCategoria
             // 
-            this.lblCategoria.AutoSize = true;
-            this.lblCategoria.Location = new System.Drawing.Point(20, 135);
-            this.lblCategoria.Name = "lblCategoria";
-            this.lblCategoria.Size = new System.Drawing.Size(120, 15);
-            this.lblCategoria.Text = "Categoria / カテゴリ";
-
+            lblCategoria.AutoSize = true;
+            lblCategoria.Location = new Point(20, 135);
+            lblCategoria.Name = "lblCategoria";
+            lblCategoria.Size = new Size(131, 20);
+            lblCategoria.TabIndex = 7;
+            lblCategoria.Text = "Categoria / カテゴリ";
             // 
             // cboCategoria
             // 
-            this.cboCategoria.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cboCategoria.Location = new System.Drawing.Point(150, 132);
-            this.cboCategoria.Name = "cboCategoria";
-            this.cboCategoria.Size = new System.Drawing.Size(250, 23);
-
+            cboCategoria.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboCategoria.Location = new Point(169, 132);
+            cboCategoria.Name = "cboCategoria";
+            cboCategoria.Size = new Size(250, 28);
+            cboCategoria.TabIndex = 8;
             // 
             // lblEquipamento
             // 
-            this.lblEquipamento.AutoSize = true;
-            this.lblEquipamento.Location = new System.Drawing.Point(20, 170);
-            this.lblEquipamento.Name = "lblEquipamento";
-            this.lblEquipamento.Size = new System.Drawing.Size(140, 15);
-            this.lblEquipamento.Text = "Equipamento / 設備";
-
+            lblEquipamento.AutoSize = true;
+            lblEquipamento.Location = new Point(20, 170);
+            lblEquipamento.Name = "lblEquipamento";
+            lblEquipamento.Size = new Size(142, 20);
+            lblEquipamento.TabIndex = 9;
+            lblEquipamento.Text = "Equipamento / 設備";
             // 
             // cboEquipamento
             // 
-            this.cboEquipamento.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cboEquipamento.Location = new System.Drawing.Point(150, 167);
-            this.cboEquipamento.Name = "cboEquipamento";
-            this.cboEquipamento.Size = new System.Drawing.Size(250, 23);
-
+            cboEquipamento.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboEquipamento.Location = new Point(169, 167);
+            cboEquipamento.Name = "cboEquipamento";
+            cboEquipamento.Size = new Size(250, 28);
+            cboEquipamento.TabIndex = 10;
             // 
             // lblLocal
             // 
-            this.lblLocal.AutoSize = true;
-            this.lblLocal.Location = new System.Drawing.Point(20, 205);
-            this.lblLocal.Name = "lblLocal";
-            this.lblLocal.Size = new System.Drawing.Size(90, 15);
-            this.lblLocal.Text = "Local / 場所";
-
+            lblLocal.AutoSize = true;
+            lblLocal.Location = new Point(20, 205);
+            lblLocal.Name = "lblLocal";
+            lblLocal.Size = new Size(88, 20);
+            lblLocal.TabIndex = 11;
+            lblLocal.Text = "Local / 場所";
             // 
             // cboLocal
             // 
-            this.cboLocal.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cboLocal.Location = new System.Drawing.Point(150, 202);
-            this.cboLocal.Name = "cboLocal";
-            this.cboLocal.Size = new System.Drawing.Size(250, 23);
-
+            cboLocal.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboLocal.Location = new Point(169, 202);
+            cboLocal.Name = "cboLocal";
+            cboLocal.Size = new Size(250, 28);
+            cboLocal.TabIndex = 12;
             // 
             // chkLider
             // 
-            this.chkLider.AutoSize = true;
-            this.chkLider.Location = new System.Drawing.Point(150, 240);
-            this.chkLider.Name = "chkLider";
-            this.chkLider.Size = new System.Drawing.Size(150, 19);
-            this.chkLider.Text = "Para líderes / リーダー";
-
+            chkLider.AutoSize = true;
+            chkLider.Location = new Point(169, 240);
+            chkLider.Name = "chkLider";
+            chkLider.Size = new Size(165, 24);
+            chkLider.TabIndex = 13;
+            chkLider.Text = "Para líderes / リーダー";
             // 
             // chkOperador
             // 
-            this.chkOperador.AutoSize = true;
-            this.chkOperador.Location = new System.Drawing.Point(150, 265);
-            this.chkOperador.Name = "chkOperador";
-            this.chkOperador.Size = new System.Drawing.Size(180, 19);
-            this.chkOperador.Text = "Para operadores / 作業者";
-
+            chkOperador.AutoSize = true;
+            chkOperador.Location = new Point(169, 265);
+            chkOperador.Name = "chkOperador";
+            chkOperador.Size = new Size(199, 24);
+            chkOperador.TabIndex = 14;
+            chkOperador.Text = "Para operadores / 作業者";
             // 
             // lblDescricao
             // 
-            this.lblDescricao.AutoSize = true;
-            this.lblDescricao.Location = new System.Drawing.Point(20, 305);
-            this.lblDescricao.Name = "lblDescricao";
-            this.lblDescricao.Size = new System.Drawing.Size(130, 15);
-            this.lblDescricao.Text = "Descrição / 内容";
-
+            lblDescricao.AutoSize = true;
+            lblDescricao.Location = new Point(20, 330);
+            lblDescricao.Name = "lblDescricao";
+            lblDescricao.Size = new Size(118, 20);
+            lblDescricao.TabIndex = 15;
+            lblDescricao.Text = "Descrição / 内容";
             // 
             // txtDescricao
             // 
-            this.txtDescricao.Location = new System.Drawing.Point(150, 302);
-            this.txtDescricao.Multiline = true;
-            this.txtDescricao.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.txtDescricao.Name = "txtDescricao";
-            this.txtDescricao.Size = new System.Drawing.Size(350, 120);
-
+            txtDescricao.Font = new Font("Segoe UI", 10F);
+            txtDescricao.Location = new Point(169, 327);
+            txtDescricao.Name = "txtDescricao";
+            txtDescricao.ScrollBars = RichTextBoxScrollBars.Vertical;
+            txtDescricao.Size = new Size(350, 120);
+            txtDescricao.TabIndex = 16;
+            txtDescricao.Text = "";
             // 
             // lblAnexoTitulo
             // 
-            this.lblAnexoTitulo.AutoSize = true;
-            this.lblAnexoTitulo.Location = new System.Drawing.Point(20, 440);
-            this.lblAnexoTitulo.Name = "lblAnexoTitulo";
-            this.lblAnexoTitulo.Size = new System.Drawing.Size(120, 15);
-            this.lblAnexoTitulo.Text = "Anexo / 添付ファイル";
-
+            lblAnexoTitulo.AutoSize = true;
+            lblAnexoTitulo.Location = new Point(20, 465);
+            lblAnexoTitulo.Name = "lblAnexoTitulo";
+            lblAnexoTitulo.Size = new Size(137, 20);
+            lblAnexoTitulo.TabIndex = 17;
+            lblAnexoTitulo.Text = "Anexo / 添付ファイル";
             // 
             // lblAnexo
             // 
-            this.lblAnexo.AutoSize = true;
-            this.lblAnexo.Location = new System.Drawing.Point(150, 440);
-            this.lblAnexo.Name = "lblAnexo";
-            this.lblAnexo.Size = new System.Drawing.Size(120, 15);
-            this.lblAnexo.Text = "(nenhum arquivo)";
-
+            lblAnexo.AutoSize = true;
+            lblAnexo.Location = new Point(169, 465);
+            lblAnexo.Name = "lblAnexo";
+            lblAnexo.Size = new Size(126, 20);
+            lblAnexo.TabIndex = 18;
+            lblAnexo.Text = "(nenhum arquivo)";
             // 
             // btnSelecionarAnexo
             // 
-            this.btnSelecionarAnexo.Location = new System.Drawing.Point(150, 465);
-            this.btnSelecionarAnexo.Name = "btnSelecionarAnexo";
-            this.btnSelecionarAnexo.Size = new System.Drawing.Size(150, 30);
-            this.btnSelecionarAnexo.Text = "Selecionar / 選択";
-
+            btnSelecionarAnexo.Location = new Point(169, 490);
+            btnSelecionarAnexo.Name = "btnSelecionarAnexo";
+            btnSelecionarAnexo.Size = new Size(150, 30);
+            btnSelecionarAnexo.TabIndex = 19;
+            btnSelecionarAnexo.Text = "Selecionar / 選択";
             // 
             // btnSalvar
             // 
-            this.btnSalvar.Location = new System.Drawing.Point(250, 515);
-            this.btnSalvar.Name = "btnSalvar";
-            this.btnSalvar.Size = new System.Drawing.Size(120, 35);
-            this.btnSalvar.Text = "Salvar / 保存";
-
+            btnSalvar.Location = new Point(269, 651);
+            btnSalvar.Name = "btnSalvar";
+            btnSalvar.Size = new Size(120, 35);
+            btnSalvar.TabIndex = 20;
+            btnSalvar.Text = "Salvar / 保存";
             // 
             // btnCancelar
             // 
-            this.btnCancelar.Location = new System.Drawing.Point(380, 515);
-            this.btnCancelar.Name = "btnCancelar";
-            this.btnCancelar.Size = new System.Drawing.Size(120, 35);
-            this.btnCancelar.Text = "Cancelar / キャンセル";
-
+            btnCancelar.Location = new Point(399, 651);
+            btnCancelar.Name = "btnCancelar";
+            btnCancelar.Size = new Size(120, 35);
+            btnCancelar.TabIndex = 21;
+            btnCancelar.Text = "Cancelar / キャンセル";
+            // 
+            // lstAnexos
+            // 
+            lstAnexos.Font = new Font("Segoe UI", 10F);
+            lstAnexos.HorizontalScrollbar = true;
+            lstAnexos.Location = new Point(169, 526);
+            lstAnexos.Name = "lstAnexos";
+            lstAnexos.Size = new Size(350, 119);
+            lstAnexos.TabIndex = 0;
+            // 
+            // btnBold
+            // 
+            btnBold.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            btnBold.Location = new Point(169, 293);
+            btnBold.Name = "btnBold";
+            btnBold.Size = new Size(30, 28);
+            btnBold.TabIndex = 0;
+            btnBold.Text = "B";
+            // 
+            // btnItalic
+            // 
+            btnItalic.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
+            btnItalic.Location = new Point(205, 293);
+            btnItalic.Name = "btnItalic";
+            btnItalic.Size = new Size(30, 28);
+            btnItalic.TabIndex = 1;
+            btnItalic.Text = "I";
+            // 
+            // btnUnderline
+            // 
+            btnUnderline.Font = new Font("Segoe UI", 9F, FontStyle.Underline);
+            btnUnderline.Location = new Point(241, 293);
+            btnUnderline.Name = "btnUnderline";
+            btnUnderline.Size = new Size(30, 28);
+            btnUnderline.TabIndex = 2;
+            btnUnderline.Text = "U";
+            // 
+            // btnBullet
+            // 
+            btnBullet.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnBullet.Location = new Point(277, 293);
+            btnBullet.Name = "btnBullet";
+            btnBullet.Size = new Size(30, 28);
+            btnBullet.TabIndex = 3;
+            btnBullet.Text = "•";
+            // 
+            // btnNumbered
+            // 
+            btnNumbered.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            btnNumbered.Location = new Point(313, 293);
+            btnNumbered.Name = "btnNumbered";
+            btnNumbered.Size = new Size(40, 28);
+            btnNumbered.TabIndex = 4;
+            btnNumbered.Text = "1.";
             // 
             // FormHikitsugui
             // 
-            this.ClientSize = new System.Drawing.Size(540, 580);
-            this.Controls.Add(this.lblShift);
-            this.Controls.Add(this.txtShift);
-            this.Controls.Add(this.lblCreator);
-            this.Controls.Add(this.txtCreator);
-            this.Controls.Add(this.lblDate);
-            this.Controls.Add(this.txtDate);
-
-            this.Controls.Add(this.lblCategoria);
-            this.Controls.Add(this.cboCategoria);
-
-            this.Controls.Add(this.lblEquipamento);
-            this.Controls.Add(this.cboEquipamento);
-
-            this.Controls.Add(this.lblLocal);
-            this.Controls.Add(this.cboLocal);
-
-            this.Controls.Add(this.chkLider);
-            this.Controls.Add(this.chkOperador);
-
-            this.Controls.Add(this.lblDescricao);
-            this.Controls.Add(this.txtDescricao);
-
-            this.Controls.Add(this.lblAnexoTitulo);
-            this.Controls.Add(this.lblAnexo);
-            this.Controls.Add(this.btnSelecionarAnexo);
-
-            this.Controls.Add(this.btnSalvar);
-            this.Controls.Add(this.btnCancelar);
-
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-            this.Name = "FormHikitsugui";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "Registro de Hikitsugui / 引継ぎ登録";
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            ClientSize = new Size(540, 710);
+            Controls.Add(btnBold);
+            Controls.Add(btnItalic);
+            Controls.Add(btnUnderline);
+            Controls.Add(btnBullet);
+            Controls.Add(btnNumbered);
+            Controls.Add(lstAnexos);
+            Controls.Add(lblShift);
+            Controls.Add(txtShift);
+            Controls.Add(lblCreator);
+            Controls.Add(txtCreator);
+            Controls.Add(lblDate);
+            Controls.Add(txtDate);
+            Controls.Add(lblCategoria);
+            Controls.Add(cboCategoria);
+            Controls.Add(lblEquipamento);
+            Controls.Add(cboEquipamento);
+            Controls.Add(lblLocal);
+            Controls.Add(cboLocal);
+            Controls.Add(chkLider);
+            Controls.Add(chkOperador);
+            Controls.Add(lblDescricao);
+            Controls.Add(txtDescricao);
+            Controls.Add(lblAnexoTitulo);
+            Controls.Add(lblAnexo);
+            Controls.Add(btnSelecionarAnexo);
+            Controls.Add(btnSalvar);
+            Controls.Add(btnCancelar);
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            Name = "FormHikitsugui";
+            StartPosition = FormStartPosition.CenterScreen;
+            Text = "Registro de Hikitsugui / 引継ぎ登録";
+            ResumeLayout(false);
+            PerformLayout();
         }
 
         #endregion
@@ -289,7 +345,7 @@
         private System.Windows.Forms.CheckBox chkOperador;
 
         private System.Windows.Forms.Label lblDescricao;
-        private System.Windows.Forms.TextBox txtDescricao;
+        private System.Windows.Forms.RichTextBox txtDescricao;
 
         private System.Windows.Forms.Label lblAnexoTitulo;
         private System.Windows.Forms.Label lblAnexo;
