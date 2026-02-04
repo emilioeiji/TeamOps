@@ -1,12 +1,11 @@
 ﻿// Project: TeamOps.UI
 // File: Forms/FormDashboard.cs
-using Microsoft.VisualBasic.ApplicationServices;
+
 using System;
 using System.Windows.Forms;
 using TeamOps.Core.Common;
 using TeamOps.Core.Entities;
 using AppUser = TeamOps.Core.Entities.User;
-
 
 namespace TeamOps.UI.Forms
 {
@@ -23,94 +22,117 @@ namespace TeamOps.UI.Forms
             lblDate.Text = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
         }
 
+        // ---------------------------------------------------------
+        // PERMISSÃO
+        // ---------------------------------------------------------
         private bool HasAccess(AccessLevel requiredLevel)
         {
             return _user.AccessLevel >= requiredLevel;
         }
 
+        private void ShowAccessDenied()
+        {
+            MessageBox.Show(
+                "Acesso negado. Permissão insuficiente.",
+                "Acesso Negado",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            );
+        }
+
+        // ---------------------------------------------------------
+        // BOTÕES DO DASHBOARD
+        // ---------------------------------------------------------
+
         private void btnOperadores_Click(object sender, EventArgs e)
         {
-            // Operadores: qualquer usuário logado pode abrir
             var form = new FormOperators();
             form.ShowDialog();
         }
 
         private void btnAtribuir_Click(object sender, EventArgs e)
         {
-            if (HasAccess(AccessLevel.Admin))
+            if (!HasAccess(AccessLevel.Admin))
             {
-                var adminForm = new FormAssignments();
-                adminForm.ShowDialog();
+                ShowAccessDenied();
+                return;
             }
-            else
-            {
-                MessageBox.Show("Acesso negado. Apenas administradores.");
-            }
+
+            var form = new FormAssignments();
+            form.ShowDialog();
         }
 
         private void btnRelatorios_Click(object sender, EventArgs e)
         {
-            if (HasAccess(AccessLevel.GL))
+            if (!HasAccess(AccessLevel.GL))
             {
-                MessageBox.Show("Abrir tela de Relatórios...");
-                // Aqui depois chamaremos o FormReports
+                ShowAccessDenied();
+                return;
             }
-            else
-            {
-                MessageBox.Show("Acesso negado. Apenas líderes ou administradores podem acessar relatórios.");
-            }
+
+            MessageBox.Show("Abrir tela de Relatórios...");
+            // TODO: FormReports
         }
 
         private void btnFollowUp_Click(object sender, EventArgs e)
         {
-            if (HasAccess(AccessLevel.KL))
+            if (!HasAccess(AccessLevel.KL))
             {
-                var form = new FormFollowUp();
-                form.ShowDialog();
+                ShowAccessDenied();
+                return;
             }
-            else
-            {
-                MessageBox.Show("Acesso negado. Apenas líderes ou administradores podem acessar relatórios.");
-            }
+
+            var form = new FormFollowUp();
+            form.ShowDialog();
         }
 
         private void btnAdmin_Click(object sender, EventArgs e)
         {
-            if (HasAccess(AccessLevel.Admin))
+            if (!HasAccess(AccessLevel.Admin))
             {
-                var adminForm = new FormAdmin();
-                adminForm.ShowDialog();
+                ShowAccessDenied();
+                return;
             }
-            else
-            {
-                MessageBox.Show("Acesso negado. Apenas administradores podem acessar o painel administrativo.");
-            }
+
+            var form = new FormAdmin();
+            form.ShowDialog();
         }
 
         private void btnAccessControl_Click(object sender, EventArgs e)
         {
-            if (HasAccess(AccessLevel.Admin))
+            if (!HasAccess(AccessLevel.Admin))
             {
-                var adminForm = new FormAccessControl();
-                adminForm.ShowDialog();
+                ShowAccessDenied();
+                return;
             }
-            else
-            {
-                MessageBox.Show("Acesso negado. Apenas administradores podem acessar o painel administrativo.");
-            }
+
+            var form = new FormAccessControl();
+            form.ShowDialog();
         }
 
-        private void btnFollowUp_Click_1(object sender, EventArgs e)
+        // ---------------------------------------------------------
+        // HIKITSUGUI (será ativado quando você adicionar o botão)
+        // ---------------------------------------------------------
+        private void btnHikitsugui_Click(object sender, EventArgs e)
         {
-            if (HasAccess(AccessLevel.KL))
+            if (!HasAccess(AccessLevel.KL))
             {
-                var form = new FormFollowUp();
-                form.ShowDialog();
+                ShowAccessDenied();
+                return;
             }
-            else
-            {
-                MessageBox.Show("Acesso negado. Apenas líderes ou administradores podem acessar relatórios.");
-            }
+
+            // Aqui você vai injetar os repositórios reais
+            // quando integrar com o restante do sistema.
+            var form = new FormHikitsugui(
+                currentShift: null,          // ajustar depois
+                currentOperator: null,       // ajustar depois
+                hikitsuguiRepository: null,  // ajustar depois
+                categoryRepository: null,    // ajustar depois
+                equipmentRepository: null,   // ajustar depois
+                localRepository: null        // ajustar depois
+            );
+
+            form.ShowDialog();
         }
     }
 }
