@@ -24,18 +24,17 @@ namespace TeamOps.UI.Forms
         private string? _selectedAttachmentPath;
 
         public FormHikitsugui(
-            Shift currentShift,
-            Operator currentOperator,
-            HikitsuguiRepository hikitsuguiRepository,
-            CategoryRepository categoryRepository,
-            EquipmentRepository equipmentRepository,
-            LocalRepository localRepository)
+    Shift currentShift,
+    Operator currentOperator,
+    HikitsuguiRepository hikitsuguiRepository,
+    CategoryRepository categoryRepository,
+    EquipmentRepository equipmentRepository,
+    LocalRepository localRepository)
         {
             InitializeComponent();
 
             _currentShift = currentShift;
             _currentOperator = currentOperator;
-
             _hikitsuguiRepository = hikitsuguiRepository;
             _categoryRepository = categoryRepository;
             _equipmentRepository = equipmentRepository;
@@ -43,6 +42,7 @@ namespace TeamOps.UI.Forms
 
             Load += FormHikitsugui_Load;
         }
+
 
         private void FormHikitsugui_Load(object? sender, EventArgs e)
         {
@@ -62,7 +62,7 @@ namespace TeamOps.UI.Forms
 
         private void CarregarCamposFixos()
         {
-            txtShift.Text = _currentShift.NamePt; // ou NameJp se quiser
+            txtShift.Text = _currentShift.NamePt;
             txtCreator.Text = _currentOperator.CodigoFJ;
             txtDate.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
         }

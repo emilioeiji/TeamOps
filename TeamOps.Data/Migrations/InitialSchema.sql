@@ -173,6 +173,14 @@ CREATE TABLE IF NOT EXISTS HikitsuguiReads (
     FOREIGN KEY (ReaderCodigoFJ) REFERENCES Operators(CodigoFJ)
 );
 
+CREATE TABLE IF NOT EXISTS HikitsuguiAttachments (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    HikitsuguiId INTEGER NOT NULL,
+    FileName TEXT NOT NULL,
+    FilePath TEXT NOT NULL,
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (HikitsuguiId) REFERENCES Hikitsugui(Id)
+);
 
 CREATE INDEX IF NOT EXISTS IX_Operators_BadgeCode ON Operators(BadgeCode);
 CREATE INDEX IF NOT EXISTS IX_GL_Login ON GroupLeaders(Login);

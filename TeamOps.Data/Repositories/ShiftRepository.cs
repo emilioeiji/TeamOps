@@ -24,6 +24,31 @@ namespace TeamOps.Data.Repositories
             return (int)(long)cmd.ExecuteScalar()!;
         }
 
+        // 🔹 NOVO — usado pelo Dashboard
+        public Shift? GetById(int id)
+        {
+            using var conn = _factory.CreateOpenConnection();
+            using var cmd = conn.CreateCommand();
+
+            cmd.CommandText = @"
+                SELECT Id, NamePt, NameJp
+                FROM Shifts
+                WHERE Id = @id";
+
+            cmd.Parameters.AddWithValue("@id", id);
+
+            using var reader = cmd.ExecuteReader();
+            if (!reader.Read())
+                return null;
+
+            return new Shift
+            {
+                Id = reader.GetInt32(0),
+                NamePt = reader.GetString(1),
+                NameJp = reader.GetString(2)
+            };
+        }
+
         public List<Shift> GetAll()
         {
             var list = new List<Shift>();
