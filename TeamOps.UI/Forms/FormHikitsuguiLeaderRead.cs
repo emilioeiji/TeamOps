@@ -49,6 +49,9 @@ namespace TeamOps.UI.Forms
             grid.Columns.Add("colCriador", "Criador");
             grid.Columns.Add("colDescricao", "Descrição");
 
+            grid.RowTemplate.Height = 60; // ou 80 se quiser mais alto
+            grid.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
+
             var colBtn = new DataGridViewButtonColumn();
             colBtn.Name = "colLeitura";
             colBtn.HeaderText = "Leitura";
@@ -74,12 +77,26 @@ namespace TeamOps.UI.Forms
             {
                 bool lido = _readRepository.HasRead(h.Id, _currentLeader.CodigoFJ);
 
+                string preview;
+
+                if (IsRtf(h.Description))
+                {
+                    preview = StripRtfRobusto(h.Description);
+                }
+                else
+                {
+                    preview = h.Description;
+                }
+
+                if (preview.Length > 120)
+                    preview = preview.Substring(0, 120) + "...";
+
                 int row = grid.Rows.Add(
                     h.Id,
                     h.Date.ToString("yyyy-MM-dd HH:mm"),
                     h.CategoryName,
                     h.CreatorCodigoFJ,
-                    h.Description.Length > 80 ? h.Description.Substring(0, 80) + "..." : h.Description
+                    preview
                 );
 
                 var cell = (DataGridViewButtonCell)grid.Rows[row].Cells["colLeitura"];
@@ -98,12 +115,59 @@ namespace TeamOps.UI.Forms
                 }
             }
         }
+        private string StripRtf(string rtf)
+        {
+            try
+            {
+                using var rtb = new RichTextBox();
+                rtb.Rtf = rtf;
+                return rtb.Text;
+            }
+            catch
+            {
+                return rtf; // fallback
+            }
+        }
+        private string StripRtfRobusto(string input)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(input))
+                    return "";
+
+                // Se não for RTF válido, retorna texto puro
+                if (!input.TrimStart().StartsWith(@"{\rtf"))
+                    return input;
+
+                using var rtb = new RichTextBox();
+                rtb.Rtf = input;
+                return rtb.Text;
+            }
+            catch
+            {
+                // Se der erro, remove tags básicas
+                return input
+                    .Replace("{", "")
+                    .Replace("}", "")
+                    .Replace("\\par", " ")
+                    .Replace("\\b", "")
+                    .Replace("\\i", "")
+                    .Replace("\\ul", "")
+                    .Replace("\\fs20", "")
+                    .Replace("\\f0", "")
+                    .Replace("\\f1", "")
+                    .Replace("\\f2", "")
+                    .Replace("\\f3", "");
+            }
+        }
 
         private void grid_CellClick(object? sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
 
-            if (grid.Columns[e.ColumnIndex].Name == "colLeitura")
+            var columnName = grid.Columns[e.ColumnIndex].Name;
+
+            if (columnName == "colLeitura")
             {
                 int id = (int)grid.Rows[e.RowIndex].Cells["colId"].Value;
 
@@ -117,6 +181,23 @@ namespace TeamOps.UI.Forms
                     cell.ReadOnly = true;
                 }
             }
+            else if (columnName == "colDescricao")
+            {
+                int id = (int)grid.Rows[e.RowIndex].Cells["colId"].Value;
+                var h = _hikitsuguiRepository.GetById(id);
+                if (h is null) return;
+
+                using var form = new FormHikitsuguiPreview(h.Description);
+                form.ShowDialog();
+            }
         }
+        private bool IsRtf(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return false;
+
+            return text.TrimStart().StartsWith(@"{\rtf");
+        }
+
     }
 }
