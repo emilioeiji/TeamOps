@@ -126,22 +126,22 @@ CREATE TABLE IF NOT EXISTS Categories (
 );
 
 CREATE TABLE IF NOT EXISTS Hikitsugui (
-    Id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    Id              INTEGER  PRIMARY KEY AUTOINCREMENT,
     Date            DATETIME NOT NULL,
-    ShiftId         INTEGER NOT NULL,
-    CreatorCodigoFJ TEXT NOT NULL,
-    CategoryId      INTEGER NOT NULL,
+    ShiftId         INTEGER  NOT NULL,
+    CreatorCodigoFJ TEXT     NOT NULL,
+    CategoryId      INTEGER  NOT NULL,
     EquipmentId     INTEGER,
-    AreaId          INTEGER,
-    ForLeaders      INTEGER NOT NULL,   -- 0/1
-    ForOperators    INTEGER NOT NULL,   -- 0/1
-    Description     TEXT NOT NULL,
-    AttachmentPath  TEXT,               -- caminho da pasta do anexo
-    FOREIGN KEY (ShiftId)         REFERENCES Shifts(Id),
-    FOREIGN KEY (CreatorCodigoFJ) REFERENCES Operators(CodigoFJ),
-    FOREIGN KEY (CategoryId)      REFERENCES Categories(Id),
-    FOREIGN KEY (EquipmentId)     REFERENCES Equipment(Id),
-    FOREIGN KEY (AreaId)          REFERENCES Areas(Id)
+    LocalId         INTEGER,
+    ForLeaders      INTEGER  NOT NULL,
+    ForOperators    INTEGER  NOT NULL,
+    Description     TEXT     NOT NULL,
+    AttachmentPath  TEXT,
+    FOREIGN KEY (ShiftId)         REFERENCES Shifts (Id),
+    FOREIGN KEY (CreatorCodigoFJ) REFERENCES Operators (CodigoFJ),
+    FOREIGN KEY (CategoryId)      REFERENCES Categories (Id),
+    FOREIGN KEY (EquipmentId)     REFERENCES Equipments (Id),
+    FOREIGN KEY (LocalId)         REFERENCES Locals (Id)
 );
 
 CREATE TABLE IF NOT EXISTS HikitsuguiResponses (

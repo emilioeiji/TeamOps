@@ -49,15 +49,28 @@ namespace TeamOps.UI.Forms
             grid.Columns.Add("colCriador", "Criador");
             grid.Columns.Add("colDescricao", "Descrição");
 
-            grid.RowTemplate.Height = 60; // ou 80 se quiser mais alto
+            grid.RowTemplate.Height = 60;
             grid.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
 
-            var colBtn = new DataGridViewButtonColumn();
+            grid.EnableHeadersVisualStyles = false;
+            grid.RowHeadersDefaultCellStyle.BackColor = Color.White;
+            grid.DefaultCellStyle.SelectionBackColor = Color.LightGray;
+            grid.DefaultCellStyle.SelectionForeColor = Color.Black;
+
+            // 1️⃣ Primeiro cria a coluna
+            var colBtn = new DataGridViewTextBoxColumn();
             colBtn.Name = "colLeitura";
             colBtn.HeaderText = "Leitura";
             colBtn.Width = 60;
             grid.Columns.Add(colBtn);
+
+            grid.Columns["colLeitura"].DefaultCellStyle.SelectionForeColor = Color.Green;
+
+            // 2️⃣ Só depois mexe no estilo dela (se quiser)
+            // grid.Columns["colLeitura"].DefaultCellStyle.ForeColor = Color.Black;
+            // grid.Columns["colLeitura"].DefaultCellStyle.BackColor = Color.White;
         }
+
 
         private void btnFiltrar_Click(object? sender, EventArgs e)
         {
@@ -99,22 +112,26 @@ namespace TeamOps.UI.Forms
                     preview
                 );
 
-                var cell = (DataGridViewButtonCell)grid.Rows[row].Cells["colLeitura"];
+                //var cell = (DataGridViewButtonCell)grid.Rows[row].Cells["colLeitura"];
+                var cell = grid.Rows[row].Cells["colLeitura"];
 
                 if (lido)
                 {
                     cell.Value = "〇";
                     cell.Style.ForeColor = Color.Green;
-                    cell.ReadOnly = true;
+                    cell.Style.SelectionForeColor = Color.Green;
+                    cell.Style.Font = new Font("Segoe UI", 20, FontStyle.Bold);
                 }
                 else
                 {
                     cell.Value = "×";
                     cell.Style.ForeColor = Color.Red;
-                    cell.ReadOnly = false;
+                    cell.Style.SelectionForeColor = Color.Red;
+                    cell.Style.Font = new Font("Segoe UI", 20, FontStyle.Bold);
                 }
             }
         }
+
         private string StripRtf(string rtf)
         {
             try
@@ -174,11 +191,12 @@ namespace TeamOps.UI.Forms
                 if (!_readRepository.HasRead(id, _currentLeader.CodigoFJ))
                 {
                     _readRepository.MarkAsRead(id, _currentLeader.CodigoFJ);
+                    var cell = grid.Rows[e.RowIndex].Cells["colLeitura"];
 
-                    var cell = (DataGridViewButtonCell)grid.Rows[e.RowIndex].Cells["colLeitura"];
                     cell.Value = "〇";
                     cell.Style.ForeColor = Color.Green;
-                    cell.ReadOnly = true;
+                    cell.Style.SelectionForeColor = Color.Green;
+                    cell.Style.Font = new Font("Segoe UI", 20, FontStyle.Bold);
                 }
             }
             else if (columnName == "colDescricao")
