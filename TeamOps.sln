@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36518.9 d17.14
+VisualStudioVersion = 17.14.36518.9
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TeamOps.UI", "TeamOps.UI\TeamOps.UI.csproj", "{88EE78D3-CAA3-486E-A641-2AA1B938C220}"
 EndProject
@@ -10,6 +10,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TeamOps.Data", "TeamOps.Data\TeamOps.Data.csproj", "{43EFEE03-D653-4309-AB02-1FCA8E0798FF}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TeamOps.Config", "TeamOps.Config\TeamOps.Config.csproj", "{F3178125-A6D1-4DE1-B1AD-7F0653DAC611}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TeamOps.OperatorApp", "TeamOps.OperatorApp\TeamOps.OperatorApp.csproj", "{3C827768-6CCA-47FF-9823-119C799F54E0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{F3178125-A6D1-4DE1-B1AD-7F0653DAC611}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F3178125-A6D1-4DE1-B1AD-7F0653DAC611}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F3178125-A6D1-4DE1-B1AD-7F0653DAC611}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3C827768-6CCA-47FF-9823-119C799F54E0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3C827768-6CCA-47FF-9823-119C799F54E0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3C827768-6CCA-47FF-9823-119C799F54E0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C827768-6CCA-47FF-9823-119C799F54E0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

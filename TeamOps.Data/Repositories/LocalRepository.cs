@@ -48,6 +48,61 @@ namespace TeamOps.Data.Repositories
             return list;
         }
 
+        public List<Local> GetBySector(int sectorId)
+        {
+            var list = new List<Local>();
+
+            using var conn = _factory.CreateOpenConnection();
+            using var cmd = conn.CreateCommand();
+
+            if (sectorId == 3)
+            {
+                // Setor 3 vê tudo
+                cmd.CommandText = "SELECT Id, NamePt, NameJp, SectorId FROM Locals ORDER BY NamePt";
+            }
+            else
+            {
+                cmd.CommandText = @"
+            SELECT Id, NamePt, NameJp, SectorId 
+            FROM Locals 
+            WHERE SectorId = @sectorId
+            ORDER BY NamePt";
+
+                cmd.Parameters.AddWithValue("@sectorId", sectorId);
+            }
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add(new Local
+                {
+                    Id = reader.GetInt32(0),
+                    NamePt = reader.GetString(1),
+                    NameJp = reader.GetString(2),
+                    SectorId = reader.GetInt32(3)
+                });
+            }
+
+            return list;
+        }
+
+        public List<int> GetLocalIdsBySector(int sectorId)
+        {
+            var list = new List<int>();
+
+            using var conn = _factory.CreateOpenConnection();
+            using var cmd = conn.CreateCommand();
+
+            cmd.CommandText = "SELECT Id FROM Locals WHERE SectorId = @sectorId";
+            cmd.Parameters.AddWithValue("@sectorId", sectorId);
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                list.Add(reader.GetInt32(0));
+
+            return list;
+        }
+
         public Local? GetById(int id)
         {
             using var conn = _factory.CreateOpenConnection();

@@ -197,18 +197,71 @@ namespace TeamOps.Data.Repositories
                     EquipmentId = reader.IsDBNull(5) ? null : reader.GetInt32(5),
                     LocalId = reader.IsDBNull(6) ? null : reader.GetInt32(6),
                     SectorId = reader.IsDBNull(7) ? null : reader.GetInt32(7),
-                    SectorName = reader.IsDBNull(13) ? "" : reader.GetString(13),
-                    ForLeaders = reader.GetInt32(7) == 1,
-                    ForOperators = reader.GetInt32(8) == 1,
-                    Description = reader.GetString(9),
-                    AttachmentPath = reader.IsDBNull(10) ? null : reader.GetString(10),
-                    CategoryName = reader.IsDBNull(11) ? "" : reader.GetString(11)
+
+                    ForLeaders = reader.GetInt32(8) == 1,
+                    ForOperators = reader.GetInt32(9) == 1,
+
+                    Description = reader.GetString(10),
+                    AttachmentPath = reader.IsDBNull(11) ? null : reader.GetString(11),
+
+                    CategoryName = reader.IsDBNull(12) ? "" : reader.GetString(12),
+                    SectorName = reader.IsDBNull(13) ? "" : reader.GetString(13)
                 });
             }
 
             return list;
         }
+        public List<HikitsuguiListItem> GetForOperator(
+            DateTime start,
+            DateTime end,
+            int operatorSectorId,
+            int selectedLocalId)
+        {
+            var list = new List<HikitsuguiListItem>();
 
+            using var conn = _factory.CreateOpenConnection();
+            using var cmd = conn.CreateCommand();
+
+            // Locais gerais por setor
+            string gerais = operatorSectorId switch
+            {
+                1 => "98, 99",
+                2 => "97, 99",
+                3 => "97, 98, 99",
+                _ => ""
+            };
+
+            cmd.CommandText = $@"
+        SELECT h.Id, h.Date, c.NamePt, h.CreatorCodigoFJ, h.Description
+        FROM Hikitsugui h
+        INNER JOIN Categories c ON c.Id = h.CategoryId
+        WHERE h.Date >= @Start AND h.Date < @End
+          AND h.ForOperators = 1
+          AND (
+                h.LocalId = @LocalId
+                OR h.LocalId IN ({gerais})
+              )
+        ORDER BY h.Date DESC";
+
+            cmd.Parameters.AddWithValue("@LocalId", selectedLocalId);
+            cmd.Parameters.AddWithValue("@Start", start);
+            cmd.Parameters.AddWithValue("@End", end);
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add(new HikitsuguiListItem
+                {
+                    Id = reader.GetInt32(0),
+                    Date = reader.GetDateTime(1),
+                    CategoryName = reader.GetString(2),
+                    CreatorCodigoFJ = reader.GetString(3),
+                    Description = reader.GetString(4)
+                });
+            }
+
+            return list;
+        }
 
         // ---------------------------------------------------------
         // DELETE
