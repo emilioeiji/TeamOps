@@ -205,7 +205,7 @@ namespace TeamOps.UI.Forms
                 var h = _hikitsuguiRepository.GetById(id);
                 if (h is null) return;
 
-                using var form = new FormHikitsuguiPreview(h.Description);
+                using var form = new FormHikitsuguiPreview(h);
                 form.ShowDialog();
             }
         }

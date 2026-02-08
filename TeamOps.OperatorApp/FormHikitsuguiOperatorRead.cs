@@ -1,8 +1,9 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
-using TeamOps.Data.Repositories;
 using TeamOps.Core.Entities;
+using TeamOps.Data.Repositories;
 
 namespace TeamOps.OperatorApp
 {
@@ -214,10 +215,11 @@ namespace TeamOps.OperatorApp
                 var h = _hikRepo.GetById(id);
                 if (h is null) return;
 
-                using var form = new FormHikitsuguiPreview(h.Description);
+                using var form = new FormHikitsuguiPreview(h);
                 form.ShowDialog();
             }
         }
+       
         private bool IsRtf(string text)
         {
             if (string.IsNullOrWhiteSpace(text))

@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Threading;
 using System.Windows.Forms;
+using System.Configuration;
 using TeamOps.Config;
 using TeamOps.Data.Db;
 
@@ -11,6 +12,8 @@ namespace TeamOps.OperatorApp
     {
         public static DbSettings DbSettings { get; private set; } = null!;
         public static SqliteConnectionFactory ConnectionFactory { get; private set; } = null!;
+        public static string AttachmentsFolder =
+            ConfigurationManager.AppSettings["HikitsuguiAttachmentPath"] ?? "";
 
         [STAThread]
         static void Main()
