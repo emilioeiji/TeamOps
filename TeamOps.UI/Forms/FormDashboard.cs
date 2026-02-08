@@ -20,6 +20,7 @@ namespace TeamOps.UI.Forms
         private readonly CategoryRepository _categoryRepository;
         private readonly EquipmentRepository _equipmentRepository;
         private readonly LocalRepository _localRepository;
+        private readonly SectorRepository _sectorRepository;
 
         public FormDashboard(AppUser user)
         {
@@ -41,6 +42,7 @@ namespace TeamOps.UI.Forms
             _categoryRepository = new CategoryRepository(Program.ConnectionFactory);
             _equipmentRepository = new EquipmentRepository(Program.ConnectionFactory);
             _localRepository = new LocalRepository(Program.ConnectionFactory);
+            _sectorRepository = new SectorRepository(Program.ConnectionFactory);
 
             lblUser.Text = $"Bem-vindo, {_user.Name}";
             lblDate.Text = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
@@ -151,7 +153,8 @@ namespace TeamOps.UI.Forms
                 _hikitsuguiRepository,
                 _categoryRepository,
                 _equipmentRepository,
-                _localRepository
+                _localRepository,
+                _sectorRepository
             );
 
             form.ShowDialog();

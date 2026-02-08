@@ -20,6 +20,7 @@ namespace TeamOps.UI.Forms
         private readonly CategoryRepository _categoryRepository;
         private readonly EquipmentRepository _equipmentRepository;
         private readonly LocalRepository _localRepository;
+        private readonly SectorRepository _sectorRepository;
         private readonly HikitsuguiAttachmentRepository _attachmentRepository;
 
         private List<string> _selectedAttachmentPaths = new();
@@ -30,7 +31,8 @@ namespace TeamOps.UI.Forms
             HikitsuguiRepository hikitsuguiRepository,
             CategoryRepository categoryRepository,
             EquipmentRepository equipmentRepository,
-            LocalRepository localRepository)
+            LocalRepository localRepository,
+            SectorRepository sectorRepository)
         {
             InitializeComponent();
 
@@ -40,6 +42,7 @@ namespace TeamOps.UI.Forms
             _categoryRepository = categoryRepository;
             _equipmentRepository = equipmentRepository;
             _localRepository = localRepository;
+            _sectorRepository = sectorRepository;
 
             // 🔹 Novo: repositório de anexos
             _attachmentRepository = new HikitsuguiAttachmentRepository(Program.ConnectionFactory);
@@ -53,6 +56,7 @@ namespace TeamOps.UI.Forms
             CarregarCategorias();
             CarregarEquipamentos();
             CarregarLocais();
+            CarregarSectors();
             ConfigurarEventos();
             ConfigurarListaDeAnexos();
         }
@@ -124,6 +128,15 @@ namespace TeamOps.UI.Forms
             cboLocal.DisplayMember = "NamePt";
             cboLocal.ValueMember = "Id";
             cboLocal.SelectedIndex = -1;
+        }
+
+        private void CarregarSectors()
+        {
+            var list = _sectorRepository.GetAll();
+            cboSector.DataSource = list;
+            cboSector.DisplayMember = "NamePt";
+            cboSector.ValueMember = "Id";
+            cboSector.SelectedIndex = -1;
         }
 
         // ---------------------------------------------------------
@@ -258,6 +271,13 @@ namespace TeamOps.UI.Forms
                 return false;
             }
 
+            if (cboSector.SelectedIndex < 0)
+            {
+                MessageBox.Show("Selecione um setor.", "Aviso",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
             if (string.IsNullOrWhiteSpace(txtDescricao.Text))
             {
                 MessageBox.Show("Informe a descrição.", "Aviso",
@@ -281,9 +301,10 @@ namespace TeamOps.UI.Forms
                 CategoryId = (int)cboCategoria.SelectedValue,
                 EquipmentId = cboEquipamento.SelectedIndex >= 0 ? (int?)cboEquipamento.SelectedValue : null,
                 LocalId = cboLocal.SelectedIndex >= 0 ? (int?)cboLocal.SelectedValue : null,
+                SectorId = cboSector?.SelectedValue as int?,
                 ForLeaders = chkLider.Checked,
                 ForOperators = chkOperador.Checked,
-                Description = txtDescricao.Rtf,
+                Description = txtDescricao?.Rtf ?? "",
                 AttachmentPath = null // agora sempre null
             };
         }

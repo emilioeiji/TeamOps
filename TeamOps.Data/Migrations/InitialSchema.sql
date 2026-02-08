@@ -133,6 +133,7 @@ CREATE TABLE IF NOT EXISTS Hikitsugui (
     CategoryId      INTEGER  NOT NULL,
     EquipmentId     INTEGER,
     LocalId         INTEGER,
+    SectorId        INTEGER,   -- NOVO
     ForLeaders      INTEGER  NOT NULL,
     ForOperators    INTEGER  NOT NULL,
     Description     TEXT     NOT NULL,
@@ -141,7 +142,8 @@ CREATE TABLE IF NOT EXISTS Hikitsugui (
     FOREIGN KEY (CreatorCodigoFJ) REFERENCES Operators (CodigoFJ),
     FOREIGN KEY (CategoryId)      REFERENCES Categories (Id),
     FOREIGN KEY (EquipmentId)     REFERENCES Equipments (Id),
-    FOREIGN KEY (LocalId)         REFERENCES Locals (Id)
+    FOREIGN KEY (LocalId)         REFERENCES Locals (Id),
+    FOREIGN KEY (SectorId)        REFERENCES Sectors (Id)
 );
 
 CREATE TABLE IF NOT EXISTS HikitsuguiResponses (

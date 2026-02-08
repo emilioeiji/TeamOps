@@ -1,8 +1,9 @@
-﻿using System;
+﻿using Microsoft.Data.Sqlite;
+using System;
 using System.Collections.Generic;
-using Microsoft.Data.Sqlite;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Db;
+using static Dapper.SqlMapper;
 
 namespace TeamOps.Data.Repositories
 {
@@ -24,27 +25,31 @@ namespace TeamOps.Data.Repositories
             using var cmd = conn.CreateCommand();
 
             cmd.CommandText = @"
-                INSERT INTO Hikitsugui
-                (Date, ShiftId, CreatorCodigoFJ, CategoryId, EquipmentId, LocalId,
-                 ForLeaders, ForOperators, Description, AttachmentPath)
-                VALUES
-                (@date, @shift, @creator, @category, @equip, @local,
-                 @leaders, @operators, @desc, @attach);
-                SELECT last_insert_rowid();";
+        INSERT INTO Hikitsugui
+        (Date, ShiftId, CreatorCodigoFJ, CategoryId, EquipmentId, LocalId, SectorId, ForLeaders, ForOperators, Description, AttachmentPath)
+        VALUES
+        (@Date, @ShiftId, @CreatorCodigoFJ, @CategoryId, @EquipmentId, @LocalId, @SectorId, @ForLeaders, @ForOperators, @Description, @AttachmentPath);
 
-            cmd.Parameters.AddWithValue("@date", h.Date);
-            cmd.Parameters.AddWithValue("@shift", h.ShiftId);
-            cmd.Parameters.AddWithValue("@creator", h.CreatorCodigoFJ);
-            cmd.Parameters.AddWithValue("@category", h.CategoryId);
-            cmd.Parameters.AddWithValue("@equip", (object?)h.EquipmentId ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@local", (object?)h.LocalId ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@leaders", h.ForLeaders ? 1 : 0);
-            cmd.Parameters.AddWithValue("@operators", h.ForOperators ? 1 : 0);
-            cmd.Parameters.AddWithValue("@desc", h.Description);
-            cmd.Parameters.AddWithValue("@attach", (object?)h.AttachmentPath ?? DBNull.Value);
+        SELECT last_insert_rowid();
+    ";
 
-            return (int)(long)cmd.ExecuteScalar()!;
+            cmd.Parameters.AddWithValue("@Date", h.Date);
+            cmd.Parameters.AddWithValue("@ShiftId", h.ShiftId);
+            cmd.Parameters.AddWithValue("@CreatorCodigoFJ", h.CreatorCodigoFJ);
+            cmd.Parameters.AddWithValue("@CategoryId", h.CategoryId);
+            cmd.Parameters.AddWithValue("@EquipmentId", (object?)h.EquipmentId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@LocalId", (object?)h.LocalId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@SectorId", (object?)h.SectorId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@ForLeaders", h.ForLeaders ? 1 : 0);
+            cmd.Parameters.AddWithValue("@ForOperators", h.ForOperators ? 1 : 0);
+            cmd.Parameters.AddWithValue("@Description", h.Description ?? "");
+            cmd.Parameters.AddWithValue("@AttachmentPath", (object?)h.AttachmentPath ?? DBNull.Value);
+
+            object? result = cmd.ExecuteScalar();
+
+            return Convert.ToInt32(result);
         }
+
 
         // ---------------------------------------------------------
         // UPDATE AttachmentPath
@@ -75,7 +80,7 @@ namespace TeamOps.Data.Repositories
 
             cmd.CommandText = @"
                 SELECT Id, Date, ShiftId, CreatorCodigoFJ, CategoryId,
-                       EquipmentId, LocalId, ForLeaders, ForOperators,
+                       EquipmentId, LocalId, SectorId, ForLeaders, ForOperators,
                        Description, AttachmentPath
                 FROM Hikitsugui
                 WHERE Id = @id";
@@ -95,10 +100,11 @@ namespace TeamOps.Data.Repositories
                 CategoryId = reader.GetInt32(4),
                 EquipmentId = reader.IsDBNull(5) ? null : reader.GetInt32(5),
                 LocalId = reader.IsDBNull(6) ? null : reader.GetInt32(6),
-                ForLeaders = reader.GetInt32(7) == 1,
-                ForOperators = reader.GetInt32(8) == 1,
-                Description = reader.GetString(9),
-                AttachmentPath = reader.IsDBNull(10) ? null : reader.GetString(10)
+                SectorId = reader.IsDBNull(7) ? null : reader.GetInt32(7),
+                ForLeaders = reader.GetInt32(8) == 1,
+                ForOperators = reader.GetInt32(9) == 1,
+                Description = reader.GetString(10),
+                AttachmentPath = reader.IsDBNull(11) ? null : reader.GetString(11)
             };
         }
 
@@ -160,13 +166,16 @@ namespace TeamOps.Data.Repositories
                     h.CategoryId,
                     h.EquipmentId,
                     h.LocalId,
+                    h.SectorId,
                     h.ForLeaders,
                     h.ForOperators,
                     h.Description,
                     h.AttachmentPath,
-                    c.NamePt AS CategoryName
+                    c.NamePt AS CategoryName,
+                    s.NamePt AS SectorName
                 FROM Hikitsugui h
                 LEFT JOIN Categories c ON c.Id = h.CategoryId
+                LEFT JOIN Sectors s ON s.Id = h.SectorId
                 WHERE h.Date >= @start
                   AND h.Date <  @end
                   AND (h.ForLeaders = 1 OR h.ForOperators = 1)
@@ -187,6 +196,8 @@ namespace TeamOps.Data.Repositories
                     CategoryId = reader.GetInt32(4),
                     EquipmentId = reader.IsDBNull(5) ? null : reader.GetInt32(5),
                     LocalId = reader.IsDBNull(6) ? null : reader.GetInt32(6),
+                    SectorId = reader.IsDBNull(7) ? null : reader.GetInt32(7),
+                    SectorName = reader.IsDBNull(13) ? "" : reader.GetString(13),
                     ForLeaders = reader.GetInt32(7) == 1,
                     ForOperators = reader.GetInt32(8) == 1,
                     Description = reader.GetString(9),
