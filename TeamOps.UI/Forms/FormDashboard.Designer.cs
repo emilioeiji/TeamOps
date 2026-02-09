@@ -16,6 +16,7 @@
         private System.Windows.Forms.Panel panelFooter;
         private System.Windows.Forms.Label lblDate;
         private System.Windows.Forms.Button btnHikitsuguiLeaderRead;
+        private System.Windows.Forms.Button btnSobraDePeca;
 
         protected override void Dispose(bool disposing)
         {
@@ -39,6 +40,7 @@
             panelFooter = new Panel();
             lblDate = new Label();
             btnHikitsuguiLeaderRead = new Button();
+            btnSobraDePeca = new Button();
             panelHeader.SuspendLayout();
             panelFooter.SuspendLayout();
             SuspendLayout();
@@ -176,9 +178,20 @@
             btnHikitsuguiLeaderRead.Text = "Leitura Hikitsugui (Líder)";
             btnHikitsuguiLeaderRead.Click += btnHikitsuguiLeaderRead_Click;
             // 
+            // btnSobraDePeca
+            // 
+            btnSobraDePeca.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnSobraDePeca.Location = new Point(80, 320);
+            btnSobraDePeca.Name = "btnSobraDePeca";
+            btnSobraDePeca.Size = new Size(200, 80);
+            btnSobraDePeca.TabIndex = 0;
+            btnSobraDePeca.Text = "Sobra de Peça";
+            btnSobraDePeca.Click += btnSobraDePeca_Click;
+            // 
             // FormDashboard
             // 
             ClientSize = new Size(800, 450);
+            Controls.Add(btnSobraDePeca);
             Controls.Add(btnHikitsuguiLeaderRead);
             Controls.Add(btnHikitsugui);
             Controls.Add(btnFollowUp);

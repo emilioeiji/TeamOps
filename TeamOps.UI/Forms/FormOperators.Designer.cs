@@ -79,7 +79,9 @@
             // 
             dgvOperators.AllowUserToAddRows = false;
             dgvOperators.AllowUserToDeleteRows = false;
-            dgvOperators.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            //dgvOperators.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dgvOperators.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            dgvOperators.ScrollBars = ScrollBars.Both;
             dgvOperators.ColumnHeadersHeight = 29;
             dgvOperators.Location = new Point(20, 20);
             dgvOperators.MultiSelect = false;
@@ -88,6 +90,10 @@
             dgvOperators.RowHeadersWidth = 51;
             dgvOperators.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dgvOperators.Size = new Size(760, 200);
+            dgvOperators.Anchor = AnchorStyles.Top
+                    //| AnchorStyles.Bottom
+                    | AnchorStyles.Left
+                    | AnchorStyles.Right;
             dgvOperators.TabIndex = 0;
             dgvOperators.SelectionChanged += dgvOperators_SelectionChanged;
             // 

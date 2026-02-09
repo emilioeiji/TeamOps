@@ -190,6 +190,34 @@ CREATE TABLE IF NOT EXISTS HikitsuguiAttachments (
     FOREIGN KEY (HikitsuguiId) REFERENCES Hikitsugui(Id)
 );
 
+CREATE TABLE IF NOT EXISTS SobraDePeca (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Data TEXT NOT NULL,
+    TurnoId INTEGER NOT NULL,
+    Lote TEXT NOT NULL,
+    OperadorId TEXT NOT NULL,
+    Tanjuu REAL NOT NULL,
+    PesoGramas REAL NOT NULL,
+    Quantidade REAL NOT NULL,
+    EquipmentId INTEGER NOT NULL,
+    ShainId INTEGER NOT NULL,
+    Observacao TEXT,
+    Lider TEXT NOT NULL,
+    CreatedAt TEXT NOT NULL,
+
+    FOREIGN KEY (TurnoId) REFERENCES Shifts(Id),
+    FOREIGN KEY (OperadorId) REFERENCES Operators(CodigoFJ),
+    FOREIGN KEY (EquipmentId) REFERENCES Equipments(Id),
+    FOREIGN KEY (ShainId) REFERENCES Shain(Id)
+);
+
+CREATE TABLE IF NOT EXISTS Shain (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    NomeRomanji TEXT NOT NULL,
+    NomeKanji TEXT,
+    Ativo INTEGER NOT NULL DEFAULT 1
+);
+
 CREATE INDEX IF NOT EXISTS IX_Operators_BadgeCode ON Operators(BadgeCode);
 CREATE INDEX IF NOT EXISTS IX_GL_Login ON GroupLeaders(Login);
 CREATE INDEX IF NOT EXISTS IX_Assignments_GL_Operator ON Assignments(GLId, OperatorId);

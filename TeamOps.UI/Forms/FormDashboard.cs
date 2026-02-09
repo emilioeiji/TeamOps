@@ -135,7 +135,18 @@ namespace TeamOps.UI.Forms
             var form = new FormAccessControl();
             form.ShowDialog();
         }
+        private void btnSobraDePeca_Click(object sender, EventArgs e)
+        {
+            // Permissão mínima: KL (líder)
+            if (!HasAccess(AccessLevel.KL))
+            {
+                ShowAccessDenied();
+                return;
+            }
 
+            using var form = new FormSobraDePeca();
+            form.ShowDialog();
+        }
         // ---------------------------------------------------------
         // HIKITSUGUI (será ativado quando você adicionar o botão)
         // ---------------------------------------------------------

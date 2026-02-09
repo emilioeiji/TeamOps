@@ -48,6 +48,23 @@ namespace TeamOps.UI.Forms
             dgvOperators.Columns["ShiftId"].Visible = false;
             dgvOperators.Columns["GroupId"].Visible = false;
             dgvOperators.Columns["SectorId"].Visible = false;
+
+            // Ajuste de largura das colunas
+            dgvOperators.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+
+            dgvOperators.Columns["CodigoFJ"].Width = 100;
+            dgvOperators.Columns["NameRomanji"].Width = 150;
+            dgvOperators.Columns["NameNihongo"].Width = 150;
+            dgvOperators.Columns["ShiftName"].Width = 120;
+            dgvOperators.Columns["GroupName"].Width = 120;
+            dgvOperators.Columns["SectorName"].Width = 120;
+            dgvOperators.Columns["StartDate"].Width = 110;
+            dgvOperators.Columns["EndDate"].Width = 110;
+            dgvOperators.Columns["Trainer"].Width = 80;
+            dgvOperators.Columns["Status"].Width = 80;
+            dgvOperators.Columns["IsLeader"].Width = 80;
+            dgvOperators.Columns["Telefone"].Width = 120;
+            dgvOperators.Columns["Endereco"].Width = 300;
         }
 
         private void btnAdd_Click(object sender, EventArgs e)
