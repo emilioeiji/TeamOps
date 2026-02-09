@@ -43,6 +43,11 @@ namespace TeamOps.UI.Forms
         private void LoadOperators()
         {
             dgvOperators.DataSource = _opRepo.GetAll();
+
+            // Oculta as colunas de ID
+            dgvOperators.Columns["ShiftId"].Visible = false;
+            dgvOperators.Columns["GroupId"].Visible = false;
+            dgvOperators.Columns["SectorId"].Visible = false;
         }
 
         private void btnAdd_Click(object sender, EventArgs e)
@@ -83,7 +88,9 @@ namespace TeamOps.UI.Forms
                 EndDate = chkHasEnd.Checked ? dtpEnd.Value : null,
                 Trainer = chkTrainer.Checked,
                 Status = chkStatus.Checked,
-                IsLeader = chkIsLeader.Checked
+                IsLeader = chkIsLeader.Checked,
+                Telefone = string.IsNullOrWhiteSpace(txtTelefone.Text) ? null : txtTelefone.Text.Trim(),
+                Endereco = string.IsNullOrWhiteSpace(txtEndereco.Text) ? null : txtEndereco.Text.Trim()
             };
 
             _opRepo.Add(op);
@@ -129,6 +136,8 @@ namespace TeamOps.UI.Forms
                 op.Trainer = chkTrainer.Checked;
                 op.Status = chkStatus.Checked;
                 op.IsLeader = chkIsLeader.Checked;
+                op.Telefone = string.IsNullOrWhiteSpace(txtTelefone.Text) ? null : txtTelefone.Text.Trim();
+                op.Endereco = string.IsNullOrWhiteSpace(txtEndereco.Text) ? null : txtEndereco.Text.Trim();
 
                 _opRepo.Update(op);
                 ClearForm();
@@ -174,6 +183,8 @@ namespace TeamOps.UI.Forms
                 chkTrainer.Checked = op.Trainer;
                 chkStatus.Checked = op.Status;
                 chkIsLeader.Checked = op.IsLeader;
+                txtTelefone.Text = op.Telefone ?? "";
+                txtEndereco.Text = op.Endereco ?? "";
             }
         }
 
@@ -194,6 +205,8 @@ namespace TeamOps.UI.Forms
             chkStatus.Checked = true;
             chkHasEnd.Checked = false;
             chkIsLeader.Checked = false;
+            txtTelefone.Clear();
+            txtEndereco.Clear();
         }
     }
 }

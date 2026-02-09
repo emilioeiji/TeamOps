@@ -21,8 +21,11 @@ namespace TeamOps.Data.Repositories
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 INSERT INTO Operators 
-                (CodigoFJ, NameRomanji, NameNihongo, ShiftId, GroupId, SectorId, StartDate, EndDate, Trainer, Status, IsLeader)
-                VALUES (@c, @r, @n, @s, @g, @sec, @start, @end, @t, @st, @leader)";
+                (CodigoFJ, NameRomanji, NameNihongo, ShiftId, GroupId, SectorId, 
+                 StartDate, EndDate, Trainer, Status, IsLeader, Telefone, Endereco)
+                VALUES 
+                (@c, @r, @n, @s, @g, @sec, @start, @end, @t, @st, @leader, @tel, @endereco)";
+
             cmd.Parameters.AddWithValue("@c", op.CodigoFJ);
             cmd.Parameters.AddWithValue("@r", op.NameRomanji);
             cmd.Parameters.AddWithValue("@n", op.NameNihongo);
@@ -34,21 +37,44 @@ namespace TeamOps.Data.Repositories
             cmd.Parameters.AddWithValue("@t", op.Trainer ? 1 : 0);
             cmd.Parameters.AddWithValue("@st", op.Status ? 1 : 0);
             cmd.Parameters.AddWithValue("@leader", op.IsLeader ? 1 : 0);
+            cmd.Parameters.AddWithValue("@tel", (object?)op.Telefone ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@endereco", (object?)op.Endereco ?? DBNull.Value);
+
             cmd.ExecuteNonQuery();
         }
 
         public Operator? GetByCodigoFJ(string codigoFJ)
         {
             if (string.IsNullOrWhiteSpace(codigoFJ))
-                return null; // evita passar null para o parâmetro
+                return null;
 
             using var conn = _factory.CreateOpenConnection();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-        SELECT CodigoFJ, NameRomanji, NameNihongo, ShiftId, GroupId, SectorId, 
-               StartDate, EndDate, Trainer, Status, CreatedAt, IsLeader
-        FROM Operators 
-        WHERE CodigoFJ = @c";
+                SELECT 
+                    o.CodigoFJ,
+                    o.NameRomanji,
+                    o.NameNihongo,
+                    o.ShiftId,
+                    o.GroupId,
+                    o.SectorId,
+                    o.StartDate,
+                    o.EndDate,
+                    o.Trainer,
+                    o.Status,
+                    o.CreatedAt,
+                    o.IsLeader,
+                    o.Telefone,
+                    o.Endereco,
+                    s.NameJp AS ShiftName,
+                    g.NameJp AS GroupName,
+                    sc.NameJp AS SectorName
+                FROM Operators o
+                LEFT JOIN Shifts s   ON s.Id = o.ShiftId
+                LEFT JOIN Groups g   ON g.Id = o.GroupId
+                LEFT JOIN Sectors sc ON sc.Id = o.SectorId
+                WHERE o.CodigoFJ = @c";
+
             cmd.Parameters.AddWithValue("@c", codigoFJ);
 
             using var reader = cmd.ExecuteReader();
@@ -63,14 +89,35 @@ namespace TeamOps.Data.Repositories
             using var conn = _factory.CreateOpenConnection();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                SELECT CodigoFJ, NameRomanji, NameNihongo, ShiftId, GroupId, SectorId, 
-                       StartDate, EndDate, Trainer, Status, CreatedAt, IsLeader
-                FROM Operators 
-                WHERE Status = 1 
-                ORDER BY NameRomanji";
+                SELECT 
+                    o.CodigoFJ,
+                    o.NameRomanji,
+                    o.NameNihongo,
+                    o.ShiftId,
+                    o.GroupId,
+                    o.SectorId,
+                    o.StartDate,
+                    o.EndDate,
+                    o.Trainer,
+                    o.Status,
+                    o.CreatedAt,
+                    o.IsLeader,
+                    o.Telefone,
+                    o.Endereco,
+                    s.NameJp AS ShiftName,
+                    g.NameJp AS GroupName,
+                    sc.NameJp AS SectorName
+                FROM Operators o
+                LEFT JOIN Shifts s   ON s.Id = o.ShiftId
+                LEFT JOIN Groups g   ON g.Id = o.GroupId
+                LEFT JOIN Sectors sc ON sc.Id = o.SectorId
+                WHERE o.Status = 1
+                ORDER BY o.NameRomanji";
+
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
                 list.Add(Map(reader));
+
             return list;
         }
 
@@ -81,8 +128,10 @@ namespace TeamOps.Data.Repositories
             cmd.CommandText = @"
                 UPDATE Operators
                 SET NameRomanji=@r, NameNihongo=@n, ShiftId=@s, GroupId=@g, SectorId=@sec,
-                    StartDate=@start, EndDate=@end, Trainer=@t, Status=@st, IsLeader=@leader
+                    StartDate=@start, EndDate=@end, Trainer=@t, Status=@st, IsLeader=@leader,
+                    Telefone=@tel, Endereco=@endereco
                 WHERE CodigoFJ=@c";
+
             cmd.Parameters.AddWithValue("@c", op.CodigoFJ);
             cmd.Parameters.AddWithValue("@r", op.NameRomanji);
             cmd.Parameters.AddWithValue("@n", op.NameNihongo);
@@ -94,6 +143,9 @@ namespace TeamOps.Data.Repositories
             cmd.Parameters.AddWithValue("@t", op.Trainer ? 1 : 0);
             cmd.Parameters.AddWithValue("@st", op.Status ? 1 : 0);
             cmd.Parameters.AddWithValue("@leader", op.IsLeader ? 1 : 0);
+            cmd.Parameters.AddWithValue("@tel", (object?)op.Telefone ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@endereco", (object?)op.Endereco ?? DBNull.Value);
+
             cmd.ExecuteNonQuery();
         }
 
@@ -122,14 +174,35 @@ namespace TeamOps.Data.Repositories
             using var conn = _factory.CreateOpenConnection();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                SELECT CodigoFJ, NameRomanji, NameNihongo, ShiftId, GroupId, SectorId, 
-                       StartDate, EndDate, Trainer, Status, CreatedAt, IsLeader
-                FROM Operators 
-                WHERE IsLeader = 1 
-                ORDER BY NameRomanji";
+                SELECT 
+                    o.CodigoFJ,
+                    o.NameRomanji,
+                    o.NameNihongo,
+                    o.ShiftId,
+                    o.GroupId,
+                    o.SectorId,
+                    o.StartDate,
+                    o.EndDate,
+                    o.Trainer,
+                    o.Status,
+                    o.CreatedAt,
+                    o.IsLeader,
+                    o.Telefone,
+                    o.Endereco,
+                    s.NameJp AS ShiftName,
+                    g.NameJp AS GroupName,
+                    sc.NameJp AS SectorName
+                FROM Operators o
+                LEFT JOIN Shifts s   ON s.Id = o.ShiftId
+                LEFT JOIN Groups g   ON g.Id = o.GroupId
+                LEFT JOIN Sectors sc ON sc.Id = o.SectorId
+                WHERE o.IsLeader = 1
+                ORDER BY o.NameRomanji";
+
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
                 list.Add(Map(reader));
+
             return list;
         }
 
@@ -148,7 +221,14 @@ namespace TeamOps.Data.Repositories
                 Trainer = reader.GetBoolean(8),
                 Status = reader.GetBoolean(9),
                 CreatedAt = reader.GetDateTime(10),
-                IsLeader = reader.GetInt32(11) == 1
+                IsLeader = reader.GetInt32(11) == 1,
+                Telefone = reader.IsDBNull(12) ? null : reader.GetString(12),
+                Endereco = reader.IsDBNull(13) ? null : reader.GetString(13),
+
+                // Novas colunas (no final, sem quebrar nada)
+                ShiftName = reader.IsDBNull(14) ? null : reader.GetString(14),
+                GroupName = reader.IsDBNull(15) ? null : reader.GetString(15),
+                SectorName = reader.IsDBNull(16) ? null : reader.GetString(16)
             };
         }
 
@@ -158,11 +238,31 @@ namespace TeamOps.Data.Repositories
             using var conn = _factory.CreateOpenConnection();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-        SELECT CodigoFJ, NameRomanji, NameNihongo, ShiftId, GroupId, SectorId, 
-               StartDate, EndDate, Trainer, Status, CreatedAt, IsLeader
-        FROM Operators 
-        WHERE Status = 1 AND ShiftId = @shift
-        ORDER BY NameRomanji";
+                SELECT 
+                    o.CodigoFJ,
+                    o.NameRomanji,
+                    o.NameNihongo,
+                    o.ShiftId,
+                    o.GroupId,
+                    o.SectorId,
+                    o.StartDate,
+                    o.EndDate,
+                    o.Trainer,
+                    o.Status,
+                    o.CreatedAt,
+                    o.IsLeader,
+                    o.Telefone,
+                    o.Endereco,
+                    s.NameJp AS ShiftName,
+                    g.NameJp AS GroupName,
+                    sc.NameJp AS SectorName
+                FROM Operators o
+                LEFT JOIN Shifts s   ON s.Id = o.ShiftId
+                LEFT JOIN Groups g   ON g.Id = o.GroupId
+                LEFT JOIN Sectors sc ON sc.Id = o.SectorId
+                WHERE o.Status = 1 AND o.ShiftId = @shift
+                ORDER BY o.NameRomanji";
+
             cmd.Parameters.AddWithValue("@shift", shiftId);
 
             using var reader = cmd.ExecuteReader();
