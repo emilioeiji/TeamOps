@@ -162,7 +162,7 @@ namespace TeamOps.Data.Repositories
                     h.Id,
                     h.Date,
                     h.ShiftId,
-                    h.CreatorCodigoFJ,
+                    o.NameRomanji AS CreatorCodigoFJ,   -- ← TROCA AQUI
                     h.CategoryId,
                     h.EquipmentId,
                     h.LocalId,
@@ -176,10 +176,12 @@ namespace TeamOps.Data.Repositories
                 FROM Hikitsugui h
                 LEFT JOIN Categories c ON c.Id = h.CategoryId
                 LEFT JOIN Sectors s ON s.Id = h.SectorId
+                LEFT JOIN Operators o ON o.CodigoFJ = h.CreatorCodigoFJ
                 WHERE h.Date >= @start
                   AND h.Date <  @end
                   AND (h.ForLeaders = 1 OR h.ForOperators = 1)
-                ORDER BY h.Date DESC";
+                ORDER BY h.Date DESC
+                ";
 
             cmd.Parameters.AddWithValue("@start", start);
             cmd.Parameters.AddWithValue("@end", end);
@@ -232,16 +234,22 @@ namespace TeamOps.Data.Repositories
             };
 
             cmd.CommandText = $@"
-        SELECT h.Id, h.Date, c.NamePt, h.CreatorCodigoFJ, h.Description
-        FROM Hikitsugui h
-        INNER JOIN Categories c ON c.Id = h.CategoryId
-        WHERE h.Date >= @Start AND h.Date < @End
-          AND h.ForOperators = 1
-          AND (
-                h.LocalId = @LocalId
-                OR h.LocalId IN ({gerais})
-              )
-        ORDER BY h.Date DESC";
+            SELECT 
+                h.Id,
+                h.Date,
+                c.NamePt,
+                o.NameRomanji AS CreatorCodigoFJ,
+                h.Description
+            FROM Hikitsugui h
+            INNER JOIN Categories c ON c.Id = h.CategoryId
+            LEFT JOIN Operators o ON o.CodigoFJ = h.CreatorCodigoFJ
+            WHERE h.Date >= @Start AND h.Date < @End
+              AND h.ForOperators = 1
+              AND (
+                    h.LocalId = @LocalId
+                    OR h.LocalId IN ({gerais})
+                  )
+            ORDER BY h.Date DESC";
 
             cmd.Parameters.AddWithValue("@LocalId", selectedLocalId);
             cmd.Parameters.AddWithValue("@Start", start);

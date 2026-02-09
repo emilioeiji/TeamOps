@@ -65,10 +65,8 @@ namespace TeamOps.UI.Forms
             grid.Columns.Add(colBtn);
 
             grid.Columns["colLeitura"].DefaultCellStyle.SelectionForeColor = Color.Green;
-
-            // 2️⃣ Só depois mexe no estilo dela (se quiser)
-            // grid.Columns["colLeitura"].DefaultCellStyle.ForeColor = Color.Black;
-            // grid.Columns["colLeitura"].DefaultCellStyle.BackColor = Color.White;
+            grid.Columns["colLeitura"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            grid.Columns["colLeitura"].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
         }
 
 
@@ -81,7 +79,7 @@ namespace TeamOps.UI.Forms
         {
             var lista = _hikitsuguiRepository.GetForLeader(
                 dtInicial.Value.Date,
-                dtFinal.Value.Date.AddDays(1) // fim aberto
+                dtFinal.Value.Date.AddDays(1)
             );
 
             grid.Rows.Clear();

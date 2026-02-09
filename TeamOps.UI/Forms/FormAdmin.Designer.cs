@@ -10,6 +10,8 @@
         private System.Windows.Forms.Button btnEquipments;
         private System.Windows.Forms.Button btnFollowUpReasons;
         private System.Windows.Forms.Button btnFollowUpTypes;
+        private System.Windows.Forms.Button btnCategories;
+
 
         protected override void Dispose(bool disposing)
         {
@@ -77,10 +79,16 @@
             this.btnFollowUpTypes.Location = new System.Drawing.Point(50, 450);
             this.btnFollowUpTypes.Size = new System.Drawing.Size(200, 50);
             this.btnFollowUpTypes.Click += new System.EventHandler(this.btnFollowUpTypes_Click);
+            // btnCategories
+            this.btnCategories = new System.Windows.Forms.Button();
+            this.btnCategories.Text = "Manage Categories";
+            this.btnCategories.Location = new System.Drawing.Point(50, 520);
+            this.btnCategories.Size = new System.Drawing.Size(200, 50);
+            this.btnCategories.Click += new System.EventHandler(this.btnCategories_Click);
             // 
             // FormAdmin
             // 
-            this.ClientSize = new System.Drawing.Size(320, 540);
+            this.ClientSize = new System.Drawing.Size(320, 610);
             this.Controls.Add(this.btnShifts);
             this.Controls.Add(this.btnGroups);
             this.Controls.Add(this.btnSectors);
@@ -88,6 +96,7 @@
             this.Controls.Add(this.btnEquipments);
             this.Controls.Add(this.btnFollowUpReasons);
             this.Controls.Add(this.btnFollowUpTypes);
+            this.Controls.Add(this.btnCategories);
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "Admin Panel";
             this.ResumeLayout(false);

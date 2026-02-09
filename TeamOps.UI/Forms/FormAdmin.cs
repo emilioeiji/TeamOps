@@ -60,6 +60,11 @@ namespace TeamOps.UI.Forms
                 new FollowUpTypeRepository(Program.ConnectionFactory), "FollowUp Types");
             form.ShowDialog();
         }
-
+        private void btnCategories_Click(object sender, EventArgs e)
+        {
+            var form = new FormLookup<Category>(
+                new CategoryRepository(Program.ConnectionFactory), "Categories");
+            form.ShowDialog();
+        }
     }
 }

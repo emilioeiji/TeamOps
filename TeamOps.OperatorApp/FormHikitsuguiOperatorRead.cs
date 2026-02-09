@@ -123,6 +123,8 @@ namespace TeamOps.OperatorApp
             grid.Columns.Add(colBtn);
 
             grid.Columns["colLeitura"].DefaultCellStyle.SelectionForeColor = Color.Green;
+            grid.Columns["colLeitura"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            grid.Columns["colLeitura"].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
         }
 
         private void CarregarLista()
