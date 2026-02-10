@@ -1,0 +1,237 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using ClosedXML.Excel;
+using System.Windows.Forms;
+using System.Configuration;
+using TeamOps.Core.Entities;
+using TeamOps.Data.Repositories;
+
+namespace TeamOps.UI.Forms
+{
+    public partial class FormPR : Form
+    {
+        private readonly PRRepository _prRepo;
+        private readonly PRCategoriaRepository _catRepo;
+        private readonly PRPrioridadeRepository _prioRepo;
+        private readonly SectorRepository _sectorRepo;
+        private readonly Operator _currentUser;
+        private readonly OperatorRepository _operatorRepo;
+        private readonly string _prDirectory;
+        private readonly string _prTemplate;
+
+        public FormPR(
+            PRRepository prRepo,
+            PRCategoriaRepository catRepo,
+            PRPrioridadeRepository prioRepo,
+            SectorRepository sectorRepo,
+            OperatorRepository operatorRepo,
+            Operator currentUser)
+        {
+            InitializeComponent();
+
+            _prRepo = prRepo;
+            _catRepo = catRepo;
+            _prioRepo = prioRepo;
+            _sectorRepo = sectorRepo;
+            _operatorRepo = operatorRepo;
+            _currentUser = currentUser;
+            _prDirectory = ConfigurationManager.AppSettings["PRDirectory"]!;
+            _prTemplate = ConfigurationManager.AppSettings["PRTemplate"]!;
+
+            Load += FormPR_Load;
+            btnSalvar.Click += btnSalvar_Click;
+            btnCancelar.Click += btnCancelar_Click;
+            btnFechar.Click += (s, e) => Close();
+        }
+
+        private void FormPR_Load(object? sender, EventArgs e)
+        {
+            LoadLookups();
+
+            txtAutor.Text = _currentUser.NameNihongo;
+            txtDataEmissao.Text = DateTime.Now.ToString("yyyy-MM-dd");
+            txtNomeArquivo.ReadOnly = true;
+            txtTitulo.TextChanged += (s, e) => GerarNomeArquivo();
+            cmbCategoria.SelectedIndexChanged += (s, e) => GerarNomeArquivo();
+            cmbPrioridade.SelectedIndexChanged += (s, e) => GerarNomeArquivo();
+        }
+
+        private void LoadLookups()
+        {
+            cmbSetor.DataSource = _sectorRepo.GetAll().ToList();
+            cmbSetor.DisplayMember = "NamePt";
+            cmbSetor.ValueMember = "Id";
+            cmbSetor.SelectedIndex = -1;
+
+            cmbCategoria.DataSource = _catRepo.GetAll().ToList();
+            cmbCategoria.DisplayMember = "NamePt";
+            cmbCategoria.ValueMember = "Id";
+            cmbCategoria.SelectedIndex = -1;
+
+            cmbPrioridade.DataSource = _prioRepo.GetAll().ToList();
+            cmbPrioridade.DisplayMember = "NamePt";
+            cmbPrioridade.ValueMember = "Id";
+            cmbPrioridade.SelectedIndex = -1;
+        }
+
+        private void btnSalvar_Click(object? sender, EventArgs e)
+        {
+            if (!ValidateForm())
+                return;
+
+            var pr = new PR
+            {
+                SetorId = (int)cmbSetor.SelectedValue,
+                CategoriaId = (int)cmbCategoria.SelectedValue,
+                PrioridadeId = (int)cmbPrioridade.SelectedValue,
+                Titulo = txtTitulo.Text.Trim(),
+                NomeArquivo = txtNomeArquivo.Text.Trim(),
+                DataEmissao = DateTime.Now,
+                AutorCodigoFJ = _currentUser.CodigoFJ
+            };
+
+            int id = _prRepo.Add(pr);
+
+            GerarPRExcel(id);
+
+            MessageBox.Show("PR salvo e arquivo gerado com sucesso!");
+            ClearForm();
+        }
+        private void btnCancelar_Click(object? sender, EventArgs e)
+        {
+            ClearForm();
+        }
+
+        private bool ValidateForm()
+        {
+            if (cmbSetor.SelectedIndex < 0)
+            {
+                MessageBox.Show("Selecione o setor.");
+                return false;
+            }
+
+            if (cmbCategoria.SelectedIndex < 0)
+            {
+                MessageBox.Show("Selecione a categoria.");
+                return false;
+            }
+
+            if (cmbPrioridade.SelectedIndex < 0)
+            {
+                MessageBox.Show("Selecione a prioridade.");
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(txtTitulo.Text))
+            {
+                MessageBox.Show("Digite o título.");
+                return false;
+            }
+
+            return true;
+        }
+
+        private void ClearForm()
+        {
+            cmbSetor.SelectedIndex = -1;
+            cmbCategoria.SelectedIndex = -1;
+            cmbPrioridade.SelectedIndex = -1;
+            txtTitulo.Clear();
+            txtNomeArquivo.Clear();
+        }
+
+        private void GerarNomeArquivo()
+        {
+            var ultimo = _prRepo.GetAll().FirstOrDefault()?.Id ?? 0;
+            var novoId = ultimo + 1;
+
+            txtNomeArquivo.Text = $"PR_{novoId}_{DateTime.Now:yyyyMMddHHmm}.xlsx";
+        }
+
+        private void GerarPRExcel(int prId)
+        {
+            if (!File.Exists(_prTemplate))
+            {
+                MessageBox.Show("Arquivo modelo PR não encontrado.");
+                return;
+            }
+
+            if (!Directory.Exists(_prDirectory))
+                Directory.CreateDirectory(_prDirectory);
+
+            string nomeArquivo = txtNomeArquivo.Text.Trim();
+            string caminhoFinal = Path.Combine(_prDirectory, nomeArquivo);
+
+            try
+            {
+                File.Copy(_prTemplate, caminhoFinal, overwrite: true);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao copiar o arquivo modelo:\n" + ex.Message);
+                return;
+            }
+
+            using var wb = new XLWorkbook(caminhoFinal);
+            var ws = wb.Worksheet("PR文書");
+
+            ws.Cell("D4").Value = prId;
+            ws.Cell("F5").Value = txtTitulo.Text.Trim();
+            ws.Cell("D1").Value = ((LookupItem)cmbPrioridade.SelectedItem).NamePt;
+            ws.Cell("T2").Value = DateTime.Now.ToString("yyyy-MM-dd");
+            ws.Cell("T4").Value = _currentUser.NameNihongo;
+
+            ExportarListaFuncionarios(wb);
+
+            wb.Save();
+        }
+        private void ExportarListaFuncionarios(XLWorkbook wb)
+        {
+            var ws = wb.Worksheet("Operadores");
+
+            int setorSelecionado = (int)cmbSetor.SelectedValue;
+
+            // 1 = Hiru (dia)
+            // 2 = Yakin (noite)
+            // 3 = Ambos
+            var operadores = _operatorRepo.GetAll().Where(o => o.Status).ToList();
+
+            var dia = operadores
+                .Where(o => (o.SectorId == setorSelecionado || o.SectorId == 3)
+                         && o.ShiftId == 1)
+                .OrderBy(o => o.NameNihongo)
+                .ToList();
+
+            var noite = operadores
+                .Where(o => (o.SectorId == setorSelecionado || o.SectorId == 3)
+                         && o.ShiftId == 2)
+                .OrderBy(o => o.NameNihongo)
+                .ToList();
+
+            int row = 3; // linha onde começa a lista no Excel
+
+            foreach (var op in dia)
+            {
+                ws.Cell(row, 1).Value = op.NameNihongo;
+                ws.Cell(row, 2).Value = "昼"; // Hiru
+                row++;
+            }
+
+            // Linha em branco entre dia e noite
+            row++;
+
+            foreach (var op in noite)
+            {
+                ws.Cell(row, 1).Value = op.NameNihongo;
+                ws.Cell(row, 2).Value = "夜"; // Yakin
+                row++;
+            }
+        }
+    }
+}

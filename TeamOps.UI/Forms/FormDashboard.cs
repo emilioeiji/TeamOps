@@ -21,6 +21,9 @@ namespace TeamOps.UI.Forms
         private readonly EquipmentRepository _equipmentRepository;
         private readonly LocalRepository _localRepository;
         private readonly SectorRepository _sectorRepository;
+        private readonly PRRepository _prRepo;
+        private readonly PRCategoriaRepository _prCategoriaRepo;
+        private readonly PRPrioridadeRepository _prPrioridadeRepo;
 
         public FormDashboard(AppUser user)
         {
@@ -43,6 +46,10 @@ namespace TeamOps.UI.Forms
             _equipmentRepository = new EquipmentRepository(Program.ConnectionFactory);
             _localRepository = new LocalRepository(Program.ConnectionFactory);
             _sectorRepository = new SectorRepository(Program.ConnectionFactory);
+            _prRepo = new PRRepository(Program.ConnectionFactory);
+            _prCategoriaRepo = new PRCategoriaRepository(Program.ConnectionFactory);
+            _prPrioridadeRepo = new PRPrioridadeRepository(Program.ConnectionFactory);
+
 
             lblUser.Text = $"Bem-vindo, {_user.Name}";
             lblDate.Text = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
@@ -109,6 +116,25 @@ namespace TeamOps.UI.Forms
             }
 
             var form = new FormFollowUp();
+            form.ShowDialog();
+        }
+        private void btnPR_Click(object sender, EventArgs e)
+        {
+            if (!HasAccess(AccessLevel.KL))
+            {
+                ShowAccessDenied();
+                return;
+            }
+
+            var form = new FormPR(
+                _prRepo,
+                _prCategoriaRepo,
+                _prPrioridadeRepo,
+                _sectorRepository,
+                new OperatorRepository(Program.ConnectionFactory),
+                _currentOperator
+            );
+
             form.ShowDialog();
         }
 
