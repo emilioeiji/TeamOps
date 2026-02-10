@@ -37,8 +37,10 @@ namespace TeamOps.Data.Repositories
             cmd.Parameters.AddWithValue("@titulo", pr.Titulo);
             cmd.Parameters.AddWithValue("@arquivo", pr.NomeArquivo);
             cmd.Parameters.AddWithValue("@emissao", pr.DataEmissao.ToString("yyyy-MM-dd HH:mm:ss"));
-            cmd.Parameters.AddWithValue("@hiru", pr.DataRetornoHiru?.ToString("yyyy-MM-dd HH:mm:ss"));
-            cmd.Parameters.AddWithValue("@yakin", pr.DataRetornoYakin?.ToString("yyyy-MM-dd HH:mm:ss"));
+            cmd.Parameters.AddWithValue("@hiru",
+                pr.DataRetornoHiru == null ? DBNull.Value : pr.DataRetornoHiru.Value.ToString("yyyy-MM-dd HH:mm:ss"));
+            cmd.Parameters.AddWithValue("@yakin",
+                pr.DataRetornoYakin == null ? DBNull.Value : pr.DataRetornoYakin.Value.ToString("yyyy-MM-dd HH:mm:ss"));
             cmd.Parameters.AddWithValue("@autor", pr.AutorCodigoFJ);
 
             return (int)(long)cmd.ExecuteScalar()!;
@@ -73,6 +75,13 @@ namespace TeamOps.Data.Repositories
             }
 
             return list;
+        }
+        public int GetLastId()
+        {
+            using var conn = _factory.CreateOpenConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT IFNULL(MAX(Id), 0) FROM PR";
+            return Convert.ToInt32(cmd.ExecuteScalar());
         }
     }
 }

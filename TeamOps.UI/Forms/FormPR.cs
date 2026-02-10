@@ -58,8 +58,6 @@ namespace TeamOps.UI.Forms
             txtDataEmissao.Text = DateTime.Now.ToString("yyyy-MM-dd");
             txtNomeArquivo.ReadOnly = true;
             txtTitulo.TextChanged += (s, e) => GerarNomeArquivo();
-            cmbCategoria.SelectedIndexChanged += (s, e) => GerarNomeArquivo();
-            cmbPrioridade.SelectedIndexChanged += (s, e) => GerarNomeArquivo();
         }
 
         private void LoadLookups()
@@ -148,10 +146,16 @@ namespace TeamOps.UI.Forms
 
         private void GerarNomeArquivo()
         {
+            if (string.IsNullOrWhiteSpace(txtTitulo.Text))
+            {
+                txtNomeArquivo.Clear();
+                return;
+            }
+
             var ultimo = _prRepo.GetAll().FirstOrDefault()?.Id ?? 0;
             var novoId = ultimo + 1;
 
-            txtNomeArquivo.Text = $"PR_{novoId}_{DateTime.Now:yyyyMMddHHmm}.xlsx";
+            txtNomeArquivo.Text = $"PR_{novoId}_{txtTitulo.Text.Trim().Replace(" ", "_")}.xlsx";
         }
 
         private void GerarPRExcel(int prId)
@@ -197,40 +201,27 @@ namespace TeamOps.UI.Forms
 
             int setorSelecionado = (int)cmbSetor.SelectedValue;
 
-            // 1 = Hiru (dia)
-            // 2 = Yakin (noite)
-            // 3 = Ambos
-            var operadores = _operatorRepo.GetAll().Where(o => o.Status).ToList();
-
-            var dia = operadores
-                .Where(o => (o.SectorId == setorSelecionado || o.SectorId == 3)
-                         && o.ShiftId == 1)
-                .OrderBy(o => o.NameNihongo)
+            // Carrega operadores ativos do setor selecionado
+            var operadores = _operatorRepo.GetAll()
+                .Where(o => o.Status && o.SectorId == setorSelecionado)
+                .OrderBy(o => o.NameRomanji)
                 .ToList();
 
-            var noite = operadores
-                .Where(o => (o.SectorId == setorSelecionado || o.SectorId == 3)
-                         && o.ShiftId == 2)
-                .OrderBy(o => o.NameNihongo)
-                .ToList();
+            int rowDia = 3;   // B3
+            int rowNoite = 3; // C3
 
-            int row = 3; // linha onde começa a lista no Excel
-
-            foreach (var op in dia)
+            foreach (var op in operadores)
             {
-                ws.Cell(row, 1).Value = op.NameNihongo;
-                ws.Cell(row, 2).Value = "昼"; // Hiru
-                row++;
-            }
-
-            // Linha em branco entre dia e noite
-            row++;
-
-            foreach (var op in noite)
-            {
-                ws.Cell(row, 1).Value = op.NameNihongo;
-                ws.Cell(row, 2).Value = "夜"; // Yakin
-                row++;
+                if (op.ShiftId == 1) // Hiru
+                {
+                    ws.Cell(rowDia, 2).Value = op.NameNihongo; // Coluna B
+                    rowDia++;
+                }
+                else if (op.ShiftId == 2) // Yoru
+                {
+                    ws.Cell(rowNoite, 3).Value = op.NameNihongo; // Coluna C
+                    rowNoite++;
+                }
             }
         }
     }
