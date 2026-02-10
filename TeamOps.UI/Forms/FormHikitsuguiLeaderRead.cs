@@ -67,6 +67,13 @@ namespace TeamOps.UI.Forms
             grid.Columns["colLeitura"].DefaultCellStyle.SelectionForeColor = Color.Green;
             grid.Columns["colLeitura"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             grid.Columns["colLeitura"].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+
+            var colPerm = new DataGridViewTextBoxColumn();
+            colPerm.Name = "colPermissao";
+            colPerm.HeaderText = "Perm.";
+            colPerm.Width = 70;
+            colPerm.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            grid.Columns.Add(colPerm);
         }
 
 
@@ -102,12 +109,20 @@ namespace TeamOps.UI.Forms
                 if (preview.Length > 120)
                     preview = preview.Substring(0, 120) + "...";
 
+                string permissao =
+                    h.ForLeaders && h.ForOperators ? "LD/OP" :
+                    h.ForLeaders ? "LD" :
+                    h.ForOperators ? "OP" :
+                    "";
+
                 int row = grid.Rows.Add(
                     h.Id,
                     h.Date.ToString("yyyy-MM-dd HH:mm"),
                     h.CategoryName,
                     h.CreatorCodigoFJ,
-                    preview
+                    preview,
+                    "",
+                    permissao
                 );
 
                 //var cell = (DataGridViewButtonCell)grid.Rows[row].Cells["colLeitura"];
@@ -130,19 +145,6 @@ namespace TeamOps.UI.Forms
             }
         }
 
-        private string StripRtf(string rtf)
-        {
-            try
-            {
-                using var rtb = new RichTextBox();
-                rtb.Rtf = rtf;
-                return rtb.Text;
-            }
-            catch
-            {
-                return rtf; // fallback
-            }
-        }
         private string StripRtfRobusto(string input)
         {
             try
