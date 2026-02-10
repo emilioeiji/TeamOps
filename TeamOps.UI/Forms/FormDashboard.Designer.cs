@@ -53,7 +53,7 @@
             panelHeader.Dock = DockStyle.Top;
             panelHeader.Location = new Point(0, 0);
             panelHeader.Name = "panelHeader";
-            panelHeader.Size = new Size(800, 80);
+            panelHeader.Size = new Size(1077, 80);
             panelHeader.TabIndex = 0;
             // 
             // lblTitle
@@ -73,7 +73,7 @@
             lblUser.AutoSize = true;
             lblUser.Font = new Font("Segoe UI", 10F);
             lblUser.ForeColor = Color.White;
-            lblUser.Location = new Point(600, 30);
+            lblUser.Location = new Point(877, 30);
             lblUser.Name = "lblUser";
             lblUser.Size = new Size(0, 23);
             lblUser.TabIndex = 1;
@@ -81,17 +81,17 @@
             // btnOperadores
             // 
             btnOperadores.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnOperadores.Location = new Point(80, 120);
+            btnOperadores.Location = new Point(560, 220);
             btnOperadores.Name = "btnOperadores";
             btnOperadores.Size = new Size(200, 80);
             btnOperadores.TabIndex = 2;
-            btnOperadores.Text = "Gerenciar Operadores";
+            btnOperadores.Text = "Operadores\r\n作業者";
             btnOperadores.Click += btnOperadores_Click;
             // 
             // btnAtribuir
             // 
             btnAtribuir.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnAtribuir.Location = new Point(560, 220);
+            btnAtribuir.Location = new Point(80, 320);
             btnAtribuir.Name = "btnAtribuir";
             btnAtribuir.Size = new Size(200, 80);
             btnAtribuir.TabIndex = 7;
@@ -105,7 +105,7 @@
             btnRelatorios.Name = "btnRelatorios";
             btnRelatorios.Size = new Size(200, 80);
             btnRelatorios.TabIndex = 3;
-            btnRelatorios.Text = "Relatórios";
+            btnRelatorios.Text = "Relatórios\r\nレポート";
             btnRelatorios.Click += btnRelatorios_Click;
             // 
             // btnAdmin
@@ -125,27 +125,27 @@
             btnAccessControl.Name = "btnAccessControl";
             btnAccessControl.Size = new Size(200, 80);
             btnAccessControl.TabIndex = 6;
-            btnAccessControl.Text = "Access";
+            btnAccessControl.Text = "Accesso\r\nアクセス権";
             btnAccessControl.Click += btnAccessControl_Click;
             // 
             // btnFollowUp
             // 
             btnFollowUp.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnFollowUp.Location = new Point(320, 120);
+            btnFollowUp.Location = new Point(80, 120);
             btnFollowUp.Name = "btnFollowUp";
             btnFollowUp.Size = new Size(200, 80);
             btnFollowUp.TabIndex = 4;
-            btnFollowUp.Text = "Acompanhamento";
+            btnFollowUp.Text = "Acompanhamento\r\nフォロー";
             btnFollowUp.Click += btnFollowUp_Click;
             // 
             // btnHikitsugui
             // 
             btnHikitsugui.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnHikitsugui.Location = new Point(320, 320);
+            btnHikitsugui.Location = new Point(800, 120);
             btnHikitsugui.Name = "btnHikitsugui";
             btnHikitsugui.Size = new Size(200, 80);
             btnHikitsugui.TabIndex = 8;
-            btnHikitsugui.Text = "Hikitsugui / 引継ぎ";
+            btnHikitsugui.Text = "Hikitsugui\r\n引継ぎ";
             btnHikitsugui.Click += btnHikitsugui_Click;
             // 
             // panelFooter
@@ -155,7 +155,7 @@
             panelFooter.Dock = DockStyle.Bottom;
             panelFooter.Location = new Point(0, 410);
             panelFooter.Name = "panelFooter";
-            panelFooter.Size = new Size(800, 40);
+            panelFooter.Size = new Size(1077, 40);
             panelFooter.TabIndex = 9;
             // 
             // lblDate
@@ -171,26 +171,26 @@
             // btnHikitsuguiLeaderRead
             // 
             btnHikitsuguiLeaderRead.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnHikitsuguiLeaderRead.Location = new Point(560, 320);
+            btnHikitsuguiLeaderRead.Location = new Point(800, 220);
             btnHikitsuguiLeaderRead.Name = "btnHikitsuguiLeaderRead";
             btnHikitsuguiLeaderRead.Size = new Size(200, 80);
             btnHikitsuguiLeaderRead.TabIndex = 0;
-            btnHikitsuguiLeaderRead.Text = "Leitura Hikitsugui (Líder)";
+            btnHikitsuguiLeaderRead.Text = "Leitura Hikitsugui\r\n引継ぎ閲覧";
             btnHikitsuguiLeaderRead.Click += btnHikitsuguiLeaderRead_Click;
             // 
             // btnSobraDePeca
             // 
             btnSobraDePeca.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnSobraDePeca.Location = new Point(80, 320);
+            btnSobraDePeca.Location = new Point(320, 120);
             btnSobraDePeca.Name = "btnSobraDePeca";
             btnSobraDePeca.Size = new Size(200, 80);
             btnSobraDePeca.TabIndex = 0;
-            btnSobraDePeca.Text = "Sobra de Peça";
+            btnSobraDePeca.Text = "Sobra de Peça\r\n製品残り";
             btnSobraDePeca.Click += btnSobraDePeca_Click;
             // 
             // FormDashboard
             // 
-            ClientSize = new Size(800, 450);
+            ClientSize = new Size(1077, 450);
             Controls.Add(btnSobraDePeca);
             Controls.Add(btnHikitsuguiLeaderRead);
             Controls.Add(btnHikitsugui);
