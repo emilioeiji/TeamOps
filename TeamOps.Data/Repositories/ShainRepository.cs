@@ -19,12 +19,12 @@ namespace TeamOps.Data.Repositories
             using var conn = _factory.CreateOpenConnection();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                INSERT INTO Shain (NomeRomanji, NomeNihongo)
+                INSERT INTO Shain (NameRomanji, NameNihongo)
                 VALUES (@rj, @jp);
                 SELECT last_insert_rowid();";
 
-            cmd.Parameters.AddWithValue("@rj", s.NomeRomanji);
-            cmd.Parameters.AddWithValue("@jp", s.NomeNihongo);
+            cmd.Parameters.AddWithValue("@rj", s.NameRomanji);
+            cmd.Parameters.AddWithValue("@jp", s.NameNihongo);
 
             return (int)(long)cmd.ExecuteScalar()!;
         }
@@ -35,7 +35,7 @@ namespace TeamOps.Data.Repositories
 
             using var conn = _factory.CreateOpenConnection();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT Id, NomeRomanji, NomeNihongo FROM Shain ORDER BY NomeRomanji";
+            cmd.CommandText = "SELECT Id, NameRomanji, NameNihongo FROM Shain ORDER BY NameRomanji";
 
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
@@ -43,8 +43,8 @@ namespace TeamOps.Data.Repositories
                 list.Add(new Shain
                 {
                     Id = reader.GetInt32(0),
-                    NomeRomanji = reader.GetString(1),
-                    NomeNihongo = reader.GetString(2)
+                    NameRomanji = reader.GetString(1),
+                    NameNihongo = reader.GetString(2)
                 });
             }
 
@@ -55,7 +55,7 @@ namespace TeamOps.Data.Repositories
         {
             using var conn = _factory.CreateOpenConnection();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT Id, NomeRomanji, NomeNihongo FROM Shain WHERE Id = @id";
+            cmd.CommandText = "SELECT Id, NameRomanji, NameNihongo FROM Shain WHERE Id = @id";
             cmd.Parameters.AddWithValue("@id", id);
 
             using var reader = cmd.ExecuteReader();
@@ -64,8 +64,8 @@ namespace TeamOps.Data.Repositories
                 return new Shain
                 {
                     Id = reader.GetInt32(0),
-                    NomeRomanji = reader.GetString(1),
-                    NomeNihongo = reader.GetString(2)
+                    NameRomanji = reader.GetString(1),
+                    NameNihongo = reader.GetString(2)
                 };
             }
 
@@ -78,11 +78,11 @@ namespace TeamOps.Data.Repositories
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 UPDATE Shain
-                SET NomeRomanji = @rj, NomeNihongo = @jp
+                SET NameRomanji = @rj, NameNihongo = @jp
                 WHERE Id = @id";
 
-            cmd.Parameters.AddWithValue("@rj", s.NomeRomanji);
-            cmd.Parameters.AddWithValue("@jp", s.NomeNihongo);
+            cmd.Parameters.AddWithValue("@rj", s.NameRomanji);
+            cmd.Parameters.AddWithValue("@jp", s.NameNihongo);
             cmd.Parameters.AddWithValue("@id", s.Id);
 
             cmd.ExecuteNonQuery();

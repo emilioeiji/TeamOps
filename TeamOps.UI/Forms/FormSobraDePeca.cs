@@ -56,11 +56,13 @@ namespace TeamOps.UI.Forms
             cmbMaquina.DataSource = _equipRepo.GetAll();
             cmbMaquina.DisplayMember = "NamePt";
             cmbMaquina.ValueMember = "Id";
+            cmbMaquina.SelectedIndex = -1;
 
             // Shain
             cmbShain.DataSource = _shainRepo.GetAll();
-            cmbShain.DisplayMember = "NomeRomanji";
+            cmbShain.DisplayMember = "NameRomanji";
             cmbShain.ValueMember = "Id";
+            cmbShain.SelectedIndex = -1;
         }
 
         private void LoadOperadoresByTurno()
@@ -71,6 +73,7 @@ namespace TeamOps.UI.Forms
                 cmbOperador.DataSource = list;
                 cmbOperador.DisplayMember = "NameRomanji";
                 cmbOperador.ValueMember = "CodigoFJ";
+                cmbOperador.SelectedIndex = -1;
             }
         }
 
@@ -82,11 +85,15 @@ namespace TeamOps.UI.Forms
 
         private void CalculateQuantidade()
         {
-            if (decimal.TryParse(txtPeso.Text, out var peso) &&
-                decimal.TryParse(txtTanjuu.Text, out var tanjuu) &&
+            var pesoText = txtPeso.Text.Replace(".", ",");
+            var tanjuuText = txtTanjuu.Text.Replace(".", ",");
+
+            if (decimal.TryParse(pesoText, out var peso) &&
+                decimal.TryParse(tanjuuText, out var tanjuu) &&
                 tanjuu > 0)
             {
-                txtQuantidade.Text = (peso / tanjuu).ToString("0.00");
+                var qtd = peso / tanjuu;
+                txtQuantidade.Text = Math.Round(qtd).ToString();
             }
             else
             {
@@ -99,7 +106,9 @@ namespace TeamOps.UI.Forms
             var list = _sobraRepo.GetAll();
 
             // Converte IDs para nomes
-            var view = list.Select(x => new
+            var view = list
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => new
             {
                 x.Id,
                 x.Data,
@@ -112,7 +121,7 @@ namespace TeamOps.UI.Forms
                 x.PesoGramas,
                 x.Quantidade,
                 Maquina = _equipRepo.GetById(x.EquipmentId)?.NamePt ?? "",
-                Shain = _shainRepo.GetById(x.ShainId)?.NomeRomanji ?? "",
+                Shain = _shainRepo.GetById(x.ShainId)?.NameRomanji ?? "",
                 x.Observacao,
                 x.Lider,
                 x.CreatedAt
@@ -229,13 +238,13 @@ namespace TeamOps.UI.Forms
             txtObservacao.Clear();
 
             if (cmbMaquina.Items.Count > 0)
-                cmbMaquina.SelectedIndex = 0;
+                cmbMaquina.SelectedIndex = -1;
 
             if (cmbShain.Items.Count > 0)
-                cmbShain.SelectedIndex = 0;
+                cmbShain.SelectedIndex = -1;
 
             if (cmbOperador.Items.Count > 0)
-                cmbOperador.SelectedIndex = 0;
+                cmbOperador.SelectedIndex = -1;
         }
     }
 }

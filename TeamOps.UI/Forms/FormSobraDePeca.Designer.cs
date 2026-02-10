@@ -259,6 +259,7 @@
             btnSalvar.Size = new Size(100, 35);
             btnSalvar.TabIndex = 23;
             btnSalvar.Text = "Salvar";
+            btnSalvar.Click += btnSalvar_Click;
             // 
             // btnCancelar
             // 
@@ -267,6 +268,7 @@
             btnCancelar.Size = new Size(100, 35);
             btnCancelar.TabIndex = 24;
             btnCancelar.Text = "Cancelar";
+            btnCancelar.Click += btnCancelar_Click;
             // 
             // dgvSobra
             // 
