@@ -1,14 +1,15 @@
-﻿using System;
+﻿using ClosedXML.Excel;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Configuration;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using ClosedXML.Excel;
 using System.Windows.Forms;
-using System.Configuration;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Repositories;
 
@@ -96,11 +97,23 @@ namespace TeamOps.UI.Forms
 
             int id = _prRepo.Add(pr);
 
+            // Gera o arquivo
             GerarPRExcel(id);
+
+            // Caminho completo do arquivo gerado
+            string caminhoFinal = Path.Combine(_prDirectory, txtNomeArquivo.Text.Trim());
+
+            // Abre o arquivo no Windows
+            System.Diagnostics.Process.Start(new ProcessStartInfo()
+            {
+                FileName = caminhoFinal,
+                UseShellExecute = true
+            });
 
             MessageBox.Show("PR salvo e arquivo gerado com sucesso!");
             ClearForm();
         }
+
         private void btnCancelar_Click(object? sender, EventArgs e)
         {
             ClearForm();
@@ -190,6 +203,28 @@ namespace TeamOps.UI.Forms
             ws.Cell("D1").Value = ((LookupItem)cmbPrioridade.SelectedItem).NamePt;
             ws.Cell("T2").Value = DateTime.Now.ToString("yyyy-MM-dd");
             ws.Cell("T4").Value = _currentUser.NameNihongo;
+
+            // Marca a categoria com ✔
+            int categoriaId = (int)cmbCategoria.SelectedValue;
+
+            switch (categoriaId)
+            {
+                case 1:
+                    ws.Cell("D7").Value = "✔";
+                    break;
+
+                case 2:
+                    ws.Cell("D9").Value = "✔";
+                    break;
+
+                case 3:
+                    ws.Cell("N7").Value = "✔";
+                    break;
+
+                case 4:
+                    ws.Cell("N9").Value = "✔";
+                    break;
+            }
 
             ExportarListaFuncionarios(wb);
 

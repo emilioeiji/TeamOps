@@ -223,6 +223,10 @@ CREATE TABLE IF NOT EXISTS PRCategorias (
     NamePt TEXT NOT NULL,
     NameJp TEXT NOT NULL
 );
+-- 1 Sobre Operacao
+-- 2 Sobre Seguranca
+-- 3 Sobre Trabalho
+-- 4 Outros
 
 CREATE TABLE IF NOT EXISTS PRPrioridades (
     Id INTEGER PRIMARY KEY AUTOINCREMENT,
