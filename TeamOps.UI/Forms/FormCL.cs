@@ -15,43 +15,43 @@ using TeamOps.Data.Repositories;
 
 namespace TeamOps.UI.Forms
 {
-    public partial class FormPR : Form
+    public partial class FormCL : Form
     {
-        private readonly PRRepository _prRepo;
-        private readonly PRCategoriaRepository _catRepo;
-        private readonly PRPrioridadeRepository _prioRepo;
+        private readonly CLRepository _clRepo;
+        private readonly CLCategoriaRepository _catRepo;
+        private readonly CLPrioridadeRepository _prioRepo;
         private readonly SectorRepository _sectorRepo;
         private readonly Operator _currentUser;
         private readonly OperatorRepository _operatorRepo;
-        private readonly string _prDirectory;
-        private readonly string _prTemplate;
+        private readonly string _clDirectory;
+        private readonly string _clTemplate;
 
-        public FormPR(
-            PRRepository prRepo,
-            PRCategoriaRepository catRepo,
-            PRPrioridadeRepository prioRepo,
+        public FormCL(
+            CLRepository clRepo,
+            CLCategoriaRepository catRepo,
+            CLPrioridadeRepository prioRepo,
             SectorRepository sectorRepo,
             OperatorRepository operatorRepo,
             Operator currentUser)
         {
             InitializeComponent();
 
-            _prRepo = prRepo;
+            _clRepo = clRepo;
             _catRepo = catRepo;
             _prioRepo = prioRepo;
             _sectorRepo = sectorRepo;
             _operatorRepo = operatorRepo;
             _currentUser = currentUser;
-            _prDirectory = ConfigurationManager.AppSettings["PRDirectory"]!;
-            _prTemplate = ConfigurationManager.AppSettings["PRTemplate"]!;
+            _clDirectory = ConfigurationManager.AppSettings["CLDirectory"]!;
+            _clTemplate = ConfigurationManager.AppSettings["CLTemplate"]!;
 
-            Load += FormPR_Load;
+            Load += FormCL_Load;
             btnSalvar.Click += btnSalvar_Click;
             btnCancelar.Click += btnCancelar_Click;
             btnFechar.Click += (s, e) => Close();
         }
 
-        private void FormPR_Load(object? sender, EventArgs e)
+        private void FormCL_Load(object? sender, EventArgs e)
         {
             LoadLookups();
 
@@ -84,7 +84,7 @@ namespace TeamOps.UI.Forms
             if (!ValidateForm())
                 return;
 
-            var pr = new PR
+            var cl = new CL
             {
                 SetorId = (int)cmbSetor.SelectedValue,
                 CategoriaId = (int)cmbCategoria.SelectedValue,
@@ -95,13 +95,13 @@ namespace TeamOps.UI.Forms
                 AutorCodigoFJ = _currentUser.CodigoFJ
             };
 
-            int id = _prRepo.Add(pr);
+            int id = _clRepo.Add(cl);
 
             // Gera o arquivo
-            GerarPRExcel(id);
+            GerarCLExcel(id);
 
             // Caminho completo do arquivo gerado
-            string caminhoFinal = Path.Combine(_prDirectory, txtNomeArquivo.Text.Trim());
+            string caminhoFinal = Path.Combine(_clDirectory, txtNomeArquivo.Text.Trim());
 
             // Abre o arquivo no Windows
             System.Diagnostics.Process.Start(new ProcessStartInfo()
@@ -110,7 +110,7 @@ namespace TeamOps.UI.Forms
                 UseShellExecute = true
             });
 
-            MessageBox.Show("PR salvo e arquivo gerado com sucesso!");
+            MessageBox.Show("CL salvo e arquivo gerado com sucesso!");
             ClearForm();
         }
 
@@ -165,29 +165,29 @@ namespace TeamOps.UI.Forms
                 return;
             }
 
-            var ultimo = _prRepo.GetAll().FirstOrDefault()?.Id ?? 0;
+            var ultimo = _clRepo.GetAll().FirstOrDefault()?.Id ?? 0;
             var novoId = ultimo + 1;
 
-            txtNomeArquivo.Text = $"PR_{novoId}_{txtTitulo.Text.Trim().Replace(" ", "_")}.xlsx";
+            txtNomeArquivo.Text = $"CL_{novoId}_{txtTitulo.Text.Trim().Replace(" ", "_")}.xlsx";
         }
 
-        private void GerarPRExcel(int prId)
+        private void GerarCLExcel(int clId)
         {
-            if (!File.Exists(_prTemplate))
+            if (!File.Exists(_clTemplate))
             {
-                MessageBox.Show("Arquivo modelo PR não encontrado.");
+                MessageBox.Show("Arquivo modelo CL não encontrado.");
                 return;
             }
 
-            if (!Directory.Exists(_prDirectory))
-                Directory.CreateDirectory(_prDirectory);
+            if (!Directory.Exists(_clDirectory))
+                Directory.CreateDirectory(_clDirectory);
 
             string nomeArquivo = txtNomeArquivo.Text.Trim();
-            string caminhoFinal = Path.Combine(_prDirectory, nomeArquivo);
+            string caminhoFinal = Path.Combine(_clDirectory, nomeArquivo);
 
             try
             {
-                File.Copy(_prTemplate, caminhoFinal, overwrite: true);
+                File.Copy(_clTemplate, caminhoFinal, overwrite: true);
             }
             catch (Exception ex)
             {
@@ -198,7 +198,7 @@ namespace TeamOps.UI.Forms
             using var wb = new XLWorkbook(caminhoFinal);
             var ws = wb.Worksheet("PR文書");
 
-            ws.Cell("D4").Value = prId;
+            ws.Cell("D4").Value = clId;
             ws.Cell("F5").Value = txtTitulo.Text.Trim();
             ws.Cell("D1").Value = ((LookupItem)cmbPrioridade.SelectedItem).NamePt;
             ws.Cell("T2").Value = DateTime.Now.ToString("yyyy-MM-dd");

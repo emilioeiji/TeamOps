@@ -24,6 +24,9 @@ namespace TeamOps.UI.Forms
         private readonly PRRepository _prRepo;
         private readonly PRCategoriaRepository _prCategoriaRepo;
         private readonly PRPrioridadeRepository _prPrioridadeRepo;
+        private readonly CLRepository _clRepo;
+        private readonly CLCategoriaRepository _clCategoriaRepo;
+        private readonly CLPrioridadeRepository _clPrioridadeRepo;
 
         public FormDashboard(AppUser user)
         {
@@ -49,6 +52,9 @@ namespace TeamOps.UI.Forms
             _prRepo = new PRRepository(Program.ConnectionFactory);
             _prCategoriaRepo = new PRCategoriaRepository(Program.ConnectionFactory);
             _prPrioridadeRepo = new PRPrioridadeRepository(Program.ConnectionFactory);
+            _clRepo = new CLRepository(Program.ConnectionFactory);
+            _clCategoriaRepo = new CLCategoriaRepository(Program.ConnectionFactory);
+            _clPrioridadeRepo = new CLPrioridadeRepository(Program.ConnectionFactory);
 
 
             lblUser.Text = $"Bem-vindo, {_user.Name}";
@@ -130,6 +136,26 @@ namespace TeamOps.UI.Forms
                 _prRepo,
                 _prCategoriaRepo,
                 _prPrioridadeRepo,
+                _sectorRepository,
+                new OperatorRepository(Program.ConnectionFactory),
+                _currentOperator
+            );
+
+            form.ShowDialog();
+        }
+
+        private void btnCL_Click(object sender, EventArgs e)
+        {
+            if (!HasAccess(AccessLevel.KL))
+            {
+                ShowAccessDenied();
+                return;
+            }
+
+            var form = new FormCL(
+                _clRepo,
+                _clCategoriaRepo,
+                _clPrioridadeRepo,
                 _sectorRepository,
                 new OperatorRepository(Program.ConnectionFactory),
                 _currentOperator

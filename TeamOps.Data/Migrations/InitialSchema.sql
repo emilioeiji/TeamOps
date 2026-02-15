@@ -258,6 +258,46 @@ CREATE TABLE IF NOT EXISTS PR (
     FOREIGN KEY (AutorCodigoFJ) REFERENCES Operators(CodigoFJ)
 );
 
+CREATE TABLE IF NOT EXISTS CLCategorias (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    NamePt TEXT NOT NULL,
+    NameJp TEXT NOT NULL
+);
+-- 1 Sobre Operacao
+-- 2 Sobre Seguranca
+-- 3 Sobre Trabalho
+-- 4 Outros
+
+CREATE TABLE IF NOT EXISTS CLPrioridades (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    NamePt TEXT NOT NULL,
+    NameJp TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS CL (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    SetorId INTEGER NOT NULL,                 -- FK para Sectors
+    CategoriaId INTEGER NOT NULL,             -- FK para PRCategorias
+    PrioridadeId INTEGER NOT NULL,            -- FK para PRPrioridades
+
+    Titulo TEXT NOT NULL,
+    NomeArquivo TEXT NOT NULL,                -- Gerado automaticamente
+
+    DataEmissao TEXT NOT NULL,                -- Data atual
+    DataRetornoHiru TEXT,                     -- Para uso futuro
+    DataRetornoYakin TEXT,                    -- Para uso futuro
+
+    AutorCodigoFJ TEXT NOT NULL,              -- Nome do usuário (Operators)
+
+    CreatedAt TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+
+    FOREIGN KEY (SetorId) REFERENCES Sectors(Id),
+    FOREIGN KEY (CategoriaId) REFERENCES PRCategorias(Id),
+    FOREIGN KEY (PrioridadeId) REFERENCES PRPrioridades(Id),
+    FOREIGN KEY (AutorCodigoFJ) REFERENCES Operators(CodigoFJ)
+);
+
 CREATE INDEX IF NOT EXISTS IX_Operators_BadgeCode ON Operators(BadgeCode);
 CREATE INDEX IF NOT EXISTS IX_GL_Login ON GroupLeaders(Login);
 CREATE INDEX IF NOT EXISTS IX_Assignments_GL_Operator ON Assignments(GLId, OperatorId);

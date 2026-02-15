@@ -18,6 +18,7 @@
         private System.Windows.Forms.Button btnHikitsuguiLeaderRead;
         private System.Windows.Forms.Button btnSobraDePeca;
         private System.Windows.Forms.Button btnPR;
+        private System.Windows.Forms.Button btnCL;
 
         protected override void Dispose(bool disposing)
         {
@@ -43,6 +44,7 @@
             btnHikitsuguiLeaderRead = new Button();
             btnSobraDePeca = new Button();
             btnPR = new Button();
+            btnCL = new Button();
             panelHeader.SuspendLayout();
             panelFooter.SuspendLayout();
             SuspendLayout();
@@ -200,6 +202,16 @@
             btnPR.Text = "PR\r\nPR文書";
             btnPR.Click += btnPR_Click;
             // 
+            // btnCL
+            // 
+            btnCL.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnCL.Location = new Point(800, 320);
+            btnCL.Name = "btnCL";
+            btnCL.Size = new Size(200, 80);
+            btnCL.TabIndex = 0;
+            btnCL.Text = "CL\r\nCL文書";
+            btnCL.Click += btnCL_Click;
+            // 
             // FormDashboard
             // 
             ClientSize = new Size(1077, 450);
@@ -215,6 +227,7 @@
             Controls.Add(panelFooter);
             Controls.Add(btnAdmin);
             Controls.Add(btnPR);
+            Controls.Add(btnCL);
             Name = "FormDashboard";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "TeamOps - Dashboard";
