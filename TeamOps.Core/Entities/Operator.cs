@@ -25,5 +25,6 @@
 
         public string? Telefone { get; set; }
         public string? Endereco { get; set; }
+        public DateTime? Nascimento { get; set; }
     }
 }

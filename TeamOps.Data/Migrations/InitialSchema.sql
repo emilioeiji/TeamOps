@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS Operators (
     IsLeader    INTEGER  NOT NULL DEFAULT 0,
     Telefone    TEXT,
     Endereco    TEXT,
+    Nascimento  DATE,
 
     FOREIGN KEY (ShiftId) REFERENCES Shifts(Id),
     FOREIGN KEY (GroupId) REFERENCES Groups(Id),

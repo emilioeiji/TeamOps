@@ -33,6 +33,8 @@
         private System.Windows.Forms.TextBox txtTelefone;
         private System.Windows.Forms.Label lblEndereco;
         private System.Windows.Forms.TextBox txtEndereco;
+        private System.Windows.Forms.Label lblNascimento;
+        private System.Windows.Forms.DateTimePicker dtpNascimento;
 
         protected override void Dispose(bool disposing)
         {
@@ -72,6 +74,9 @@
             txtTelefone = new TextBox();
             lblEndereco = new Label();
             txtEndereco = new TextBox();
+            lblNascimento = new Label();
+            dtpNascimento = new DateTimePicker();
+            dtpNascimento.Format = DateTimePickerFormat.Short;
             ((System.ComponentModel.ISupportInitialize)dgvOperators).BeginInit();
             SuspendLayout();
             // 
@@ -79,9 +84,7 @@
             // 
             dgvOperators.AllowUserToAddRows = false;
             dgvOperators.AllowUserToDeleteRows = false;
-            //dgvOperators.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            dgvOperators.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
-            dgvOperators.ScrollBars = ScrollBars.Both;
+            dgvOperators.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             dgvOperators.ColumnHeadersHeight = 29;
             dgvOperators.Location = new Point(20, 20);
             dgvOperators.MultiSelect = false;
@@ -90,10 +93,6 @@
             dgvOperators.RowHeadersWidth = 51;
             dgvOperators.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dgvOperators.Size = new Size(760, 200);
-            dgvOperators.Anchor = AnchorStyles.Top
-                    //| AnchorStyles.Bottom
-                    | AnchorStyles.Left
-                    | AnchorStyles.Right;
             dgvOperators.TabIndex = 0;
             dgvOperators.SelectionChanged += dgvOperators_SelectionChanged;
             // 
@@ -109,7 +108,7 @@
             // 
             txtCodigoFJ.Location = new Point(100, 237);
             txtCodigoFJ.Name = "txtCodigoFJ";
-            txtCodigoFJ.Size = new Size(150, 27);
+            txtCodigoFJ.Size = new Size(150, 23);
             txtCodigoFJ.TabIndex = 2;
             // 
             // lblRomanji
@@ -124,7 +123,7 @@
             // 
             txtRomanji.Location = new Point(100, 277);
             txtRomanji.Name = "txtRomanji";
-            txtRomanji.Size = new Size(200, 27);
+            txtRomanji.Size = new Size(200, 23);
             txtRomanji.TabIndex = 4;
             // 
             // lblNihongo
@@ -139,7 +138,7 @@
             // 
             txtNihongo.Location = new Point(100, 317);
             txtNihongo.Name = "txtNihongo";
-            txtNihongo.Size = new Size(200, 27);
+            txtNihongo.Size = new Size(200, 23);
             txtNihongo.TabIndex = 6;
             // 
             // lblShift
@@ -147,7 +146,7 @@
             lblShift.AutoSize = true;
             lblShift.Location = new Point(20, 360);
             lblShift.Name = "lblShift";
-            lblShift.Size = new Size(42, 20);
+            lblShift.Size = new Size(34, 15);
             lblShift.TabIndex = 7;
             lblShift.Text = "Shift:";
             // 
@@ -156,7 +155,7 @@
             cmbShift.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbShift.Location = new Point(100, 357);
             cmbShift.Name = "cmbShift";
-            cmbShift.Size = new Size(200, 28);
+            cmbShift.Size = new Size(200, 23);
             cmbShift.TabIndex = 8;
             // 
             // lblGroup
@@ -164,7 +163,7 @@
             lblGroup.AutoSize = true;
             lblGroup.Location = new Point(20, 400);
             lblGroup.Name = "lblGroup";
-            lblGroup.Size = new Size(53, 20);
+            lblGroup.Size = new Size(43, 15);
             lblGroup.TabIndex = 9;
             lblGroup.Text = "Group:";
             // 
@@ -173,7 +172,7 @@
             cmbGroup.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbGroup.Location = new Point(100, 397);
             cmbGroup.Name = "cmbGroup";
-            cmbGroup.Size = new Size(200, 28);
+            cmbGroup.Size = new Size(200, 23);
             cmbGroup.TabIndex = 10;
             // 
             // lblSector
@@ -181,7 +180,7 @@
             lblSector.AutoSize = true;
             lblSector.Location = new Point(20, 440);
             lblSector.Name = "lblSector";
-            lblSector.Size = new Size(54, 20);
+            lblSector.Size = new Size(43, 15);
             lblSector.TabIndex = 11;
             lblSector.Text = "Sector:";
             // 
@@ -190,7 +189,7 @@
             cmbSector.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbSector.Location = new Point(100, 437);
             cmbSector.Name = "cmbSector";
-            cmbSector.Size = new Size(200, 28);
+            cmbSector.Size = new Size(200, 23);
             cmbSector.TabIndex = 12;
             // 
             // lblStart
@@ -198,7 +197,7 @@
             lblStart.AutoSize = true;
             lblStart.Location = new Point(350, 240);
             lblStart.Name = "lblStart";
-            lblStart.Size = new Size(79, 20);
+            lblStart.Size = new Size(61, 15);
             lblStart.TabIndex = 13;
             lblStart.Text = "Start Date:";
             // 
@@ -207,7 +206,7 @@
             dtpStart.Format = DateTimePickerFormat.Short;
             dtpStart.Location = new Point(430, 237);
             dtpStart.Name = "dtpStart";
-            dtpStart.Size = new Size(120, 27);
+            dtpStart.Size = new Size(120, 23);
             dtpStart.TabIndex = 14;
             // 
             // lblEnd
@@ -215,7 +214,7 @@
             lblEnd.AutoSize = true;
             lblEnd.Location = new Point(350, 280);
             lblEnd.Name = "lblEnd";
-            lblEnd.Size = new Size(73, 20);
+            lblEnd.Size = new Size(57, 15);
             lblEnd.TabIndex = 15;
             lblEnd.Text = "End Date:";
             // 
@@ -224,7 +223,7 @@
             dtpEnd.Format = DateTimePickerFormat.Short;
             dtpEnd.Location = new Point(430, 277);
             dtpEnd.Name = "dtpEnd";
-            dtpEnd.Size = new Size(120, 27);
+            dtpEnd.Size = new Size(120, 23);
             dtpEnd.TabIndex = 16;
             // 
             // chkHasEnd
@@ -232,7 +231,7 @@
             chkHasEnd.AutoSize = true;
             chkHasEnd.Location = new Point(560, 277);
             chkHasEnd.Name = "chkHasEnd";
-            chkHasEnd.Size = new Size(121, 24);
+            chkHasEnd.Size = new Size(96, 19);
             chkHasEnd.TabIndex = 17;
             chkHasEnd.Text = "Has End Date";
             // 
@@ -241,7 +240,7 @@
             chkTrainer.AutoSize = true;
             chkTrainer.Location = new Point(76, 479);
             chkTrainer.Name = "chkTrainer";
-            chkTrainer.Size = new Size(75, 24);
+            chkTrainer.Size = new Size(62, 19);
             chkTrainer.TabIndex = 18;
             chkTrainer.Text = "Trainer";
             // 
@@ -250,7 +249,7 @@
             chkStatus.AutoSize = true;
             chkStatus.Location = new Point(156, 479);
             chkStatus.Name = "chkStatus";
-            chkStatus.Size = new Size(72, 24);
+            chkStatus.Size = new Size(59, 19);
             chkStatus.TabIndex = 19;
             chkStatus.Text = "Active";
             // 
@@ -259,7 +258,7 @@
             chkIsLeader.AutoSize = true;
             chkIsLeader.Location = new Point(236, 479);
             chkIsLeader.Name = "chkIsLeader";
-            chkIsLeader.Size = new Size(64, 24);
+            chkIsLeader.Size = new Size(52, 19);
             chkIsLeader.TabIndex = 20;
             chkIsLeader.Text = "Líder";
             // 
@@ -304,7 +303,7 @@
             lblTelefone.AutoSize = true;
             lblTelefone.Location = new Point(350, 320);
             lblTelefone.Name = "lblTelefone";
-            lblTelefone.Size = new Size(68, 20);
+            lblTelefone.Size = new Size(55, 15);
             lblTelefone.TabIndex = 24;
             lblTelefone.Text = "Telefone:";
             // 
@@ -312,7 +311,7 @@
             // 
             txtTelefone.Location = new Point(430, 317);
             txtTelefone.Name = "txtTelefone";
-            txtTelefone.Size = new Size(200, 27);
+            txtTelefone.Size = new Size(200, 23);
             txtTelefone.TabIndex = 25;
             // 
             // lblEndereco
@@ -320,7 +319,7 @@
             lblEndereco.AutoSize = true;
             lblEndereco.Location = new Point(350, 360);
             lblEndereco.Name = "lblEndereco";
-            lblEndereco.Size = new Size(74, 20);
+            lblEndereco.Size = new Size(59, 15);
             lblEndereco.TabIndex = 26;
             lblEndereco.Text = "Endereço:";
             // 
@@ -329,8 +328,24 @@
             txtEndereco.Location = new Point(430, 360);
             txtEndereco.Multiline = true;
             txtEndereco.Name = "txtEndereco";
-            txtEndereco.Size = new Size(350, 105);
+            txtEndereco.Size = new Size(350, 60);
             txtEndereco.TabIndex = 27;
+            // 
+            // lblNascimento
+            // 
+            lblNascimento.AutoSize = true;
+            lblNascimento.Location = new Point(350, 440);
+            lblNascimento.Name = "lblNascimento";
+            lblNascimento.Size = new Size(74, 15);
+            lblNascimento.TabIndex = 26;
+            lblNascimento.Text = "Nascimento:";
+            // 
+            // dtpNascimento
+            // 
+            dtpNascimento.Location = new Point(430, 437);
+            dtpNascimento.Name = "dtpNascimento";
+            dtpNascimento.Size = new Size(350, 23);
+            dtpNascimento.TabIndex = 0;
             // 
             // FormOperators
             // 
@@ -364,6 +379,8 @@
             Controls.Add(lblTelefone);
             Controls.Add(txtTelefone);
             Controls.Add(txtEndereco);
+            Controls.Add(lblNascimento);
+            Controls.Add(dtpNascimento);
             Name = "FormOperators";
             StartPosition = FormStartPosition.CenterParent;
             Text = "Manage Operators";

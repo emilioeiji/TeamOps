@@ -65,6 +65,7 @@ namespace TeamOps.UI.Forms
             dgvOperators.Columns["IsLeader"].Width = 80;
             dgvOperators.Columns["Telefone"].Width = 120;
             dgvOperators.Columns["Endereco"].Width = 300;
+            dgvOperators.Columns["Nascimento"].Width = 110;
         }
 
         private void btnAdd_Click(object sender, EventArgs e)
@@ -107,7 +108,8 @@ namespace TeamOps.UI.Forms
                 Status = chkStatus.Checked,
                 IsLeader = chkIsLeader.Checked,
                 Telefone = string.IsNullOrWhiteSpace(txtTelefone.Text) ? null : txtTelefone.Text.Trim(),
-                Endereco = string.IsNullOrWhiteSpace(txtEndereco.Text) ? null : txtEndereco.Text.Trim()
+                Endereco = string.IsNullOrWhiteSpace(txtEndereco.Text) ? null : txtEndereco.Text.Trim(),
+                Nascimento = dtpNascimento.Value.Year == 1900 ? null : dtpNascimento.Value
             };
 
             _opRepo.Add(op);
@@ -155,6 +157,8 @@ namespace TeamOps.UI.Forms
                 op.IsLeader = chkIsLeader.Checked;
                 op.Telefone = string.IsNullOrWhiteSpace(txtTelefone.Text) ? null : txtTelefone.Text.Trim();
                 op.Endereco = string.IsNullOrWhiteSpace(txtEndereco.Text) ? null : txtEndereco.Text.Trim();
+                // Se o usuário não alterar a data, salvar null
+                op.Nascimento = dtpNascimento.Value.Year == 1900 ? null : dtpNascimento.Value;
 
                 _opRepo.Update(op);
                 ClearForm();
@@ -202,6 +206,14 @@ namespace TeamOps.UI.Forms
                 chkIsLeader.Checked = op.IsLeader;
                 txtTelefone.Text = op.Telefone ?? "";
                 txtEndereco.Text = op.Endereco ?? "";
+                if (op.Nascimento.HasValue)
+                {
+                    dtpNascimento.Value = op.Nascimento.Value;
+                }
+                else
+                {
+                    dtpNascimento.Value = new DateTime(1900, 1, 1);
+                }
             }
         }
 
@@ -224,6 +236,7 @@ namespace TeamOps.UI.Forms
             chkIsLeader.Checked = false;
             txtTelefone.Clear();
             txtEndereco.Clear();
+            dtpNascimento.Value = new DateTime(1900, 1, 1);
         }
     }
 }
