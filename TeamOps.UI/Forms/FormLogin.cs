@@ -16,6 +16,8 @@ namespace TeamOps.UI.Forms
         {
             InitializeComponent();
             _userRepo = new UserRepository(Program.ConnectionFactory);
+            pictureBoxLogo.Image = Image.FromFile("Logo.png");
+            this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
         }
 
         private void btnEntrar_Click(object sender, EventArgs e)

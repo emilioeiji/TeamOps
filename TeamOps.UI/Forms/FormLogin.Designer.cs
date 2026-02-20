@@ -23,94 +23,128 @@ namespace TeamOps.UI.Forms
 
         private void InitializeComponent()
         {
-            this.lblLogin = new System.Windows.Forms.Label();
-            this.txtLogin = new System.Windows.Forms.TextBox();
-            this.lblSenha = new System.Windows.Forms.Label();
-            this.txtSenha = new System.Windows.Forms.TextBox();
-            this.btnEntrar = new System.Windows.Forms.Button();
-            this.lblMensagem = new System.Windows.Forms.Label();
-            this.panelHeader = new System.Windows.Forms.Panel();
-            this.lblTitle = new System.Windows.Forms.Label();
-            this.panelHeader.SuspendLayout();
-            this.SuspendLayout();
-            // 
-            // panelHeader
-            // 
-            this.panelHeader.BackColor = System.Drawing.Color.FromArgb(45, 85, 155);
-            this.panelHeader.Controls.Add(this.lblTitle);
-            this.panelHeader.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panelHeader.Height = 70;
-            this.panelHeader.TabIndex = 0;
-            // 
-            // lblTitle
-            // 
-            this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold);
-            this.lblTitle.ForeColor = System.Drawing.Color.White;
-            this.lblTitle.Location = new System.Drawing.Point(20, 20);
-            this.lblTitle.Text = "TeamOps - Login";
-            this.lblTitle.AutoSize = true;
+            lblLogin = new Label();
+            txtLogin = new TextBox();
+            lblSenha = new Label();
+            txtSenha = new TextBox();
+            btnEntrar = new Button();
+            lblMensagem = new Label();
+            panelHeader = new Panel();
+            lblTitle = new Label();
+            pictureBoxLogo = new PictureBox();
+            panelHeader.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)pictureBoxLogo).BeginInit();
+            SuspendLayout();
             // 
             // lblLogin
             // 
-            this.lblLogin.AutoSize = true;
-            this.lblLogin.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.lblLogin.Location = new System.Drawing.Point(60, 100);
-            this.lblLogin.Text = "Login:";
+            lblLogin.AutoSize = true;
+            lblLogin.Font = new Font("Segoe UI", 10F);
+            lblLogin.Location = new Point(60, 233);
+            lblLogin.Name = "lblLogin";
+            lblLogin.Size = new Size(46, 19);
+            lblLogin.TabIndex = 1;
+            lblLogin.Text = "Login:";
             // 
             // txtLogin
             // 
-            this.txtLogin.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.txtLogin.Location = new System.Drawing.Point(140, 95);
-            this.txtLogin.Size = new System.Drawing.Size(220, 25);
+            txtLogin.Font = new Font("Segoe UI", 10F);
+            txtLogin.Location = new Point(140, 228);
+            txtLogin.Name = "txtLogin";
+            txtLogin.Size = new Size(220, 25);
+            txtLogin.TabIndex = 2;
             // 
             // lblSenha
             // 
-            this.lblSenha.AutoSize = true;
-            this.lblSenha.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.lblSenha.Location = new System.Drawing.Point(60, 150);
-            this.lblSenha.Text = "Senha:";
+            lblSenha.AutoSize = true;
+            lblSenha.Font = new Font("Segoe UI", 10F);
+            lblSenha.Location = new Point(60, 283);
+            lblSenha.Name = "lblSenha";
+            lblSenha.Size = new Size(49, 19);
+            lblSenha.TabIndex = 3;
+            lblSenha.Text = "Senha:";
             // 
             // txtSenha
             // 
-            this.txtSenha.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.txtSenha.Location = new System.Drawing.Point(140, 145);
-            this.txtSenha.Size = new System.Drawing.Size(220, 25);
-            this.txtSenha.UseSystemPasswordChar = true;
+            txtSenha.Font = new Font("Segoe UI", 10F);
+            txtSenha.Location = new Point(140, 278);
+            txtSenha.Name = "txtSenha";
+            txtSenha.Size = new Size(220, 25);
+            txtSenha.TabIndex = 4;
+            txtSenha.UseSystemPasswordChar = true;
             // 
             // btnEntrar
             // 
-            this.btnEntrar.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
-            this.btnEntrar.Location = new System.Drawing.Point(140, 200);
-            this.btnEntrar.Size = new System.Drawing.Size(120, 40);
-            this.btnEntrar.Text = "Entrar";
-            this.btnEntrar.UseVisualStyleBackColor = true;
-            this.btnEntrar.Click += new System.EventHandler(this.btnEntrar_Click);
+            btnEntrar.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
+            btnEntrar.Location = new Point(140, 333);
+            btnEntrar.Name = "btnEntrar";
+            btnEntrar.Size = new Size(120, 40);
+            btnEntrar.TabIndex = 5;
+            btnEntrar.Text = "Entrar";
+            btnEntrar.UseVisualStyleBackColor = true;
+            btnEntrar.Click += btnEntrar_Click;
             // 
             // lblMensagem
             // 
-            this.lblMensagem.AutoSize = true;
-            this.lblMensagem.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Italic);
-            this.lblMensagem.ForeColor = System.Drawing.Color.Red;
-            this.lblMensagem.Location = new System.Drawing.Point(140, 260);
-            this.lblMensagem.Text = "";
+            lblMensagem.AutoSize = true;
+            lblMensagem.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
+            lblMensagem.ForeColor = Color.Red;
+            lblMensagem.Location = new Point(140, 393);
+            lblMensagem.Name = "lblMensagem";
+            lblMensagem.Size = new Size(0, 15);
+            lblMensagem.TabIndex = 6;
+            // 
+            // panelHeader
+            // 
+            panelHeader.BackColor = Color.FromArgb(45, 85, 155);
+            panelHeader.Controls.Add(lblTitle);
+            panelHeader.Dock = DockStyle.Top;
+            panelHeader.Location = new Point(0, 0);
+            panelHeader.Name = "panelHeader";
+            panelHeader.Size = new Size(450, 70);
+            panelHeader.TabIndex = 0;
+            // 
+            // lblTitle
+            // 
+            lblTitle.AutoSize = true;
+            lblTitle.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
+            lblTitle.ForeColor = Color.White;
+            lblTitle.Location = new Point(20, 20);
+            lblTitle.Name = "lblTitle";
+            lblTitle.Size = new Size(161, 25);
+            lblTitle.TabIndex = 0;
+            lblTitle.Text = "TeamOps - Login";
+            // 
+            // pictureBoxLogo
+            // 
+            pictureBoxLogo.BackgroundImageLayout = ImageLayout.Center;
+            pictureBoxLogo.Location = new Point(0, 76);
+            pictureBoxLogo.Name = "pictureBoxLogo";
+            pictureBoxLogo.Size = new Size(450, 146);
+            pictureBoxLogo.SizeMode = PictureBoxSizeMode.Zoom;
+            pictureBoxLogo.TabIndex = 7;
+            pictureBoxLogo.TabStop = false;
             // 
             // FormLogin
             // 
-            this.ClientSize = new System.Drawing.Size(450, 320);
-            this.Controls.Add(this.panelHeader);
-            this.Controls.Add(this.lblLogin);
-            this.Controls.Add(this.txtLogin);
-            this.Controls.Add(this.lblSenha);
-            this.Controls.Add(this.txtSenha);
-            this.Controls.Add(this.btnEntrar);
-            this.Controls.Add(this.lblMensagem);
-            this.Name = "FormLogin";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "Login - TeamOps";
-            this.panelHeader.ResumeLayout(false);
-            this.panelHeader.PerformLayout();
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            ClientSize = new Size(450, 417);
+            Controls.Add(pictureBoxLogo);
+            Controls.Add(panelHeader);
+            Controls.Add(lblLogin);
+            Controls.Add(txtLogin);
+            Controls.Add(lblSenha);
+            Controls.Add(txtSenha);
+            Controls.Add(btnEntrar);
+            Controls.Add(lblMensagem);
+            Name = "FormLogin";
+            StartPosition = FormStartPosition.CenterScreen;
+            Text = "Login - TeamOps";
+            panelHeader.ResumeLayout(false);
+            panelHeader.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)pictureBoxLogo).EndInit();
+            ResumeLayout(false);
+            PerformLayout();
         }
+        private PictureBox pictureBoxLogo;
     }
 }

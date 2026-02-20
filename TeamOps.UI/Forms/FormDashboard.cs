@@ -109,8 +109,8 @@ namespace TeamOps.UI.Forms
                 return;
             }
 
-            MessageBox.Show("Abrir tela de Relatórios...");
-            // TODO: FormReports
+            using var form = new FormReports(_currentOperator, _currentShift); 
+            form.ShowDialog();
         }
 
         private void btnFollowUp_Click(object sender, EventArgs e)
