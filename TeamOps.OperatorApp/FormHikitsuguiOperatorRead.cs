@@ -119,12 +119,20 @@ namespace TeamOps.OperatorApp
             var colBtn = new DataGridViewTextBoxColumn();
             colBtn.Name = "colLeitura";
             colBtn.HeaderText = "Leitura";
-            colBtn.Width = 60;
             grid.Columns.Add(colBtn);
 
             grid.Columns["colLeitura"].DefaultCellStyle.SelectionForeColor = Color.Green;
             grid.Columns["colLeitura"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             grid.Columns["colLeitura"].HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+
+            // 🔥 Ajuste de largura inteligente
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+
+            grid.Columns["colDescricao"].FillWeight = 300;
+            grid.Columns["colData"].FillWeight = 80;
+            grid.Columns["colCategoria"].FillWeight = 100;
+            grid.Columns["colCriador"].FillWeight = 120;
+            grid.Columns["colLeitura"].FillWeight = 60;
         }
 
         private void CarregarLista()
