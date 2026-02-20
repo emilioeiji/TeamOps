@@ -250,12 +250,12 @@ namespace TeamOps.UI.Forms
             {
                 if (op.ShiftId == 1) // Hiru
                 {
-                    ws.Cell(rowDia, 2).Value = op.NameNihongo; // Coluna B
+                    ws.Cell(rowDia, 2).Value = op.NameRomanji; // Coluna B
                     rowDia++;
                 }
                 else if (op.ShiftId == 2) // Yoru
                 {
-                    ws.Cell(rowNoite, 3).Value = op.NameNihongo; // Coluna C
+                    ws.Cell(rowNoite, 3).Value = op.NameRomanji; // Coluna C
                     rowNoite++;
                 }
             }
