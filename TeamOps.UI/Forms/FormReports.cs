@@ -104,7 +104,26 @@ namespace TeamOps.UI.Forms
 
         private void btnRepFollowChart_Click(object sender, EventArgs e)
         {
-            using var form = new FormFollowChart();
+            var followRepo = new FollowUpRepository(Program.ConnectionFactory);
+            var opRepo = new OperatorRepository(Program.ConnectionFactory);
+            var shiftRepo = new ShiftRepository(Program.ConnectionFactory);
+            var sectorRepo = new SectorRepository(Program.ConnectionFactory);
+            var reasonRepo = new FollowUpReasonRepository(Program.ConnectionFactory);
+            var typeRepo = new FollowUpTypeRepository(Program.ConnectionFactory);
+            var equipRepo = new EquipmentRepository(Program.ConnectionFactory);
+            var localRepo = new LocalRepository(Program.ConnectionFactory);
+
+            using var form = new FormFollowChart(
+                followRepo,
+                opRepo,
+                shiftRepo,
+                sectorRepo,
+                reasonRepo,
+                typeRepo,
+                equipRepo,
+                localRepo
+            );
+
             form.ShowDialog();
         }
     }
