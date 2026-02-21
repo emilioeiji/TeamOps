@@ -1,7 +1,5 @@
-﻿// Project: TeamOps.UI
-// File: Forms/FormFollowUp.cs
-using System;
-using System.Collections.Generic;
+﻿using System;
+using System.Linq;
 using System.Windows.Forms;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Repositories;
@@ -17,11 +15,9 @@ namespace TeamOps.UI.Forms
         private readonly FollowUpTypeRepository _typeRepo;
         private readonly LocalRepository _localRepo;
         private readonly EquipmentRepository _equipmentRepo;
-        // Remova SectorRepository se não for usar
         private readonly SectorRepository _sectorRepo;
 
-        private bool _isInitializing; // flag para evitar handler durante setup
-        private List<Operator> _allOperators = new(); // cache para reutilizar
+        private bool _isInitializing;
 
         public FormFollowUp()
         {
@@ -36,159 +32,249 @@ namespace TeamOps.UI.Forms
             _equipmentRepo = new EquipmentRepository(Program.ConnectionFactory);
             _sectorRepo = new SectorRepository(Program.ConnectionFactory);
 
-            this.Load += FormFollowUp_Load;
+            Load += FormFollowUp_Load;
         }
 
+        // ---------------------------------------------------------
+        // LOAD
+        // ---------------------------------------------------------
         private void FormFollowUp_Load(object? sender, EventArgs e)
         {
             _isInitializing = true;
 
-            // Carrega turnos
+            LoadCombos();
+            ApplyUserContext();
+
+            _isInitializing = false;
+
+            // Aplica o filtro inicial (setor + turno)
+            ApplyOperatorFilters();
+        }
+
+        // ---------------------------------------------------------
+        // CARREGAR COMBOS
+        // ---------------------------------------------------------
+        private void LoadCombos()
+        {
+            // Turnos
             cmbShift.DataSource = _shiftRepo.GetAll();
             cmbShift.DisplayMember = "NamePt";
             cmbShift.ValueMember = "Id";
             cmbShift.SelectedIndex = -1;
 
-            // Carrega todos operadores (para inicialização)
-            var operadores = _operatorRepo.GetAll();
-
-            cmbOperator.DataSource = operadores.ToList();
-            cmbOperator.DisplayMember = "NameRomanji";
-            cmbOperator.ValueMember = "CodigoFJ";
-            cmbOperator.SelectedIndex = -1;
-
-            cmbExecutor.DataSource = operadores.ToList();
-            cmbExecutor.DisplayMember = "NameRomanji";
-            cmbExecutor.ValueMember = "CodigoFJ";
-            cmbExecutor.SelectedIndex = -1;
-
-            cmbWitness.DataSource = operadores.ToList();
-            cmbWitness.DisplayMember = "NameRomanji";
-            cmbWitness.ValueMember = "CodigoFJ";
-            cmbWitness.SelectedIndex = -1;
-
-            // Carrega demais combos
-            cmbReason.DataSource = _reasonRepo.GetAll();
-            cmbReason.DisplayMember = "NamePt";
-            cmbReason.ValueMember = "Id";
-            cmbReason.SelectedIndex = -1;
-
-            cmbType.DataSource = _typeRepo.GetAll();
-            cmbType.DisplayMember = "NamePt";
-            cmbType.ValueMember = "Id";
-            cmbType.SelectedIndex = -1;
-
-            cmbLocal.DataSource = _localRepo.GetAll();
-            cmbLocal.DisplayMember = "NamePt";
-            cmbLocal.ValueMember = "Id";
-            cmbLocal.SelectedIndex = -1;
-
-            cmbEquipment.DataSource = _equipmentRepo.GetAll();
-            cmbEquipment.DisplayMember = "NamePt";
-            cmbEquipment.ValueMember = "Id";
-            cmbEquipment.SelectedIndex = -1;
-
+            // Setores
             cmbSector.DataSource = _sectorRepo.GetAll();
             cmbSector.DisplayMember = "NamePt";
             cmbSector.ValueMember = "Id";
             cmbSector.SelectedIndex = -1;
 
-            _isInitializing = false;
+            // Operadores (carrega todos inicialmente)
+            var ops = _operatorRepo.GetAll().Where(o => o.Status).ToList();
 
-            if (Program.CurrentUser != null && !string.IsNullOrEmpty(Program.CurrentUser.Login))
-            {
-                var codigoFJ = Program.CurrentUser.Login.ToUpper(); // normaliza
-                var operador = _operatorRepo.GetByCodigoFJ(codigoFJ);
-
-                if (operador != null)
-                {
-                    // Seleciona turno
-                    cmbShift.SelectedValue = operador.ShiftId;
-
-                    // Filtra operadores pelo turno
-                    var operadoresDoTurno = _operatorRepo.GetByShift(operador.ShiftId);
-
-                    // 👉 Atualiza apenas o Executor
-                    cmbExecutor.DataSource = operadoresDoTurno;
-                    cmbExecutor.DisplayMember = "NameRomanji";
-                    cmbExecutor.ValueMember = "CodigoFJ";
-                    cmbExecutor.SelectedValue = codigoFJ;
-
-                    // 👉 Não mexe em cmbOperator nem cmbWitness
-                }
-            }
-        }
-
-
-        private void cmbShift_SelectedIndexChanged(object? sender, EventArgs e)
-        {
-            if (_isInitializing) return;
-
-            if (cmbShift.SelectedValue is int shiftId)
-            {
-                ApplyShiftFilter(shiftId);
-
-                // Não zere a seleção aqui; deixe o usuário escolher ou mantenha atual
-                // cmbOperator.SelectedIndex = -1;
-                // cmbExecutor.SelectedIndex = -1;
-                // cmbWitness.SelectedIndex = -1;
-            }
-        }
-
-        // Centraliza o filtro de operadores por turno
-        private void ApplyShiftFilter(int shiftId)
-        {
-            var operadores = _operatorRepo.GetByShift(shiftId);
-
-            cmbOperator.DataSource = operadores;
+            cmbOperator.DataSource = ops.ToList();
             cmbOperator.DisplayMember = "NameRomanji";
             cmbOperator.ValueMember = "CodigoFJ";
-            cmbOperator.SelectedIndex = -1;   // força sem seleção
+            cmbOperator.SelectedIndex = -1;
 
-            cmbExecutor.DataSource = operadores.ToList();
+            // Executor NÃO é filtrado
+            cmbExecutor.DataSource = ops.ToList();
             cmbExecutor.DisplayMember = "NameRomanji";
             cmbExecutor.ValueMember = "CodigoFJ";
-            // aqui você deixa o executor ser selecionado pelo usuário logado
+            cmbExecutor.SelectedIndex = -1;
 
-            cmbWitness.DataSource = operadores.ToList();
+            // Testemunha (filtrada depois)
+            cmbWitness.DataSource = ops.ToList();
             cmbWitness.DisplayMember = "NameRomanji";
             cmbWitness.ValueMember = "CodigoFJ";
-            cmbWitness.SelectedIndex = -1;    // força sem seleção
+            cmbWitness.SelectedIndex = -1;
+
+            // Reason
+            cmbReason.DataSource = _reasonRepo.GetAll();
+            cmbReason.DisplayMember = "NamePt";
+            cmbReason.ValueMember = "Id";
+            cmbReason.SelectedIndex = -1;
+
+            // Type
+            cmbType.DataSource = _typeRepo.GetAll();
+            cmbType.DisplayMember = "NamePt";
+            cmbType.ValueMember = "Id";
+            cmbType.SelectedIndex = -1;
+
+            // Local
+            cmbLocal.DataSource = _localRepo.GetAll();
+            cmbLocal.DisplayMember = "NamePt";
+            cmbLocal.ValueMember = "Id";
+            cmbLocal.SelectedIndex = -1;
+
+            // Equipment
+            cmbEquipment.DataSource = _equipmentRepo.GetAll();
+            cmbEquipment.DisplayMember = "NamePt";
+            cmbEquipment.ValueMember = "Id";
+            cmbEquipment.SelectedIndex = -1;
         }
 
+        // ---------------------------------------------------------
+        // CONTEXTO DO USUÁRIO LOGADO
+        // ---------------------------------------------------------
+        private void ApplyUserContext()
+        {
+            if (Program.CurrentUser == null || string.IsNullOrEmpty(Program.CurrentUser.Login))
+                return;
+
+            var codigoFJ = Program.CurrentUser.Login.ToUpper();
+            var operador = _operatorRepo.GetByCodigoFJ(codigoFJ);
+
+            if (operador == null)
+                return;
+
+            // Turno automático
+            cmbShift.SelectedValue = operador.ShiftId;
+
+            // Executor = usuário logado
+            cmbExecutor.SelectedValue = codigoFJ;
+        }
+
+        // ---------------------------------------------------------
+        // EVENTOS DE FILTRO
+        // ---------------------------------------------------------
+        private void cmbSector_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (_isInitializing) return;
+            ApplyOperatorFilters();
+        }
+
+        private void cmbShift_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (_isInitializing) return;
+            ApplyOperatorFilters();
+        }
+
+        // ---------------------------------------------------------
+        // FILTRAR OPERADORES POR SETOR + TURNO
+        // ---------------------------------------------------------
+        private void ApplyOperatorFilters()
+        {
+            if (cmbSector.SelectedValue is not int sectorId) return;
+            if (cmbShift.SelectedValue is not int shiftId) return;
+
+            var ops = _operatorRepo
+                .GetAll()
+                .Where(o => o.Status)
+                .Where(o => o.SectorId == sectorId)
+                .Where(o => o.ShiftId == shiftId)
+                .ToList();
+
+            // Operador
+            cmbOperator.DataSource = ops.ToList();
+            cmbOperator.DisplayMember = "NameRomanji";
+            cmbOperator.ValueMember = "CodigoFJ";
+            cmbOperator.SelectedIndex = -1;
+
+            // Testemunha
+            cmbWitness.DataSource = ops.ToList();
+            cmbWitness.DisplayMember = "NameRomanji";
+            cmbWitness.ValueMember = "CodigoFJ";
+            cmbWitness.SelectedIndex = -1;
+
+            // Executor NÃO é filtrado
+        }
+
+        // ---------------------------------------------------------
+        // SALVAR
+        // ---------------------------------------------------------
         private void btnSalvar_Click(object? sender, EventArgs e)
         {
+            if (!ValidateForm())
+                return;
+
             var followUp = new FollowUp
             {
                 Date = dtpDate.Value,
-                ShiftId = Convert.ToInt32(cmbShift.SelectedValue ?? 0),
-                OperatorCodigoFJ = cmbOperator.SelectedValue?.ToString() ?? string.Empty,
-                ExecutorCodigoFJ = cmbExecutor.SelectedValue?.ToString() ?? string.Empty,
+                ShiftId = (int)cmbShift.SelectedValue,
+                OperatorCodigoFJ = cmbOperator.SelectedValue.ToString(),
+                ExecutorCodigoFJ = cmbExecutor.SelectedValue.ToString(),
                 WitnessCodigoFJ = cmbWitness.SelectedValue?.ToString(),
-                ReasonId = Convert.ToInt32(cmbReason.SelectedValue ?? 0),
-                TypeId = Convert.ToInt32(cmbType.SelectedValue ?? 0),
-                LocalId = Convert.ToInt32(cmbLocal.SelectedValue ?? 0),
-                EquipmentId = Convert.ToInt32(cmbEquipment.SelectedValue ?? 0),
-                SectorId = Convert.ToInt32(cmbSector.SelectedValue ?? 0),
+                ReasonId = (int)cmbReason.SelectedValue,
+                TypeId = (int)cmbType.SelectedValue,
+                LocalId = (int)cmbLocal.SelectedValue,
+                EquipmentId = (int)cmbEquipment.SelectedValue,
+                SectorId = (int)cmbSector.SelectedValue,
                 Description = txtDescription.Text.Trim(),
                 Guidance = txtGuidance.Text.Trim()
             };
 
             _followUpRepo.Add(followUp);
+
             MessageBox.Show("Acompanhamento salvo com sucesso.");
-            this.Close();
+            Close();
         }
 
-        private void cmbOperator_SelectedIndexChanged(object sender, EventArgs e)
+        // ---------------------------------------------------------
+        // VALIDAÇÃO
+        // ---------------------------------------------------------
+        private bool ValidateForm()
         {
-            if (_isInitializing) return; // evita rodar durante o carregamento inicial
-
-            if (cmbOperator.SelectedItem is Operator operadorSelecionado)
+            if (cmbShift.SelectedIndex < 0)
             {
-                // Atualiza setor automaticamente só quando o usuário realmente seleciona
-                cmbSector.SelectedValue = operadorSelecionado.SectorId;
+                MessageBox.Show("Selecione o turno.");
+                return false;
             }
-        }
 
+            if (cmbSector.SelectedIndex < 0)
+            {
+                MessageBox.Show("Selecione o setor.");
+                return false;
+            }
+
+            if (cmbOperator.SelectedIndex < 0)
+            {
+                MessageBox.Show("Selecione o operador.");
+                return false;
+            }
+
+            if (cmbExecutor.SelectedIndex < 0)
+            {
+                MessageBox.Show("Selecione o executor.");
+                return false;
+            }
+
+            if (cmbReason.SelectedIndex < 0)
+            {
+                MessageBox.Show("Selecione o motivo.");
+                return false;
+            }
+
+            if (cmbType.SelectedIndex < 0)
+            {
+                MessageBox.Show("Selecione o tipo.");
+                return false;
+            }
+
+            if (cmbLocal.SelectedIndex < 0)
+            {
+                MessageBox.Show("Selecione o local.");
+                return false;
+            }
+
+            if (cmbEquipment.SelectedIndex < 0)
+            {
+                MessageBox.Show("Selecione o equipamento.");
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(txtDescription.Text))
+            {
+                MessageBox.Show("Digite a descrição.");
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(txtGuidance.Text))
+            {
+                MessageBox.Show("Digite a orientação.");
+                return false;
+            }
+
+            return true;
+        }
     }
 }

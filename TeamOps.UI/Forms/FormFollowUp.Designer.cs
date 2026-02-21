@@ -112,6 +112,7 @@ namespace TeamOps.UI.Forms
             lblShift.Size = new Size(42, 15);
             lblShift.TabIndex = 4;
             lblShift.Text = "Turno:";
+            cmbShift.SelectedIndexChanged += cmbShift_SelectedIndexChanged;
             // 
             // cmbShift
             // 
@@ -138,7 +139,6 @@ namespace TeamOps.UI.Forms
             cmbOperator.Name = "cmbOperator";
             cmbOperator.Size = new Size(200, 23);
             cmbOperator.TabIndex = 7;
-            cmbOperator.SelectedIndexChanged += cmbOperator_SelectedIndexChanged;
             // 
             // lblExecutor
             // 
@@ -302,6 +302,7 @@ namespace TeamOps.UI.Forms
             cmbSector.Name = "cmbSector";
             cmbSector.Size = new Size(200, 23);
             cmbSector.TabIndex = 21;
+            cmbSector.SelectedIndexChanged += cmbSector_SelectedIndexChanged;
             // 
             // FormFollowUp
             // 
