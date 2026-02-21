@@ -10,6 +10,8 @@
         private System.Windows.Forms.Button btnRepCL;
         private System.Windows.Forms.Button btnRepHikitsugui;
         private System.Windows.Forms.Button btnRepSobra;
+        private System.Windows.Forms.Button btnRepFollowReport;
+        private System.Windows.Forms.Button btnRepFollowChart;
 
         protected override void Dispose(bool disposing)
         {
@@ -27,6 +29,8 @@
             btnRepCL = new Button();
             btnRepHikitsugui = new Button();
             btnRepSobra = new Button();
+            btnRepFollowReport = new Button();
+            btnRepFollowChart = new Button();
             panelHeader.SuspendLayout();
             SuspendLayout();
             // 
@@ -37,7 +41,7 @@
             panelHeader.Dock = DockStyle.Top;
             panelHeader.Location = new Point(0, 0);
             panelHeader.Name = "panelHeader";
-            panelHeader.Size = new Size(800, 70);
+            panelHeader.Size = new Size(1101, 70);
             panelHeader.TabIndex = 0;
             // 
             // lblTitle
@@ -100,15 +104,37 @@
             btnRepSobra.Text = "Sobra de Peça\n製品残り";
             btnRepSobra.Click += btnRepSobra_Click;
             // 
+            // btnRepFollowReport
+            // 
+            btnRepFollowReport.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnRepFollowReport.Location = new Point(800, 100);
+            btnRepFollowReport.Name = "btnRepFollowReport";
+            btnRepFollowReport.Size = new Size(200, 80);
+            btnRepFollowReport.TabIndex = 5;
+            btnRepFollowReport.Text = "Relatorio Follow\nフォローレポート";
+            btnRepFollowReport.Click += btnRepFollowReport_Click;
+            // 
+            // btnRepFollowChart
+            // 
+            btnRepFollowChart.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnRepFollowChart.Location = new Point(800, 220);
+            btnRepFollowChart.Name = "btnRepFollowChart";
+            btnRepFollowChart.Size = new Size(200, 80);
+            btnRepFollowChart.TabIndex = 5;
+            btnRepFollowChart.Text = "Grafico Follow\nフォローグラフ";
+            btnRepFollowChart.Click += btnRepFollowChart_Click;
+            // 
             // FormReports
             // 
-            ClientSize = new Size(800, 350);
+            ClientSize = new Size(1101, 350);
             Controls.Add(panelHeader);
             Controls.Add(btnRepOperadores);
             Controls.Add(btnRepPR);
             Controls.Add(btnRepCL);
             Controls.Add(btnRepHikitsugui);
             Controls.Add(btnRepSobra);
+            Controls.Add(btnRepFollowReport);
+            Controls.Add(btnRepFollowChart);
             Name = "FormReports";
             Text = "Relatórios";
             panelHeader.ResumeLayout(false);

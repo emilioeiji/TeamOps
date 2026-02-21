@@ -76,5 +76,36 @@ namespace TeamOps.UI.Forms
             MessageBox.Show("Abrir relatório de Sobra de Peça...");
             // TODO: FormReportSobra
         }
+
+        private void btnRepFollowReport_Click(object sender, EventArgs e)
+        {
+            var followRepo = new FollowUpRepository(Program.ConnectionFactory);
+            var opRepo = new OperatorRepository(Program.ConnectionFactory);
+            var shiftRepo = new ShiftRepository(Program.ConnectionFactory);
+            var sectorRepo = new SectorRepository(Program.ConnectionFactory);
+            var reasonRepo = new FollowUpReasonRepository(Program.ConnectionFactory);
+            var typeRepo = new FollowUpTypeRepository(Program.ConnectionFactory);
+            var equipRepo = new EquipmentRepository(Program.ConnectionFactory);
+            var localRepo = new LocalRepository(Program.ConnectionFactory);
+
+            using var form = new FormFollowReport(
+                followRepo,
+                opRepo,
+                shiftRepo,
+                sectorRepo,
+                reasonRepo,
+                typeRepo,
+                equipRepo,
+                localRepo
+            );
+
+            form.ShowDialog();
+        }
+
+        private void btnRepFollowChart_Click(object sender, EventArgs e)
+        {
+            using var form = new FormFollowChart();
+            form.ShowDialog();
+        }
     }
 }
