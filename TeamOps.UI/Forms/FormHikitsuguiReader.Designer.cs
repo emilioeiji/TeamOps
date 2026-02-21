@@ -4,22 +4,24 @@
     {
         private System.ComponentModel.IContainer components = null;
 
-        private System.Windows.Forms.Panel panelHeader;
-        private System.Windows.Forms.Label lblTitle;
+        private Panel panelHeader;
+        private Label lblTitle;
 
-        private System.Windows.Forms.Label lblDataInicio;
-        private System.Windows.Forms.Label lblDataFim;
-        private System.Windows.Forms.Label lblSetor;
-        private System.Windows.Forms.Label lblLider;
+        private Label lblDataInicio;
+        private Label lblDataFim;
 
-        private System.Windows.Forms.DateTimePicker dtpInicio;
-        private System.Windows.Forms.DateTimePicker dtpFim;
-        private System.Windows.Forms.ComboBox cmbSetor;
-        private System.Windows.Forms.ComboBox cmbLider;
+        private DateTimePicker dtpInicio;
+        private DateTimePicker dtpFim;
 
-        private System.Windows.Forms.Button btnBuscar;
+        private RadioButton rbOperadores;
+        private RadioButton rbLideres;
 
-        private System.Windows.Forms.DataGridView dgvLeituras;
+        private Button btnBuscar;
+
+        private DataGridView dgvLeituras;
+
+        private ComboBox cmbTurno;
+        private Label lblTurno;
 
         protected override void Dispose(bool disposing)
         {
@@ -34,14 +36,14 @@
             lblTitle = new Label();
             lblDataInicio = new Label();
             lblDataFim = new Label();
-            lblSetor = new Label();
-            lblLider = new Label();
             dtpInicio = new DateTimePicker();
             dtpFim = new DateTimePicker();
-            cmbSetor = new ComboBox();
-            cmbLider = new ComboBox();
+            rbOperadores = new RadioButton();
+            rbLideres = new RadioButton();
             btnBuscar = new Button();
             dgvLeituras = new DataGridView();
+            lblTurno = new Label();
+            cmbTurno = new ComboBox();
             panelHeader.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvLeituras).BeginInit();
             SuspendLayout();
@@ -54,7 +56,7 @@
             panelHeader.Location = new Point(0, 0);
             panelHeader.Name = "panelHeader";
             panelHeader.Size = new Size(1070, 70);
-            panelHeader.TabIndex = 0;
+            panelHeader.TabIndex = 2;
             // 
             // lblTitle
             // 
@@ -64,39 +66,23 @@
             lblTitle.Name = "lblTitle";
             lblTitle.Size = new Size(100, 23);
             lblTitle.TabIndex = 0;
-            lblTitle.Text = "Leituras de Hikitsugui – 引継ぎ閲覧";
+            lblTitle.Text = "Leitura de Hikitsugui – 引継ぎ閲覧";
             // 
             // lblDataInicio
             // 
-            lblDataInicio.Location = new Point(20, 85);
+            lblDataInicio.Location = new Point(20, 87);
             lblDataInicio.Name = "lblDataInicio";
             lblDataInicio.Size = new Size(100, 23);
-            lblDataInicio.TabIndex = 1;
+            lblDataInicio.TabIndex = 3;
             lblDataInicio.Text = "Data Início:";
             // 
             // lblDataFim
             // 
-            lblDataFim.Location = new Point(250, 85);
+            lblDataFim.Location = new Point(250, 87);
             lblDataFim.Name = "lblDataFim";
             lblDataFim.Size = new Size(100, 23);
-            lblDataFim.TabIndex = 2;
+            lblDataFim.TabIndex = 4;
             lblDataFim.Text = "Data Fim:";
-            // 
-            // lblSetor
-            // 
-            lblSetor.Location = new Point(480, 85);
-            lblSetor.Name = "lblSetor";
-            lblSetor.Size = new Size(100, 23);
-            lblSetor.TabIndex = 3;
-            lblSetor.Text = "Setor:";
-            // 
-            // lblLider
-            // 
-            lblLider.Location = new Point(700, 85);
-            lblLider.Name = "lblLider";
-            lblLider.Size = new Size(100, 23);
-            lblLider.TabIndex = 4;
-            lblLider.Text = "Líder:";
             // 
             // dtpInicio
             // 
@@ -114,21 +100,21 @@
             dtpFim.Size = new Size(200, 23);
             dtpFim.TabIndex = 6;
             // 
-            // cmbSetor
+            // rbOperadores
             // 
-            cmbSetor.DropDownStyle = ComboBoxStyle.DropDownList;
-            cmbSetor.Location = new Point(480, 110);
-            cmbSetor.Name = "cmbSetor";
-            cmbSetor.Size = new Size(200, 23);
-            cmbSetor.TabIndex = 7;
+            rbOperadores.Location = new Point(474, 110);
+            rbOperadores.Name = "rbOperadores";
+            rbOperadores.Size = new Size(87, 24);
+            rbOperadores.TabIndex = 7;
+            rbOperadores.Text = "Operadores";
             // 
-            // cmbLider
+            // rbLideres
             // 
-            cmbLider.DropDownStyle = ComboBoxStyle.DropDownList;
-            cmbLider.Location = new Point(700, 110);
-            cmbLider.Name = "cmbLider";
-            cmbLider.Size = new Size(200, 23);
-            cmbLider.TabIndex = 8;
+            rbLideres.Location = new Point(566, 110);
+            rbLideres.Name = "rbLideres";
+            rbLideres.Size = new Size(65, 24);
+            rbLideres.TabIndex = 8;
+            rbLideres.Text = "Líderes";
             // 
             // btnBuscar
             // 
@@ -150,24 +136,40 @@
             dgvLeituras.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dgvLeituras.Size = new Size(1020, 350);
             dgvLeituras.TabIndex = 10;
+            dgvLeituras.CellDoubleClick += dgvLeituras_CellDoubleClick;
+            // 
+            // lblTurno
+            // 
+            lblTurno.Location = new Point(648, 87);
+            lblTurno.Name = "lblTurno";
+            lblTurno.Size = new Size(100, 23);
+            lblTurno.TabIndex = 0;
+            lblTurno.Text = "Turno:";
+            // 
+            // cmbTurno
+            // 
+            cmbTurno.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbTurno.Location = new Point(648, 110);
+            cmbTurno.Name = "cmbTurno";
+            cmbTurno.Size = new Size(120, 23);
             // 
             // FormHikitsuguiReader
             // 
             ClientSize = new Size(1070, 540);
+            Controls.Add(lblTurno);
+            Controls.Add(cmbTurno);
             Controls.Add(panelHeader);
             Controls.Add(lblDataInicio);
             Controls.Add(lblDataFim);
-            Controls.Add(lblSetor);
-            Controls.Add(lblLider);
             Controls.Add(dtpInicio);
             Controls.Add(dtpFim);
-            Controls.Add(cmbSetor);
-            Controls.Add(cmbLider);
+            Controls.Add(rbOperadores);
+            Controls.Add(rbLideres);
             Controls.Add(btnBuscar);
             Controls.Add(dgvLeituras);
             Name = "FormHikitsuguiReader";
             StartPosition = FormStartPosition.CenterParent;
-            Text = "Leituras de Hikitsugui";
+            Text = "Leitura de Hikitsugui";
             panelHeader.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)dgvLeituras).EndInit();
             ResumeLayout(false);

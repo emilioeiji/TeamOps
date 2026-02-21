@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Windows.Forms;
 using TeamOps.Core.Entities;
+using TeamOps.Data.Db;
+using TeamOps.Data.Repositories;
 
 namespace TeamOps.UI.Forms
 {
@@ -8,15 +10,27 @@ namespace TeamOps.UI.Forms
     {
         private readonly Operator _currentOperator;
         private readonly Shift _currentShift;
+        private readonly HikitsuguiRepository _hikRepo;
+        private readonly HikitsuguiReadRepository _readRepo;
+        private readonly OperatorRepository _opRepo;
+        private readonly SqliteConnectionFactory _factory;
 
-        public FormReports(Operator currentOperator, Shift currentShift)
+        public FormReports(
+            Operator currentOperator,
+            Shift currentShift,
+            HikitsuguiRepository hikRepo,
+            HikitsuguiReadRepository readRepo,
+            OperatorRepository opRepo,
+            SqliteConnectionFactory factory)
         {
             InitializeComponent();
+
             _currentOperator = currentOperator;
             _currentShift = currentShift;
-
-            // Se quiser exibir algo no header futuramente, já está preparado
-            // lblUser.Text = $"{_currentOperator.NameRomanji} - {_currentShift.NamePt}";
+            _hikRepo = hikRepo;
+            _readRepo = readRepo;
+            _opRepo = opRepo;
+            _factory = factory;
         }
 
         // ---------------------------------------------------------
@@ -43,8 +57,16 @@ namespace TeamOps.UI.Forms
 
         private void btnRepHikitsugui_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Abrir relatório de Hikitsugui...");
-            // TODO: FormReportHikitsugui
+            var shiftRepo = new ShiftRepository(Program.ConnectionFactory);
+
+            using var form = new FormHikitsuguiReader(
+                _hikRepo,
+                _readRepo,
+                _opRepo,
+                shiftRepo
+            );
+
+            form.ShowDialog();
         }
 
         private void btnRepSobra_Click(object sender, EventArgs e)

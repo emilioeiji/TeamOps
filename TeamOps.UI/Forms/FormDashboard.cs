@@ -4,8 +4,9 @@
 using System;
 using System.Windows.Forms;
 using TeamOps.Core.Common;
-using TeamOps.Data.Repositories;
 using TeamOps.Core.Entities;
+using TeamOps.Data.Db;
+using TeamOps.Data.Repositories;
 using AppUser = TeamOps.Core.Entities.User;
 
 namespace TeamOps.UI.Forms
@@ -27,6 +28,10 @@ namespace TeamOps.UI.Forms
         private readonly CLRepository _clRepo;
         private readonly CLCategoriaRepository _clCategoriaRepo;
         private readonly CLPrioridadeRepository _clPrioridadeRepo;
+        private readonly HikitsuguiRepository _hikRepo;
+        private readonly HikitsuguiReadRepository _readRepo;
+        private readonly OperatorRepository _opRepo;
+        private readonly SqliteConnectionFactory _factory;
 
         public FormDashboard(AppUser user)
         {
@@ -55,7 +60,9 @@ namespace TeamOps.UI.Forms
             _clRepo = new CLRepository(Program.ConnectionFactory);
             _clCategoriaRepo = new CLCategoriaRepository(Program.ConnectionFactory);
             _clPrioridadeRepo = new CLPrioridadeRepository(Program.ConnectionFactory);
-
+            _hikRepo = new HikitsuguiRepository(Program.ConnectionFactory);
+            _readRepo = new HikitsuguiReadRepository(Program.ConnectionFactory);
+            _opRepo = new OperatorRepository(Program.ConnectionFactory);
 
             lblUser.Text = $"Bem-vindo, {_user.Name}";
             lblDate.Text = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
@@ -109,7 +116,15 @@ namespace TeamOps.UI.Forms
                 return;
             }
 
-            using var form = new FormReports(_currentOperator, _currentShift); 
+            var form = new FormReports(
+                _currentOperator,
+                _currentShift,
+                _hikRepo,
+                _readRepo,
+                _opRepo,
+                _factory
+            );
+
             form.ShowDialog();
         }
 

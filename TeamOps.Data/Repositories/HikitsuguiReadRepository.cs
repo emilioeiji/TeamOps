@@ -161,6 +161,33 @@ namespace TeamOps.Data.Repositories
             return list;
         }
 
+        public List<HikitsuguiRead> GetByPeriod(DateTime start, DateTime end)
+        {
+            var list = new List<HikitsuguiRead>();
+
+            using var conn = _factory.CreateOpenConnection();
+            using var cmd = conn.CreateCommand();
+
+            cmd.CommandText = @"
+        SELECT HikitsuguiId, ReaderCodigoFJ
+        FROM HikitsuguiReads
+        WHERE ReadAt >= @start AND ReadAt < @end";
+
+            cmd.Parameters.AddWithValue("@start", start);
+            cmd.Parameters.AddWithValue("@end", end);
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add(new HikitsuguiRead
+                {
+                    HikitsuguiId = reader.GetInt32(0),
+                    ReaderCodigoFJ = reader.GetString(1)
+                });
+            }
+
+            return list;
+        }
 
         // ---------------------------------------------------------
         // DELETE
