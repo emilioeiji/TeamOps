@@ -23,6 +23,9 @@
         private ComboBox cmbTurno;
         private Label lblTurno;
 
+        private ComboBox cmbSector;
+        private Label lblSector;
+
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -44,6 +47,8 @@
             dgvLeituras = new DataGridView();
             lblTurno = new Label();
             cmbTurno = new ComboBox();
+            lblSector = new Label();
+            cmbSector = new ComboBox();
             panelHeader.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dgvLeituras).BeginInit();
             SuspendLayout();
@@ -137,10 +142,11 @@
             dgvLeituras.Size = new Size(1020, 350);
             dgvLeituras.TabIndex = 10;
             dgvLeituras.CellDoubleClick += dgvLeituras_CellDoubleClick;
+            dgvLeituras.CellPainting += dgvLeituras_CellPainting;
             // 
             // lblTurno
             // 
-            lblTurno.Location = new Point(648, 87);
+            lblTurno.Location = new Point(644, 87);
             lblTurno.Name = "lblTurno";
             lblTurno.Size = new Size(100, 23);
             lblTurno.TabIndex = 0;
@@ -149,15 +155,34 @@
             // cmbTurno
             // 
             cmbTurno.DropDownStyle = ComboBoxStyle.DropDownList;
-            cmbTurno.Location = new Point(648, 110);
+            cmbTurno.Location = new Point(644, 110);
             cmbTurno.Name = "cmbTurno";
             cmbTurno.Size = new Size(120, 23);
+            cmbTurno.TabIndex = 1;
+            // 
+            // lblSector
+            // 
+            lblSector.Location = new Point(785, 87);
+            lblSector.Name = "lblSector";
+            lblSector.Size = new Size(100, 23);
+            lblSector.TabIndex = 0;
+            lblSector.Text = "Setor:";
+            // 
+            // cmbSector
+            // 
+            cmbSector.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbSector.Location = new Point(785, 110);
+            cmbSector.Name = "cmbSector";
+            cmbSector.Size = new Size(120, 23);
+            cmbSector.TabIndex = 2;
             // 
             // FormHikitsuguiReader
             // 
             ClientSize = new Size(1070, 540);
             Controls.Add(lblTurno);
             Controls.Add(cmbTurno);
+            Controls.Add(lblSector);
+            Controls.Add(cmbSector);
             Controls.Add(panelHeader);
             Controls.Add(lblDataInicio);
             Controls.Add(lblDataFim);

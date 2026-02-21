@@ -14,12 +14,14 @@ namespace TeamOps.UI.Forms
         private readonly HikitsuguiReadRepository _readRepo;
         private readonly OperatorRepository _opRepo;
         private readonly ShiftRepository _shiftRepo;
+        private readonly SectorRepository _sectorRepo;
 
         public FormHikitsuguiReader(
             HikitsuguiRepository hikRepo,
             HikitsuguiReadRepository readRepo,
             OperatorRepository opRepo,
-            ShiftRepository shiftRepo)
+            ShiftRepository shiftRepo,
+            SectorRepository sectorRepo)
         {
             InitializeComponent();
 
@@ -27,6 +29,7 @@ namespace TeamOps.UI.Forms
             _readRepo = readRepo;
             _opRepo = opRepo;
             _shiftRepo = shiftRepo;
+            _sectorRepo = sectorRepo;
 
             rbOperadores.Checked = true;
 
@@ -49,6 +52,23 @@ namespace TeamOps.UI.Forms
             cmbTurno.DisplayMember = "NamePt";
             cmbTurno.ValueMember = "Id";
             cmbTurno.SelectedIndex = 0;
+
+            // Carrega setores reais do banco
+            var sectors = _sectorRepo.GetAll().ToList();
+
+            // Adiciona o setor artificial "Todos"
+            sectors.Insert(0, new Sector
+            {
+                Id = 0,
+                NamePt = "Todos",
+                NameJp = "すべて"
+            });
+
+            // Preenche o ComboBox
+            cmbSector.DataSource = sectors;
+            cmbSector.DisplayMember = "NamePt";
+            cmbSector.ValueMember = "Id";
+            cmbSector.SelectedIndex = 0;
         }
 
         private void btnBuscar_Click(object sender, EventArgs e)
@@ -65,6 +85,8 @@ namespace TeamOps.UI.Forms
             DateTime end = dtpFim.Value.Date.AddDays(1);
 
             bool isLeader = rbLideres.Checked;
+
+            int setorSelecionado = (int)cmbSector.SelectedValue;
 
             // ---------------------------------------------------------
             // 1) Buscar operadores ou líderes (para montar colunas)
@@ -85,6 +107,31 @@ namespace TeamOps.UI.Forms
                     .ToList();
             }
 
+            if (setorSelecionado != 0)
+            {
+                if (setorSelecionado == 1)
+                {
+                    // Setor 1 → pega 1 + 3
+                    operadores = operadores
+                        .Where(o => o.SectorId == 1 || o.SectorId == 3)
+                        .ToList();
+                }
+                else if (setorSelecionado == 2)
+                {
+                    // Setor 2 → pega 2 + 3
+                    operadores = operadores
+                        .Where(o => o.SectorId == 2 || o.SectorId == 3)
+                        .ToList();
+                }
+                else if (setorSelecionado == 3)
+                {
+                    // Setor 3 → só 3
+                    operadores = operadores
+                        .Where(o => o.SectorId == 3)
+                        .ToList();
+                }
+            }
+
             // ---------------------------------------------------------
             // 1.2) Ordenar depois do filtro
             // ---------------------------------------------------------
@@ -94,13 +141,44 @@ namespace TeamOps.UI.Forms
                 .ThenBy(o => o.NameRomanji)
                 .ToList();
 
+            operadores = operadores
+                .OrderBy(o => isLeader ? o.GroupId : o.SectorId)
+                .ThenBy(o => o.GroupId)
+                .ThenBy(o => o.NameRomanji)
+                .ToList();
+
             // ---------------------------------------------------------
             // 2) Buscar Hikitsugui do período (SEM filtro de turno)
             // ---------------------------------------------------------
-            var hiks = _hikRepo.GetAll()
+            var hiks = _hikRepo.GetAllWithSector()
                 .Where(h => h.Date >= start && h.Date < end)
                 .OrderByDescending(h => h.Date)
                 .ToList();
+
+            if (setorSelecionado != 0)
+            {
+                if (setorSelecionado == 1)
+                {
+                    // Setor 1 → pega 1 + 3
+                    hiks = hiks
+                        .Where(h => h.SectorId == 1 || h.SectorId == 3)
+                        .ToList();
+                }
+                else if (setorSelecionado == 2)
+                {
+                    // Setor 2 → pega 2 + 3
+                    hiks = hiks
+                        .Where(h => h.SectorId == 2 || h.SectorId == 3)
+                        .ToList();
+                }
+                else if (setorSelecionado == 3)
+                {
+                    // Setor 3 → só 3
+                    hiks = hiks
+                        .Where(h => h.SectorId == 3)
+                        .ToList();
+                }
+            }
 
             // ---------------------------------------------------------
             // 3) Buscar leituras
@@ -119,8 +197,11 @@ namespace TeamOps.UI.Forms
             foreach (var op in operadores)
             {
                 dgvLeituras.Columns.Add(op.CodigoFJ, op.NameRomanji);
-                dgvLeituras.Columns[op.CodigoFJ].Width = 60;
+                dgvLeituras.Columns[op.CodigoFJ].Width = 30;
             }
+            
+            dgvLeituras.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing;
+            dgvLeituras.ColumnHeadersHeight = 120; // ajuste fino se quiser
 
             // ---------------------------------------------------------
             // 5) Preencher linhas
@@ -180,6 +261,43 @@ namespace TeamOps.UI.Forms
             using var rtb = new RichTextBox();
             rtb.Rtf = rtf;
             return rtb.Text;
+        }
+        private void dgvLeituras_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+        {
+            // Apenas cabeçalho de coluna
+            if (e.RowIndex == -1 && e.ColumnIndex >= 0)
+            {
+                e.PaintBackground(e.CellBounds, false);
+
+                string texto = e.FormattedValue?.ToString() ?? "";
+                if (string.IsNullOrWhiteSpace(texto))
+                {
+                    e.Handled = true;
+                    return;
+                }
+
+                using (var format = new StringFormat())
+                {
+                    format.Alignment = StringAlignment.Center;
+                    format.LineAlignment = StringAlignment.Center;
+
+                    // Rotaciona o texto 90 graus
+                    e.Graphics.TranslateTransform(e.CellBounds.Left, e.CellBounds.Bottom);
+                    e.Graphics.RotateTransform(-90);
+
+                    e.Graphics.DrawString(
+                        texto,
+                        e.CellStyle.Font,
+                        new SolidBrush(e.CellStyle.ForeColor),
+                        new Rectangle(0, 0, e.CellBounds.Height, e.CellBounds.Width),
+                        format
+                    );
+
+                    e.Graphics.ResetTransform();
+                }
+
+                e.Handled = true;
+            }
         }
     }
 }

@@ -147,6 +147,43 @@ namespace TeamOps.Data.Repositories
             return list;
         }
 
+        public List<Hikitsugui> GetAllWithSector()
+        {
+            var list = new List<Hikitsugui>();
+
+            using var conn = _factory.CreateOpenConnection();
+            using var cmd = conn.CreateCommand();
+
+            cmd.CommandText = @"
+                SELECT Id, Date, ShiftId, CreatorCodigoFJ, CategoryId,
+                       EquipmentId, LocalId, SectorId, ForLeaders, ForOperators,
+                       Description, AttachmentPath
+                FROM Hikitsugui
+                ORDER BY Date DESC";
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add(new Hikitsugui
+                {
+                    Id = reader.GetInt32(0),
+                    Date = reader.GetDateTime(1),
+                    ShiftId = reader.GetInt32(2),
+                    CreatorCodigoFJ = reader.GetString(3),
+                    CategoryId = reader.GetInt32(4),
+                    EquipmentId = reader.IsDBNull(5) ? null : reader.GetInt32(5),
+                    LocalId = reader.IsDBNull(6) ? null : reader.GetInt32(6),
+                    SectorId = reader.IsDBNull(7) ? null : reader.GetInt32(7),
+                    ForLeaders = reader.GetInt32(8) == 1,
+                    ForOperators = reader.GetInt32(9) == 1,
+                    Description = reader.GetString(10),
+                    AttachmentPath = reader.IsDBNull(11) ? null : reader.GetString(11)
+                });
+            }
+
+            return list;
+        }
+
         // ---------------------------------------------------------
         // GET FOR LEADER (Filtro por data + ForLeaders/ForOperators)
         // ---------------------------------------------------------

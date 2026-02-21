@@ -58,12 +58,14 @@ namespace TeamOps.UI.Forms
         private void btnRepHikitsugui_Click(object sender, EventArgs e)
         {
             var shiftRepo = new ShiftRepository(Program.ConnectionFactory);
+            var sectorRepo = new SectorRepository(Program.ConnectionFactory);
 
             using var form = new FormHikitsuguiReader(
                 _hikRepo,
                 _readRepo,
                 _opRepo,
-                shiftRepo
+                shiftRepo,
+                sectorRepo
             );
 
             form.ShowDialog();
