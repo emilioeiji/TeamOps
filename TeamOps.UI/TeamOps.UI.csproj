@@ -7,6 +7,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>TeamOps_Gear_Big.ico</ApplicationIcon>
+    <Platforms>AnyCPU;x86</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
@@ -34,6 +35,7 @@
 
   <ItemGroup>
     <Folder Include="Controls\" />
+    <Folder Include="Properties\PublishProfiles\" />
     <Folder Include="Resources\" />
   </ItemGroup>
 
