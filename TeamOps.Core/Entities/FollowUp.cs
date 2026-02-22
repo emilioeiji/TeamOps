@@ -32,5 +32,15 @@
         public string? EquipmentName { get; set; }
         public string? SectorName { get; set; }
         public string? ShiftName { get; set; }
+
+        public string OperatorNamePt { get; set; } = "";
+        public string OperatorNameJp { get; set; } = "";
+
+        public string ExecutorNamePt { get; set; } = "";
+        public string ExecutorNameJp { get; set; } = "";
+
+        public string WitnessNamePt { get; set; } = "";
+        public string WitnessNameJp { get; set; } = "";
+
     }
 }

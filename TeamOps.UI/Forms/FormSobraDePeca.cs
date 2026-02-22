@@ -12,7 +12,7 @@ namespace TeamOps.UI.Forms
         private readonly ShiftRepository _shiftRepo;
         private readonly OperatorRepository _opRepo;
         private readonly ShainRepository _shainRepo;
-        private readonly EquipmentRepository _equipRepo;
+        private readonly MachineRepository _equipRepo;
 
         private Operator? _operadorLogado;
 
@@ -24,7 +24,7 @@ namespace TeamOps.UI.Forms
             _shiftRepo = new ShiftRepository(Program.ConnectionFactory);
             _opRepo = new OperatorRepository(Program.ConnectionFactory);
             _shainRepo = new ShainRepository(Program.ConnectionFactory);
-            _equipRepo = new EquipmentRepository(Program.ConnectionFactory);
+            _equipRepo = new MachineRepository(Program.ConnectionFactory);
 
             _operadorLogado = _opRepo.GetByCodigoFJ(Program.CurrentUser.Login);
 
@@ -120,7 +120,7 @@ namespace TeamOps.UI.Forms
                 x.Tanjuu,
                 x.PesoGramas,
                 x.Quantidade,
-                Maquina = _equipRepo.GetById(x.EquipmentId)?.NamePt ?? "",
+                Maquina = _equipRepo.GetById(x.MachineId)?.NamePt ?? "",
                 Shain = _shainRepo.GetById(x.ShainId)?.NameRomanji ?? "",
                 x.Observacao,
                 x.Lider,
@@ -161,7 +161,7 @@ namespace TeamOps.UI.Forms
                 Tanjuu = decimal.Parse(txtTanjuu.Text),
                 PesoGramas = decimal.Parse(txtPeso.Text),
                 Quantidade = decimal.Parse(txtQuantidade.Text),
-                EquipmentId = (int)cmbMaquina.SelectedValue,
+                MachineId = (int)cmbMaquina.SelectedValue,
                 ShainId = (int)cmbShain.SelectedValue,
                 Observacao = string.IsNullOrWhiteSpace(txtObservacao.Text)
                                 ? null

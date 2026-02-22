@@ -169,6 +169,8 @@ namespace TeamOps.UI.Forms
         {
             if (!ValidarCampos())
                 return;
+            
+            AjustarFonteAntesDeSalvar();
 
             var entity = MontarEntidade();
 
@@ -307,6 +309,29 @@ namespace TeamOps.UI.Forms
                 Description = txtDescricao?.Rtf ?? "",
                 AttachmentPath = null // agora sempre null
             };
+        }
+
+        private void AjustarFonteAntesDeSalvar()
+        {
+            txtDescricao.SuspendLayout();
+
+            for (int i = 0; i < txtDescricao.TextLength; i++)
+            {
+                txtDescricao.Select(i, 1);
+
+                var f = txtDescricao.SelectionFont;
+                if (f != null)
+                {
+                    txtDescricao.SelectionFont = new Font(
+                        f.FontFamily,
+                        18,             // tamanho desejado
+                        f.Style         // preserva negrito/itálico/sublinhado
+                    );
+                }
+            }
+
+            txtDescricao.Select(0, 0);
+            txtDescricao.ResumeLayout();
         }
 
         // ---------------------------------------------------------

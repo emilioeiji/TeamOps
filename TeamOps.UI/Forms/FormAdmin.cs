@@ -47,6 +47,13 @@ namespace TeamOps.UI.Forms
             form.ShowDialog();
         }
 
+        private void btnMachines_Click(object sender, EventArgs e)
+        {
+            var form = new FormLookup<Machine>(
+                new MachineRepository(Program.ConnectionFactory), "Machines");
+            form.ShowDialog();
+        }
+
         private void btnFollowUpReasons_Click(object sender, EventArgs e)
         {
             var form = new FormLookup<FollowUpReason>(

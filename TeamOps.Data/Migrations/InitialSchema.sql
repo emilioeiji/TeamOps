@@ -200,7 +200,7 @@ CREATE TABLE IF NOT EXISTS SobraDePeca (
     Tanjuu REAL NOT NULL,
     PesoGramas REAL NOT NULL,
     Quantidade REAL NOT NULL,
-    EquipmentId INTEGER NOT NULL,
+    MachineId INTEGER NOT NULL,
     ShainId INTEGER NOT NULL,
     Observacao TEXT,
     Lider TEXT NOT NULL,
@@ -208,7 +208,7 @@ CREATE TABLE IF NOT EXISTS SobraDePeca (
 
     FOREIGN KEY (TurnoId) REFERENCES Shifts(Id),
     FOREIGN KEY (OperadorId) REFERENCES Operators(CodigoFJ),
-    FOREIGN KEY (EquipmentId) REFERENCES Equipments(Id),
+    FOREIGN KEY (MachineId) REFERENCES Machines(Id),
     FOREIGN KEY (ShainId) REFERENCES Shain(Id)
 );
 
@@ -297,6 +297,12 @@ CREATE TABLE IF NOT EXISTS CL (
     FOREIGN KEY (CategoriaId) REFERENCES PRCategorias(Id),
     FOREIGN KEY (PrioridadeId) REFERENCES PRPrioridades(Id),
     FOREIGN KEY (AutorCodigoFJ) REFERENCES Operators(CodigoFJ)
+);
+
+CREATE TABLE IF NOT EXISTS Machines (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    NamePt TEXT NOT NULL,
+    NameJp TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS IX_Operators_BadgeCode ON Operators(BadgeCode);

@@ -53,6 +53,7 @@ namespace TeamOps.UI.Forms
             dgvFollow.ReadOnly = true;
             dgvFollow.AllowUserToAddRows = false;
             dgvFollow.AllowUserToDeleteRows = false;
+            dgvFollow.CellDoubleClick += dgvFollow_CellDoubleClick;
         }
 
         // ---------------------------------------------------------
@@ -158,6 +159,9 @@ namespace TeamOps.UI.Forms
             // ---------------------------------------------------------
             // COLUNAS DO GRID
             // ---------------------------------------------------------
+            dgvFollow.Columns.Add("Id", "Id");
+            dgvFollow.Columns["Id"].Visible = false;
+
             dgvFollow.Columns.Add("Date", "Data");
             dgvFollow.Columns.Add("Shift", "Turno");
             dgvFollow.Columns.Add("Operator", "Operador");
@@ -180,6 +184,7 @@ namespace TeamOps.UI.Forms
             foreach (var f in list)
             {
                 dgvFollow.Rows.Add(
+                    f.Id,
                     f.Date.ToString("yyyy/MM/dd HH:mm"),
                     f.ShiftName,
                     f.OperatorName,
@@ -194,6 +199,63 @@ namespace TeamOps.UI.Forms
                     f.Guidance
                 );
             }
+        }
+        // ---------------------------------------------------------
+        // EXPORTAR
+        // ---------------------------------------------------------
+        private void btnExportar_Click(object sender, EventArgs e)
+        {
+            if (dgvFollow.Rows.Count == 0)
+            {
+                MessageBox.Show("Nenhum dado para exportar.");
+                return;
+            }
+
+            using var sfd = new SaveFileDialog
+            {
+                Filter = "Excel (*.xlsx)|*.xlsx",
+                FileName = "FollowReport.xlsx"
+            };
+
+            if (sfd.ShowDialog() != DialogResult.OK)
+                return;
+
+            var wb = new ClosedXML.Excel.XLWorkbook();
+            var ws = wb.Worksheets.Add("FollowReport");
+
+            // Cabeçalhos
+            for (int c = 0; c < dgvFollow.Columns.Count; c++)
+                ws.Cell(1, c + 1).Value = dgvFollow.Columns[c].HeaderText;
+
+            // Linhas
+            for (int r = 0; r < dgvFollow.Rows.Count; r++)
+            {
+                for (int c = 0; c < dgvFollow.Columns.Count; c++)
+                {
+                    ws.Cell(r + 2, c + 1).Value =
+                        dgvFollow.Rows[r].Cells[c].Value?.ToString() ?? "";
+                }
+            }
+
+            ws.Columns().AdjustToContents();
+            wb.SaveAs(sfd.FileName);
+
+            MessageBox.Show("Arquivo XLSX exportado com sucesso.");
+        }
+        private void dgvFollow_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0)
+                return;
+
+            int followId = Convert.ToInt32(dgvFollow.Rows[e.RowIndex].Cells["Id"].Value);
+
+            using var frm = new FormFollowSingleReport(
+                followId,
+                _followRepo,
+                _opRepo
+            );
+
+            frm.ShowDialog();
         }
     }
 }

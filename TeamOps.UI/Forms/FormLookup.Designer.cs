@@ -71,18 +71,21 @@
             // 
             this.btnAdd.Text = "Adicionar";
             this.btnAdd.Location = new System.Drawing.Point(320, 237);
+            this.btnAdd.Size = new System.Drawing.Size(120, 30);
             this.btnAdd.Click += new System.EventHandler(this.btnAdd_Click);
             // 
             // btnUpdate
             // 
             this.btnUpdate.Text = "Atualizar";
             this.btnUpdate.Location = new System.Drawing.Point(320, 277);
+            this.btnUpdate.Size = new System.Drawing.Size(120, 30);
             this.btnUpdate.Click += new System.EventHandler(this.btnUpdate_Click);
             // 
             // btnDelete
             // 
             this.btnDelete.Text = "Excluir";
             this.btnDelete.Location = new System.Drawing.Point(320, 317);
+            this.btnDelete.Size = new System.Drawing.Size(120, 30);
             this.btnDelete.Click += new System.EventHandler(this.btnDelete_Click);
             // 
             // FormLookup

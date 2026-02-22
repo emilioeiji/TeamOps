@@ -22,7 +22,7 @@ namespace TeamOps.Data.Repositories
 
             cmd.CommandText = @"
                 INSERT INTO SobraDePeca 
-                (Data, TurnoId, Lote, OperadorId, Tanjuu, PesoGramas, Quantidade, EquipmentId, ShainId, Observacao, Lider, CreatedAt)
+                (Data, TurnoId, Lote, OperadorId, Tanjuu, PesoGramas, Quantidade, MachineId, ShainId, Observacao, Lider, CreatedAt)
                 VALUES 
                 (@data, @turno, @lote, @op, @tanjuu, @peso, @qtd, @equipId, @shain, @obs, @lider, @created);
                 SELECT last_insert_rowid();";
@@ -34,7 +34,7 @@ namespace TeamOps.Data.Repositories
             cmd.Parameters.AddWithValue("@tanjuu", s.Tanjuu);
             cmd.Parameters.AddWithValue("@peso", s.PesoGramas);
             cmd.Parameters.AddWithValue("@qtd", s.Quantidade);
-            cmd.Parameters.AddWithValue("@equipId", s.EquipmentId);
+            cmd.Parameters.AddWithValue("@equipId", s.MachineId);
             cmd.Parameters.AddWithValue("@shain", s.ShainId);
             cmd.Parameters.AddWithValue("@obs", (object?)s.Observacao ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@lider", s.Lider);
@@ -51,7 +51,7 @@ namespace TeamOps.Data.Repositories
             using var cmd = conn.CreateCommand();
 
             cmd.CommandText = @"
-                SELECT Id, Data, TurnoId, Lote, OperadorId, Tanjuu, PesoGramas, Quantidade, EquipmentId, ShainId, Observacao, Lider, CreatedAt
+                SELECT Id, Data, TurnoId, Lote, OperadorId, Tanjuu, PesoGramas, Quantidade, MachineId, ShainId, Observacao, Lider, CreatedAt
                 FROM SobraDePeca
                 ORDER BY Data DESC";
 
@@ -68,7 +68,7 @@ namespace TeamOps.Data.Repositories
                     Tanjuu = reader.GetDecimal(5),
                     PesoGramas = reader.GetDecimal(6),
                     Quantidade = reader.GetDecimal(7),
-                    EquipmentId = reader.GetInt32(8),
+                    MachineId = reader.GetInt32(8),
                     ShainId = reader.GetInt32(9),
                     Observacao = reader.IsDBNull(10) ? null : reader.GetString(10),
                     Lider = reader.GetString(11),

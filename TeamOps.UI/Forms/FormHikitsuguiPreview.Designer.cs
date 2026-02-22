@@ -14,31 +14,45 @@ partial class FormHikitsuguiPreview
         rtb = new RichTextBox();
         lblAnexos = new Label();
         lstAnexos = new ListBox();
-
         SuspendLayout();
-
-        // Preview
+        // 
+        // rtb
+        // 
         rtb.Dock = DockStyle.Top;
+        rtb.Location = new Point(0, 0);
+        rtb.Name = "rtb";
         rtb.ReadOnly = true;
-        rtb.Height = 350;
-
-        // Label
-        lblAnexos.Text = "Anexos:";
+        rtb.Size = new Size(1585, 896);
+        rtb.TabIndex = 2;
+        rtb.Text = "";
+        // 
+        // lblAnexos
+        // 
         lblAnexos.Dock = DockStyle.Top;
-        lblAnexos.Height = 25;
+        lblAnexos.Location = new Point(0, 896);
+        lblAnexos.Name = "lblAnexos";
         lblAnexos.Padding = new Padding(5, 5, 0, 0);
-
-        // ListBox
+        lblAnexos.Size = new Size(1585, 25);
+        lblAnexos.TabIndex = 1;
+        lblAnexos.Text = "Anexos:";
+        // 
+        // lstAnexos
+        // 
         lstAnexos.Dock = DockStyle.Fill;
+        lstAnexos.Location = new Point(0, 921);
+        lstAnexos.Name = "lstAnexos";
+        lstAnexos.Size = new Size(1585, 97);
+        lstAnexos.TabIndex = 0;
         lstAnexos.DoubleClick += lstAnexos_DoubleClick;
-
-        // Form
-        ClientSize = new Size(600, 500);
+        // 
+        // FormHikitsuguiPreview
+        // 
+        ClientSize = new Size(1585, 1018);
         Controls.Add(lstAnexos);
         Controls.Add(lblAnexos);
         Controls.Add(rtb);
+        Name = "FormHikitsuguiPreview";
         Text = "Visualizar Hikitsugui";
-
         ResumeLayout(false);
     }
 }

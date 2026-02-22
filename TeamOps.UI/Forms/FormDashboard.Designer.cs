@@ -45,6 +45,9 @@
             btnSobraDePeca = new Button();
             btnPR = new Button();
             btnCL = new Button();
+            panel1 = new Panel();
+            panel2 = new Panel();
+            panel3 = new Panel();
             panelHeader.SuspendLayout();
             panelFooter.SuspendLayout();
             SuspendLayout();
@@ -85,7 +88,7 @@
             // btnOperadores
             // 
             btnOperadores.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnOperadores.Location = new Point(560, 220);
+            btnOperadores.Location = new Point(320, 320);
             btnOperadores.Name = "btnOperadores";
             btnOperadores.Size = new Size(200, 80);
             btnOperadores.TabIndex = 2;
@@ -95,7 +98,7 @@
             // btnAtribuir
             // 
             btnAtribuir.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnAtribuir.Location = new Point(80, 320);
+            btnAtribuir.Location = new Point(811, 320);
             btnAtribuir.Name = "btnAtribuir";
             btnAtribuir.Size = new Size(200, 80);
             btnAtribuir.TabIndex = 7;
@@ -105,7 +108,7 @@
             // btnRelatorios
             // 
             btnRelatorios.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnRelatorios.Location = new Point(560, 120);
+            btnRelatorios.Location = new Point(80, 320);
             btnRelatorios.Name = "btnRelatorios";
             btnRelatorios.Size = new Size(200, 80);
             btnRelatorios.TabIndex = 3;
@@ -115,7 +118,7 @@
             // btnAdmin
             // 
             btnAdmin.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnAdmin.Location = new Point(80, 220);
+            btnAdmin.Location = new Point(811, 120);
             btnAdmin.Name = "btnAdmin";
             btnAdmin.Size = new Size(200, 80);
             btnAdmin.TabIndex = 5;
@@ -125,7 +128,7 @@
             // btnAccessControl
             // 
             btnAccessControl.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnAccessControl.Location = new Point(320, 220);
+            btnAccessControl.Location = new Point(811, 220);
             btnAccessControl.Name = "btnAccessControl";
             btnAccessControl.Size = new Size(200, 80);
             btnAccessControl.TabIndex = 6;
@@ -145,7 +148,7 @@
             // btnHikitsugui
             // 
             btnHikitsugui.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnHikitsugui.Location = new Point(800, 120);
+            btnHikitsugui.Location = new Point(320, 120);
             btnHikitsugui.Name = "btnHikitsugui";
             btnHikitsugui.Size = new Size(200, 80);
             btnHikitsugui.TabIndex = 8;
@@ -157,7 +160,7 @@
             panelFooter.BackColor = Color.LightGray;
             panelFooter.Controls.Add(lblDate);
             panelFooter.Dock = DockStyle.Bottom;
-            panelFooter.Location = new Point(0, 410);
+            panelFooter.Location = new Point(0, 454);
             panelFooter.Name = "panelFooter";
             panelFooter.Size = new Size(1077, 40);
             panelFooter.TabIndex = 9;
@@ -175,7 +178,7 @@
             // btnHikitsuguiLeaderRead
             // 
             btnHikitsuguiLeaderRead.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnHikitsuguiLeaderRead.Location = new Point(800, 220);
+            btnHikitsuguiLeaderRead.Location = new Point(320, 220);
             btnHikitsuguiLeaderRead.Name = "btnHikitsuguiLeaderRead";
             btnHikitsuguiLeaderRead.Size = new Size(200, 80);
             btnHikitsuguiLeaderRead.TabIndex = 0;
@@ -185,7 +188,7 @@
             // btnSobraDePeca
             // 
             btnSobraDePeca.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnSobraDePeca.Location = new Point(320, 120);
+            btnSobraDePeca.Location = new Point(80, 220);
             btnSobraDePeca.Name = "btnSobraDePeca";
             btnSobraDePeca.Size = new Size(200, 80);
             btnSobraDePeca.TabIndex = 0;
@@ -195,7 +198,7 @@
             // btnPR
             // 
             btnPR.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnPR.Location = new Point(560, 320);
+            btnPR.Location = new Point(568, 120);
             btnPR.Name = "btnPR";
             btnPR.Size = new Size(200, 80);
             btnPR.TabIndex = 0;
@@ -205,16 +208,43 @@
             // btnCL
             // 
             btnCL.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnCL.Location = new Point(800, 320);
+            btnCL.Location = new Point(568, 220);
             btnCL.Name = "btnCL";
             btnCL.Size = new Size(200, 80);
             btnCL.TabIndex = 0;
             btnCL.Text = "CL\r\nCL文書";
             btnCL.Click += btnCL_Click;
             // 
+            // panel1
+            // 
+            panel1.AccessibleName = "teste";
+            panel1.BorderStyle = BorderStyle.Fixed3D;
+            panel1.Location = new Point(800, 99);
+            panel1.Name = "panel1";
+            panel1.Size = new Size(223, 310);
+            panel1.TabIndex = 10;
+            // 
+            // panel2
+            // 
+            panel2.AccessibleName = "teste";
+            panel2.BorderStyle = BorderStyle.Fixed3D;
+            panel2.Location = new Point(68, 99);
+            panel2.Name = "panel2";
+            panel2.Size = new Size(464, 310);
+            panel2.TabIndex = 11;
+            // 
+            // panel3
+            // 
+            panel3.AccessibleName = "teste";
+            panel3.BorderStyle = BorderStyle.Fixed3D;
+            panel3.Location = new Point(556, 99);
+            panel3.Name = "panel3";
+            panel3.Size = new Size(223, 310);
+            panel3.TabIndex = 11;
+            // 
             // FormDashboard
             // 
-            ClientSize = new Size(1077, 450);
+            ClientSize = new Size(1077, 494);
             Controls.Add(btnSobraDePeca);
             Controls.Add(btnHikitsuguiLeaderRead);
             Controls.Add(btnHikitsugui);
@@ -228,6 +258,9 @@
             Controls.Add(btnAdmin);
             Controls.Add(btnPR);
             Controls.Add(btnCL);
+            Controls.Add(panel1);
+            Controls.Add(panel2);
+            Controls.Add(panel3);
             Name = "FormDashboard";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "TeamOps - Dashboard";
@@ -237,5 +270,8 @@
             panelFooter.PerformLayout();
             ResumeLayout(false);
         }
+        private Panel panel1;
+        private Panel panel2;
+        private Panel panel3;
     }
 }

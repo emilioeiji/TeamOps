@@ -57,7 +57,7 @@
             lblShift.AutoSize = true;
             lblShift.Location = new Point(20, 20);
             lblShift.Name = "lblShift";
-            lblShift.Size = new Size(76, 15);
+            lblShift.Size = new Size(91, 20);
             lblShift.TabIndex = 1;
             lblShift.Text = "Turno / シフト";
             // 
@@ -66,7 +66,7 @@
             txtShift.Location = new Point(169, 17);
             txtShift.Name = "txtShift";
             txtShift.ReadOnly = true;
-            txtShift.Size = new Size(250, 23);
+            txtShift.Size = new Size(250, 27);
             txtShift.TabIndex = 2;
             // 
             // lblCreator
@@ -74,7 +74,7 @@
             lblCreator.AutoSize = true;
             lblCreator.Location = new Point(20, 55);
             lblCreator.Name = "lblCreator";
-            lblCreator.Size = new Size(93, 15);
+            lblCreator.Size = new Size(117, 20);
             lblCreator.TabIndex = 3;
             lblCreator.Text = "Criador / 作成者";
             // 
@@ -83,7 +83,7 @@
             txtCreator.Location = new Point(169, 52);
             txtCreator.Name = "txtCreator";
             txtCreator.ReadOnly = true;
-            txtCreator.Size = new Size(250, 23);
+            txtCreator.Size = new Size(250, 27);
             txtCreator.TabIndex = 4;
             // 
             // lblDate
@@ -91,7 +91,7 @@
             lblDate.AutoSize = true;
             lblDate.Location = new Point(20, 90);
             lblDate.Name = "lblDate";
-            lblDate.Size = new Size(66, 15);
+            lblDate.Size = new Size(85, 20);
             lblDate.TabIndex = 5;
             lblDate.Text = "Data / 日付";
             // 
@@ -100,7 +100,7 @@
             txtDate.Location = new Point(169, 87);
             txtDate.Name = "txtDate";
             txtDate.ReadOnly = true;
-            txtDate.Size = new Size(250, 23);
+            txtDate.Size = new Size(250, 27);
             txtDate.TabIndex = 6;
             // 
             // lblCategoria
@@ -108,7 +108,7 @@
             lblCategoria.AutoSize = true;
             lblCategoria.Location = new Point(20, 135);
             lblCategoria.Name = "lblCategoria";
-            lblCategoria.Size = new Size(103, 15);
+            lblCategoria.Size = new Size(131, 20);
             lblCategoria.TabIndex = 7;
             lblCategoria.Text = "Categoria / カテゴリ";
             // 
@@ -117,7 +117,7 @@
             cboCategoria.DropDownStyle = ComboBoxStyle.DropDownList;
             cboCategoria.Location = new Point(169, 132);
             cboCategoria.Name = "cboCategoria";
-            cboCategoria.Size = new Size(250, 23);
+            cboCategoria.Size = new Size(250, 28);
             cboCategoria.TabIndex = 8;
             // 
             // lblEquipamento
@@ -125,7 +125,7 @@
             lblEquipamento.AutoSize = true;
             lblEquipamento.Location = new Point(20, 170);
             lblEquipamento.Name = "lblEquipamento";
-            lblEquipamento.Size = new Size(113, 15);
+            lblEquipamento.Size = new Size(142, 20);
             lblEquipamento.TabIndex = 9;
             lblEquipamento.Text = "Equipamento / 設備";
             // 
@@ -134,7 +134,7 @@
             cboEquipamento.DropDownStyle = ComboBoxStyle.DropDownList;
             cboEquipamento.Location = new Point(169, 167);
             cboEquipamento.Name = "cboEquipamento";
-            cboEquipamento.Size = new Size(250, 23);
+            cboEquipamento.Size = new Size(250, 28);
             cboEquipamento.TabIndex = 10;
             // 
             // lblLocal
@@ -142,7 +142,7 @@
             lblLocal.AutoSize = true;
             lblLocal.Location = new Point(20, 205);
             lblLocal.Name = "lblLocal";
-            lblLocal.Size = new Size(70, 15);
+            lblLocal.Size = new Size(88, 20);
             lblLocal.TabIndex = 11;
             lblLocal.Text = "Local / 場所";
             // 
@@ -151,7 +151,7 @@
             cboLocal.DropDownStyle = ComboBoxStyle.DropDownList;
             cboLocal.Location = new Point(169, 202);
             cboLocal.Name = "cboLocal";
-            cboLocal.Size = new Size(250, 23);
+            cboLocal.Size = new Size(250, 28);
             cboLocal.TabIndex = 12;
             // 
             // chkLider
@@ -159,7 +159,7 @@
             chkLider.AutoSize = true;
             chkLider.Location = new Point(169, 280);
             chkLider.Name = "chkLider";
-            chkLider.Size = new Size(133, 19);
+            chkLider.Size = new Size(165, 24);
             chkLider.TabIndex = 13;
             chkLider.Text = "Para líderes / リーダー";
             // 
@@ -168,7 +168,7 @@
             chkOperador.AutoSize = true;
             chkOperador.Location = new Point(169, 305);
             chkOperador.Name = "chkOperador";
-            chkOperador.Size = new Size(158, 19);
+            chkOperador.Size = new Size(199, 24);
             chkOperador.TabIndex = 14;
             chkOperador.Text = "Para operadores / 作業者";
             // 
@@ -177,7 +177,7 @@
             lblDescricao.AutoSize = true;
             lblDescricao.Location = new Point(20, 370);
             lblDescricao.Name = "lblDescricao";
-            lblDescricao.Size = new Size(93, 15);
+            lblDescricao.Size = new Size(118, 20);
             lblDescricao.TabIndex = 15;
             lblDescricao.Text = "Descrição / 内容";
             // 
@@ -187,31 +187,31 @@
             txtDescricao.Location = new Point(169, 367);
             txtDescricao.Name = "txtDescricao";
             txtDescricao.ScrollBars = RichTextBoxScrollBars.Vertical;
-            txtDescricao.Size = new Size(350, 120);
+            txtDescricao.Size = new Size(922, 486);
             txtDescricao.TabIndex = 16;
             txtDescricao.Text = "";
             // 
             // lblAnexoTitulo
             // 
             lblAnexoTitulo.AutoSize = true;
-            lblAnexoTitulo.Location = new Point(20, 505);
+            lblAnexoTitulo.Location = new Point(447, 20);
             lblAnexoTitulo.Name = "lblAnexoTitulo";
-            lblAnexoTitulo.Size = new Size(109, 15);
+            lblAnexoTitulo.Size = new Size(137, 20);
             lblAnexoTitulo.TabIndex = 17;
             lblAnexoTitulo.Text = "Anexo / 添付ファイル";
             // 
             // lblAnexo
             // 
             lblAnexo.AutoSize = true;
-            lblAnexo.Location = new Point(169, 505);
+            lblAnexo.Location = new Point(447, 55);
             lblAnexo.Name = "lblAnexo";
-            lblAnexo.Size = new Size(103, 15);
+            lblAnexo.Size = new Size(126, 20);
             lblAnexo.TabIndex = 18;
             lblAnexo.Text = "(nenhum arquivo)";
             // 
             // btnSelecionarAnexo
             // 
-            btnSelecionarAnexo.Location = new Point(169, 530);
+            btnSelecionarAnexo.Location = new Point(447, 87);
             btnSelecionarAnexo.Name = "btnSelecionarAnexo";
             btnSelecionarAnexo.Size = new Size(150, 30);
             btnSelecionarAnexo.TabIndex = 19;
@@ -219,7 +219,7 @@
             // 
             // btnSalvar
             // 
-            btnSalvar.Location = new Point(269, 691);
+            btnSalvar.Location = new Point(169, 868);
             btnSalvar.Name = "btnSalvar";
             btnSalvar.Size = new Size(120, 35);
             btnSalvar.TabIndex = 20;
@@ -227,7 +227,7 @@
             // 
             // btnCancelar
             // 
-            btnCancelar.Location = new Point(399, 691);
+            btnCancelar.Location = new Point(299, 868);
             btnCancelar.Name = "btnCancelar";
             btnCancelar.Size = new Size(120, 35);
             btnCancelar.TabIndex = 21;
@@ -237,9 +237,9 @@
             // 
             lstAnexos.Font = new Font("Segoe UI", 10F);
             lstAnexos.HorizontalScrollbar = true;
-            lstAnexos.Location = new Point(169, 566);
+            lstAnexos.Location = new Point(447, 132);
             lstAnexos.Name = "lstAnexos";
-            lstAnexos.Size = new Size(350, 106);
+            lstAnexos.Size = new Size(350, 119);
             lstAnexos.TabIndex = 0;
             // 
             // btnBold
@@ -292,7 +292,7 @@
             lblSector.AutoSize = true;
             lblSector.Location = new Point(20, 240);
             lblSector.Name = "lblSector";
-            lblSector.Size = new Size(81, 15);
+            lblSector.Size = new Size(102, 20);
             lblSector.TabIndex = 13;
             lblSector.Text = "Setor / セクター";
             // 
@@ -301,12 +301,12 @@
             cboSector.DropDownStyle = ComboBoxStyle.DropDownList;
             cboSector.Location = new Point(169, 237);
             cboSector.Name = "cboSector";
-            cboSector.Size = new Size(250, 23);
+            cboSector.Size = new Size(250, 28);
             cboSector.TabIndex = 14;
             // 
             // FormHikitsugui
             // 
-            ClientSize = new Size(540, 743);
+            ClientSize = new Size(1103, 915);
             Controls.Add(btnBold);
             Controls.Add(btnItalic);
             Controls.Add(btnUnderline);

@@ -41,7 +41,7 @@
             panelHeader.Dock = DockStyle.Top;
             panelHeader.Location = new Point(0, 0);
             panelHeader.Name = "panelHeader";
-            panelHeader.Size = new Size(1101, 70);
+            panelHeader.Size = new Size(798, 70);
             panelHeader.TabIndex = 0;
             // 
             // lblTitle
@@ -50,14 +50,14 @@
             lblTitle.ForeColor = Color.White;
             lblTitle.Location = new Point(20, 20);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(230, 33);
+            lblTitle.Size = new Size(275, 33);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Relatórios – レポート";
             // 
             // btnRepOperadores
             // 
             btnRepOperadores.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnRepOperadores.Location = new Point(50, 100);
+            btnRepOperadores.Location = new Point(550, 220);
             btnRepOperadores.Name = "btnRepOperadores";
             btnRepOperadores.Size = new Size(200, 80);
             btnRepOperadores.TabIndex = 1;
@@ -77,7 +77,7 @@
             // btnRepCL
             // 
             btnRepCL.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnRepCL.Location = new Point(550, 100);
+            btnRepCL.Location = new Point(300, 220);
             btnRepCL.Name = "btnRepCL";
             btnRepCL.Size = new Size(200, 80);
             btnRepCL.TabIndex = 3;
@@ -87,7 +87,7 @@
             // btnRepHikitsugui
             // 
             btnRepHikitsugui.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnRepHikitsugui.Location = new Point(50, 220);
+            btnRepHikitsugui.Location = new Point(50, 100);
             btnRepHikitsugui.Name = "btnRepHikitsugui";
             btnRepHikitsugui.Size = new Size(200, 80);
             btnRepHikitsugui.TabIndex = 4;
@@ -97,7 +97,7 @@
             // btnRepSobra
             // 
             btnRepSobra.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnRepSobra.Location = new Point(300, 220);
+            btnRepSobra.Location = new Point(550, 100);
             btnRepSobra.Name = "btnRepSobra";
             btnRepSobra.Size = new Size(200, 80);
             btnRepSobra.TabIndex = 5;
@@ -107,7 +107,7 @@
             // btnRepFollowReport
             // 
             btnRepFollowReport.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnRepFollowReport.Location = new Point(800, 100);
+            btnRepFollowReport.Location = new Point(50, 220);
             btnRepFollowReport.Name = "btnRepFollowReport";
             btnRepFollowReport.Size = new Size(200, 80);
             btnRepFollowReport.TabIndex = 5;
@@ -117,7 +117,7 @@
             // btnRepFollowChart
             // 
             btnRepFollowChart.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnRepFollowChart.Location = new Point(800, 220);
+            btnRepFollowChart.Location = new Point(50, 341);
             btnRepFollowChart.Name = "btnRepFollowChart";
             btnRepFollowChart.Size = new Size(200, 80);
             btnRepFollowChart.TabIndex = 5;
@@ -126,7 +126,7 @@
             // 
             // FormReports
             // 
-            ClientSize = new Size(1101, 350);
+            ClientSize = new Size(798, 454);
             Controls.Add(panelHeader);
             Controls.Add(btnRepOperadores);
             Controls.Add(btnRepPR);

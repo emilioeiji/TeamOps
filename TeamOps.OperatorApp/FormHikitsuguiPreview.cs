@@ -21,6 +21,7 @@ public partial class FormHikitsuguiPreview : Form
         else
             rtb.Text = hik.Description;
 
+        // AjustarFontePreview();
         CarregarAnexos();
     }
     private void CarregarAnexos()
@@ -77,5 +78,17 @@ public partial class FormHikitsuguiPreview : Form
             return false;
 
         return text.TrimStart().StartsWith(@"{\rtf");
+    }
+
+    private void AjustarFontePreview()
+    {
+        // Evita flicker e mantém formatação
+        rtb.SuspendLayout();
+
+        rtb.SelectAll();
+        rtb.SelectionFont = new Font("Yu Gothic UI", 18);
+        rtb.DeselectAll();
+
+        rtb.ResumeLayout();
     }
 }

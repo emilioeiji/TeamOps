@@ -178,6 +178,186 @@ namespace TeamOps.Data.Repositories
 
             return list;
         }
+        public List<FollowUp> GetByOperatorWithJoins(string codigoFJ)
+        {
+            var list = new List<FollowUp>();
+
+            using var conn = _factory.CreateOpenConnection();
+            using var cmd = conn.CreateCommand();
+
+            cmd.CommandText = @"
+        SELECT 
+            f.Id,
+            f.Date,
+            f.ShiftId,
+            f.OperatorCodigoFJ,
+            f.ExecutorCodigoFJ,
+            f.WitnessCodigoFJ,
+            f.ReasonId,
+            f.TypeId,
+            f.LocalId,
+            f.EquipmentId,
+            f.SectorId,
+            f.Description,
+            f.Guidance,
+
+            -- JOINs
+            s.NamePt AS ShiftName,
+
+            op.NamePt AS OperatorNamePt,
+            op.NameJp AS OperatorNameJp,
+
+            ex.NamePt AS ExecutorNamePt,
+            ex.NameJp AS ExecutorNameJp,
+
+            wi.NamePt AS WitnessNamePt,
+            wi.NameJp AS WitnessNameJp,
+
+            r.NamePt AS ReasonName,
+            t.NamePt AS TypeName,
+            l.NamePt AS LocalName,
+            e.NamePt AS EquipmentName,
+            sc.NamePt AS SectorName
+
+        FROM FollowUps f
+        LEFT JOIN Shifts s ON s.Id = f.ShiftId
+        LEFT JOIN Operators op ON op.CodigoFJ = f.OperatorCodigoFJ
+        LEFT JOIN Operators ex ON ex.CodigoFJ = f.ExecutorCodigoFJ
+        LEFT JOIN Operators wi ON wi.CodigoFJ = f.WitnessCodigoFJ
+        LEFT JOIN FollowUpReasons r ON r.Id = f.ReasonId
+        LEFT JOIN FollowUpTypes t ON t.Id = f.TypeId
+        LEFT JOIN Locals l ON l.Id = f.LocalId
+        LEFT JOIN Equipments e ON e.Id = f.EquipmentId
+        LEFT JOIN Sectors sc ON sc.Id = f.SectorId
+
+        WHERE f.OperatorCodigoFJ = @op
+        ORDER BY f.Date DESC";
+
+            cmd.Parameters.AddWithValue("@op", codigoFJ);
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add(new FollowUp
+                {
+                    Id = reader.GetInt32(0),
+                    Date = reader.GetDateTime(1),
+                    ShiftId = reader.GetInt32(2),
+                    OperatorCodigoFJ = reader.GetString(3),
+                    ExecutorCodigoFJ = reader.GetString(4),
+                    WitnessCodigoFJ = reader.IsDBNull(5) ? null : reader.GetString(5),
+                    ReasonId = reader.GetInt32(6),
+                    TypeId = reader.GetInt32(7),
+                    LocalId = reader.GetInt32(8),
+                    EquipmentId = reader.GetInt32(9),
+                    SectorId = reader.GetInt32(10),
+                    Description = reader.GetString(11),
+                    Guidance = reader.GetString(12),
+
+                    ShiftName = reader.IsDBNull(13) ? "" : reader.GetString(13),
+
+                    OperatorNamePt = reader.IsDBNull(14) ? "" : reader.GetString(14),
+                    OperatorNameJp = reader.IsDBNull(15) ? "" : reader.GetString(15),
+
+                    ExecutorNamePt = reader.IsDBNull(16) ? "" : reader.GetString(16),
+                    ExecutorNameJp = reader.IsDBNull(17) ? "" : reader.GetString(17),
+
+                    WitnessNamePt = reader.IsDBNull(18) ? "" : reader.GetString(18),
+                    WitnessNameJp = reader.IsDBNull(19) ? "" : reader.GetString(19),
+
+                    ReasonName = reader.IsDBNull(20) ? "" : reader.GetString(20),
+                    TypeName = reader.IsDBNull(21) ? "" : reader.GetString(21),
+                    LocalName = reader.IsDBNull(22) ? "" : reader.GetString(22),
+                    EquipmentName = reader.IsDBNull(23) ? "" : reader.GetString(23),
+                    SectorName = reader.IsDBNull(24) ? "" : reader.GetString(24)
+                });
+            }
+
+            return list;
+        }
+
+        public FollowUp? GetByIdWithJoins(int id)
+        {
+            using var conn = _factory.CreateOpenConnection();
+            using var cmd = conn.CreateCommand();
+
+            cmd.CommandText = @"
+                SELECT 
+                    f.Id,
+                    f.Date,
+                    f.ShiftId,
+                    f.OperatorCodigoFJ,
+                    f.ExecutorCodigoFJ,
+                    f.WitnessCodigoFJ,
+                    f.ReasonId,
+                    f.TypeId,
+                    f.LocalId,
+                    f.EquipmentId,
+                    f.SectorId,
+                    f.Description,
+                    f.Guidance,
+                
+                    s.NamePt AS ShiftNamePt,
+                    s.NameJp AS ShiftNameJp,
+                
+                    r.NamePt AS ReasonNamePt,
+                    r.NameJp AS ReasonNameJp,
+                
+                    t.NamePt AS TypeNamePt,
+                    t.NameJp AS TypeNameJp,
+                
+                    l.NamePt AS LocalNamePt,
+                    l.NameJp AS LocalNameJp,
+                
+                    e.NamePt AS EquipmentNamePt,
+                    e.NameJp AS EquipmentNameJp,
+                
+                    sc.NamePt AS SectorNamePt,
+                    sc.NameJp AS SectorNameJp
+                
+                FROM FollowUps f
+                LEFT JOIN Shifts s ON s.Id = f.ShiftId
+                LEFT JOIN FollowUpReasons r ON r.Id = f.ReasonId
+                LEFT JOIN FollowUpTypes t ON t.Id = f.TypeId
+                LEFT JOIN Locals l ON l.Id = f.LocalId
+                LEFT JOIN Equipments e ON e.Id = f.EquipmentId
+                LEFT JOIN Sectors sc ON sc.Id = f.SectorId
+                
+                WHERE f.Id = @id";
+
+            cmd.Parameters.AddWithValue("@id", id);
+
+            using var reader = cmd.ExecuteReader();
+            if (!reader.Read())
+                return null;
+
+            string Safe(int index) =>
+                reader.IsDBNull(index) ? "" : reader.GetString(index);
+
+            return new FollowUp
+            {
+                Id = reader.GetInt32(0),
+                Date = reader.GetDateTime(1),
+                ShiftId = reader.GetInt32(2),
+                OperatorCodigoFJ = reader.GetString(3),
+                ExecutorCodigoFJ = reader.GetString(4),
+                WitnessCodigoFJ = reader.IsDBNull(5) ? null : reader.GetString(5),
+                ReasonId = reader.GetInt32(6),
+                TypeId = reader.GetInt32(7),
+                LocalId = reader.GetInt32(8),
+                EquipmentId = reader.GetInt32(9),
+                SectorId = reader.GetInt32(10),
+                Description = reader.GetString(11),
+                Guidance = reader.GetString(12),
+
+                ShiftName = $"{Safe(13)} / {Safe(14)}",
+                ReasonName = $"{Safe(15)} / {Safe(16)}",
+                TypeName = $"{Safe(17)} / {Safe(18)}",
+                LocalName = $"{Safe(19)} / {Safe(20)}",
+                EquipmentName = $"{Safe(21)} / {Safe(22)}",
+                SectorName = $"{Safe(23)} / {Safe(24)}"
+            };
+        }
 
         // ---------------------------------------------------------
         // DELETE

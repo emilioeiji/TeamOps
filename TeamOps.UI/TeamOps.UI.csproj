@@ -11,10 +11,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Assets\logo_rodape.png" />
+    <None Remove="Assets\Publish.txt" />
     <None Remove="Logo.png" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Assets\logo_rodape.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Publish.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Logo.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

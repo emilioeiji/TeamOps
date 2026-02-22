@@ -9,7 +9,7 @@
         public decimal Tanjuu { get; set; }
         public decimal PesoGramas { get; set; }
         public decimal Quantidade { get; set; }
-        public int EquipmentId { get; set; }
+        public int MachineId { get; set; }
         public int ShainId { get; set; }
         public string Lote { get; set; }
         public string Observacao { get; set; }
