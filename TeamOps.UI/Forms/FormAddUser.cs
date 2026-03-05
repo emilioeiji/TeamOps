@@ -42,6 +42,7 @@ namespace TeamOps.UI.Forms
             var user = new User
             {
                 Login = login,
+                CodigoFJ = login,
                 Name = name,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
                 AccessLevel = level,

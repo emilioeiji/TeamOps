@@ -37,6 +37,9 @@
         private System.Windows.Forms.Label lblLider;
         private System.Windows.Forms.TextBox txtLider;
 
+        private System.Windows.Forms.Label lblItem;
+        private System.Windows.Forms.TextBox txtItem;
+
         private System.Windows.Forms.Button btnSalvar;
         private System.Windows.Forms.Button btnCancelar;
 
@@ -71,6 +74,8 @@
             cmbShain = new ComboBox();
             lblObservacao = new Label();
             txtObservacao = new TextBox();
+            lblItem = new Label();
+            txtItem = new TextBox();
             lblLider = new Label();
             txtLider = new TextBox();
             btnSalvar = new Button();
@@ -222,7 +227,7 @@
             // 
             // lblObservacao
             // 
-            lblObservacao.Location = new Point(20, 380);
+            lblObservacao.Location = new Point(20, 420);
             lblObservacao.Name = "lblObservacao";
             lblObservacao.Size = new Size(100, 23);
             lblObservacao.TabIndex = 19;
@@ -230,15 +235,30 @@
             // 
             // txtObservacao
             // 
-            txtObservacao.Location = new Point(140, 377);
+            txtObservacao.Location = new Point(140, 420);
             txtObservacao.Multiline = true;
             txtObservacao.Name = "txtObservacao";
             txtObservacao.Size = new Size(871, 60);
-            txtObservacao.TabIndex = 20;
+            txtObservacao.TabIndex = 24;
+            // 
+            // lblItem
+            // 
+            lblItem.Location = new Point(20, 380);
+            lblItem.Name = "lblItem";
+            lblItem.Size = new Size(100, 23);
+            lblItem.TabIndex = 21;
+            lblItem.Text = "Item / 品目:";
+            // 
+            // txtItem
+            // 
+            txtItem.Location = new Point(140, 380);
+            txtItem.Name = "txtItem";
+            txtItem.Size = new Size(200, 27);
+            txtItem.TabIndex = 20;
             // 
             // lblLider
             // 
-            lblLider.Location = new Point(691, 457);
+            lblLider.Location = new Point(358, 380);
             lblLider.Name = "lblLider";
             lblLider.Size = new Size(100, 23);
             lblLider.TabIndex = 21;
@@ -246,7 +266,7 @@
             // 
             // txtLider
             // 
-            txtLider.Location = new Point(811, 454);
+            txtLider.Location = new Point(478, 380);
             txtLider.Name = "txtLider";
             txtLider.ReadOnly = true;
             txtLider.Size = new Size(200, 27);
@@ -254,7 +274,7 @@
             // 
             // btnSalvar
             // 
-            btnSalvar.Location = new Point(801, 487);
+            btnSalvar.Location = new Point(801, 486);
             btnSalvar.Name = "btnSalvar";
             btnSalvar.Size = new Size(100, 35);
             btnSalvar.TabIndex = 23;
@@ -263,7 +283,7 @@
             // 
             // btnCancelar
             // 
-            btnCancelar.Location = new Point(911, 487);
+            btnCancelar.Location = new Point(911, 486);
             btnCancelar.Name = "btnCancelar";
             btnCancelar.Size = new Size(100, 35);
             btnCancelar.TabIndex = 24;
@@ -284,7 +304,7 @@
             // 
             // FormSobraDePeca
             // 
-            ClientSize = new Size(1022, 534);
+            ClientSize = new Size(1022, 531);
             Controls.Add(dgvSobra);
             Controls.Add(lblData);
             Controls.Add(dtpData);
@@ -306,6 +326,8 @@
             Controls.Add(cmbShain);
             Controls.Add(lblObservacao);
             Controls.Add(txtObservacao);
+            Controls.Add(lblItem);
+            Controls.Add(txtItem);
             Controls.Add(lblLider);
             Controls.Add(txtLider);
             Controls.Add(btnSalvar);

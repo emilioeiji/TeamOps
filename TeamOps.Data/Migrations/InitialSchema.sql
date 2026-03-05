@@ -205,6 +205,7 @@ CREATE TABLE IF NOT EXISTS SobraDePeca (
     Observacao TEXT,
     Lider TEXT NOT NULL,
     CreatedAt TEXT NOT NULL,
+    Item TEXT NOT NULL,
 
     FOREIGN KEY (TurnoId) REFERENCES Shifts(Id),
     FOREIGN KEY (OperadorId) REFERENCES Operators(CodigoFJ),

@@ -12,3 +12,5 @@ git remote set-url origin https://<usuario>:<token>@github.com/emilioeiji/TeamOp
 
 
 
+cd C:\Users\jg-naoe5\source\repos\TeamOps\TeamOps.UI
+dotnet publish -c Release -r win-x86 --self-contained true /p:PublishSingleFile=true

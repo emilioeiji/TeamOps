@@ -22,9 +22,9 @@ namespace TeamOps.Data.Repositories
 
             cmd.CommandText = @"
                 INSERT INTO SobraDePeca 
-                (Data, TurnoId, Lote, OperadorId, Tanjuu, PesoGramas, Quantidade, MachineId, ShainId, Observacao, Lider, CreatedAt)
+                (Data, TurnoId, Lote, OperadorId, Tanjuu, PesoGramas, Quantidade, MachineId, ShainId, Observacao, Lider, CreatedAt, Item)
                 VALUES 
-                (@data, @turno, @lote, @op, @tanjuu, @peso, @qtd, @equipId, @shain, @obs, @lider, @created);
+                (@data, @turno, @lote, @op, @tanjuu, @peso, @qtd, @equipId, @shain, @obs, @lider, @created, @item);
                 SELECT last_insert_rowid();";
 
             cmd.Parameters.AddWithValue("@data", s.Data);
@@ -39,6 +39,7 @@ namespace TeamOps.Data.Repositories
             cmd.Parameters.AddWithValue("@obs", (object?)s.Observacao ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@lider", s.Lider);
             cmd.Parameters.AddWithValue("@created", s.CreatedAt);
+            cmd.Parameters.AddWithValue("@item", s.Item);
 
             return (int)(long)cmd.ExecuteScalar()!;
         }
@@ -51,7 +52,7 @@ namespace TeamOps.Data.Repositories
             using var cmd = conn.CreateCommand();
 
             cmd.CommandText = @"
-                SELECT Id, Data, TurnoId, Lote, OperadorId, Tanjuu, PesoGramas, Quantidade, MachineId, ShainId, Observacao, Lider, CreatedAt
+                SELECT Id, Data, TurnoId, Lote, OperadorId, Tanjuu, PesoGramas, Quantidade, MachineId, ShainId, Observacao, Lider, CreatedAt, Item
                 FROM SobraDePeca
                 ORDER BY Data DESC";
 
@@ -72,7 +73,8 @@ namespace TeamOps.Data.Repositories
                     ShainId = reader.GetInt32(9),
                     Observacao = reader.IsDBNull(10) ? null : reader.GetString(10),
                     Lider = reader.GetString(11),
-                    CreatedAt = reader.GetDateTime(12)
+                    CreatedAt = reader.GetDateTime(12),
+                    Item = reader.GetString(13)
                 });
             }
 

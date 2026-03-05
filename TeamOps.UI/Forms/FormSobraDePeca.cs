@@ -124,7 +124,8 @@ namespace TeamOps.UI.Forms
                 Shain = _shainRepo.GetById(x.ShainId)?.NameRomanji ?? "",
                 x.Observacao,
                 x.Lider,
-                x.CreatedAt
+                x.CreatedAt,
+                x.Item
             }).ToList();
 
             dgvSobra.DataSource = view;
@@ -144,6 +145,7 @@ namespace TeamOps.UI.Forms
                 dgvSobra.Columns["Observacao"].Width = 200;
                 dgvSobra.Columns["Lider"].Width = 120;
                 dgvSobra.Columns["CreatedAt"].Width = 120;
+                dgvSobra.Columns["Item"].Width = 120;
             }
         }
 
@@ -167,7 +169,8 @@ namespace TeamOps.UI.Forms
                                 ? null
                                 : txtObservacao.Text.Trim(),
                 Lider = _operadorLogado?.NameRomanji ?? "N/A",
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.Now,
+                Item = txtItem.Text.Trim()
             };
 
             _sobraRepo.Add(sobra);
@@ -219,6 +222,12 @@ namespace TeamOps.UI.Forms
                 MessageBox.Show("Selecione um shain.");
                 return false;
             }
+            
+            if (string.IsNullOrWhiteSpace(txtItem.Text))
+            {
+                MessageBox.Show("Informe o item.");
+                return false;
+            }
 
             return true;
         }
@@ -236,6 +245,7 @@ namespace TeamOps.UI.Forms
             txtPeso.Clear();
             txtQuantidade.Clear();
             txtObservacao.Clear();
+            txtItem.Clear();
 
             if (cmbMaquina.Items.Count > 0)
                 cmbMaquina.SelectedIndex = -1;
