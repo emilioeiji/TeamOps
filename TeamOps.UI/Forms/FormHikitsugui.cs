@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Windows.Forms;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Repositories;
+using System.Configuration;
 
 namespace TeamOps.UI.Forms
 {
@@ -339,7 +340,8 @@ namespace TeamOps.UI.Forms
         // ---------------------------------------------------------
         private string SalvarAnexo(int id, string origem)
         {
-            string pastaBase = @"C:\TeamOps\Anexo\Hikitsugui";
+            string pastaBase = ConfigurationManager.AppSettings["HikitsuguiAttachmentPath"];
+
             string pasta = Path.Combine(pastaBase, id.ToString());
 
             if (!Directory.Exists(pasta))
