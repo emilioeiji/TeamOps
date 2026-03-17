@@ -10,17 +10,20 @@ namespace TeamOps.UI.Forms
     {
         private readonly HikitsuguiRepository _hikitsuguiRepository;
         private readonly HikitsuguiReadRepository _readRepository;
+        private readonly User _currentUser;
         private readonly Operator _currentLeader;
 
         public FormHikitsuguiLeaderRead(
             HikitsuguiRepository hikitsuguiRepository,
             HikitsuguiReadRepository readRepository,
+            User currentUser,
             Operator currentLeader)
         {
             InitializeComponent();
 
             _hikitsuguiRepository = hikitsuguiRepository;
             _readRepository = readRepository;
+            _currentUser = currentUser;
             _currentLeader = currentLeader;
 
             Load += FormHikitsuguiLeaderRead_Load;
@@ -86,7 +89,8 @@ namespace TeamOps.UI.Forms
         {
             var lista = _hikitsuguiRepository.GetForLeader(
                 dtInicial.Value.Date,
-                dtFinal.Value.Date.AddDays(1)
+                dtFinal.Value.Date.AddDays(1),
+                _currentUser.AccessLevel
             );
 
             grid.Rows.Clear();
@@ -109,11 +113,18 @@ namespace TeamOps.UI.Forms
                 if (preview.Length > 120)
                     preview = preview.Substring(0, 120) + "...";
 
-                string permissao =
-                    h.ForLeaders && h.ForOperators ? "LD/OP" :
-                    h.ForLeaders ? "LD" :
-                    h.ForOperators ? "OP" :
-                    "";
+                var parts = new List<string>();
+
+                if (h.ForOperators)
+                    parts.Add("OP");
+
+                if (h.ForLeaders)
+                    parts.Add("LD");
+
+                if (h.ForMaSv)
+                    parts.Add("MA");
+
+                string permissao = string.Join("/", parts);
 
                 int row = grid.Rows.Add(
                     h.Id,

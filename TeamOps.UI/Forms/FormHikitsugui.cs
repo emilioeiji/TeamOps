@@ -305,6 +305,7 @@ namespace TeamOps.UI.Forms
                 EquipmentId = cboEquipamento.SelectedIndex >= 0 ? (int?)cboEquipamento.SelectedValue : null,
                 LocalId = cboLocal.SelectedIndex >= 0 ? (int?)cboLocal.SelectedValue : null,
                 SectorId = cboSector?.SelectedValue as int?,
+                ForMaSv = chkForMaSv.Checked,
                 ForLeaders = chkLider.Checked,
                 ForOperators = chkOperador.Checked,
                 Description = txtDescricao?.Rtf ?? "",

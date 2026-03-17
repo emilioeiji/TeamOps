@@ -36,6 +36,7 @@ namespace TeamOps.UI.Forms
         public FormDashboard(AppUser user)
         {
             InitializeComponent();
+            this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             _user = user;
 
             // Carrega Operator a partir do CodigoFJ do User
@@ -250,6 +251,7 @@ namespace TeamOps.UI.Forms
             using var form = new FormHikitsuguiLeaderRead(
                 _hikitsuguiRepository,
                 readRepo,
+                _user,
                 _currentOperator
             );
 

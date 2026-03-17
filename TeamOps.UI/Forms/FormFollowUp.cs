@@ -22,6 +22,7 @@ namespace TeamOps.UI.Forms
         public FormFollowUp()
         {
             InitializeComponent();
+            this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
 
             _followUpRepo = new FollowUpRepository(Program.ConnectionFactory);
             _shiftRepo = new ShiftRepository(Program.ConnectionFactory);

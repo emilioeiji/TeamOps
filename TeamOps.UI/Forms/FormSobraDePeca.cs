@@ -20,6 +20,8 @@ namespace TeamOps.UI.Forms
         {
             InitializeComponent();
 
+            txtItem.CharacterCasing = CharacterCasing.Upper;
+
             _sobraRepo = new SobraDePecaRepository(Program.ConnectionFactory);
             _shiftRepo = new ShiftRepository(Program.ConnectionFactory);
             _opRepo = new OperatorRepository(Program.ConnectionFactory);
@@ -103,30 +105,38 @@ namespace TeamOps.UI.Forms
 
         private void LoadGrid()
         {
-            var list = _sobraRepo.GetAll();
-
-            // Converte IDs para nomes
-            var view = list
+            // Buscar apenas os últimos 100 registros
+            var list = _sobraRepo.GetAll()
                 .OrderByDescending(x => x.CreatedAt)
+                .Take(100)
+                .ToList();
+
+            // Carregar tabelas auxiliares UMA VEZ
+            var operadores = _opRepo.GetAll().ToList();
+            var maquinas = _equipRepo.GetAll().ToList();
+            var shains = _shainRepo.GetAll().ToList();
+            var turnos = _shiftRepo.GetAll().ToList();
+
+            // Montar a view sem N+1
+            var view = list
                 .Select(x => new
-            {
-                x.Id,
-                x.Data,
-                Turno = _shiftRepo.GetById(x.TurnoId)?.NamePt ?? "",
-                x.Lote,
-                Operador = _opRepo.GetAll()
-                    .FirstOrDefault(o => o.CodigoFJ == x.OperadorId)
-                    ?.NameRomanji ?? "",
-                x.Tanjuu,
-                x.PesoGramas,
-                x.Quantidade,
-                Maquina = _equipRepo.GetById(x.MachineId)?.NamePt ?? "",
-                Shain = _shainRepo.GetById(x.ShainId)?.NameRomanji ?? "",
-                x.Observacao,
-                x.Lider,
-                x.CreatedAt,
-                x.Item
-            }).ToList();
+                {
+                    x.Id,
+                    x.Data,
+                    Turno = turnos.FirstOrDefault(t => t.Id == x.TurnoId)?.NamePt ?? "",
+                    x.Lote,
+                    Operador = operadores.FirstOrDefault(o => o.CodigoFJ == x.OperadorId)?.NameRomanji ?? "",
+                    x.Tanjuu,
+                    x.PesoGramas,
+                    x.Quantidade,
+                    Maquina = maquinas.FirstOrDefault(m => m.Id == x.MachineId)?.NamePt ?? "",
+                    Shain = shains.FirstOrDefault(s => s.Id == x.ShainId)?.NameRomanji ?? "",
+                    x.Observacao,
+                    x.Lider,
+                    x.CreatedAt,
+                    x.Item
+                })
+                .ToList();
 
             dgvSobra.DataSource = view;
 
@@ -247,14 +257,9 @@ namespace TeamOps.UI.Forms
             txtObservacao.Clear();
             txtItem.Clear();
 
-            if (cmbMaquina.Items.Count > 0)
-                cmbMaquina.SelectedIndex = -1;
-
-            if (cmbShain.Items.Count > 0)
-                cmbShain.SelectedIndex = -1;
-
-            if (cmbOperador.Items.Count > 0)
-                cmbOperador.SelectedIndex = -1;
+            cmbMaquina.SelectedItem = null;
+            cmbShain.SelectedItem = null;
+            cmbOperador.SelectedItem = null;
         }
     }
 }

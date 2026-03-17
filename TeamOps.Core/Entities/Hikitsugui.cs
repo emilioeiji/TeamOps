@@ -18,5 +18,6 @@ namespace TeamOps.Core.Entities
         public bool ForOperators { get; set; }
         public string Description { get; set; } = "";
         public string? AttachmentPath { get; set; }
+        public bool ForMaSv { get; set; }
     }
 }

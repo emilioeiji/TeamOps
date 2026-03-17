@@ -15,6 +15,7 @@
 
         private RadioButton rbOperadores;
         private RadioButton rbLideres;
+        private RadioButton rbMaSv;
 
         private Button btnBuscar;
 
@@ -43,6 +44,7 @@
             dtpFim = new DateTimePicker();
             rbOperadores = new RadioButton();
             rbLideres = new RadioButton();
+            rbMaSv = new RadioButton();
             btnBuscar = new Button();
             dgvLeituras = new DataGridView();
             lblTurno = new Label();
@@ -69,7 +71,7 @@
             lblTitle.ForeColor = Color.White;
             lblTitle.Location = new Point(20, 20);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(100, 23);
+            lblTitle.Size = new Size(134, 39);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "Leitura de Hikitsugui – 引継ぎ閲覧";
             // 
@@ -94,7 +96,7 @@
             dtpInicio.Format = DateTimePickerFormat.Short;
             dtpInicio.Location = new Point(20, 110);
             dtpInicio.Name = "dtpInicio";
-            dtpInicio.Size = new Size(200, 23);
+            dtpInicio.Size = new Size(200, 27);
             dtpInicio.TabIndex = 5;
             // 
             // dtpFim
@@ -102,24 +104,32 @@
             dtpFim.Format = DateTimePickerFormat.Short;
             dtpFim.Location = new Point(250, 110);
             dtpFim.Name = "dtpFim";
-            dtpFim.Size = new Size(200, 23);
+            dtpFim.Size = new Size(200, 27);
             dtpFim.TabIndex = 6;
             // 
             // rbOperadores
             // 
-            rbOperadores.Location = new Point(474, 110);
+            rbOperadores.Location = new Point(457, 85);
             rbOperadores.Name = "rbOperadores";
-            rbOperadores.Size = new Size(87, 24);
+            rbOperadores.Size = new Size(94, 24);
             rbOperadores.TabIndex = 7;
             rbOperadores.Text = "Operadores";
             // 
             // rbLideres
             // 
-            rbLideres.Location = new Point(566, 110);
+            rbLideres.Location = new Point(551, 85);
             rbLideres.Name = "rbLideres";
-            rbLideres.Size = new Size(65, 24);
+            rbLideres.Size = new Size(87, 24);
             rbLideres.TabIndex = 8;
             rbLideres.Text = "Líderes";
+            // 
+            // rbMaSv
+            // 
+            rbMaSv.Location = new Point(551, 108);
+            rbMaSv.Name = "rbMaSv";
+            rbMaSv.Size = new Size(87, 24);
+            rbMaSv.TabIndex = 8;
+            rbMaSv.Text = "MA/SV";
             // 
             // btnBuscar
             // 
@@ -135,9 +145,11 @@
             // 
             dgvLeituras.AllowUserToAddRows = false;
             dgvLeituras.AllowUserToDeleteRows = false;
+            dgvLeituras.ColumnHeadersHeight = 29;
             dgvLeituras.Location = new Point(20, 160);
             dgvLeituras.Name = "dgvLeituras";
             dgvLeituras.ReadOnly = true;
+            dgvLeituras.RowHeadersWidth = 51;
             dgvLeituras.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dgvLeituras.Size = new Size(1020, 350);
             dgvLeituras.TabIndex = 10;
@@ -157,7 +169,7 @@
             cmbTurno.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbTurno.Location = new Point(644, 110);
             cmbTurno.Name = "cmbTurno";
-            cmbTurno.Size = new Size(120, 23);
+            cmbTurno.Size = new Size(120, 28);
             cmbTurno.TabIndex = 1;
             // 
             // lblSector
@@ -173,7 +185,7 @@
             cmbSector.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbSector.Location = new Point(785, 110);
             cmbSector.Name = "cmbSector";
-            cmbSector.Size = new Size(120, 23);
+            cmbSector.Size = new Size(120, 28);
             cmbSector.TabIndex = 2;
             // 
             // FormHikitsuguiReader
@@ -190,6 +202,7 @@
             Controls.Add(dtpFim);
             Controls.Add(rbOperadores);
             Controls.Add(rbLideres);
+            Controls.Add(rbMaSv);
             Controls.Add(btnBuscar);
             Controls.Add(dgvLeituras);
             Name = "FormHikitsuguiReader";

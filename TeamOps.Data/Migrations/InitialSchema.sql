@@ -145,6 +145,7 @@ CREATE TABLE IF NOT EXISTS Hikitsugui (
     ForOperators    INTEGER  NOT NULL,
     Description     TEXT     NOT NULL,
     AttachmentPath  TEXT,
+    ForMaSv         INTEGER  NOT NULL DEFAULT 0,
     FOREIGN KEY (ShiftId)         REFERENCES Shifts (Id),
     FOREIGN KEY (CreatorCodigoFJ) REFERENCES Operators (CodigoFJ),
     FOREIGN KEY (CategoryId)      REFERENCES Categories (Id),
@@ -152,6 +153,7 @@ CREATE TABLE IF NOT EXISTS Hikitsugui (
     FOREIGN KEY (LocalId)         REFERENCES Locals (Id),
     FOREIGN KEY (SectorId)        REFERENCES Sectors (Id)
 );
+-- ALTER TABLE Hikitsugui ADD COLUMN ForMaSv INTEGER NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS HikitsuguiResponses (
     Id              INTEGER PRIMARY KEY AUTOINCREMENT,

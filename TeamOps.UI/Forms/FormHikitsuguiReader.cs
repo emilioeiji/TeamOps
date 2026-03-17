@@ -84,7 +84,7 @@ namespace TeamOps.UI.Forms
             DateTime start = dtpInicio.Value.Date;
             DateTime end = dtpFim.Value.Date.AddDays(1);
 
-            bool isLeader = rbLideres.Checked;
+            bool isLeader = rbLideres.Checked || rbMaSv.Checked;
 
             int setorSelecionado = (int)cmbSector.SelectedValue;
 
@@ -178,6 +178,31 @@ namespace TeamOps.UI.Forms
                         .Where(h => h.SectorId == 3)
                         .ToList();
                 }
+            }
+
+            // ---------------------------------------------------------
+            // 2.2) Filtro por público (Operadores / Líderes / MA-SV)
+            // ---------------------------------------------------------
+            if (rbOperadores.Checked)
+            {
+                // Mostrar apenas Hikitsugui destinados a operadores
+                hiks = hiks
+                    .Where(h => h.ForOperators == true)
+                    .ToList();
+            }
+            else if (rbLideres.Checked)
+            {
+                // Mostrar apenas Hikitsugui destinados a líderes
+                hiks = hiks
+                    .Where(h => h.ForLeaders == true)
+                    .ToList();
+            }
+            else if (rbMaSv.Checked)
+            {
+                // Mostrar apenas Hikitsugui destinados a MA/SV
+                hiks = hiks
+                    .Where(h => h.ForMaSv == true)
+                    .ToList();
             }
 
             // ---------------------------------------------------------

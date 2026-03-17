@@ -1,6 +1,7 @@
 ﻿using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
+using TeamOps.Core.Common;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Db;
 using static Dapper.SqlMapper;
@@ -26,12 +27,12 @@ namespace TeamOps.Data.Repositories
 
             cmd.CommandText = @"
         INSERT INTO Hikitsugui
-        (Date, ShiftId, CreatorCodigoFJ, CategoryId, EquipmentId, LocalId, SectorId, ForLeaders, ForOperators, Description, AttachmentPath)
+        (Date, ShiftId, CreatorCodigoFJ, CategoryId, EquipmentId, LocalId, SectorId, ForLeaders, ForOperators, Description, AttachmentPath, ForMaSv)
         VALUES
-        (@Date, @ShiftId, @CreatorCodigoFJ, @CategoryId, @EquipmentId, @LocalId, @SectorId, @ForLeaders, @ForOperators, @Description, @AttachmentPath);
+        (@Date, @ShiftId, @CreatorCodigoFJ, @CategoryId, @EquipmentId, @LocalId, @SectorId, @ForLeaders, @ForOperators, @Description, @AttachmentPath, @ForMaSv);
 
         SELECT last_insert_rowid();
-    ";
+        ";
 
             cmd.Parameters.AddWithValue("@Date", h.Date);
             cmd.Parameters.AddWithValue("@ShiftId", h.ShiftId);
@@ -44,6 +45,7 @@ namespace TeamOps.Data.Repositories
             cmd.Parameters.AddWithValue("@ForOperators", h.ForOperators ? 1 : 0);
             cmd.Parameters.AddWithValue("@Description", h.Description ?? "");
             cmd.Parameters.AddWithValue("@AttachmentPath", (object?)h.AttachmentPath ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@ForMaSv", h.ForMaSv ? 1 : 0);
 
             object? result = cmd.ExecuteScalar();
 
@@ -157,7 +159,8 @@ namespace TeamOps.Data.Repositories
             cmd.CommandText = @"
                 SELECT Id, Date, ShiftId, CreatorCodigoFJ, CategoryId,
                        EquipmentId, LocalId, SectorId, ForLeaders, ForOperators,
-                       Description, AttachmentPath
+                       Description, AttachmentPath,
+                       ForMaSv
                 FROM Hikitsugui
                 ORDER BY Date DESC";
 
@@ -177,7 +180,8 @@ namespace TeamOps.Data.Repositories
                     ForLeaders = reader.GetInt32(8) == 1,
                     ForOperators = reader.GetInt32(9) == 1,
                     Description = reader.GetString(10),
-                    AttachmentPath = reader.IsDBNull(11) ? null : reader.GetString(11)
+                    AttachmentPath = reader.IsDBNull(11) ? null : reader.GetString(11),
+                    ForMaSv = reader.GetInt32(12) == 1
                 });
             }
 
@@ -187,25 +191,31 @@ namespace TeamOps.Data.Repositories
         // ---------------------------------------------------------
         // GET FOR LEADER (Filtro por data + ForLeaders/ForOperators)
         // ---------------------------------------------------------
-        public List<Hikitsugui> GetForLeader(DateTime start, DateTime end)
+        public List<Hikitsugui> GetForLeader(DateTime start, DateTime end, AccessLevel level)
         {
             var list = new List<Hikitsugui>();
 
             using var conn = _factory.CreateOpenConnection();
             using var cmd = conn.CreateCommand();
 
-            cmd.CommandText = @"
+            // 🔹 Monta o filtro conforme o nível de acesso
+            string filtroPermissao = level >= AccessLevel.GL
+                ? "(h.ForLeaders = 1 OR h.ForOperators = 1 OR h.ForMaSv = 1)"
+                : "(h.ForLeaders = 1 OR h.ForOperators = 1)";
+
+            cmd.CommandText = $@"
                 SELECT 
                     h.Id,
                     h.Date,
                     h.ShiftId,
-                    o.NameRomanji AS CreatorCodigoFJ,   -- ← TROCA AQUI
+                    o.NameRomanji AS CreatorCodigoFJ,
                     h.CategoryId,
                     h.EquipmentId,
                     h.LocalId,
                     h.SectorId,
                     h.ForLeaders,
                     h.ForOperators,
+                    h.ForMaSv,
                     h.Description,
                     h.AttachmentPath,
                     c.NamePt AS CategoryName,
@@ -216,7 +226,7 @@ namespace TeamOps.Data.Repositories
                 LEFT JOIN Operators o ON o.CodigoFJ = h.CreatorCodigoFJ
                 WHERE h.Date >= @start
                   AND h.Date <  @end
-                  AND (h.ForLeaders = 1 OR h.ForOperators = 1)
+                  AND {filtroPermissao}
                 ORDER BY h.Date DESC
                 ";
 
@@ -239,17 +249,19 @@ namespace TeamOps.Data.Repositories
 
                     ForLeaders = reader.GetInt32(8) == 1,
                     ForOperators = reader.GetInt32(9) == 1,
+                    ForMaSv = reader.GetInt32(10) == 1,
 
-                    Description = reader.GetString(10),
-                    AttachmentPath = reader.IsDBNull(11) ? null : reader.GetString(11),
+                    Description = reader.GetString(11),
+                    AttachmentPath = reader.IsDBNull(12) ? null : reader.GetString(12),
 
-                    CategoryName = reader.IsDBNull(12) ? "" : reader.GetString(12),
-                    SectorName = reader.IsDBNull(13) ? "" : reader.GetString(13)
+                    CategoryName = reader.IsDBNull(13) ? "" : reader.GetString(13),
+                    SectorName = reader.IsDBNull(14) ? "" : reader.GetString(14)
                 });
             }
 
             return list;
         }
+
         public List<HikitsuguiListItem> GetForOperator(
             DateTime start,
             DateTime end,

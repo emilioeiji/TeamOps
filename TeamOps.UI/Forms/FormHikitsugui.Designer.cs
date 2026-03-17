@@ -33,6 +33,7 @@
             cboEquipamento = new ComboBox();
             lblLocal = new Label();
             cboLocal = new ComboBox();
+            chkForMaSv = new CheckBox();
             chkLider = new CheckBox();
             chkOperador = new CheckBox();
             lblDescricao = new Label();
@@ -154,10 +155,19 @@
             cboLocal.Size = new Size(250, 28);
             cboLocal.TabIndex = 12;
             // 
+            // chkForMaSv
+            // 
+            chkForMaSv.AutoSize = true;
+            chkForMaSv.Location = new Point(169, 277);
+            chkForMaSv.Name = "chkForMaSv";
+            chkForMaSv.Size = new Size(110, 24);
+            chkForMaSv.TabIndex = 13;
+            chkForMaSv.Text = "Para MA/SV";
+            // 
             // chkLider
             // 
             chkLider.AutoSize = true;
-            chkLider.Location = new Point(169, 280);
+            chkLider.Location = new Point(169, 302);
             chkLider.Name = "chkLider";
             chkLider.Size = new Size(165, 24);
             chkLider.TabIndex = 13;
@@ -166,7 +176,7 @@
             // chkOperador
             // 
             chkOperador.AutoSize = true;
-            chkOperador.Location = new Point(169, 305);
+            chkOperador.Location = new Point(169, 327);
             chkOperador.Name = "chkOperador";
             chkOperador.Size = new Size(199, 24);
             chkOperador.TabIndex = 14;
@@ -175,7 +185,7 @@
             // lblDescricao
             // 
             lblDescricao.AutoSize = true;
-            lblDescricao.Location = new Point(20, 370);
+            lblDescricao.Location = new Point(20, 395);
             lblDescricao.Name = "lblDescricao";
             lblDescricao.Size = new Size(118, 20);
             lblDescricao.TabIndex = 15;
@@ -184,7 +194,7 @@
             // txtDescricao
             // 
             txtDescricao.Font = new Font("Segoe UI", 10F);
-            txtDescricao.Location = new Point(169, 367);
+            txtDescricao.Location = new Point(169, 392);
             txtDescricao.Name = "txtDescricao";
             txtDescricao.ScrollBars = RichTextBoxScrollBars.Vertical;
             txtDescricao.Size = new Size(922, 486);
@@ -219,7 +229,7 @@
             // 
             // btnSalvar
             // 
-            btnSalvar.Location = new Point(169, 868);
+            btnSalvar.Location = new Point(169, 893);
             btnSalvar.Name = "btnSalvar";
             btnSalvar.Size = new Size(120, 35);
             btnSalvar.TabIndex = 20;
@@ -227,7 +237,7 @@
             // 
             // btnCancelar
             // 
-            btnCancelar.Location = new Point(299, 868);
+            btnCancelar.Location = new Point(299, 893);
             btnCancelar.Name = "btnCancelar";
             btnCancelar.Size = new Size(120, 35);
             btnCancelar.TabIndex = 21;
@@ -245,7 +255,7 @@
             // btnBold
             // 
             btnBold.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            btnBold.Location = new Point(169, 333);
+            btnBold.Location = new Point(169, 358);
             btnBold.Name = "btnBold";
             btnBold.Size = new Size(30, 28);
             btnBold.TabIndex = 0;
@@ -254,7 +264,7 @@
             // btnItalic
             // 
             btnItalic.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
-            btnItalic.Location = new Point(205, 333);
+            btnItalic.Location = new Point(205, 358);
             btnItalic.Name = "btnItalic";
             btnItalic.Size = new Size(30, 28);
             btnItalic.TabIndex = 1;
@@ -263,7 +273,7 @@
             // btnUnderline
             // 
             btnUnderline.Font = new Font("Segoe UI", 9F, FontStyle.Underline);
-            btnUnderline.Location = new Point(241, 333);
+            btnUnderline.Location = new Point(241, 358);
             btnUnderline.Name = "btnUnderline";
             btnUnderline.Size = new Size(30, 28);
             btnUnderline.TabIndex = 2;
@@ -272,7 +282,7 @@
             // btnBullet
             // 
             btnBullet.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnBullet.Location = new Point(277, 333);
+            btnBullet.Location = new Point(277, 358);
             btnBullet.Name = "btnBullet";
             btnBullet.Size = new Size(30, 28);
             btnBullet.TabIndex = 3;
@@ -281,7 +291,7 @@
             // btnNumbered
             // 
             btnNumbered.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            btnNumbered.Location = new Point(313, 333);
+            btnNumbered.Location = new Point(313, 358);
             btnNumbered.Name = "btnNumbered";
             btnNumbered.Size = new Size(40, 28);
             btnNumbered.TabIndex = 4;
@@ -306,7 +316,7 @@
             // 
             // FormHikitsugui
             // 
-            ClientSize = new Size(1103, 915);
+            ClientSize = new Size(1103, 943);
             Controls.Add(btnBold);
             Controls.Add(btnItalic);
             Controls.Add(btnUnderline);
@@ -327,6 +337,7 @@
             Controls.Add(cboLocal);
             Controls.Add(lblSector);
             Controls.Add(cboSector);
+            Controls.Add(chkForMaSv);
             Controls.Add(chkLider);
             Controls.Add(chkOperador);
             Controls.Add(lblDescricao);
@@ -367,6 +378,7 @@
 
         private System.Windows.Forms.CheckBox chkLider;
         private System.Windows.Forms.CheckBox chkOperador;
+        private System.Windows.Forms.CheckBox chkForMaSv;
 
         private System.Windows.Forms.Label lblDescricao;
         private System.Windows.Forms.RichTextBox txtDescricao;
