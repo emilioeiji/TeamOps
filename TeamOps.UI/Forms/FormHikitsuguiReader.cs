@@ -17,11 +17,11 @@ namespace TeamOps.UI.Forms
         private readonly SectorRepository _sectorRepo;
 
         public FormHikitsuguiReader(
-            HikitsuguiRepository hikRepo,
-            HikitsuguiReadRepository readRepo,
-            OperatorRepository opRepo,
-            ShiftRepository shiftRepo,
-            SectorRepository sectorRepo)
+    HikitsuguiRepository hikRepo,
+    HikitsuguiReadRepository readRepo,
+    OperatorRepository opRepo,
+    ShiftRepository shiftRepo,
+    SectorRepository sectorRepo)
         {
             InitializeComponent();
 
@@ -36,10 +36,13 @@ namespace TeamOps.UI.Forms
             dtpInicio.Value = DateTime.Now.AddMonths(-1);
             dtpFim.Value = DateTime.Now;
 
-            // Carrega turnos reais do banco
+            this.Shown += FormHikitsuguiReader_Shown;
+        }
+
+        private void LoadTurnos()
+        {
             var shifts = _shiftRepo.GetAll().ToList();
 
-            // Adiciona o turno artificial "Todos"
             shifts.Insert(0, new Shift
             {
                 Id = 0,
@@ -47,16 +50,16 @@ namespace TeamOps.UI.Forms
                 NameJp = "すべて"
             });
 
-            // Preenche o ComboBox
             cmbTurno.DataSource = shifts;
             cmbTurno.DisplayMember = "NamePt";
             cmbTurno.ValueMember = "Id";
             cmbTurno.SelectedIndex = 0;
+        }
 
-            // Carrega setores reais do banco
+        private void LoadSetores()
+        {
             var sectors = _sectorRepo.GetAll().ToList();
 
-            // Adiciona o setor artificial "Todos"
             sectors.Insert(0, new Sector
             {
                 Id = 0,
@@ -64,11 +67,16 @@ namespace TeamOps.UI.Forms
                 NameJp = "すべて"
             });
 
-            // Preenche o ComboBox
             cmbSector.DataSource = sectors;
             cmbSector.DisplayMember = "NamePt";
             cmbSector.ValueMember = "Id";
             cmbSector.SelectedIndex = 0;
+        }
+
+        private void FormHikitsuguiReader_Shown(object sender, EventArgs e)
+        {
+            LoadTurnos();
+            LoadSetores();
         }
 
         private void btnBuscar_Click(object sender, EventArgs e)

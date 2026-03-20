@@ -54,7 +54,7 @@ namespace TeamOps.Data.Repositories
             cmd.CommandText = @"
                 SELECT Id, Data, TurnoId, Lote, OperadorId, Tanjuu, PesoGramas, Quantidade, MachineId, ShainId, Observacao, Lider, CreatedAt, Item
                 FROM SobraDePeca
-                ORDER BY Data DESC
+                ORDER BY CreatedAt DESC
                 LIMIT 100";
 
             using var reader = cmd.ExecuteReader();
