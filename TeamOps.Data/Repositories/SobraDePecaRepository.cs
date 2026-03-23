@@ -27,7 +27,7 @@ namespace TeamOps.Data.Repositories
                 (@data, @turno, @lote, @op, @tanjuu, @peso, @qtd, @equipId, @shain, @obs, @lider, @created, @item);
                 SELECT last_insert_rowid();";
 
-            cmd.Parameters.AddWithValue("@data", s.Data);
+            cmd.Parameters.AddWithValue("@data", s.Data.ToString("yyyy-MM-dd"));
             cmd.Parameters.AddWithValue("@turno", s.TurnoId);
             cmd.Parameters.AddWithValue("@lote", s.Lote);
             cmd.Parameters.AddWithValue("@op", s.OperadorId);
@@ -38,7 +38,7 @@ namespace TeamOps.Data.Repositories
             cmd.Parameters.AddWithValue("@shain", s.ShainId);
             cmd.Parameters.AddWithValue("@obs", (object?)s.Observacao ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@lider", s.Lider);
-            cmd.Parameters.AddWithValue("@created", s.CreatedAt);
+            cmd.Parameters.AddWithValue("@created", s.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"));
             cmd.Parameters.AddWithValue("@item", s.Item);
 
             return (int)(long)cmd.ExecuteScalar()!;
@@ -54,7 +54,7 @@ namespace TeamOps.Data.Repositories
             cmd.CommandText = @"
                 SELECT Id, Data, TurnoId, Lote, OperadorId, Tanjuu, PesoGramas, Quantidade, MachineId, ShainId, Observacao, Lider, CreatedAt, Item
                 FROM SobraDePeca
-                ORDER BY CreatedAt DESC
+                ORDER BY Id DESC
                 LIMIT 100";
 
             using var reader = cmd.ExecuteReader();
