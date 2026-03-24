@@ -46,6 +46,9 @@
     <None Update="Sql\paidleave\select_all.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Sql\paidleave\select_all_by_shift.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Sql\paidleave\select_operators.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

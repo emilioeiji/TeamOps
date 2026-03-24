@@ -8,51 +8,83 @@
 
 <body class="bg-gray-100 p-6">
 
-    <!-- TOOLTIP (AGORA DENTRO DO BODY) -->
+    <!-- TOOLTIP -->
     <div id="tooltip" class="tooltip hidden">
         <div id="tooltipContent"></div>
     </div>
 
     <div class="max-w-5xl mx-auto bg-white p-6 rounded-xl shadow">
 
-        <div class="flex justify-between items-center mb-6">
+        <!-- Linha 1: Título -->
+        <div class="mb-4">
             <h1 class="text-2xl font-bold">
                 Controle solicitações Yukyu<br>
                 <span class="text-lg text-gray-500">有給休暇申請管理</span>
             </h1>
-
-            <button id="btnAdd" class="btn-add">＋ Solicitar Yukyu</button>
-
         </div>
 
+        <!-- Linha 2: Botão + Filtros -->
+        <div class="flex items-center justify-between mb-6">
+
+            <!-- Botão -->
+            <button id="btnAdd" class="btn-add">＋ Solicitar Yukyu</button>
+
+            <!-- Filtros com ícones -->
+            <div class="flex items-center gap-6">
+
+                <!-- TODOS -->
+                <label class="shift-option">
+                    <input type="radio" name="shiftFilter" value="0" checked>
+                    <span class="icon icon-all"></span>
+                    <span>Todos</span>
+                </label>
+
+                <!-- DIA -->
+                <label class="shift-option">
+                    <input type="radio" name="shiftFilter" value="1">
+                    <span class="icon icon-day"></span>
+                    <span>Dia</span>
+                </label>
+
+                <!-- NOITE -->
+                <label class="shift-option">
+                    <input type="radio" name="shiftFilter" value="2">
+                    <span class="icon icon-night"></span>
+                    <span>Noite</span>
+                </label>
+
+            </div>
+        </div>
+
+        <!-- Tabela -->
         <div id="tableContainer" class="text-gray-600">
             Carregando...
         </div>
 
-        <!-- MODAL ADD REQUEST -->
-        <div id="modalAdd" class="modal hidden">
-            <div class="modal-content">
-                <h2 class="text-xl font-bold mb-4">Adicionar solicitação de yukyu</h2>
+    </div>
 
-                <label class="block mb-2">Operator (CodigoFJ)</label>
-                <input id="opSearch" class="input" type="text" placeholder="Digite nome ou FJ...">
-                <div id="opSuggestions" class="suggestions hidden"></div>
+    <!-- MODAL ADD REQUEST -->
+    <div id="modalAdd" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="text-xl font-bold mb-4">Adicionar solicitação de yukyu</h2>
 
-                <input id="opCodigoFJ" type="hidden">
+            <label class="block mb-2">Operator (CodigoFJ)</label>
+            <input id="opSearch" class="input" type="text" placeholder="Digite nome ou FJ...">
+            <div id="opSuggestions" class="suggestions hidden"></div>
 
-                <label class="block mt-4 mb-2">Data Solicitação</label>
-                <input id="reqDate" class="input" type="date">
+            <input id="opCodigoFJ" type="hidden">
 
-                <label class="block mt-4 mb-2">Notas</label>
-                <textarea id="notes" class="input" rows="3"></textarea>
+            <label class="block mt-4 mb-2">Data Solicitação</label>
+            <input id="reqDate" class="input" type="date">
 
-                <div class="flex justify-end mt-6">
-                    <button onclick="closeModal()" class="btn-secondary mr-2">Cancelar</button>
-                    <button onclick="saveRequest()" class="btn-primary">Salvar</button>
-                </div>
+            <label class="block mt-4 mb-2">Notas</label>
+            <textarea id="notes" class="input" rows="3"></textarea>
+
+            <div class="flex justify-end mt-6">
+                <button onclick="closeModal()" class="btn-secondary mr-2">Cancelar</button>
+                <button onclick="saveRequest()" class="btn-primary">Salvar</button>
             </div>
         </div>
-
     </div>
 
     <script src="app.js"></script>

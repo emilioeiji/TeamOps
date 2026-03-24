@@ -90,6 +90,10 @@ namespace TeamOps.UI.Forms
 
                     SendJsonFromSql("select_all.sql");
                     break;
+                
+                case "filter_shift":
+                    SendJsonFromSql("select_all_by_shift.sql", new { ShiftId = msg.shiftId });
+                    break;
             }
         }
 
@@ -134,5 +138,7 @@ namespace TeamOps.UI.Forms
         public string opCodigoFJ { get; set; }
         public string reqDate { get; set; }
         public string notes { get; set; }
+
+        public int shiftId { get; set; }
     }
 }

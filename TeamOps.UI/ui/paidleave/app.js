@@ -13,6 +13,16 @@ document.addEventListener("mousemove", (e) => {
     tooltip.style.top = (e.pageY + 12) + "px";
 });
 
+document.querySelectorAll("input[name='shiftFilter']").forEach(r => {
+    r.addEventListener("change", () => {
+        const shiftId = parseInt(r.value);
+
+        window.chrome.webview.postMessage({
+            action: "filter_shift",
+            shiftId
+        });
+    });
+});
 
 // Quando o HTML carregar, pedir a lista ao backend
 window.onload = () => {
@@ -29,6 +39,11 @@ window.chrome.webview.addEventListener('message', event => {
         renderTable(msg.data);
         return;
     }
+
+    if (msg.type === "select_all_by_shift") {
+        renderTable(msg.data);
+        return;
+    }  
 
     if (msg.type === "get_todoke_info") {
         showTooltip(msg.data);
@@ -50,7 +65,7 @@ window.chrome.webview.addEventListener('message', event => {
 function renderTable(items) {
     if (!items || items.length === 0) {
         document.getElementById("tableContainer").innerHTML =
-            "<p>No records found.</p>";
+            "<p>Nenhum registro encontrado.</p>";
         return;
     }
 
