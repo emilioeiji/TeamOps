@@ -40,6 +40,7 @@
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="Maikebing.System.Windows.Forms.DataVisualization" Version="5.0.1" />
     <PackageReference Include="System.Resources.Extensions" Version="10.0.0" />
+    <PackageReference Include="WebView2.DOM.Components" Version="0.0.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -50,6 +51,8 @@
 
   <ItemGroup>
     <Folder Include="Controls\" />
+    <Folder Include="Services\" />
+    <Folder Include="Repositories\" />
     <Folder Include="Properties\PublishProfiles\" />
     <Folder Include="Resources\" />
   </ItemGroup>
@@ -59,6 +62,18 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Forms\FormCL.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="ui\paidleave\app.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="ui\paidleave\index.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="ui\paidleave\style.css">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

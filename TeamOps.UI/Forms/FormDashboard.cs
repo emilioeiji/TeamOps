@@ -180,6 +180,17 @@ namespace TeamOps.UI.Forms
             form.ShowDialog();
         }
 
+        private void btnYukyu_Click(object sender, EventArgs e)
+        {
+            using var form = new FormPaidLeaveTracking(
+                _currentOperator,
+                _currentShift,
+                Program.ConnectionFactory
+            );
+
+            form.ShowDialog();
+        }
+
         private void btnAdmin_Click(object sender, EventArgs e)
         {
             if (!HasAccess(AccessLevel.Admin))

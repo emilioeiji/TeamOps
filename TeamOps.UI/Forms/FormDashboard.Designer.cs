@@ -19,6 +19,7 @@
         private System.Windows.Forms.Button btnSobraDePeca;
         private System.Windows.Forms.Button btnPR;
         private System.Windows.Forms.Button btnCL;
+        private System.Windows.Forms.Button btnYukyu;
 
         protected override void Dispose(bool disposing)
         {
@@ -45,6 +46,7 @@
             btnSobraDePeca = new Button();
             btnPR = new Button();
             btnCL = new Button();
+            btnYukyu = new Button();
             panel1 = new Panel();
             panel2 = new Panel();
             panel3 = new Panel();
@@ -215,6 +217,16 @@
             btnCL.Text = "CL\r\nCL文書";
             btnCL.Click += btnCL_Click;
             // 
+            // btnYukyu
+            // 
+            btnYukyu.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnYukyu.Location = new Point(568, 320);
+            btnYukyu.Name = "btnYukyu";
+            btnYukyu.Size = new Size(200, 80);
+            btnYukyu.TabIndex = 0;
+            btnYukyu.Text = "Yukyu\r\n有給休暇";
+            btnYukyu.Click += btnYukyu_Click;
+            // 
             // panel1
             // 
             panel1.AccessibleName = "teste";
@@ -258,6 +270,7 @@
             Controls.Add(btnAdmin);
             Controls.Add(btnPR);
             Controls.Add(btnCL);
+            Controls.Add(btnYukyu);
             Controls.Add(panel1);
             Controls.Add(panel2);
             Controls.Add(panel3);

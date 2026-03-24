@@ -308,6 +308,37 @@ CREATE TABLE IF NOT EXISTS Machines (
     NameJp TEXT NOT NULL
 );
 
+CREATE TABLE AcompYukyu (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    -- operador que pediu o yūkyū
+    OperatorCodigoFJ TEXT NOT NULL,
+
+    RequestDate TEXT NOT NULL,
+
+    -- quem autorizou (pode ser líder ou admin)
+    AuthorizedByCodigoFJ TEXT,
+
+    Notes TEXT,
+
+    FOREIGN KEY (OperatorCodigoFJ) REFERENCES Operators (CodigoFJ),
+    FOREIGN KEY (AuthorizedByCodigoFJ) REFERENCES Operators (CodigoFJ)
+);
+
+CREATE TABLE YukyuTodoke (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    AcompYukyuId INTEGER NOT NULL,
+    TakenBy INTEGER NOT NULL,
+    TakenAt TEXT NOT NULL
+);
+
+CREATE TABLE YukyuFolhaControle (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    AcompYukyuId INTEGER NOT NULL,
+    TakenBy INTEGER NOT NULL,
+    TakenAt TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS IX_Operators_BadgeCode ON Operators(BadgeCode);
 CREATE INDEX IF NOT EXISTS IX_GL_Login ON GroupLeaders(Login);
 CREATE INDEX IF NOT EXISTS IX_Assignments_GL_Operator ON Assignments(GLId, OperatorId);
