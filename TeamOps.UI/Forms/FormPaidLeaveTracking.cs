@@ -47,6 +47,7 @@ namespace TeamOps.UI.Forms
                 case "paidleave_load":
                     SendJsonFromSql("select_all.sql");
                     SendJsonFromSql("select_operators.sql");
+                    SendJsonFromSql("select_motivos.sql");
                     break;
 
                 case "toggle_todoke":
@@ -85,7 +86,8 @@ namespace TeamOps.UI.Forms
                         OperatorCodigoFJ = msg.opCodigoFJ,
                         RequestDate = msg.reqDate,
                         AuthorizedByCodigoFJ = _currentOperator.CodigoFJ,
-                        Notes = msg.notes
+                        Notes = msg.notes,
+                        TodokeMotivoId = msg.motivoId
                     });
 
                     SendJsonFromSql("select_all.sql");
@@ -93,6 +95,21 @@ namespace TeamOps.UI.Forms
                 
                 case "filter_shift":
                     SendJsonFromSql("select_all_by_shift.sql", new { ShiftId = msg.shiftId });
+                    break;
+
+                case "toggle_conferencia":
+                    ExecuteSql("insert_conferencia.sql", new
+                    {
+                        AcompYukyuId = msg.id,
+                        TakenBy = _currentOperator.CodigoFJ,
+                        TakenAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                    });
+
+                    SendJsonFromSql("select_all.sql");
+                    break;
+
+                case "get_conferencia_info":
+                    SendJsonFromSql("get_conferencia_info.sql", new { AcompYukyuId = msg.id });
                     break;
             }
         }
@@ -140,5 +157,7 @@ namespace TeamOps.UI.Forms
         public string notes { get; set; }
 
         public int shiftId { get; set; }
+
+        public int motivoId { get; set; }
     }
 }

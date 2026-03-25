@@ -2,11 +2,13 @@
     OperatorCodigoFJ,
     RequestDate,
     AuthorizedByCodigoFJ,
-    Notes
+    Notes,
+    TodokeMotivoId
 )
 VALUES (
     @OperatorCodigoFJ,
     @RequestDate,
     @AuthorizedByCodigoFJ,
-    @Notes
+    @Notes,
+    @TodokeMotivoId
 );

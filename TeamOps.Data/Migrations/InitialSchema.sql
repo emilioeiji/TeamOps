@@ -308,21 +308,74 @@ CREATE TABLE IF NOT EXISTS Machines (
     NameJp TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS TodokeMotivo (
+    Id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    NomePt  TEXT NOT NULL,
+    NomeJp  TEXT NOT NULL
+);
+
+INSERT INTO TodokeMotivo (Id, NomePt, NomeJp)
+SELECT 1, 'Yukyu', '有休'
+WHERE NOT EXISTS (SELECT 1 FROM TodokeMotivo WHERE Id = 1);
+
+INSERT INTO TodokeMotivo (Id, NomePt, NomeJp)
+SELECT 2, 'Falta', '欠勤'
+WHERE NOT EXISTS (SELECT 1 FROM TodokeMotivo WHERE Id = 2);
+
+INSERT INTO TodokeMotivo (Id, NomePt, NomeJp)
+SELECT 3, 'Atraso', '遅刻'
+WHERE NOT EXISTS (SELECT 1 FROM TodokeMotivo WHERE Id = 3);
+
+INSERT INTO TodokeMotivo (Id, NomePt, NomeJp)
+SELECT 4, 'Saida Retorno', '外出'
+WHERE NOT EXISTS (SELECT 1 FROM TodokeMotivo WHERE Id = 4);
+
+INSERT INTO TodokeMotivo (Id, NomePt, NomeJp)
+SELECT 5, 'Sair Cedo', '早退'
+WHERE NOT EXISTS (SELECT 1 FROM TodokeMotivo WHERE Id = 5);
+
+INSERT INTO TodokeMotivo (Id, NomePt, NomeJp)
+SELECT 6, 'Shukin', '休日出勤'
+WHERE NOT EXISTS (SELECT 1 FROM TodokeMotivo WHERE Id = 6);
+
+INSERT INTO TodokeMotivo (Id, NomePt, NomeJp)
+SELECT 7, 'Hr Extra', '残業'
+WHERE NOT EXISTS (SELECT 1 FROM TodokeMotivo WHERE Id = 7);
+
+INSERT INTO TodokeMotivo (Id, NomePt, NomeJp)
+SELECT 8, 'Domingo', '法定休日'
+WHERE NOT EXISTS (SELECT 1 FROM TodokeMotivo WHERE Id = 8);
+
 CREATE TABLE AcompYukyu (
     Id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-    -- operador que pediu o yūkyū
     OperatorCodigoFJ TEXT NOT NULL,
-
     RequestDate TEXT NOT NULL,
 
-    -- quem autorizou (pode ser líder ou admin)
     AuthorizedByCodigoFJ TEXT,
-
     Notes TEXT,
 
+    TodokeMotivoId INTEGER,     -- NOVO
+
     FOREIGN KEY (OperatorCodigoFJ) REFERENCES Operators (CodigoFJ),
-    FOREIGN KEY (AuthorizedByCodigoFJ) REFERENCES Operators (CodigoFJ)
+    FOREIGN KEY (AuthorizedByCodigoFJ) REFERENCES Operators (CodigoFJ),
+    FOREIGN KEY (TodokeMotivoId) REFERENCES TodokeMotivo (Id)
+);
+
+ALTER TABLE AcompYukyu ADD COLUMN TodokeMotivoId INTEGER;
+ALTER TABLE AcompYukyu ADD COLUMN Conferencia INTEGER NOT NULL DEFAULT 0;
+
+-- Foreign key para TodokeMotivo
+-- (SQLite não permite adicionar FK depois, mas você pode garantir via lógica)
+
+CREATE TABLE YukyuConferencia (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    AcompYukyuId INTEGER NOT NULL,
+    TakenBy TEXT NOT NULL,
+    TakenAt TEXT NOT NULL,
+
+    FOREIGN KEY (AcompYukyuId) REFERENCES AcompYukyu(Id),
+    FOREIGN KEY (TakenBy) REFERENCES Operators(CodigoFJ)
 );
 
 CREATE TABLE YukyuTodoke (

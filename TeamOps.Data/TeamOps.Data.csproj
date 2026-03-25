@@ -37,6 +37,9 @@
     <None Update="Sql\paidleave\insert_acomp.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Sql\paidleave\insert_conferencia.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Sql\paidleave\insert_folha.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -49,7 +52,13 @@
     <None Update="Sql\paidleave\select_all_by_shift.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Sql\paidleave\select_motivos.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Sql\paidleave\select_operators.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Sql\paidleave\toggle_conferencia.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

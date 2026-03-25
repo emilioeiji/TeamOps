@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Controle solicitações Yukyu | 有給休暇申請管理</title>
+    <title>Controle Todoke | 届出管理</title>
     <link href="style.css" rel="stylesheet">
 </head>
 
@@ -18,8 +18,8 @@
         <!-- Linha 1: Título -->
         <div class="mb-4">
             <h1 class="text-2xl font-bold">
-                Controle solicitações Yukyu<br>
-                <span class="text-lg text-gray-500">有給休暇申請管理</span>
+                Controle Todoke<br>
+                <span class="text-lg text-gray-500">届出管理</span>
             </h1>
         </div>
 
@@ -76,6 +76,11 @@
 
             <label class="block mt-4 mb-2">Data Solicitação</label>
             <input id="reqDate" class="input" type="date">
+
+            <label class="block mt-4 mb-2">Motivo</label>
+            <select id="motivoId" class="input">
+                <option value="">Selecione...</option>
+            </select>
 
             <label class="block mt-4 mb-2">Notas</label>
             <textarea id="notes" class="input" rows="3"></textarea>
