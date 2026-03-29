@@ -1,0 +1,125 @@
+﻿<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8" />
+    <title>TeamOps - Dashboard</title>
+
+    <!-- Seu mini Tailwind + utilitários -->
+    <link rel="stylesheet" href="style.css" />
+
+    <style>
+        /* Ajustes específicos do dashboard */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 24px;
+            padding: 24px;
+        }
+
+        .panel {
+            border: 2px solid #d1d5db;
+            border-radius: 8px;
+            padding: 16px;
+            background: white;
+            min-height: 300px;
+        }
+
+        .btn-dash {
+            @apply w-full py-4 px-2 bg-blue-600 text-white rounded-lg font-bold text-lg mb-4 transition;
+        }
+
+        .btn-dash:hover {
+            background: #1e40af;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+
+    <!-- HEADER -->
+    <header class="w-full bg-blue-700 text-white px-6 py-4 flex justify-between items-center">
+        <h1 class="text-2xl font-bold">TeamOps – Gestão de Operadores</h1>
+    
+        <div class="flex items-center gap-2">
+            <span id="lblUser" class="text-lg font-semibold"></span>
+            <span id="lblOperator" class="text-lg opacity-80"></span>
+        </div>
+    </header>
+
+    <!-- GRID PRINCIPAL (3 colunas como panel1, panel2, panel3) -->
+    <main class="dashboard-grid">
+
+        <!-- COLUNA 1 -->
+        <div class="panel">
+            <button class="btn-dash" onclick="openModule('followup')">
+                Acompanhamento<br>フォロー
+            </button>
+
+            <button class="btn-dash" onclick="openModule('sobradepeca')">
+                Sobra de Peça<br>製品残り
+            </button>
+
+            <button class="btn-dash" onclick="openModule('relatorios')">
+                Relatórios<br>レポート
+            </button>
+        </div>
+
+        <!-- COLUNA 2 -->
+        <div class="panel">
+            <button class="btn-dash" onclick="openModule('hikitsugui')">
+                Hikitsugui<br>引継ぎ
+            </button>
+
+            <button class="btn-dash" onclick="openModule('hikitsugui_read')">
+                Leitura Hikitsugui<br>引継ぎ閲覧
+            </button>
+
+            <button class="btn-dash" onclick="openModule('yukyu')">
+                Todoke<br>届出書
+            </button>
+        </div>
+
+        <!-- COLUNA 3 -->
+        <div class="panel">
+            <button class="btn-dash" onclick="openModule('pr')">
+                PR<br>PR文書
+            </button>
+
+            <button class="btn-dash" onclick="openModule('cl')">
+                CL<br>CL文書
+            </button>
+
+            <button class="btn-dash" onclick="openModule('operadores')">
+                Operadores<br>作業者
+            </button>
+
+            <button class="btn-dash" onclick="openModule('atribuir')">
+                Atribuir Operadores
+            </button>
+
+            <button class="btn-dash" onclick="openModule('admin')">
+                Admin
+            </button>
+
+            <button class="btn-dash" onclick="openModule('accesscontrol')">
+                Acesso<br>アクセス権
+            </button>
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="w-full bg-gray-200 text-black px-6 py-2">
+        <span id="lblDate"></span>
+    </footer>
+
+    <script src="app.js"></script>
+
+    <script>
+        // Preenche usuário e data (opcional, pode vir do C# também)
+        document.getElementById("lblDate").innerText =
+            new Date().toLocaleString("pt-BR");
+    </script>
+
+</body>
+</html>

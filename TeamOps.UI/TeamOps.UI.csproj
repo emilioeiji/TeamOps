@@ -65,6 +65,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="ui\dashboard\app.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="ui\dashboard\index.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="ui\dashboard\style.css">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="ui\paidleave\app.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

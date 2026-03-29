@@ -117,7 +117,7 @@ namespace TeamOps.UI.Forms
         private void SendJsonFromSql(string sqlFile, object? param = null)
         {
             var sqlPath = Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory,
+               Application.StartupPath,
                 "Sql", "paidleave", sqlFile);
 
             var sql = File.ReadAllText(sqlPath);
