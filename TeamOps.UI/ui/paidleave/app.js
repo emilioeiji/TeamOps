@@ -11,8 +11,8 @@ const tooltip = document.getElementById("tooltip");
 const tooltipContent = document.getElementById("tooltipContent");
 
 document.addEventListener("mousemove", (e) => {
-    tooltip.style.left = (e.pageX + 12) + "px";
-    tooltip.style.top = (e.pageY + 12) + "px";
+    tooltip.style.left = (e.clientX + 12) + "px";
+    tooltip.style.top = (e.clientY + 12) + "px";
 });
 
 // Filtro por turno

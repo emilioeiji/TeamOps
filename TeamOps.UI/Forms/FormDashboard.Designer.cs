@@ -224,7 +224,7 @@
             btnYukyu.Name = "btnYukyu";
             btnYukyu.Size = new Size(200, 80);
             btnYukyu.TabIndex = 0;
-            btnYukyu.Text = "Yukyu\r\n有給休暇";
+            btnYukyu.Text = "Todoke\r\n届出書";
             btnYukyu.Click += btnYukyu_Click;
             // 
             // panel1
