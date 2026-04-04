@@ -72,7 +72,7 @@
             lblTitle.ForeColor = Color.White;
             lblTitle.Location = new Point(20, 20);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(364, 30);
+            lblTitle.Size = new Size(448, 37);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "TeamOps – Gestão de Operadores";
             // 
@@ -84,7 +84,7 @@
             lblUser.ForeColor = Color.White;
             lblUser.Location = new Point(877, 30);
             lblUser.Name = "lblUser";
-            lblUser.Size = new Size(0, 19);
+            lblUser.Size = new Size(0, 23);
             lblUser.TabIndex = 1;
             // 
             // btnOperadores
@@ -104,7 +104,7 @@
             btnPresenca.Name = "btnPresenca";
             btnPresenca.Size = new Size(200, 80);
             btnPresenca.TabIndex = 7;
-            btnPresenca.Text = "Presenca";
+            btnPresenca.Text = "Presença\r\n出勤管理";
             btnPresenca.Click += btnPresenca_Click;
             // 
             // btnRelatorios
@@ -174,7 +174,7 @@
             lblDate.ForeColor = Color.Black;
             lblDate.Location = new Point(20, 10);
             lblDate.Name = "lblDate";
-            lblDate.Size = new Size(0, 15);
+            lblDate.Size = new Size(0, 20);
             lblDate.TabIndex = 0;
             // 
             // btnHikitsuguiLeaderRead

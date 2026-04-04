@@ -56,23 +56,42 @@ function renderOperators() {
     const offsetX = mapRect.left - containerRect.left + leftoverX;
     const offsetY = mapRect.top  - containerRect.top  + leftoverY;
 
+    // 🔥 Agrupar operadores por LocalId
+    const groups = {};
     _presences.forEach(op => {
-        const pos = _positions.find(p => p.LocalId === op.LocalId);
+        if (!groups[op.LocalId]) groups[op.LocalId] = [];
+        groups[op.LocalId].push(op);
+    });
+
+    // 🔥 Renderizar cada grupo
+    Object.keys(groups).forEach(localId => {
+        const pos = _positions.find(p => p.LocalId == localId);
         if (!pos) return;
 
-        const div = document.createElement("div");
-        div.className = "operatorCard";
+        const ops = groups[localId];
 
-        div.style.left = (pos.X * scale + offsetX) + "px";
-        div.style.top  = (pos.Y * scale + offsetY) + "px";
+        // container do grupo
+        const groupDiv = document.createElement("div");
+        groupDiv.className = "operatorGroup";
 
-        div.innerHTML = `
-            <img src="https://local/assets/operators/${op.CodigoFJ}.png"
-                 onerror="this.onerror=null; this.src='https://local/assets/default-operator.png';">
-            <div class="nameRomanji">${op.NameRomanji || pos.NameRomanji || op.CodigoFJ}</div>
-        `;
+        groupDiv.style.left = (pos.X * scale + offsetX) + "px";
+        groupDiv.style.top  = (pos.Y * scale + offsetY) + "px";
 
-        layer.appendChild(div);
+        // 🔥 Renderizar cada operador dentro do grupo
+        ops.forEach(op => {
+            const card = document.createElement("div");
+            card.className = "operatorCardSmall";
+
+            card.innerHTML = `
+                <img src="https://local/assets/operators/${op.CodigoFJ}.png"
+                     onerror="this.onerror=null; this.src='https://local/assets/default-operator.png';">
+                <div class="nameRomanjiSmall">${op.NameRomanji || op.CodigoFJ}</div>
+            `;
+
+            groupDiv.appendChild(card);
+        });
+
+        layer.appendChild(groupDiv);
     });
 }
 

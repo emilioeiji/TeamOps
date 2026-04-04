@@ -63,6 +63,7 @@
     <Folder Include="Repositories\" />
     <Folder Include="Properties\PublishProfiles\" />
     <Folder Include="Resources\" />
+    <Folder Include="ui\presence\assets\operators\" />
   </ItemGroup>
 
   <ItemGroup>
@@ -93,6 +94,9 @@
     </None>
     <None Update="ui\presence\app.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="ui\presence\assets\operators\FJ21872.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="ui\presence\index.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
