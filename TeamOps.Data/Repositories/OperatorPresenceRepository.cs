@@ -42,18 +42,21 @@ namespace TeamOps.Data.Repositories
             using var cmd = conn.CreateCommand();
 
             cmd.CommandText = @"
-        SELECT 
-            CodigoFJ,
-            SectorId,
-            LocalId,
-            ShiftId,
-            MAX(Date) AS LastPresence
-        FROM OperatorPresence
-        WHERE DATE(Date) = DATE(@date)
-          AND SectorId = @sector
-          AND ShiftId = @shift
-        GROUP BY CodigoFJ;
-    ";
+                SELECT 
+                    p.CodigoFJ,
+                    p.SectorId,
+                    p.LocalId,
+                    p.ShiftId,
+                    MAX(p.Date) AS LastPresence,
+                    o.NameRomanji,
+                    o.NameNihongo
+                FROM OperatorPresence p
+                JOIN Operators o ON o.CodigoFJ = p.CodigoFJ
+                WHERE DATE(p.Date) = DATE(@date)
+                  AND p.SectorId = @sector
+                  AND p.ShiftId = @shift
+                GROUP BY p.CodigoFJ;
+            ";
 
             cmd.Parameters.AddWithValue("@date", date);
             cmd.Parameters.AddWithValue("@sector", sectorId);
@@ -68,7 +71,9 @@ namespace TeamOps.Data.Repositories
                     SectorId = reader.GetInt32(1),
                     LocalId = reader.GetInt32(2),
                     ShiftId = reader.GetInt32(3),
-                    Date = reader.GetDateTime(4)
+                    Date = reader.GetDateTime(4),
+                    NameRomanji = reader.IsDBNull(5) ? "" : reader.GetString(5),
+                    NameNihongo = reader.IsDBNull(6) ? "" : reader.GetString(6)
                 });
             }
 
@@ -83,12 +88,21 @@ namespace TeamOps.Data.Repositories
             using var cmd = conn.CreateCommand();
 
             cmd.CommandText = @"
-                SELECT Id, CodigoFJ, SectorId, LocalId, ShiftId, Date
-                FROM OperatorPresence
-                WHERE DATE(Date) = DATE(@date)
-                AND SectorId = @sector
-                AND ShiftId = @shift
-                ORDER BY Date DESC;
+                SELECT 
+                    p.Id,
+                    p.CodigoFJ,
+                    p.SectorId,
+                    p.LocalId,
+                    p.ShiftId,
+                    p.Date,
+                    o.NameRomanji,
+                    o.NameNihongo
+                FROM OperatorPresence p
+                JOIN Operators o ON o.CodigoFJ = p.CodigoFJ
+                WHERE DATE(p.Date) = DATE(@date)
+                  AND p.SectorId = @sector
+                  AND p.ShiftId = @shift
+                ORDER BY p.Date DESC;
             ";
 
             cmd.Parameters.AddWithValue("@date", date);
@@ -105,7 +119,9 @@ namespace TeamOps.Data.Repositories
                     SectorId = reader.GetInt32(2),
                     LocalId = reader.GetInt32(3),
                     ShiftId = reader.GetInt32(4),
-                    Date = reader.GetDateTime(5)
+                    Date = reader.GetDateTime(5),
+                    NameRomanji = reader.IsDBNull(6) ? "" : reader.GetString(6),
+                    NameNihongo = reader.IsDBNull(7) ? "" : reader.GetString(7)
                 });
             }
 

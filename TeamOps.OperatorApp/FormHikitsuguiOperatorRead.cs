@@ -32,7 +32,7 @@ namespace TeamOps.OperatorApp
             btnFiltrar.Click += btnFiltrar_Click;
             grid.CellClick += grid_CellClick;
 
-            cboLocal.SelectedIndexChanged += cboLocal_SelectedIndexChanged;
+            cboLocal.SelectionChangeCommitted += cboLocal_SelectionChangeCommitted;
         }
 
         private void Form_Load(object? sender, EventArgs e)
@@ -76,7 +76,7 @@ namespace TeamOps.OperatorApp
             grid.Rows.Clear();
         }
 
-        private void cboLocal_SelectedIndexChanged(object? sender, EventArgs e)
+        private void cboLocal_SelectionChangeCommitted(object? sender, EventArgs e)
         {
             if (_currentOperator == null)
                 return;
@@ -84,19 +84,16 @@ namespace TeamOps.OperatorApp
             if (cboLocal.SelectedIndex < 0)
                 return;
 
-            // Obter o Local selecionado
             var local = (Local)cboLocal.SelectedItem;
 
-            // Registrar presença
             _presenceRepo.RegisterPresence(
                 _currentOperator.CodigoFJ,
-                local.SectorId,                 // SectorId do Local
-                local.Id,                       // LocalId
-                _currentOperator.ShiftId,       // Turno do operador
+                local.SectorId,
+                local.Id,
+                _currentOperator.ShiftId,
                 DateTime.Now
             );
 
-            // Continua o fluxo normal
             CarregarLista();
         }
 

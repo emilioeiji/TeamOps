@@ -1,36 +1,38 @@
 ﻿<!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>TeamOps - Presença</title>
+    <title>Presence Layout</title>
 
-    <!-- CSS carregado via domínio virtual -->
-    <link rel="stylesheet" href="https://app/style.css">
+    <link rel="stylesheet" href="https://local/style.css">
 </head>
 
 <body>
 
-    <!-- HEADER -->
-    <div id="header">
-        <h1 id="sectorName">Setor</h1>
+<header>
+    <h1 id="sectorName"></h1>
 
-        <div id="filters">
-            <input type="date" id="datePicker">
-            <select id="shiftPicker">
-                <option value="1">Turno Dia</option>
-                <option value="2">Turno Noite</option>
-            </select>
-        </div>
+    <div class="filters">
+        <input type="date" id="datePicker">
+        <select id="shiftPicker">
+            <option value="1">Dia</option>
+            <option value="2">Noite</option>
+        </select>
+
+        <button id="btnRefresh">Atualizar</button>
+
+        <div id="summaryBox">Total: 0</div>
     </div>
+</header>
 
-    <!-- MAPA + OPERADORES -->
+<main>
     <div id="mapContainer">
-        <img id="mapImage" src="https://app/assets/g-bareru.png">
+        <img id="mapImage" src="https://local/assets/g-bareru.png">
         <div id="operatorsLayer"></div>
     </div>
+</main>
 
-    <!-- JS carregado via domínio virtual -->
-    <script src="https://app/app.js"></script>
+<script src="https://local/app.js"></script>
 
 </body>
 </html>

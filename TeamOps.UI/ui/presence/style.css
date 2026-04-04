@@ -1,43 +1,138 @@
-﻿#mapContainer {
+﻿/* ======== RESET ======== */
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* impede scroll no WebView2 */
+    font-family: "Segoe UI", sans-serif;
+    background: #f5f7fa;
+}
+
+/* ======== HEADER TEAMOPS ======== */
+header {
+    height: 70px;
+    background: #0057b8; /* azul TeamOps */
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 25px;
+    box-sizing: border-box;
+    border-bottom: 3px solid #003f87;
+}
+
+header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* ======== FILTROS ======== */
+.filters {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.filters input[type="date"],
+.filters select {
+    height: 36px;
+    padding: 0 10px;
+    border-radius: 6px;
+    border: 1px solid #d0d4d9;
+    background: white;
+    font-size: 14px;
+    color: #333;
+    outline: none;
+    transition: 0.2s;
+}
+
+.filters input[type="date"]:focus,
+.filters select:focus {
+    border-color: #0057b8;
+    box-shadow: 0 0 0 2px rgba(0, 87, 184, 0.25);
+}
+
+/* ======== MAIN / MAPA ======== */
+main {
+    width: 100%;
+    height: calc(100vh - 70px); /* ocupa o resto da tela */
+    overflow: hidden;
+}
+
+#mapContainer {
     position: relative;
     width: 100%;
-    height: calc(100vh - 80px);
+    height: 100%;
+    overflow: hidden;
 }
 
 #mapImage {
     width: 100%;
     height: 100%;
-    object-fit: contain; /* mantém proporção */
+    object-fit: contain; /* mantém proporção sem distorcer */
+    display: block;
 }
 
+/* ======== OPERADORES ======== */
 #operatorsLayer {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
+    pointer-events: none;
 }
 
 .operatorCard {
     position: absolute;
     transform: translate(-50%, -50%);
     text-align: center;
-    color: white;
-    font-size: 14px;
 }
 
-    .operatorCard img {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-    }
+.operatorCard img {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
 
 .nameRomanji {
-    font-weight: bold;
-    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #222;
 }
 
 .nameNihongo {
-    font-size: 13px;
-    opacity: 0.9;
+    font-size: 11px;
+    color: #444;
+}
+
+/* Botão Atualizar */
+#btnRefresh {
+    height: 36px;
+    padding: 0 16px;
+    background: #0078d4;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+#btnRefresh:hover {
+    background: #005fa3;
+}
+
+/* Caixa de resumo */
+#summaryBox {
+    height: 36px;
+    padding: 0 12px;
+    background: #ffffff33;
+    color: white;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 600;
 }
