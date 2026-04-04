@@ -415,6 +415,31 @@ CREATE TABLE IF NOT EXISTS OperatorPositions (
     FOREIGN KEY (LocalId)  REFERENCES Locals(Id)
 );
 
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 1, 1600, 940);
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 3, 1600, 690);
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 4, 1600, 440);
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 5, 1600, 190);
+
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 6, 1260, 940);
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 7, 1260, 690);
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 8, 1260, 440);
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 9, 1260, 190);
+
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 10, 1000, 940);
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 11, 1000, 690);
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 12, 1000, 440);
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 13, 1000, 190);
+
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 14, 660, 940);
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 15, 660, 690);
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 16, 660, 440);
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 17, 660, 190);
+
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 18, 320, 940);
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 19, 320, 690);
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 20, 320, 440);
+INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 21, 320, 190);
+
 CREATE INDEX IF NOT EXISTS IX_Operators_BadgeCode ON Operators(BadgeCode);
 CREATE INDEX IF NOT EXISTS IX_GL_Login ON GroupLeaders(Login);
 CREATE INDEX IF NOT EXISTS IX_Assignments_GL_Operator ON Assignments(GLId, OperatorId);

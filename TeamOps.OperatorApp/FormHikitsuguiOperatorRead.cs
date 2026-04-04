@@ -86,12 +86,31 @@ namespace TeamOps.OperatorApp
 
             var local = (Local)cboLocal.SelectedItem;
 
+            // ============================
+            // 🔥 Ajuste fino da data
+            // ============================
+            DateTime now = DateTime.Now;
+            DateTime dataRegistro = now;
+
+            // Turno 2 = noite
+            // Se for depois da meia-noite e antes das 08:35 → pertence ao dia anterior
+            if (_currentOperator.ShiftId == 2)
+            {
+                TimeSpan inicioDia = new TimeSpan(0, 0, 0);      // 00:00
+                TimeSpan limite = new TimeSpan(8, 35, 0);        // 08:35
+
+                if (now.TimeOfDay >= inicioDia && now.TimeOfDay <= limite)
+                {
+                    dataRegistro = now.AddDays(-1);
+                }
+            }
+
             _presenceRepo.RegisterPresence(
                 _currentOperator.CodigoFJ,
                 local.SectorId,
                 local.Id,
                 _currentOperator.ShiftId,
-                DateTime.Now
+                dataRegistro
             );
 
             CarregarLista();
