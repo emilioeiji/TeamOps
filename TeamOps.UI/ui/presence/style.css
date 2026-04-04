@@ -1,0 +1,43 @@
+﻿#mapContainer {
+    position: relative;
+    width: 100%;
+    height: calc(100vh - 80px);
+}
+
+#mapImage {
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* mantém proporção */
+}
+
+#operatorsLayer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.operatorCard {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: white;
+    font-size: 14px;
+}
+
+    .operatorCard img {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+    }
+
+.nameRomanji {
+    font-weight: bold;
+    margin-top: 4px;
+}
+
+.nameNihongo {
+    font-size: 13px;
+    opacity: 0.9;
+}

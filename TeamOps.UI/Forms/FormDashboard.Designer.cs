@@ -7,7 +7,7 @@
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.Label lblUser;
         private System.Windows.Forms.Button btnOperadores;
-        private System.Windows.Forms.Button btnAtribuir;
+        private System.Windows.Forms.Button btnPresenca;
         private System.Windows.Forms.Button btnRelatorios;
         private System.Windows.Forms.Button btnAdmin;
         private System.Windows.Forms.Button btnAccessControl;
@@ -34,7 +34,7 @@
             lblTitle = new Label();
             lblUser = new Label();
             btnOperadores = new Button();
-            btnAtribuir = new Button();
+            btnPresenca = new Button();
             btnRelatorios = new Button();
             btnAdmin = new Button();
             btnAccessControl = new Button();
@@ -72,7 +72,7 @@
             lblTitle.ForeColor = Color.White;
             lblTitle.Location = new Point(20, 20);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(448, 37);
+            lblTitle.Size = new Size(364, 30);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "TeamOps – Gestão de Operadores";
             // 
@@ -84,7 +84,7 @@
             lblUser.ForeColor = Color.White;
             lblUser.Location = new Point(877, 30);
             lblUser.Name = "lblUser";
-            lblUser.Size = new Size(0, 23);
+            lblUser.Size = new Size(0, 19);
             lblUser.TabIndex = 1;
             // 
             // btnOperadores
@@ -97,15 +97,15 @@
             btnOperadores.Text = "Operadores\r\n作業者";
             btnOperadores.Click += btnOperadores_Click;
             // 
-            // btnAtribuir
+            // btnPresenca
             // 
-            btnAtribuir.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnAtribuir.Location = new Point(811, 320);
-            btnAtribuir.Name = "btnAtribuir";
-            btnAtribuir.Size = new Size(200, 80);
-            btnAtribuir.TabIndex = 7;
-            btnAtribuir.Text = "Atribuir Operadores";
-            btnAtribuir.Click += btnAtribuir_Click;
+            btnPresenca.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnPresenca.Location = new Point(811, 320);
+            btnPresenca.Name = "btnPresenca";
+            btnPresenca.Size = new Size(200, 80);
+            btnPresenca.TabIndex = 7;
+            btnPresenca.Text = "Presenca";
+            btnPresenca.Click += btnPresenca_Click;
             // 
             // btnRelatorios
             // 
@@ -174,7 +174,7 @@
             lblDate.ForeColor = Color.Black;
             lblDate.Location = new Point(20, 10);
             lblDate.Name = "lblDate";
-            lblDate.Size = new Size(0, 20);
+            lblDate.Size = new Size(0, 15);
             lblDate.TabIndex = 0;
             // 
             // btnHikitsuguiLeaderRead
@@ -263,7 +263,7 @@
             Controls.Add(btnFollowUp);
             Controls.Add(btnAccessControl);
             Controls.Add(btnOperadores);
-            Controls.Add(btnAtribuir);
+            Controls.Add(btnPresenca);
             Controls.Add(btnRelatorios);
             Controls.Add(panelHeader);
             Controls.Add(panelFooter);

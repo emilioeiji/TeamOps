@@ -392,6 +392,29 @@ CREATE TABLE YukyuFolhaControle (
     TakenAt TEXT NOT NULL
 );
 
+CREATE TABLE OperatorPresence (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    CodigoFJ TEXT NOT NULL,
+    SectorId INTEGER NOT NULL,   -- reutilizado do Local
+    LocalId INTEGER NOT NULL,
+    ShiftId INTEGER NOT NULL,
+    Date DATETIME NOT NULL,
+    FOREIGN KEY (CodigoFJ) REFERENCES Operators(CodigoFJ),
+    FOREIGN KEY (LocalId) REFERENCES Locals(Id),
+    FOREIGN KEY (SectorId) REFERENCES Sectors(Id)
+);
+
+CREATE TABLE IF NOT EXISTS OperatorPositions (
+    Id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    SectorId  INTEGER NOT NULL,
+    LocalId   INTEGER NOT NULL,
+    X         INTEGER NOT NULL,
+    Y         INTEGER NOT NULL,
+
+    FOREIGN KEY (SectorId) REFERENCES Sectors(Id),
+    FOREIGN KEY (LocalId)  REFERENCES Locals(Id)
+);
+
 CREATE INDEX IF NOT EXISTS IX_Operators_BadgeCode ON Operators(BadgeCode);
 CREATE INDEX IF NOT EXISTS IX_GL_Login ON GroupLeaders(Login);
 CREATE INDEX IF NOT EXISTS IX_Assignments_GL_Operator ON Assignments(GLId, OperatorId);

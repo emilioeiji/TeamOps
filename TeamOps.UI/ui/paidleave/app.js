@@ -85,7 +85,7 @@ window.chrome.webview.addEventListener('message', event => {
     if (msg.type === "select_motivos") {
         const sel = document.getElementById("motivoId");
         sel.innerHTML = '<option value="">Selecione...</option>';
-    
+
         msg.data.forEach(m => {
             sel.innerHTML += `<option value="${m.Id}">${m.NomePt}</option>`;
         });
@@ -137,29 +137,28 @@ function renderTable(items) {
                           onmouseenter="requestTodokeInfo(${item.id})"
                           onmouseleave="hideTooltip()">
                         ${item.hasTodoke
-                            ? "<span class='maru'>○</span>"
-                            : "<span class='batsu'>×</span>"}
+                ? "<span class='maru'>○</span>"
+                : "<span class='batsu'>×</span>"}
                     </span>
                 </td>
 
                 <!-- FOLHA CONTROLE -->
                 <td class="p-2 border text-center">
-                    ${
-                        item.todokeMotivoName === "Yukyu"
-                        ? `
+                    ${item.todokeMotivoName === "Yukyu"
+                ? `
                             <span class="cursor-pointer"
                                   onclick="toggleFolha(${item.id})"
                                   onmouseenter="requestFolhaInfo(${item.id})"
                                   onmouseleave="hideTooltip()">
                                 ${item.hasFolha
-                                    ? "<span class='maru'>○</span>"
-                                    : "<span class='batsu'>×</span>"}
+                    ? "<span class='maru'>○</span>"
+                    : "<span class='batsu'>×</span>"}
                             </span>
                         `
-                        : `
+                : `
                             <span class="text-gray-300 cursor-not-allowed">—</span>
                         `
-                    }
+            }
                 </td>
 
                 <!-- CONFERÊNCIA -->
@@ -169,8 +168,8 @@ function renderTable(items) {
                           onmouseenter="requestConferenciaInfo(${item.id})"
                           onmouseleave="hideTooltip()">
                         ${item.hasConferencia
-                            ? "<span class='maru'>○</span>"
-                            : "<span class='batsu'>×</span>"}
+                ? "<span class='maru'>○</span>"
+                : "<span class='batsu'>×</span>"}
                     </span>
                 </td>
             </tr>
@@ -252,8 +251,8 @@ function showTooltip(info) {
 }
 
 function showNotesTooltip(text) {
-    tooltipContent.innerHTML = text && text.trim() !== "" 
-        ? text 
+    tooltipContent.innerHTML = text && text.trim() !== ""
+        ? text
         : "Sem notas";
 
     tooltip.classList.remove("hidden");

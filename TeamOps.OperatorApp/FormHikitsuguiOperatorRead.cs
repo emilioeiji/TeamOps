@@ -13,6 +13,7 @@ namespace TeamOps.OperatorApp
         private readonly LocalRepository _localRepo;
         private readonly HikitsuguiRepository _hikRepo;
         private readonly HikitsuguiReadRepository _readRepo;
+        private readonly OperatorPresenceRepository _presenceRepo;
 
         private Operator? _currentOperator;
 
@@ -24,6 +25,7 @@ namespace TeamOps.OperatorApp
             _localRepo = new LocalRepository(Program.ConnectionFactory);
             _hikRepo = new HikitsuguiRepository(Program.ConnectionFactory);
             _readRepo = new HikitsuguiReadRepository(Program.ConnectionFactory);
+            _presenceRepo = new OperatorPresenceRepository(Program.ConnectionFactory);
 
             Load += Form_Load;
             txtFJ.TextChanged += txtFJ_TextChanged;
@@ -82,6 +84,19 @@ namespace TeamOps.OperatorApp
             if (cboLocal.SelectedIndex < 0)
                 return;
 
+            // Obter o Local selecionado
+            var local = (Local)cboLocal.SelectedItem;
+
+            // Registrar presença
+            _presenceRepo.RegisterPresence(
+                _currentOperator.CodigoFJ,
+                local.SectorId,                 // SectorId do Local
+                local.Id,                       // LocalId
+                _currentOperator.ShiftId,       // Turno do operador
+                DateTime.Now
+            );
+
+            // Continua o fluxo normal
             CarregarLista();
         }
 

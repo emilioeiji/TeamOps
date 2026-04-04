@@ -1,0 +1,10 @@
+﻿CREATE TABLE IF NOT EXISTS OperatorPositions (
+    Id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    SectorId  INTEGER NOT NULL,
+    LocalId   INTEGER NOT NULL,
+    X         INTEGER NOT NULL,
+    Y         INTEGER NOT NULL,
+
+    FOREIGN KEY (SectorId) REFERENCES Sectors(Id),
+    FOREIGN KEY (LocalId)  REFERENCES Locals(Id)
+);

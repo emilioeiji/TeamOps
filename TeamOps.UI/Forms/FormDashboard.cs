@@ -97,15 +97,24 @@ namespace TeamOps.UI.Forms
             form.ShowDialog();
         }
 
-        private void btnAtribuir_Click(object sender, EventArgs e)
+        private void btnPresenca_Click(object sender, EventArgs e)
         {
-            if (!HasAccess(AccessLevel.Admin))
+            if (!HasAccess(AccessLevel.GL))
             {
                 ShowAccessDenied();
                 return;
             }
 
-            var form = new FormAssignments();
+            // Defina o setor deste botão
+            int sectorId = 1; // G-Bareru, por exemplo
+            string sectorName = "G-Bareru";
+
+            var form = new FormPresenceLayout(
+                sectorId,
+                sectorName,
+                Program.ConnectionFactory
+            );
+
             form.ShowDialog();
         }
 
