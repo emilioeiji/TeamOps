@@ -440,6 +440,22 @@ INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 19, 320, 690);
 INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 20, 320, 440);
 INSERT INTO Locals (SectorId, Id, X, Y) VALUES (1, 21, 320, 190);
 
+CREATE TABLE IF NOT EXISTS OperatorSchedule (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    CodigoFJ TEXT NOT NULL,
+    SectorId INTEGER NOT NULL,
+    LocalId INTEGER NOT NULL,
+    ShiftId INTEGER NOT NULL,
+    ScheduleDate DATE NOT NULL,
+
+    ImportedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (CodigoFJ) REFERENCES Operators(CodigoFJ),
+    FOREIGN KEY (SectorId) REFERENCES Sectors(Id),
+    FOREIGN KEY (LocalId) REFERENCES Locals(Id)
+);
+
 CREATE INDEX IF NOT EXISTS IX_Operators_BadgeCode ON Operators(BadgeCode);
 CREATE INDEX IF NOT EXISTS IX_GL_Login ON GroupLeaders(Login);
 CREATE INDEX IF NOT EXISTS IX_Assignments_GL_Operator ON Assignments(GLId, OperatorId);

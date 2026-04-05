@@ -89,17 +89,35 @@ main {
     text-align: center;
 }
 
+.operatorCardSchedule {
+    background: rgba(255, 0, 0, 0.75);
+    color: white;
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    white-space: nowrap;
+}
+
+.operatorCardSmall.schedule {
+    background: rgba(255, 0, 0, 0.75);
+    border: 1px solid #ffcccc;
+}
+
 .operatorCardSmall {
-    background: rgba(0, 0, 0, 0.85) !important;
-    color: white !important;
-    padding: 4px 6px !important;
-    border-radius: 6px !important;
-    font-size: 11px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 2px !important;
-    white-space: nowrap !important;
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    white-space: nowrap;
 }
 
 .operatorCard img {
@@ -145,6 +163,23 @@ main {
     background: #005fa3;
 }
 
+/* Botão Importar */
+#btnImportSchedule {
+    height: 36px;
+    padding: 0 16px;
+    background: #0078d4;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+#btnImportSchedule:hover {
+    background: #005fa3;
+}
+
 /* Caixa de resumo */
 #summaryBox {
     height: 36px;
@@ -158,6 +193,18 @@ main {
     font-weight: 600;
 }
 
+#summaryTooltip {
+    position: absolute;
+    background: #000000cc;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    display: none;
+    z-index: 9999;
+    white-space: nowrap;
+}
+
 /* ======== MULTI-OPERADORES POR ÁREA ======== */
 .operatorGroup {
     position: absolute;
@@ -169,23 +216,23 @@ main {
 }
 
 /* Card pequeno (para 2+ operadores na mesma área) */
-.operatorGroup .operatorCardSmall {
-    background: rgba(0, 0, 0, 0.85) !important;
-    color: white !important;
-    padding: 4px 6px !important;
-    border-radius: 6px !important;
-    font-size: 11px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 2px !important;
-    white-space: nowrap !important;
+.operatorGroup .operatorCardSmall:not(.schedule) {
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    white-space: nowrap;
 }
 
 .operatorGroup .operatorCardSmall img {
-    width: 28px !important;
-    height: 28px !important;
-    border-radius: 50% !important;
-    border: 1px solid white !important;
-    object-fit: cover !important;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid white;
+    object-fit: cover;
 }
