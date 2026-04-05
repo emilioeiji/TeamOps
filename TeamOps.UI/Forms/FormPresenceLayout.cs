@@ -89,7 +89,8 @@ namespace TeamOps.UI.Forms
             {
                 type = "select_presence",
                 data = presences,
-                sectorName = _sectorName
+                sectorName = _sectorName,
+                sectorId = _sectorId
             });
 
             webViewPresence.CoreWebView2.PostWebMessageAsJson(jsonPresence);

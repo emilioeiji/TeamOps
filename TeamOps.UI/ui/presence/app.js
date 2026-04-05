@@ -11,7 +11,9 @@ window.chrome?.webview?.addEventListener("message", (event) => {
         case "select_presence":
             _presences = msg.data;
             _sectorName = msg.sectorName;
+            _sectorId = msg.sectorId;
             updateHeader();
+            updateMapImage();
             updateSummary();
             renderOperators();
             break;
@@ -41,6 +43,11 @@ window.chrome?.webview?.addEventListener("message", (event) => {
 function updateHeader() {
     const lbl = document.getElementById("sectorName");
     if (lbl) lbl.textContent = _sectorName;
+}
+
+function updateMapImage() {
+    const map = document.getElementById("mapImage");
+    map.src = `https://local/assets/${_sectorId}.png`;
 }
 
 function renderOperators() {

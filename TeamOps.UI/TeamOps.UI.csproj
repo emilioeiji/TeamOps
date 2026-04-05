@@ -17,7 +17,6 @@
     <None Remove="Icon.ico" />
     <None Remove="Logo.png" />
     <None Remove="ui\presence\assets\default-operator.png" />
-    <None Remove="ui\presence\assets\g-bareru.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -39,7 +38,7 @@
     <Content Include="ui\presence\assets\default-operator.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="ui\presence\assets\g-bareru.png">
+    <Content Include="ui\presence\assets\1.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

@@ -118,6 +118,23 @@ namespace TeamOps.UI.Forms
             form.ShowDialog();
         }
 
+        private void btnPresenca2_Click(object sender, EventArgs e)
+        {
+            if (!HasAccess(AccessLevel.GL))
+            {
+                ShowAccessDenied();
+                return;
+            }
+
+            var form = new FormPresenceLayout(
+                2,              // sectorId
+                "DAD",          // sectorName
+                Program.ConnectionFactory
+            );
+
+            form.ShowDialog();
+        }
+
         private void btnRelatorios_Click(object sender, EventArgs e)
         {
             if (!HasAccess(AccessLevel.GL))

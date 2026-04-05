@@ -8,6 +8,7 @@
         private System.Windows.Forms.Label lblUser;
         private System.Windows.Forms.Button btnOperadores;
         private System.Windows.Forms.Button btnPresenca;
+        private System.Windows.Forms.Button btnPresenca2;
         private System.Windows.Forms.Button btnRelatorios;
         private System.Windows.Forms.Button btnAdmin;
         private System.Windows.Forms.Button btnAccessControl;
@@ -35,6 +36,7 @@
             lblUser = new Label();
             btnOperadores = new Button();
             btnPresenca = new Button();
+            btnPresenca2 = new Button();
             btnRelatorios = new Button();
             btnAdmin = new Button();
             btnAccessControl = new Button();
@@ -50,8 +52,11 @@
             panel1 = new Panel();
             panel2 = new Panel();
             panel3 = new Panel();
+            panel4 = new Panel();
             panelHeader.SuspendLayout();
             panelFooter.SuspendLayout();
+            panel1.SuspendLayout();
+            panel4.SuspendLayout();
             SuspendLayout();
             // 
             // panelHeader
@@ -62,7 +67,7 @@
             panelHeader.Dock = DockStyle.Top;
             panelHeader.Location = new Point(0, 0);
             panelHeader.Name = "panelHeader";
-            panelHeader.Size = new Size(1077, 80);
+            panelHeader.Size = new Size(1224, 80);
             panelHeader.TabIndex = 0;
             // 
             // lblTitle
@@ -82,7 +87,7 @@
             lblUser.AutoSize = true;
             lblUser.Font = new Font("Segoe UI", 10F);
             lblUser.ForeColor = Color.White;
-            lblUser.Location = new Point(877, 30);
+            lblUser.Location = new Point(1024, 30);
             lblUser.Name = "lblUser";
             lblUser.Size = new Size(0, 23);
             lblUser.TabIndex = 1;
@@ -90,7 +95,7 @@
             // btnOperadores
             // 
             btnOperadores.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnOperadores.Location = new Point(320, 320);
+            btnOperadores.Location = new Point(262, 320);
             btnOperadores.Name = "btnOperadores";
             btnOperadores.Size = new Size(200, 80);
             btnOperadores.TabIndex = 2;
@@ -100,17 +105,27 @@
             // btnPresenca
             // 
             btnPresenca.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnPresenca.Location = new Point(811, 320);
+            btnPresenca.Location = new Point(10, 19);
             btnPresenca.Name = "btnPresenca";
             btnPresenca.Size = new Size(200, 80);
             btnPresenca.TabIndex = 7;
-            btnPresenca.Text = "Presença\r\n出勤管理";
+            btnPresenca.Text = "Presença Gbareru\r\n出勤管理";
             btnPresenca.Click += btnPresenca_Click;
+            // 
+            // btnPresenca2
+            // 
+            btnPresenca2.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnPresenca2.Location = new Point(10, 119);
+            btnPresenca2.Name = "btnPresenca2";
+            btnPresenca2.Size = new Size(200, 80);
+            btnPresenca2.TabIndex = 7;
+            btnPresenca2.Text = "Presença DAD\r\n出勤管理";
+            btnPresenca2.Click += btnPresenca2_Click;
             // 
             // btnRelatorios
             // 
             btnRelatorios.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnRelatorios.Location = new Point(80, 320);
+            btnRelatorios.Location = new Point(22, 320);
             btnRelatorios.Name = "btnRelatorios";
             btnRelatorios.Size = new Size(200, 80);
             btnRelatorios.TabIndex = 3;
@@ -120,7 +135,7 @@
             // btnAdmin
             // 
             btnAdmin.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnAdmin.Location = new Point(811, 120);
+            btnAdmin.Location = new Point(10, 19);
             btnAdmin.Name = "btnAdmin";
             btnAdmin.Size = new Size(200, 80);
             btnAdmin.TabIndex = 5;
@@ -130,7 +145,7 @@
             // btnAccessControl
             // 
             btnAccessControl.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnAccessControl.Location = new Point(811, 220);
+            btnAccessControl.Location = new Point(10, 119);
             btnAccessControl.Name = "btnAccessControl";
             btnAccessControl.Size = new Size(200, 80);
             btnAccessControl.TabIndex = 6;
@@ -140,7 +155,7 @@
             // btnFollowUp
             // 
             btnFollowUp.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnFollowUp.Location = new Point(80, 120);
+            btnFollowUp.Location = new Point(22, 120);
             btnFollowUp.Name = "btnFollowUp";
             btnFollowUp.Size = new Size(200, 80);
             btnFollowUp.TabIndex = 4;
@@ -150,7 +165,7 @@
             // btnHikitsugui
             // 
             btnHikitsugui.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnHikitsugui.Location = new Point(320, 120);
+            btnHikitsugui.Location = new Point(262, 120);
             btnHikitsugui.Name = "btnHikitsugui";
             btnHikitsugui.Size = new Size(200, 80);
             btnHikitsugui.TabIndex = 8;
@@ -164,7 +179,7 @@
             panelFooter.Dock = DockStyle.Bottom;
             panelFooter.Location = new Point(0, 454);
             panelFooter.Name = "panelFooter";
-            panelFooter.Size = new Size(1077, 40);
+            panelFooter.Size = new Size(1224, 40);
             panelFooter.TabIndex = 9;
             // 
             // lblDate
@@ -180,7 +195,7 @@
             // btnHikitsuguiLeaderRead
             // 
             btnHikitsuguiLeaderRead.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnHikitsuguiLeaderRead.Location = new Point(320, 220);
+            btnHikitsuguiLeaderRead.Location = new Point(262, 220);
             btnHikitsuguiLeaderRead.Name = "btnHikitsuguiLeaderRead";
             btnHikitsuguiLeaderRead.Size = new Size(200, 80);
             btnHikitsuguiLeaderRead.TabIndex = 0;
@@ -190,7 +205,7 @@
             // btnSobraDePeca
             // 
             btnSobraDePeca.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnSobraDePeca.Location = new Point(80, 220);
+            btnSobraDePeca.Location = new Point(22, 220);
             btnSobraDePeca.Name = "btnSobraDePeca";
             btnSobraDePeca.Size = new Size(200, 80);
             btnSobraDePeca.TabIndex = 0;
@@ -200,7 +215,7 @@
             // btnPR
             // 
             btnPR.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnPR.Location = new Point(568, 120);
+            btnPR.Location = new Point(510, 120);
             btnPR.Name = "btnPR";
             btnPR.Size = new Size(200, 80);
             btnPR.TabIndex = 0;
@@ -210,7 +225,7 @@
             // btnCL
             // 
             btnCL.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnCL.Location = new Point(568, 220);
+            btnCL.Location = new Point(510, 220);
             btnCL.Name = "btnCL";
             btnCL.Size = new Size(200, 80);
             btnCL.TabIndex = 0;
@@ -220,7 +235,7 @@
             // btnYukyu
             // 
             btnYukyu.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnYukyu.Location = new Point(568, 320);
+            btnYukyu.Location = new Point(510, 320);
             btnYukyu.Name = "btnYukyu";
             btnYukyu.Size = new Size(200, 80);
             btnYukyu.TabIndex = 0;
@@ -231,7 +246,9 @@
             // 
             panel1.AccessibleName = "teste";
             panel1.BorderStyle = BorderStyle.Fixed3D;
-            panel1.Location = new Point(800, 99);
+            panel1.Controls.Add(btnPresenca);
+            panel1.Controls.Add(btnPresenca2);
+            panel1.Location = new Point(742, 99);
             panel1.Name = "panel1";
             panel1.Size = new Size(223, 310);
             panel1.TabIndex = 10;
@@ -240,7 +257,7 @@
             // 
             panel2.AccessibleName = "teste";
             panel2.BorderStyle = BorderStyle.Fixed3D;
-            panel2.Location = new Point(68, 99);
+            panel2.Location = new Point(10, 99);
             panel2.Name = "panel2";
             panel2.Size = new Size(464, 310);
             panel2.TabIndex = 11;
@@ -249,25 +266,34 @@
             // 
             panel3.AccessibleName = "teste";
             panel3.BorderStyle = BorderStyle.Fixed3D;
-            panel3.Location = new Point(556, 99);
+            panel3.Location = new Point(498, 99);
             panel3.Name = "panel3";
             panel3.Size = new Size(223, 310);
             panel3.TabIndex = 11;
             // 
+            // panel4
+            // 
+            panel4.AccessibleName = "teste";
+            panel4.BorderStyle = BorderStyle.Fixed3D;
+            panel4.Controls.Add(btnAdmin);
+            panel4.Controls.Add(btnAccessControl);
+            panel4.Location = new Point(990, 99);
+            panel4.Name = "panel4";
+            panel4.Size = new Size(223, 310);
+            panel4.TabIndex = 12;
+            // 
             // FormDashboard
             // 
-            ClientSize = new Size(1077, 494);
+            ClientSize = new Size(1224, 494);
+            Controls.Add(panel4);
             Controls.Add(btnSobraDePeca);
             Controls.Add(btnHikitsuguiLeaderRead);
             Controls.Add(btnHikitsugui);
             Controls.Add(btnFollowUp);
-            Controls.Add(btnAccessControl);
             Controls.Add(btnOperadores);
-            Controls.Add(btnPresenca);
             Controls.Add(btnRelatorios);
             Controls.Add(panelHeader);
             Controls.Add(panelFooter);
-            Controls.Add(btnAdmin);
             Controls.Add(btnPR);
             Controls.Add(btnCL);
             Controls.Add(btnYukyu);
@@ -281,10 +307,13 @@
             panelHeader.PerformLayout();
             panelFooter.ResumeLayout(false);
             panelFooter.PerformLayout();
+            panel1.ResumeLayout(false);
+            panel4.ResumeLayout(false);
             ResumeLayout(false);
         }
         private Panel panel1;
         private Panel panel2;
         private Panel panel3;
+        private Panel panel4;
     }
 }
