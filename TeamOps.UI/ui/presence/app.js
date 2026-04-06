@@ -35,6 +35,7 @@ window.chrome?.webview?.addEventListener("message", (event) => {
            break;
 
         case "import_result":
+            hideLoading();
             alert(msg.message);
             break;
     }
@@ -217,6 +218,8 @@ function importSchedule() {
         return;
     }
 
+    showLoading();
+
     window.chrome.webview.postMessage({
         type: "import_schedule",
         date,
@@ -256,4 +259,14 @@ function setupSummaryTooltip() {
     box.addEventListener("mouseleave", () => {
         summaryTooltip.style.display = "none";
     });
+}
+
+function showLoading() {
+    document.getElementById("loadingOverlay").classList.remove("hidden");
+    document.getElementById("btnImportSchedule").disabled = true;
+}
+
+function hideLoading() {
+    document.getElementById("loadingOverlay").classList.add("hidden");
+    document.getElementById("btnImportSchedule").disabled = false;
 }
