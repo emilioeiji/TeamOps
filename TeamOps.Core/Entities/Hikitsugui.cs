@@ -12,6 +12,7 @@ namespace TeamOps.Core.Entities
         public string CategoryName { get; set; } = "";
         public int? EquipmentId { get; set; }
         public int? LocalId { get; set; }
+        public string LocalName { get; set; }
         public int? SectorId { get; set; }
         public string? SectorName { get; set; }
         public bool ForLeaders { get; set; }

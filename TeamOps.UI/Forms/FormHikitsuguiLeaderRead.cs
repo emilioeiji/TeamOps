@@ -26,12 +26,22 @@ namespace TeamOps.UI.Forms
             _currentUser = currentUser;
             _currentLeader = currentLeader;
 
-            Load += FormHikitsuguiLeaderRead_Load;
+            Shown += FormHikitsuguiLeaderRead_Shown;
             btnFiltrar.Click += btnFiltrar_Click;
+
             grid.CellClick += grid_CellClick;
         }
 
         private void FormHikitsuguiLeaderRead_Load(object? sender, EventArgs e)
+        {
+            dtFinal.Value = DateTime.Today;
+            dtInicial.Value = DateTime.Today.AddDays(-31);
+
+            ConfigurarGrid();
+            CarregarLista();
+        }
+
+        private void FormHikitsuguiLeaderRead_Shown(object? sender, EventArgs e)
         {
             dtFinal.Value = DateTime.Today;
             dtInicial.Value = DateTime.Today.AddDays(-31);
@@ -49,6 +59,8 @@ namespace TeamOps.UI.Forms
 
             grid.Columns.Add("colData", "Data");
             grid.Columns.Add("colCategoria", "Categoria");
+            grid.Columns.Add("colSetor", "Setor");
+            grid.Columns.Add("colLocal", "Local");
             grid.Columns.Add("colCriador", "Criador");
             grid.Columns.Add("colDescricao", "Descrição");
 
@@ -93,6 +105,13 @@ namespace TeamOps.UI.Forms
                 _currentUser.AccessLevel
             );
 
+            // 🔹 Filtro de permissões (OP / LD / MA)
+            lista = lista.Where(h =>
+                (chkOp.Checked && h.ForOperators) ||
+                (chkLd.Checked && h.ForLeaders) ||
+                (chkMa.Checked && h.ForMaSv)
+            ).ToList();
+
             grid.Rows.Clear();
 
             foreach (var h in lista)
@@ -130,6 +149,8 @@ namespace TeamOps.UI.Forms
                     h.Id,
                     h.Date.ToString("yyyy-MM-dd HH:mm"),
                     h.CategoryName,
+                    h.SectorName,
+                    h.LocalName,
                     h.CreatorCodigoFJ,
                     preview,
                     "",

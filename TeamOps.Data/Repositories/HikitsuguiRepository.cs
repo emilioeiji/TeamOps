@@ -219,11 +219,13 @@ namespace TeamOps.Data.Repositories
                     h.Description,
                     h.AttachmentPath,
                     c.NamePt AS CategoryName,
-                    s.NamePt AS SectorName
+                    s.NamePt AS SectorName,
+                    l.NamePt AS LocalName
                 FROM Hikitsugui h
                 LEFT JOIN Categories c ON c.Id = h.CategoryId
                 LEFT JOIN Sectors s ON s.Id = h.SectorId
                 LEFT JOIN Operators o ON o.CodigoFJ = h.CreatorCodigoFJ
+                LEFT JOIN Locals l ON l.Id = h.LocalId
                 WHERE h.Date >= @start
                   AND h.Date <  @end
                   AND {filtroPermissao}
@@ -255,7 +257,8 @@ namespace TeamOps.Data.Repositories
                     AttachmentPath = reader.IsDBNull(12) ? null : reader.GetString(12),
 
                     CategoryName = reader.IsDBNull(13) ? "" : reader.GetString(13),
-                    SectorName = reader.IsDBNull(14) ? "" : reader.GetString(14)
+                    SectorName = reader.IsDBNull(14) ? "" : reader.GetString(14),
+                    LocalName = reader.IsDBNull(15) ? "" : reader.GetString(15)
                 });
             }
 

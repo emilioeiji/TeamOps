@@ -10,6 +10,9 @@
         private System.Windows.Forms.DateTimePicker dtFinal;
         private System.Windows.Forms.Button btnFiltrar;
         private System.Windows.Forms.DataGridView grid;
+        private System.Windows.Forms.CheckBox chkOp;
+        private System.Windows.Forms.CheckBox chkLd;
+        private System.Windows.Forms.CheckBox chkMa;
 
         protected override void Dispose(bool disposing)
         {
@@ -28,6 +31,9 @@
             dtFinal = new DateTimePicker();
             btnFiltrar = new Button();
             grid = new DataGridView();
+            chkOp = new CheckBox();
+            chkLd = new CheckBox();
+            chkMa = new CheckBox();
             ((System.ComponentModel.ISupportInitialize)grid).BeginInit();
             SuspendLayout();
             // 
@@ -65,7 +71,7 @@
             // 
             // btnFiltrar
             // 
-            btnFiltrar.Location = new Point(743, 14);
+            btnFiltrar.Location = new Point(1187, 14);
             btnFiltrar.Name = "btnFiltrar";
             btnFiltrar.Size = new Size(100, 30);
             btnFiltrar.TabIndex = 4;
@@ -84,17 +90,50 @@
             grid.RowHeadersVisible = false;
             grid.RowHeadersWidth = 51;
             grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            grid.Size = new Size(900, 500);
+            grid.Size = new Size(1271, 500);
             grid.TabIndex = 5;
+            // 
+            // chkOp
+            // 
+            chkOp.Checked = true;
+            chkOp.CheckState = CheckState.Checked;
+            chkOp.Location = new Point(1007, 18);
+            chkOp.Name = "chkOp";
+            chkOp.Size = new Size(55, 20);
+            chkOp.TabIndex = 5;
+            chkOp.Text = "OP";
+            // 
+            // chkLd
+            // 
+            chkLd.Checked = true;
+            chkLd.CheckState = CheckState.Checked;
+            chkLd.Location = new Point(1067, 18);
+            chkLd.Name = "chkLd";
+            chkLd.Size = new Size(55, 20);
+            chkLd.TabIndex = 6;
+            chkLd.Text = "LD";
+            // 
+            // chkMa
+            // 
+            chkMa.Checked = true;
+            chkMa.CheckState = CheckState.Checked;
+            chkMa.Location = new Point(1127, 18);
+            chkMa.Name = "chkMa";
+            chkMa.Size = new Size(55, 20);
+            chkMa.TabIndex = 7;
+            chkMa.Text = "MA";
             // 
             // FormHikitsuguiLeaderRead
             // 
-            ClientSize = new Size(938, 580);
+            ClientSize = new Size(1303, 580);
             Controls.Add(lblInicial);
             Controls.Add(dtInicial);
             Controls.Add(lblFinal);
             Controls.Add(dtFinal);
             Controls.Add(btnFiltrar);
+            Controls.Add(chkOp);
+            Controls.Add(chkLd);
+            Controls.Add(chkMa);
             Controls.Add(grid);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             Name = "FormHikitsuguiLeaderRead";
