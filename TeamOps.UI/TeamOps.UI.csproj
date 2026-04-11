@@ -87,6 +87,12 @@
     <None Update="ui\hikitsugui-leader-read\index.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="ui\hikitsugui-leader-read\libs\rtf.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="ui\hikitsugui-leader-read\rtf.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="ui\hikitsugui-leader-read\style.css">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

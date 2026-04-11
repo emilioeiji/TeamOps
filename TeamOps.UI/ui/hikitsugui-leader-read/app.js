@@ -107,6 +107,12 @@ window.chrome.webview.addEventListener("message", e => {
             const replyBox = document.getElementById("replyText");
             replyBox.value = "";
             break;
+
+        case "hikitsugui_by_id":
+            console.log("PREVIEW ROW:", msg.data[0]);
+            openModal(msg.data[0]);
+            break;
+
     }
 });
 
@@ -153,8 +159,8 @@ function renderTable(rows) {
     rows.forEach(r => {
 
         const icon = r.IsRead
-            ? `<span class="maru">○</span>`
-            : `<span class="batsu" onclick="markRead(${r.Id})">×</span>`;
+            ? `<span class="maru animate">○</span>`
+            : `<span class="batsu animate" onclick="markRead(${r.Id})">×</span>`;
 
         const dataFormatada = r.Date?.split(" ")[0] ?? "";
 
@@ -168,7 +174,7 @@ function renderTable(rows) {
                 <td class="border p-2">${r.Equipment ?? ""}</td>
                 <td class="border p-2">${r.Local ?? ""}</td>
                 <td class="border p-2 col-setor no-wrap">${r.Sector ?? ""}</td>
-                <td class="border p-2">${r.Description}</td>
+                <td class="border p-2">${RTFJS.parse(r.DescriptionHtml)}</td>
                 <td class="border p-2 text-center">
                     <button class="btn-primary" onclick="preview(${r.Id})">Ver</button>
                 </td>
@@ -198,7 +204,8 @@ function markRead(id) {
         operatorId: Number(document.getElementById("operatorId").value),
         reasonId: Number(document.getElementById("reasonId").value),
         equipId: Number(document.getElementById("equipId").value),
-        sectorId: Number(document.getElementById("sectorId").value)
+        sectorId: Number(document.getElementById("sectorId").value),
+        search: document.getElementById("txtSearch").value.trim()
     });
 }
 
@@ -226,17 +233,18 @@ function openModal(row) {
         <b>Setor:</b> ${row.Sector ?? ""}<br><br>
 
         <b>Descrição:</b><br>
-        ${row.Description}<br><br>
+        <div id="descHtml"></div>
+        <br><br>
 
         <h3>Respostas</h3>
         <div id="replyList"></div>
     `;
+    
+    document.getElementById("descHtml").innerHTML = RTFJS.parse(row.DescriptionHtml);
 
     // GARANTIR QUE O ELEMENTO EXISTE ANTES DE SETAR O DATASET
     const replyBox = document.getElementById("replyText");
     replyBox.dataset.hikitsuguiId = row.Id;
-
-    console.log("ID SALVO NO DATASET:", replyBox.dataset.hikitsuguiId);
 
     // Carregar replies
     send("select_replies", { id: row.Id });

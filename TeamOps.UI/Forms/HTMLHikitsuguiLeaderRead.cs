@@ -207,7 +207,12 @@ namespace TeamOps.UI.Forms
                         {
                             dtInicial = msg.dtInicial,
                             dtFinal = msg.dtFinal,
-                            publico = msg.publico,
+                            publico =
+                                msg.publico == "todos"
+                                    ? (_currentUser.AccessLevel >= AccessLevel.GL ? "masv"
+                                      : _currentUser.AccessLevel == AccessLevel.KL ? "lider"
+                                      : "operador")
+                                    : msg.publico,
                             shiftId = msg.shiftId,
                             operatorId = msg.operatorId,
                             reasonId = msg.reasonId,
@@ -215,7 +220,8 @@ namespace TeamOps.UI.Forms
                             equipId = msg.equipId,
                             sectorId = msg.sectorId,
                             codigoFJ = _currentLeader.CodigoFJ,
-                            accessLevel = _currentUser.AccessLevel   // ← ADICIONADO
+                            search = msg.search,
+                            accessLevel = _currentUser.AccessLevel
                         });
 
                         break;
@@ -234,12 +240,21 @@ namespace TeamOps.UI.Forms
             using var conn = _factory.CreateOpenConnection();
             var rows = conn.Query(sql, param).ToList();
 
-            // Converter RTF → texto
             foreach (var row in rows)
             {
                 var dict = row as IDictionary<string, object>;
-                if (dict.ContainsKey("Description") && dict["Description"] != null)
-                    dict["Description"] = RtfToText(dict["Description"].ToString());
+
+                if (!dict.ContainsKey("Description") || dict["Description"] == null)
+                {
+                    dict["DescriptionHtml"] = "";
+                    continue;
+                }
+
+                string rtf = dict["Description"].ToString();
+
+                // Usa o conversor SEGURO
+                dict["DescriptionHtml"] = dict["Description"]; // envia RTF puro
+
             }
 
             var json = JsonSerializer.Serialize(new
@@ -258,23 +273,6 @@ namespace TeamOps.UI.Forms
 
             using var conn = _factory.CreateOpenConnection();
             conn.Execute(sql, param);
-        }
-
-        // ============================================================
-        // RTF → TEXTO
-        // ============================================================
-        private string RtfToText(string rtf)
-        {
-            try
-            {
-                using var box = new RichTextBox();
-                box.Rtf = rtf;
-                return box.Text;
-            }
-            catch
-            {
-                return rtf;
-            }
         }
     }
 }
