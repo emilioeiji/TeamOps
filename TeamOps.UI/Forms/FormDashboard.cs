@@ -275,6 +275,7 @@ namespace TeamOps.UI.Forms
 
             form.ShowDialog();
         }
+        /*
         private void btnHikitsuguiLeaderRead_Click(object sender, EventArgs e)
         {
             if (!HasAccess(AccessLevel.KL))
@@ -288,6 +289,23 @@ namespace TeamOps.UI.Forms
             using var form = new FormHikitsuguiLeaderRead(
                 _hikitsuguiRepository,
                 readRepo,
+                _user,
+                _currentOperator
+            );
+
+            form.ShowDialog();
+        }
+        */
+        private void btnHikitsuguiLeaderRead_Click(object sender, EventArgs e)
+        {
+            if (!HasAccess(AccessLevel.KL))
+            {
+                ShowAccessDenied();
+                return;
+            }
+
+            using var form = new HTMLHikitsuguiLeaderRead(
+                Program.ConnectionFactory,
                 _user,
                 _currentOperator
             );

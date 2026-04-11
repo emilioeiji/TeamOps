@@ -6,6 +6,7 @@ using Dapper;
 using Microsoft.Web.WebView2.Core;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Db;
+using TeamOps.UI.Forms.Models;
 
 namespace TeamOps.UI.Forms
 {
@@ -145,19 +146,5 @@ namespace TeamOps.UI.Forms
             using var conn = _factory.CreateOpenConnection();
             conn.Execute(sql, param);
         }
-    }
-
-    public class JsRequest
-    {
-        public string action { get; set; } = "";
-        public int id { get; set; }
-
-        public string opCodigoFJ { get; set; }
-        public string reqDate { get; set; }
-        public string notes { get; set; }
-
-        public int shiftId { get; set; }
-
-        public int motivoId { get; set; }
     }
 }

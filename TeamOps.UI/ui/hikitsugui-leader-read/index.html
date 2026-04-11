@@ -1,0 +1,149 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <title>Hikitsugui Leader Read</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body class="bg-gray-100">
+
+    <!-- =========================================================
+         BARRA AZUL (igual PaidLeave)
+    ========================================================= -->
+    <div class="header-bar">
+        Hikitsugui Leader Read
+    </div>
+
+    <!-- =========================================================
+         FILTROS (container branco igual PaidLeave)
+    ========================================================= -->
+    <div class="filter-container">
+
+        <div>
+            <label class="text-gray-600">Período Inicial</label>
+            <input type="date" id="dtInicial" class="input" />
+        </div>
+
+        <div>
+            <label class="text-gray-600">Período Final</label>
+            <input type="date" id="dtFinal" class="input" />
+        </div>
+
+        <div>
+            <label class="text-gray-600">Shift</label>
+            <select id="shiftId" class="input">
+                <option value="0">Todos</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="text-gray-600">Operador</label>
+            <select id="operatorId" class="input">
+                <option value="0">Todos</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="text-gray-600">Categoria</label>
+            <select id="reasonId" class="input">
+                <option value="0">Todos</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="text-gray-600">Equipamento</label>
+            <select id="equipId" class="input">
+                <option value="0">Todos</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="text-gray-600">Local</label>
+            <select id="localId" class="input">
+                <option value="0">Todos</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="text-gray-600">Setor</label>
+            <select id="sectorId" class="input">
+                <option value="0">Todos</option>
+            </select>
+        </div>
+
+        <!-- Público -->
+        <div class="publico-container">
+            <label class="publico-option">
+                <input type="radio" name="publico" value="todos" checked>
+                <span>Todos</span>
+            </label>
+
+            <label class="publico-option">
+                <input type="radio" name="publico" value="operador"/>
+                <span>Operador</span>
+            </label>
+        
+            <label class="publico-option">
+                <input type="radio" name="publico" value="lider" />
+                <span>Líder</span>
+            </label>
+        
+            <label class="publico-option">
+                <input type="radio" name="publico" value="masv" />
+                <span>MA/SV</span>
+            </label>
+        </div>
+
+        <input id="txtSearch" type="text" placeholder="Buscar texto..." class="input w-48">
+
+        <button id="btnBuscar" class="btn-primary">Buscar</button>
+    </div>
+
+    <!-- =========================================================
+         TABELA
+    ========================================================= -->
+    <div class="p-4">
+        <table class="min-w-full border rounded shadow bg-white">
+            <thead>
+                <tr>
+                    <th class="border p-2 text-center">Lido</th>
+                    <th class="border p-2">ID</th>
+                    <th class="border p-2 col-data">Data</th>
+                    <th class="border p-2">Operador</th>
+                    <th class="border p-2">Categoria</th>
+                    <th class="border p-2">Equipamento</th>
+                    <th class="border p-2">Local</th>
+                    <th class="border p-2 col-setor">Setor</th>
+                    <th class="border p-2">Descrição</th>
+                    <th class="border p-2 text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tblHikitsugui"></tbody>
+        </table>
+    </div>
+
+    <!-- =========================================================
+         MODAL
+    ========================================================= -->
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+
+            <h2 class="mb-4">Detalhes do Hikitsugui</h2>
+        
+            <div id="modal-body" class="mb-4"></div>
+        
+            <label class="text-gray-600 font-semibold">Responder</label>
+            <textarea id="replyText" class="reply-box mb-4" placeholder="Digite sua resposta..."></textarea>
+        
+            <div class="flex justify-end gap-4">
+                <button id="btnEnviarReply" class="btn-primary">Enviar Resposta</button>
+                <button id="btnFecharModal" class="btn-secondary">Fechar</button>
+            </div>
+        
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

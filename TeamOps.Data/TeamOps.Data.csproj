@@ -28,6 +28,42 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Sql\Hikitsugui\delete_reply.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Sql\Hikitsugui\insert_read.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Sql\Hikitsugui\insert_reply.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Sql\Hikitsugui\select_categories.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Sql\Hikitsugui\select_equipments.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Sql\Hikitsugui\select_hikitsugui_by_id.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Sql\Hikitsugui\select_hikitsugui_for_leader.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Sql\Hikitsugui\select_locals.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Sql\Hikitsugui\select_operators.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Sql\Hikitsugui\select_replies.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Sql\Hikitsugui\select_sectors.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Sql\Hikitsugui\select_shifts.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Sql\paidleave\get_folha_info.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

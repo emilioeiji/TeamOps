@@ -1,0 +1,1 @@
+﻿SELECT Id, NamePt FROM Shifts ORDER BY Id;
