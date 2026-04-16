@@ -263,6 +263,24 @@ namespace TeamOps.UI.Forms
                 return;
             }
 
+            using var form = new HTMLHikitsuguiCreate(
+                Program.ConnectionFactory,
+                _user,              // ← ESTE É O CORRETO
+                _currentOperator
+            );
+
+            form.ShowDialog();
+        }
+
+        /*
+        private void btnHikitsugui_Click(object sender, EventArgs e)
+        {
+            if (!HasAccess(AccessLevel.KL))
+            {
+                ShowAccessDenied();
+                return;
+            }
+
             using var form = new FormHikitsugui(
                 _currentShift,
                 _currentOperator,
@@ -275,6 +293,7 @@ namespace TeamOps.UI.Forms
 
             form.ShowDialog();
         }
+        */
         /*
         private void btnHikitsuguiLeaderRead_Click(object sender, EventArgs e)
         {

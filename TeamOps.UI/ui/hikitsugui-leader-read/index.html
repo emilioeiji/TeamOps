@@ -134,8 +134,23 @@
             <div id="modal-body" class="mb-4"></div>
         
             <label class="text-gray-600 font-semibold">Responder</label>
-            <textarea id="replyText" class="reply-box mb-4" placeholder="Digite sua resposta..."></textarea>
-        
+
+            <div class="mb-4">
+                <div class="editor-toolbar">
+                    <button type="button" data-cmd="bold"><b>B</b></button>
+                    <button type="button" data-cmd="italic"><i>I</i></button>
+                    <button type="button" data-cmd="underline"><u>U</u></button>
+                    <span class="separator"></span>
+                    <button type="button" data-cmd="insertUnorderedList">• Lista</button>
+                    <button type="button" id="btnClearReplyFormat">Limpar</button>
+                </div>
+            
+                <div id="replyEditor"
+                     class="editor"
+                     contenteditable="true"
+                     data-placeholder="Responder..."></div>
+            </div>
+
             <div class="flex justify-end gap-4">
                 <button id="btnEnviarReply" class="btn-primary">Enviar Resposta</button>
                 <button id="btnFecharModal" class="btn-secondary">Fechar</button>
@@ -144,7 +159,6 @@
         </div>
     </div>
 
-    <script src="libs/rtf.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

@@ -1,0 +1,132 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <title>Novo Hikitsugui</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body class="bg-gray-100">
+
+    <!-- =========================================================
+         BARRA AZUL (padrão TeamOps)
+    ========================================================= -->
+    <div class="header-bar">
+        Registrar Hikitsugui
+    </div>
+
+    <!-- =========================================================
+         FORMULÁRIO PRINCIPAL
+    ========================================================= -->
+    <div class="form-container">
+
+        <!-- GRID 2 COLUNAS -->
+        <div class="grid-2col">
+
+            <div>
+                <label class="text-gray-600">Data</label>
+                <input id="txtDate" type="date" class="input"/>
+            </div>
+
+            <div>
+                <label class="text-gray-600">Criador</label>
+                <input id="txtCreator" type="text" class="input" readonly />
+            </div>
+
+            <div>
+                <label class="text-gray-600">Shift</label>
+                <select id="shiftId" class="input"></select>
+            </div>
+
+            <div>
+                <label class="text-gray-600">Categoria</label>
+                <select id="categoryId" class="input"></select>
+            </div>
+
+            <div>
+                <label class="text-gray-600">Equipamento</label>
+                <select id="equipId" class="input">
+                    <option value="0">Nenhum</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="text-gray-600">Local</label>
+                <select id="localId" class="input">
+                    <option value="0">Nenhum</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="text-gray-600">Setor</label>
+                <select id="sectorId" class="input">
+                    <option value="0">Nenhum</option>
+                </select>
+            </div>
+
+        </div>
+
+        <!-- =========================================================
+             PÚBLICO (Operador / Líder / MA-SV)
+        ========================================================= -->
+        <div class="publico-container mt-4">
+
+            <label class="publico-option">
+                <input type="radio" name="publico" value="operador" checked>
+                <span>Operador</span>
+            </label>
+
+            <label class="publico-option">
+                <input type="radio" name="publico" value="lider">
+                <span>Líder</span>
+            </label>
+
+            <label class="publico-option">
+                <input type="radio" name="publico" value="masv">
+                <span>MA/SV</span>
+            </label>
+
+        </div>
+
+        <!-- =========================================================
+        DESCRIÇÃO
+        ========================================================= -->
+        <div class="mt-6">
+            <label class="text-gray-600">Descrição</label>
+        
+            <!-- Toolbar -->
+            <div class="editor-toolbar">
+                <button type="button" data-cmd="bold"><b>B</b></button>
+                <button type="button" data-cmd="italic"><i>I</i></button>
+                <button type="button" data-cmd="underline"><u>U</u></button>
+                <span class="separator"></span>
+                <button type="button" data-cmd="insertUnorderedList">• Lista</button>
+                <button type="button" id="btnClearFormat">Limpar</button>
+            </div>
+        
+            <!-- Editor HTML -->
+            <div id="txtDescricao" class="editor" contenteditable="true"></div>
+        </div>
+
+        <!-- =========================================================
+             ANEXOS
+        ========================================================= -->
+        <div class="mt-6">
+            <label class="text-gray-600">Anexos</label>
+            <input id="fileUpload" type="file" multiple class="input" />
+            <ul id="fileList" class="file-list"></ul>
+        </div>
+
+        <!-- =========================================================
+             BOTÕES
+        ========================================================= -->
+        <div class="flex justify-end gap-4 mt-6">
+            <button id="btnSalvar" class="btn-primary">Salvar</button>
+            <button id="btnCancelar" class="btn-secondary">Cancelar</button>
+        </div>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

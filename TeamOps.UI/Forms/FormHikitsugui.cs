@@ -173,6 +173,8 @@ namespace TeamOps.UI.Forms
             
             AjustarFonteAntesDeSalvar();
 
+            txtDescricao.Text = txtDescricao.Text.Normalize();
+
             var entity = MontarEntidade();
 
             // 1) Salva o Hikitsugui sem anexos para obter o ID

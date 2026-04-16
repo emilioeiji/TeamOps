@@ -318,3 +318,51 @@ td.col-setor {
 .publico-option:hover {
     background: #f3f4f6;
 }
+
+.editor-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.editor-toolbar button {
+    padding: 4px 8px;
+    font-size: 13px;
+    border-radius: 4px;
+    border: 1px solid #d1d5db;
+    background: #f9fafb;
+    cursor: pointer;
+}
+
+.editor-toolbar button:hover {
+    background: #e5e7eb;
+}
+
+.editor-toolbar .separator {
+    width: 1px;
+    height: 18px;
+    background: #d1d5db;
+}
+
+.editor {
+    width: 100%;
+    min-height: 120px;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.editor:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.25);
+}
+
+.editor[contenteditable="true"]:empty:before {
+    content: attr(data-placeholder);
+    color: #9ca3af;
+}

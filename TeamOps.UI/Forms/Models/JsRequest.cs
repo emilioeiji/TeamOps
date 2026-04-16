@@ -15,6 +15,7 @@
         public int parentId { get; set; }      // delete_reply
         public string dtInicial { get; set; }
         public string dtFinal { get; set; }
+        public List<AttachmentItem> attachments { get; set; }
 
         // Filtros do Hikitsugui
         public string publico { get; set; }
@@ -25,6 +26,7 @@
         public int equipId { get; set; }
         public int sectorId { get; set; }
         public string search { get; set; }
+        public int localId { get; set; }
 
         // ============================
         // PAID LEAVE
@@ -34,4 +36,10 @@
         public string notes { get; set; }
         public int motivoId { get; set; }
     }
+    public class AttachmentItem
+    {
+        public string fileName { get; set; }
+        public string base64 { get; set; }
+    }
+
 }

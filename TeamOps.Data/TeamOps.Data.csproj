@@ -31,6 +31,12 @@
     <None Update="Sql\Hikitsugui\delete_reply.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Sql\Hikitsugui\insert_hikitsugui.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Sql\Hikitsugui\insert_hikitsugui_attachment.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Sql\Hikitsugui\insert_read.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

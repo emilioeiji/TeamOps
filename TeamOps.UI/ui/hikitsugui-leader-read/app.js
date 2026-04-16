@@ -20,6 +20,8 @@ window.addEventListener("DOMContentLoaded", () => {
     // Carrega dados iniciais
     send("load");
 
+    initReplyEditor();
+
     document.querySelectorAll("input[name='publico']").forEach(radio => {
         radio.addEventListener("change", () => {
             document.getElementById("btnBuscar").click();
@@ -62,14 +64,35 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // Botão enviar reply
     document.getElementById("btnEnviarReply").addEventListener("click", () => {
-        const text = document.getElementById("replyText").value;
-        const id = document.getElementById("replyText").dataset.hikitsuguiId;
+        const text = document.getElementById("replyEditor").innerHTML;
+        const id = document.getElementById("replyEditor").dataset.hikitsuguiId;
 
         if (!text.trim()) return;
 
         send("reply", { id: Number(id), text });
     });
 });
+
+function initReplyEditor() {
+    const toolbar = document.querySelector(".editor-toolbar");
+    const editor = document.getElementById("replyEditor");
+
+    toolbar.addEventListener("click", (ev) => {
+        const btn = ev.target.closest("button");
+        if (!btn) return;
+
+        const cmd = btn.getAttribute("data-cmd");
+        if (!cmd) return;
+
+        editor.focus();
+        document.execCommand(cmd, false, null);
+    });
+
+    document.getElementById("btnClearReplyFormat").addEventListener("click", () => {
+        const text = editor.innerText;
+        editor.innerHTML = text ? `<p>${text}</p>` : "";
+    });
+}
 
 // ======================================================
 // Receber mensagens do C#
@@ -104,8 +127,7 @@ window.chrome.webview.addEventListener("message", e => {
             renderReplies(msg.data);
 
             // limpar campo após salvar e atualizar lista
-            const replyBox = document.getElementById("replyText");
-            replyBox.value = "";
+            document.getElementById("replyEditor").innerHTML = "";
             break;
 
         case "hikitsugui_by_id":
@@ -174,13 +196,51 @@ function renderTable(rows) {
                 <td class="border p-2">${r.Equipment ?? ""}</td>
                 <td class="border p-2">${r.Local ?? ""}</td>
                 <td class="border p-2 col-setor no-wrap">${r.Sector ?? ""}</td>
-                <td class="border p-2">${RTFJS.parse(r.DescriptionHtml)}</td>
+                <td class="border p-2">
+                    ${truncateHtmlPreservingFormat(r.DescriptionHtml, 120)}
+                </td>
                 <td class="border p-2 text-center">
                     <button class="btn-primary" onclick="preview(${r.Id})">Ver</button>
                 </td>
             </tr>
         `;
     });
+}
+
+function truncateHtmlPreservingFormat(html, maxChars = 120) {
+    const div = document.createElement("div");
+    div.innerHTML = html;
+
+    let count = 0;
+
+    function walk(node) {
+        let clone = node.cloneNode(false);
+
+        for (let child of node.childNodes) {
+            if (count >= maxChars) break;
+
+            if (child.nodeType === Node.TEXT_NODE) {
+                const remaining = maxChars - count;
+                const text = child.textContent;
+
+                if (text.length <= remaining) {
+                    clone.appendChild(document.createTextNode(text));
+                    count += text.length;
+                } else {
+                    clone.appendChild(document.createTextNode(text.substring(0, remaining) + "..."));
+                    count = maxChars;
+                }
+            } else if (child.nodeType === Node.ELEMENT_NODE) {
+                const childClone = walk(child);
+                if (childClone) clone.appendChild(childClone);
+            }
+        }
+
+        return clone;
+    }
+
+    const truncated = walk(div);
+    return truncated.innerHTML;
 }
 
 // ======================================================
@@ -240,11 +300,12 @@ function openModal(row) {
         <div id="replyList"></div>
     `;
     
-    document.getElementById("descHtml").innerHTML = RTFJS.parse(row.DescriptionHtml);
+    document.getElementById("descHtml").innerHTML = row.DescriptionHtml ?? "";
 
     // GARANTIR QUE O ELEMENTO EXISTE ANTES DE SETAR O DATASET
-    const replyBox = document.getElementById("replyText");
-    replyBox.dataset.hikitsuguiId = row.Id;
+    const replyEditor = document.getElementById("replyEditor");
+    replyEditor.dataset.hikitsuguiId = row.Id;
+    replyEditor.innerHTML = ""; // limpa ao abrir
 
     // Carregar replies
     send("select_replies", { id: row.Id });
@@ -272,5 +333,5 @@ function renderReplies(rows) {
 // ======================================================
 function closeModal() {
     document.getElementById("modal").classList.add("hidden");
-    document.getElementById("replyText").value = "";
+    document.getElementById("replyEditor").innerHTML = "";
 }

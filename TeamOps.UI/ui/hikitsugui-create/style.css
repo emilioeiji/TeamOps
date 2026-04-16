@@ -1,0 +1,267 @@
+﻿/* =========================================================
+   MINI TAILWIND — UTILITÁRIAS USADAS NO CREATE
+   ========================================================= */
+
+/* Backgrounds */
+.bg-gray-100 { background-color: #f3f4f6; }
+
+/* Text colors */
+.text-gray-600 { color: #4b5563; }
+
+/* Margins */
+.mt-4 { margin-top: 16px; }
+.mt-6 { margin-top: 24px; }
+.mb-4 { margin-bottom: 16px; }
+
+/* Padding */
+.p-4 { padding: 16px; }
+.p-6 { padding: 24px; }
+
+/* Width */
+.w-full { width: 100%; }
+
+/* Flexbox */
+.flex { display: flex; }
+.justify-end { justify-content: flex-end; }
+
+/* Gaps */
+.gap-4 { gap: 16px; }
+.gap-6 { gap: 24px; }
+
+/* Borders */
+.border { border: 1px solid #d1d5db; }
+
+/* Rounded */
+.rounded { border-radius: 6px; }
+
+/* Shadow */
+.shadow { box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+
+/* =========================================================
+   HEADER BAR
+   ========================================================= */
+.header-bar {
+    width: 100%;
+    background: #2563eb;
+    color: white;
+    padding: 14px 22px;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 0.3px;
+    margin-bottom: 0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+/* =========================================================
+   FORM CONTAINER (Create)
+   ========================================================= */
+.form-container {
+    background: white;
+    padding: 24px 28px;
+    margin: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+}
+
+/* =========================================================
+   GRID 2 COLUNAS
+   ========================================================= */
+.grid-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+}
+
+.grid-2col label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #4b5563;
+}
+
+/* =========================================================
+   INPUTS
+   ========================================================= */
+.input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+.input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.25);
+    outline: none;
+}
+
+/* =========================================================
+   TEXTAREA
+   ========================================================= */
+.textarea {
+    width: 100%;
+    min-height: 160px;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    resize: vertical;
+    transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+.textarea:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.25);
+    outline: none;
+}
+
+/* =========================================================
+   FILE LIST
+   ========================================================= */
+.file-list {
+    margin-top: 8px;
+    padding-left: 20px;
+    font-size: 14px;
+    color: #374151;
+}
+
+.file-list li {
+    margin-bottom: 4px;
+}
+
+/* =========================================================
+   PÚBLICO (Operador / Líder / MA-SV)
+   ========================================================= */
+.publico-container {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+}
+
+.publico-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.publico-option input {
+    display: none;
+}
+
+.publico-option span {
+    font-size: 14px;
+    color: #374151;
+}
+
+.publico-option input:checked + span {
+    font-weight: bold;
+    color: #2563eb;
+    background-color: rgba(37, 99, 235, 0.10);
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.publico-option:hover {
+    background: #f3f4f6;
+}
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+.btn-primary {
+    background-color: #2D559B;
+    color: white;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    transition: background-color .2s ease, transform .1s ease;
+}
+
+.btn-primary:hover {
+    background-color: #3E6BB8;
+}
+
+.btn-primary:active {
+    transform: scale(0.97);
+}
+
+.btn-secondary {
+    background-color: #9ca3af;
+    color: white;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    transition: background-color .2s ease, transform .1s ease;
+}
+
+.btn-secondary:hover {
+    background-color: #b1b5bd;
+}
+
+.btn-secondary:active {
+    transform: scale(0.97);
+}
+
+/* =========================================================
+   EDITOR HTML + TOOLBAR
+   ========================================================= */
+.editor-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.editor-toolbar button {
+    padding: 4px 8px;
+    font-size: 13px;
+    border-radius: 4px;
+    border: 1px solid #d1d5db;
+    background: #f9fafb;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.editor-toolbar button:hover {
+    background: #e5e7eb;
+    border-color: #9ca3af;
+}
+
+.editor-toolbar .separator {
+    width: 1px;
+    height: 18px;
+    background: #d1d5db;
+}
+
+.editor {
+    width: 100%;
+    min-height: 180px;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    font-size: 14px;
+    line-height: 1.5;
+    overflow-y: auto;
+}
+
+.editor:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.25);
+}

@@ -37,7 +37,7 @@
             chkLider = new CheckBox();
             chkOperador = new CheckBox();
             lblDescricao = new Label();
-            txtDescricao = new RichTextBox();
+            txtDescricao = new UnicodeRichTextBox();
             lblAnexoTitulo = new Label();
             lblAnexo = new Label();
             btnSelecionarAnexo = new Button();
@@ -381,7 +381,7 @@
         private System.Windows.Forms.CheckBox chkForMaSv;
 
         private System.Windows.Forms.Label lblDescricao;
-        private System.Windows.Forms.RichTextBox txtDescricao;
+        private UnicodeRichTextBox txtDescricao;
 
         private System.Windows.Forms.Label lblAnexoTitulo;
         private System.Windows.Forms.Label lblAnexo;
