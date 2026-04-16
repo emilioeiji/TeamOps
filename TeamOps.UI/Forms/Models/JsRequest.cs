@@ -16,6 +16,7 @@
         public string dtInicial { get; set; }
         public string dtFinal { get; set; }
         public List<AttachmentItem> attachments { get; set; }
+        public string path { get; set; }
 
         // Filtros do Hikitsugui
         public string publico { get; set; }

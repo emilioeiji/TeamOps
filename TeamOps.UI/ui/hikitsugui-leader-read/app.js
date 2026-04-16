@@ -135,6 +135,9 @@ window.chrome.webview.addEventListener("message", e => {
             openModal(msg.data[0]);
             break;
 
+        case "attachments":
+            renderAttachments(msg.data);
+            break;
     }
 });
 
@@ -243,6 +246,31 @@ function truncateHtmlPreservingFormat(html, maxChars = 120) {
     return truncated.innerHTML;
 }
 
+function renderAttachments(rows) {
+    const list = document.getElementById("attachmentList");
+    list.innerHTML = "";
+
+    if (rows.length === 0) {
+        list.innerHTML = `<i>Nenhum anexo</i>`;
+        return;
+    }
+
+    rows.forEach(a => {
+        list.innerHTML += `
+            <div class="p-2 border rounded mb-2 flex justify-between items-center">
+                <span>${a.FileName}</span>
+                <button class="btn-secondary" onclick="openAttachment('${a.FilePath.replace(/\\/g, "\\\\")}')">
+                    Abrir
+                </button>
+            </div>
+        `;
+    });
+}
+
+function openAttachment(path) {
+    send("open_attachment", { path });
+}
+
 // ======================================================
 // Marcar como lido (camada 2)
 // ======================================================
@@ -298,6 +326,9 @@ function openModal(row) {
 
         <h3>Respostas</h3>
         <div id="replyList"></div>
+
+        <h3 class="mt-4">Anexos</h3>
+        <div id="attachmentList" class="mt-2"></div>
     `;
     
     document.getElementById("descHtml").innerHTML = row.DescriptionHtml ?? "";
@@ -309,6 +340,9 @@ function openModal(row) {
 
     // Carregar replies
     send("select_replies", { id: row.Id });
+
+    // Carregar anexos
+    send("select_attachments", { id: row.Id });
 }
 
 // ======================================================

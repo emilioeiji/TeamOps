@@ -1,6 +1,7 @@
 ﻿using Dapper;
 using Microsoft.Web.WebView2.Core;
 using System;
+using System.Configuration;
 using System.IO;
 using System.Text.Json;
 using System.Windows.Forms;
@@ -64,6 +65,7 @@ namespace TeamOps.UI.Forms
                     break;
 
                 case "save":
+                    Console.WriteLine("QTD ANEXOS RECEBIDOS: " + (msg.attachments?.Count ?? 0));
                     SaveHikitsugui(msg);
                     break;
 
@@ -146,9 +148,7 @@ namespace TeamOps.UI.Forms
                 );
 
                 string baseFolder = Path.Combine(
-                    Application.StartupPath,
-                    "Attachments",
-                    "Hikitsugui",
+                    ConfigurationManager.AppSettings["HikitsuguiAttachmentPath"],
                     newId.ToString()
                 );
 

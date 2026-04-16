@@ -226,6 +226,21 @@ namespace TeamOps.UI.Forms
 
                         break;
                     }
+                case "select_attachments":
+                    {
+                        SendJsonFromSql("select_attachments.sql", new { id = msg.id });
+                        break;
+                    }
+
+                case "open_attachment":
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = msg.path,
+                            UseShellExecute = true
+                        });
+                        break;
+                    }
             }
         }
 
@@ -244,17 +259,17 @@ namespace TeamOps.UI.Forms
             {
                 var dict = row as IDictionary<string, object>;
 
-                if (!dict.ContainsKey("Description") || dict["Description"] == null)
+                // Se a query não tem Description, não mexe em nada
+                if (!dict.ContainsKey("Description"))
+                    continue;
+
+                if (dict["Description"] == null)
                 {
                     dict["DescriptionHtml"] = "";
                     continue;
                 }
 
-                string rtf = dict["Description"].ToString();
-
-                // Usa o conversor SEGURO
-                dict["DescriptionHtml"] = dict["Description"]; // envia RTF puro
-
+                dict["DescriptionHtml"] = dict["Description"];
             }
 
             var json = JsonSerializer.Serialize(new

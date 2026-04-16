@@ -43,6 +43,9 @@
     <None Update="Sql\Hikitsugui\insert_reply.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Sql\Hikitsugui\select_attachments.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Sql\Hikitsugui\select_categories.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

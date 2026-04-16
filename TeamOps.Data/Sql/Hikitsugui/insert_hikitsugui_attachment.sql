@@ -1,4 +1,4 @@
-﻿INSERT INTO HikitsuguiAttachment
+﻿INSERT INTO HikitsuguiAttachments
 (
     HikitsuguiId,
     FileName,
