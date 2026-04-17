@@ -266,17 +266,16 @@ namespace TeamOps.Data.Repositories
         }
 
         public List<HikitsuguiListItem> GetForOperator(
-            DateTime start,
-            DateTime end,
-            int operatorSectorId,
-            int selectedLocalId)
+    DateTime start,
+    DateTime end,
+    int operatorSectorId,
+    int selectedLocalId)
         {
             var list = new List<HikitsuguiListItem>();
 
             using var conn = _factory.CreateOpenConnection();
             using var cmd = conn.CreateCommand();
 
-            // Locais gerais por setor
             string gerais = operatorSectorId switch
             {
                 1 => "98, 99",
@@ -286,22 +285,22 @@ namespace TeamOps.Data.Repositories
             };
 
             cmd.CommandText = $@"
-            SELECT 
-                h.Id,
-                h.Date,
-                c.NamePt,
-                o.NameRomanji AS CreatorCodigoFJ,
-                h.Description
-            FROM Hikitsugui h
-            INNER JOIN Categories c ON c.Id = h.CategoryId
-            LEFT JOIN Operators o ON o.CodigoFJ = h.CreatorCodigoFJ
-            WHERE h.Date >= @Start AND h.Date < @End
-              AND h.ForOperators = 1
-              AND (
-                    h.LocalId = @LocalId
-                    OR h.LocalId IN ({gerais})
-                  )
-            ORDER BY h.Date DESC";
+        SELECT 
+            h.Id,
+            h.Date,
+            c.NamePt,
+            o.NameRomanji AS CreatorCodigoFJ,
+            h.Description
+        FROM Hikitsugui h
+        INNER JOIN Categories c ON c.Id = h.CategoryId
+        LEFT JOIN Operators o ON o.CodigoFJ = h.CreatorCodigoFJ
+        WHERE h.Date >= @Start AND h.Date < @End
+          AND h.ForOperators = 1
+          AND (
+                h.LocalId = @LocalId
+                OR h.LocalId IN ({gerais})
+              )
+        ORDER BY h.Date DESC";
 
             cmd.Parameters.AddWithValue("@LocalId", selectedLocalId);
             cmd.Parameters.AddWithValue("@Start", start);

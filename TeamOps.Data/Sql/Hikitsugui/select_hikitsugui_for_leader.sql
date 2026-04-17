@@ -29,14 +29,24 @@ AND h.Date BETWEEN @dtInicial AND @dtFinal
 
 -- FILTRO POR PÚBLICO (HIERARQUIA CORRETA)
 AND (
-        -- Operador → apenas operador
         (@publico = 'operador' AND h.ForOperators = 1)
+        OR (@publico = 'lider' AND h.ForLeaders = 1)
+        OR (@publico = 'masv' AND h.ForMaSv = 1)
 
-        -- Líder → operador + líder
-        OR (@publico = 'lider' AND (h.ForOperators = 1 OR h.ForLeaders = 1))
+        -- TODOS → retorna tudo que o usuário pode ver
+        OR (
+            @publico = 'todos'
+            AND (
+                -- operador → só operador
+                (@accessLevel = 1 AND h.ForOperators = 1)
 
-        -- MA/SV → operador + líder + masv
-        OR (@publico = 'masv' AND (h.ForOperators = 1 OR h.ForLeaders = 1 OR h.ForMaSv = 1))
+                -- líder → operador + líder
+                OR (@accessLevel = 2 AND (h.ForOperators = 1 OR h.ForLeaders = 1))
+
+                -- GL → operador + líder + masv
+                OR (@accessLevel >= 3 AND (h.ForOperators = 1 OR h.ForLeaders = 1 OR h.ForMaSv = 1))
+            )
+        )
     )
 
 -- FILTROS ADICIONAIS

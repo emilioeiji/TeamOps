@@ -7,5 +7,7 @@
         public string CategoryName { get; set; } = "";
         public string CreatorCodigoFJ { get; set; } = "";
         public string Description { get; set; } = "";
+        public bool IsRead { get; set; }
+
     }
 }

@@ -1,10 +1,11 @@
 using System;
+using System.Configuration;
 using System.Globalization;
 using System.Threading;
 using System.Windows.Forms;
-using System.Configuration;
 using TeamOps.Config;
 using TeamOps.Data.Db;
+using TeamOps.OperatorApp.Forms;
 
 namespace TeamOps.OperatorApp
 {
@@ -25,7 +26,7 @@ namespace TeamOps.OperatorApp
 
             ApplicationConfiguration.Initialize();
 
-            // LÍ o caminho do banco do app.config
+            // LÅEo caminho do banco do app.config
             DbSettings = new DbSettings(portableMode: false);
 
             // Garante que o banco existe
@@ -36,7 +37,7 @@ namespace TeamOps.OperatorApp
             ConnectionFactory = new SqliteConnectionFactory(DbSettings);
 
             // Abre o app do operador
-            Application.Run(new FormHikitsuguiOperatorRead());
+            Application.Run(new HTMLHikitsuguiOperatorRead());
         }
     }
 }

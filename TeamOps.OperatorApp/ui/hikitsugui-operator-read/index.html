@@ -1,0 +1,77 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Hikitsugui - Operador</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+
+    <h2 class="title">Hikitsugui - Operador</h2>
+
+    <div class="filters">
+
+        <div class="field">
+            <label>Código FJ</label>
+            <input id="txtFJ" type="text" maxlength="7" autocomplete="off">
+        </div>
+
+        <div class="field">
+            <label>Nome</label>
+            <input id="txtNome" type="text" disabled>
+        </div>
+
+        <div class="field">
+            <label>Local</label>
+            <select id="cboLocal"></select>
+        </div>
+
+        <div class="field">
+            <label>Data Inicial</label>
+            <input id="dtInicial" type="date">
+        </div>
+
+        <div class="field">
+            <label>Data Final</label>
+            <input id="dtFinal" type="date">
+        </div>
+
+        <button id="btnFiltrar" class="btn">Filtrar</button>
+    </div>
+
+    <table id="tblHikitsugui">
+        <thead>
+            <tr>
+                <th>Lido</th>
+                <th>ID</th>
+                <th>Data</th>
+                <th>Categoria</th>
+                <th>Criador</th>
+                <th>Descrição</th>
+                <th>Ver</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+</div>
+
+<!-- Modal -->
+<div id="modal" class="modal hidden">
+    <div class="modal-content medium">
+        <button id="btnCloseModal" class="close">×</button>
+
+        <h3 class="modal-title">Detalhes</h3>
+
+        <div id="modalBody" class="modal-body"></div>
+
+        <h3 class="modal-title">Anexos</h3>
+        <div id="attachmentList" class="attachment-list"></div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

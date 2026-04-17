@@ -10,6 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3912.50" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\TeamOps.Config\TeamOps.Config.csproj" />
     <ProjectReference Include="..\TeamOps.Core\TeamOps.Core.csproj" />
     <ProjectReference Include="..\TeamOps.Data\TeamOps.Data.csproj" />
@@ -19,6 +23,18 @@
     <Compile Update="FormHikitsuguiPreview.cs">
       <SubType>Form</SubType>
     </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="ui\hikitsugui-operator-read\app.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="ui\hikitsugui-operator-read\index.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="ui\hikitsugui-operator-read\style.css">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

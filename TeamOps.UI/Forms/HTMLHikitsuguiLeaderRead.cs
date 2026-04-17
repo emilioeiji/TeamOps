@@ -107,11 +107,8 @@ namespace TeamOps.UI.Forms
                         {
                             dtInicial,
                             dtFinal,
-                            publico =
-                                _currentUser.AccessLevel >= AccessLevel.GL ? "masv" :
-                                _currentUser.AccessLevel == AccessLevel.KL ? "lider" :
-                                "operador",
-                        shiftId = 0,
+                            publico = "todos",
+                            shiftId = 0,
                             operatorId = 0,
                             reasonId = 0,
                             typeId = 0,
@@ -134,12 +131,7 @@ namespace TeamOps.UI.Forms
                         {
                             dtInicial = msg.dtInicial,
                             dtFinal = msg.dtFinal,
-                            publico =
-                                msg.publico == "todos"
-                                    ? (_currentUser.AccessLevel >= AccessLevel.GL ? "masv"
-                                      : _currentUser.AccessLevel == AccessLevel.KL ? "lider"
-                                      : "operador")
-                                    : msg.publico,
+                            publico = msg.publico,
                             shiftId = msg.shiftId,
                             operatorId = msg.operatorId,
                             reasonId = msg.reasonId,
@@ -207,12 +199,7 @@ namespace TeamOps.UI.Forms
                         {
                             dtInicial = msg.dtInicial,
                             dtFinal = msg.dtFinal,
-                            publico =
-                                msg.publico == "todos"
-                                    ? (_currentUser.AccessLevel >= AccessLevel.GL ? "masv"
-                                      : _currentUser.AccessLevel == AccessLevel.KL ? "lider"
-                                      : "operador")
-                                    : msg.publico,
+                            publico = msg.publico,
                             shiftId = msg.shiftId,
                             operatorId = msg.operatorId,
                             reasonId = msg.reasonId,
