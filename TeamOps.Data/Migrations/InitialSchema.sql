@@ -456,6 +456,16 @@ CREATE TABLE IF NOT EXISTS OperatorSchedule (
     FOREIGN KEY (LocalId) REFERENCES Locals(Id)
 );
 
+CREATE TABLE SystemLog (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Timestamp DATETIME NOT NULL,
+    UserFJ TEXT NOT NULL,
+    Module TEXT NOT NULL,
+    Action TEXT NOT NULL,
+    TargetId INTEGER NULL,
+    Details TEXT NULL
+);
+
 CREATE INDEX IF NOT EXISTS IX_Operators_BadgeCode ON Operators(BadgeCode);
 CREATE INDEX IF NOT EXISTS IX_GL_Login ON GroupLeaders(Login);
 CREATE INDEX IF NOT EXISTS IX_Assignments_GL_Operator ON Assignments(GLId, OperatorId);

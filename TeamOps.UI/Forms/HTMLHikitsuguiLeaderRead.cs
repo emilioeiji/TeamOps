@@ -7,6 +7,7 @@ using System.Windows.Forms;
 using TeamOps.Core.Common;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Db;
+using TeamOps.Data.Repositories;
 using TeamOps.UI.Forms.Models;
 
 namespace TeamOps.UI.Forms
@@ -61,9 +62,15 @@ namespace TeamOps.UI.Forms
 
         private void WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
-            
+
             var msg = JsonSerializer.Deserialize<JsRequest>(e.WebMessageAsJson);
-            if (msg == null) return;
+
+            if (msg == null)
+            {
+                Console.WriteLine("ERRO: msg veio null");
+                return;
+            }
+
             Console.WriteLine("ACTION RECEBIDA: " + msg.action);
 
             switch (msg.action)
@@ -119,6 +126,26 @@ namespace TeamOps.UI.Forms
                             accessLevel = _currentUser.AccessLevel
                         });
 
+                        break;
+                    }
+
+                case "load_for_edit":
+                    {
+                           Console.WriteLine("LOAD_FOR_EDIT RECEBIDO — ID = " + msg.id);
+
+                        var sqlPath = Path.Combine(Application.StartupPath, "Sql", "Hikitsugui", "get_hikitsugui_by_id.sql");
+                        var sql = File.ReadAllText(sqlPath);
+
+                        using var conn = _factory.CreateOpenConnection();
+                        var rows = conn.Query(sql, new { id = msg.id }).ToList();
+
+                        webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(
+                            JsonSerializer.Serialize(new
+                            {
+                                type = "hikitsugui_edit",
+                                data = rows
+                            })
+                        );
                         break;
                     }
 
@@ -184,6 +211,40 @@ namespace TeamOps.UI.Forms
                         break;
                     }
 
+                case "delete_hikitsugui":
+                    {
+                        ExecuteSql("delete_attachments_by_hikitsugui.sql", new { id = msg.id });
+                        ExecuteSql("delete_hikitsugui.sql", new { id = msg.id });
+
+                        // LOG
+                        var logRepo = new SystemLogRepository(_factory);
+                        logRepo.Log(
+                            _currentLeader.CodigoFJ,
+                            "Hikitsugui",
+                            "Excluiu",
+                            msg.id
+                        );
+
+                        // Atualiza tabela
+                        SendJsonFromSql("select_hikitsugui_for_leader.sql", new
+                        {
+                            dtInicial = msg.dtInicial,
+                            dtFinal = msg.dtFinal,
+                            publico = msg.publico,
+                            shiftId = msg.shiftId,
+                            operatorId = msg.operatorId,
+                            reasonId = msg.reasonId,
+                            typeId = 0,
+                            equipId = msg.equipId,
+                            sectorId = msg.sectorId,
+                            codigoFJ = _currentLeader.CodigoFJ,
+                            search = msg.search,
+                            accessLevel = _currentUser.AccessLevel
+                        });
+
+                        break;
+                    }
+
                 // ============================================================
                 // MARK READ
                 // ============================================================
@@ -226,6 +287,51 @@ namespace TeamOps.UI.Forms
                             FileName = msg.path,
                             UseShellExecute = true
                         });
+                        break;
+                    }
+
+                // ============================================================
+                // MARK READ
+                // ============================================================
+                case "save_edit":
+                    {
+                        ExecuteSql("update_hikitsugui.sql", new
+                        {
+                            id = msg.id,
+                            categoryId = msg.categoryId,
+                            equipmentId = msg.equipId == 0 ? (int?)null : msg.equipId,
+                            localId = msg.localId == 0 ? (int?)null : msg.localId,
+                            sectorId = msg.sectorId == 0 ? (int?)null : msg.sectorId,
+                            description = msg.description
+                        });
+
+                        // LOG
+                        var logRepo = new SystemLogRepository(_factory);
+                        logRepo.Log(
+                            _currentLeader.CodigoFJ,
+                            "Hikitsugui",
+                            "Editou",
+                            msg.id,
+                            $"Categoria={msg.categoryId}"
+                        );
+
+                        // Atualiza tabela
+                        SendJsonFromSql("select_hikitsugui_for_leader.sql", new
+                        {
+                            dtInicial = msg.dtInicial,
+                            dtFinal = msg.dtFinal,
+                            publico = msg.publico,
+                            shiftId = msg.shiftId,
+                            operatorId = msg.operatorId,
+                            reasonId = msg.reasonId,
+                            typeId = 0,
+                            equipId = msg.equipId,
+                            sectorId = msg.sectorId,
+                            codigoFJ = _currentLeader.CodigoFJ,
+                            search = msg.search,
+                            accessLevel = _currentUser.AccessLevel
+                        });
+
                         break;
                     }
             }

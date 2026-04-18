@@ -366,3 +366,59 @@ td.col-setor {
     content: attr(data-placeholder);
     color: #9ca3af;
 }
+
+/* =========================================================
+   BUTTONS — Primary / Warning / Danger
+   ========================================================= */
+
+.btn-primary,
+.btn-warning,
+.btn-danger {
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 13px;
+    border: none;
+    cursor: pointer;
+    transition: background-color .2s ease, transform .1s ease;
+}
+
+/* Azul — Ver */
+.btn-primary {
+    background-color: #2563eb;
+    color: white;
+}
+.btn-primary:hover {
+    background-color: #3b82f6;
+}
+
+/* Amarelo — Editar */
+.btn-warning {
+    background-color: #d97706;
+    color: white;
+}
+.btn-warning:hover {
+    background-color: #f59e0b;
+}
+
+/* Vermelho — Excluir */
+.btn-danger {
+    background-color: #dc2626;
+    color: white;
+}
+.btn-danger:hover {
+    background-color: #ef4444;
+}
+
+/* Clique */
+.btn-primary:active,
+.btn-warning:active,
+.btn-danger:active {
+    transform: scale(0.96);
+}
+
+.action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}

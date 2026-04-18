@@ -124,7 +124,7 @@
     </div>
 
     <!-- =========================================================
-         MODAL
+         MODAL LEITURA
     ========================================================= -->
     <div id="modal" class="modal hidden">
         <div class="modal-content">
@@ -162,3 +162,48 @@
     <script src="app.js"></script>
 </body>
 </html>
+
+<!-- =========================================================
+     MODAL DE EDIÇÃO
+========================================================= -->
+<div id="modalEdit" class="modal hidden">
+    <div class="modal-content">
+
+        <h2 class="mb-4">Editar Hikitsugui</h2>
+
+        <div class="grid grid-cols-2 gap-4">
+
+            <div>
+                <label class="text-gray-600">Categoria</label>
+                <select id="editCategoria" class="input"></select>
+            </div>
+
+            <div>
+                <label class="text-gray-600">Equipamento</label>
+                <select id="editEquipamento" class="input"></select>
+            </div>
+
+            <div>
+                <label class="text-gray-600">Local</label>
+                <select id="editLocal" class="input"></select>
+            </div>
+
+            <div>
+                <label class="text-gray-600">Setor</label>
+                <select id="editSector" class="input"></select>
+            </div>
+
+        </div>
+
+        <div class="mt-4">
+            <label class="text-gray-600">Descrição</label>
+            <textarea id="editDescricao" class="input h-32"></textarea>
+        </div>
+
+        <div class="flex justify-end gap-4 mt-6">
+            <button onclick="saveEdit()" class="btn-primary">Salvar</button>
+            <button onclick="closeEditModal()" class="btn-secondary">Cancelar</button>
+        </div>
+
+    </div>
+</div>

@@ -28,7 +28,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Sql\Hikitsugui\delete_attachments_by_hikitsugui.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Sql\Hikitsugui\delete_hikitsugui.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Sql\Hikitsugui\delete_reply.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Sql\Hikitsugui\get_hikitsugui_by_id.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Sql\Hikitsugui\insert_hikitsugui.sql">
@@ -71,6 +80,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Sql\Hikitsugui\select_shifts.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Sql\Hikitsugui\update_hikitsugui.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Sql\paidleave\get_folha_info.sql">

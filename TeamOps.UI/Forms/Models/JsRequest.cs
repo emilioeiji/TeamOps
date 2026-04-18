@@ -5,20 +5,22 @@
         // Ação enviada pelo app.js
         public string action { get; set; }
 
-        // ID genérico usado em preview, reply, delete_reply, mark_read
+        // ID genérico usado em preview, reply, delete_reply, mark_read, edit, delete
         public int id { get; set; }
 
         // ============================
-        // HIKITSUGUI
+        // HIKITSUGUI - CAMPOS GERAIS
         // ============================
-        public string text { get; set; }       // ← ESSENCIAL PARA REPLY
+        public string text { get; set; }       // reply
         public int parentId { get; set; }      // delete_reply
         public string dtInicial { get; set; }
         public string dtFinal { get; set; }
         public List<AttachmentItem> attachments { get; set; }
         public string path { get; set; }
 
-        // Filtros do Hikitsugui
+        // ============================
+        // FILTROS DO HIKITSUGUI
+        // ============================
         public string publico { get; set; }
         public int shiftId { get; set; }
         public int operatorId { get; set; }
@@ -30,17 +32,23 @@
         public int localId { get; set; }
 
         // ============================
-        // PAID LEAVE
+        // CAMPOS NOVOS PARA EDIÇÃO
+        // ============================
+        public int categoryId { get; set; }     // categoria editada
+        public string description { get; set; } // descrição editada
+
+        // ============================
+        // PAID LEAVE (já existente)
         // ============================
         public string opCodigoFJ { get; set; }
         public string reqDate { get; set; }
         public string notes { get; set; }
         public int motivoId { get; set; }
     }
+
     public class AttachmentItem
     {
         public string fileName { get; set; }
         public string base64 { get; set; }
     }
-
 }

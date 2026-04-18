@@ -99,7 +99,6 @@ function initReplyEditor() {
 // ======================================================
 window.chrome.webview.addEventListener("message", e => {
     const msg = e.data;
-    console.log("Mensagem do C#:", msg);
 
     switch (msg.type) {
 
@@ -113,6 +112,10 @@ window.chrome.webview.addEventListener("message", e => {
             document.querySelector("input[value='todos']").checked = true;
             document.getElementById("dtInicial").value = msg.dtInicial;
             document.getElementById("dtFinal").value = msg.dtFinal;
+            fillSelect("editCategoria", msg.categories, "Id", "NamePt");
+            fillSelect("editEquipamento", msg.equipments, "Id", "NamePt");
+            fillSelect("editLocal", msg.locals, "Id", "NamePt");
+            fillSelect("editSector", msg.sectors, "Id", "NamePt");
             break;
 
         case "hikitsugui_for_leader":
@@ -130,9 +133,9 @@ window.chrome.webview.addEventListener("message", e => {
             document.getElementById("replyEditor").innerHTML = "";
             break;
 
-        case "hikitsugui_by_id":
-            console.log("PREVIEW ROW:", msg.data[0]);
-            openModal(msg.data[0]);
+        case "hikitsugui_edit":
+            console.log("hikitsugui_edit recebido:", msg.data);
+            openEditModal(msg.data[0]);
             break;
 
         case "attachments":
@@ -202,8 +205,12 @@ function renderTable(rows) {
                 <td class="border p-2">
                     ${truncateHtmlPreservingFormat(r.DescriptionHtml, 120)}
                 </td>
-                <td class="border p-2 text-center">
-                    <button class="btn-primary" onclick="preview(${r.Id})">Ver</button>
+                <td class="border p-2">
+                    <div class="action-buttons">
+                        <button class="btn-primary" onclick="preview(${r.Id})">Ver</button>
+                        <button class="btn-warning" onclick="openEdit(${r.Id})">Editar</button>
+                        <button class="btn-danger" onclick="deleteHikitsugui(${r.Id})">Excluir</button>
+                    </div>
                 </td>
             </tr>
         `;
@@ -338,11 +345,35 @@ function openModal(row) {
     replyEditor.dataset.hikitsuguiId = row.Id;
     replyEditor.innerHTML = ""; // limpa ao abrir
 
-    // Carregar replies
-    send("select_replies", { id: row.Id });
+    // Aguarda DOM atualizar
+    setTimeout(() => {
+        send("select_replies", { id: row.Id });
+        send("select_attachments", { id: row.Id });
+    }, 50);
+}
 
-    // Carregar anexos
-    send("select_attachments", { id: row.Id });
+let currentEditId = null;
+
+function openEditModal(row) {
+    currentEditId = row.Id;
+
+    document.getElementById("editCategoria").value = row.CategoryId;
+    document.getElementById("editEquipamento").value = row.EquipmentId ?? 0;
+    document.getElementById("editLocal").value = row.LocalId ?? 0;
+    document.getElementById("editSector").value = row.SectorId ?? 0;
+
+    const desc = document.getElementById("editDescricao");
+
+    // Se for textarea → use value
+    if (desc.tagName === "TEXTAREA") {
+        desc.value = row.Description ?? "";
+    }
+    // Se for contenteditable → use innerHTML
+    else {
+        desc.innerHTML = row.Description ?? "";
+    }
+
+    document.getElementById("modalEdit").classList.remove("hidden");
 }
 
 // ======================================================
@@ -368,4 +399,52 @@ function renderReplies(rows) {
 function closeModal() {
     document.getElementById("modal").classList.add("hidden");
     document.getElementById("replyEditor").innerHTML = "";
+}
+
+function closeEditModal() {
+    document.getElementById("modalEdit").classList.add("hidden");
+}
+
+function openEdit(id) {
+    console.log("ENVIANDO load_for_edit ID=", id);
+    send("load_for_edit", { id });
+}
+
+function saveEdit() {
+    send("save_edit", {
+        id: currentEditId,
+        categoryId: Number(document.getElementById("editCategoria").value),
+        equipId: Number(document.getElementById("editEquipamento").value),
+        localId: Number(document.getElementById("editLocal").value),
+        sectorId: Number(document.getElementById("editSector").value),
+        description: document.getElementById("editDescricao").value,
+
+        // filtros atuais
+        dtInicial: document.getElementById("dtInicial").value,
+        dtFinal: document.getElementById("dtFinal").value,
+        publico: document.querySelector("input[name='publico']:checked").value,
+        shiftId: Number(document.getElementById("shiftId").value),
+        operatorId: Number(document.getElementById("operatorId").value),
+        reasonId: Number(document.getElementById("reasonId").value),
+        equipId: Number(document.getElementById("equipId").value),
+        sectorId: Number(document.getElementById("sectorId").value),
+        search: document.getElementById("txtSearch").value.trim()
+    });
+}
+
+function deleteHikitsugui(id) {
+    if (!confirm("Tem certeza que deseja excluir?")) return;
+
+    send("delete_hikitsugui", {
+        id,
+        dtInicial: document.getElementById("dtInicial").value,
+        dtFinal: document.getElementById("dtFinal").value,
+        publico: document.querySelector("input[name='publico']:checked").value,
+        shiftId: Number(document.getElementById("shiftId").value),
+        operatorId: Number(document.getElementById("operatorId").value),
+        reasonId: Number(document.getElementById("reasonId").value),
+        equipId: Number(document.getElementById("equipId").value),
+        sectorId: Number(document.getElementById("sectorId").value),
+        search: document.getElementById("txtSearch").value.trim()
+    });
 }
