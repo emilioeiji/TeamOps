@@ -299,13 +299,12 @@ namespace TeamOps.UI.Forms
                         {
                             id = msg.id,
                             categoryId = msg.categoryId,
-                            equipmentId = msg.equipId == 0 ? (int?)null : msg.equipId,
+                            equipmentId = msg.equipmentId == 0 ? (int?)null : msg.equipmentId,
                             localId = msg.localId == 0 ? (int?)null : msg.localId,
                             sectorId = msg.sectorId == 0 ? (int?)null : msg.sectorId,
                             description = msg.description
                         });
 
-                        // LOG
                         var logRepo = new SystemLogRepository(_factory);
                         logRepo.Log(
                             _currentLeader.CodigoFJ,
@@ -315,7 +314,6 @@ namespace TeamOps.UI.Forms
                             $"Categoria={msg.categoryId}"
                         );
 
-                        // Atualiza tabela
                         SendJsonFromSql("select_hikitsugui_for_leader.sql", new
                         {
                             dtInicial = msg.dtInicial,
@@ -326,7 +324,7 @@ namespace TeamOps.UI.Forms
                             reasonId = msg.reasonId,
                             typeId = 0,
                             equipId = msg.equipId,
-                            sectorId = msg.sectorId,
+                            sectorId = msg.sectorIdFilter,
                             codigoFJ = _currentLeader.CodigoFJ,
                             search = msg.search,
                             accessLevel = _currentUser.AccessLevel

@@ -80,15 +80,15 @@
             </label>
 
             <label class="publico-option">
-                <input type="radio" name="publico" value="operador"/>
+                <input type="radio" name="publico" value="operador" />
                 <span>Operador</span>
             </label>
-        
+
             <label class="publico-option">
                 <input type="radio" name="publico" value="lider" />
                 <span>Líder</span>
             </label>
-        
+
             <label class="publico-option">
                 <input type="radio" name="publico" value="masv" />
                 <span>MA/SV</span>
@@ -130,9 +130,9 @@
         <div class="modal-content">
 
             <h2 class="mb-4">Detalhes do Hikitsugui</h2>
-        
+
             <div id="modal-body" class="mb-4"></div>
-        
+
             <label class="text-gray-600 font-semibold">Responder</label>
 
             <div class="mb-4">
@@ -144,7 +144,7 @@
                     <button type="button" data-cmd="insertUnorderedList">• Lista</button>
                     <button type="button" id="btnClearReplyFormat">Limpar</button>
                 </div>
-            
+
                 <div id="replyEditor"
                      class="editor"
                      contenteditable="true"
@@ -155,7 +155,7 @@
                 <button id="btnEnviarReply" class="btn-primary">Enviar Resposta</button>
                 <button id="btnFecharModal" class="btn-secondary">Fechar</button>
             </div>
-        
+
         </div>
     </div>
 
@@ -167,40 +167,51 @@
      MODAL DE EDIÇÃO
 ========================================================= -->
 <div id="modalEdit" class="modal hidden">
-    <div class="modal-content">
+    <div class="modal-content modal-edit">
 
-        <h2 class="mb-4">Editar Hikitsugui</h2>
+        <h2 class="modal-title">Editar Hikitsugui</h2>
 
-        <div class="grid grid-cols-2 gap-4">
-
-            <div>
-                <label class="text-gray-600">Categoria</label>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Categoria</label>
                 <select id="editCategoria" class="input"></select>
             </div>
 
-            <div>
-                <label class="text-gray-600">Equipamento</label>
+            <div class="form-group">
+                <label>Equipamento</label>
                 <select id="editEquipamento" class="input"></select>
             </div>
 
-            <div>
-                <label class="text-gray-600">Local</label>
+            <div class="form-group">
+                <label>Local</label>
                 <select id="editLocal" class="input"></select>
             </div>
 
-            <div>
-                <label class="text-gray-600">Setor</label>
+            <div class="form-group">
+                <label>Setor</label>
                 <select id="editSector" class="input"></select>
             </div>
-
         </div>
 
-        <div class="mt-4">
-            <label class="text-gray-600">Descrição</label>
-            <textarea id="editDescricao" class="input h-32"></textarea>
+        <div class="form-group mt-4">
+            <label>Descrição</label>
+
+            <div class="editor-toolbar edit-toolbar">
+                <button type="button" data-cmd="bold"><b>B</b></button>
+                <button type="button" data-cmd="italic"><i>I</i></button>
+                <button type="button" data-cmd="underline"><u>U</u></button>
+                <span class="separator"></span>
+                <button type="button" data-cmd="insertUnorderedList">• Lista</button>
+                <button type="button" id="btnClearEditFormat">Limpar</button>
+            </div>
+
+            <div id="editDescricao"
+                 class="editor"
+                 contenteditable="true"
+                 data-placeholder="Descreva aqui..."></div>
         </div>
 
-        <div class="flex justify-end gap-4 mt-6">
+        <div class="modal-actions">
             <button onclick="saveEdit()" class="btn-primary">Salvar</button>
             <button onclick="closeEditModal()" class="btn-secondary">Cancelar</button>
         </div>

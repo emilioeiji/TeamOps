@@ -362,18 +362,12 @@ function openEditModal(row) {
     document.getElementById("editLocal").value = row.LocalId ?? 0;
     document.getElementById("editSector").value = row.SectorId ?? 0;
 
-    const desc = document.getElementById("editDescricao");
-
-    // Se for textarea → use value
-    if (desc.tagName === "TEXTAREA") {
-        desc.value = row.Description ?? "";
-    }
-    // Se for contenteditable → use innerHTML
-    else {
-        desc.innerHTML = row.Description ?? "";
-    }
+    const editor = document.getElementById("editDescricao");
+    editor.innerHTML = row.Description ?? "";
 
     document.getElementById("modalEdit").classList.remove("hidden");
+
+    initEditEditor();
 }
 
 // ======================================================
@@ -413,13 +407,15 @@ function openEdit(id) {
 function saveEdit() {
     send("save_edit", {
         id: currentEditId,
+
+        // CAMPOS DO MODAL (corretos!)
         categoryId: Number(document.getElementById("editCategoria").value),
-        equipId: Number(document.getElementById("editEquipamento").value),
+        equipmentId: Number(document.getElementById("editEquipamento").value),
         localId: Number(document.getElementById("editLocal").value),
         sectorId: Number(document.getElementById("editSector").value),
-        description: document.getElementById("editDescricao").value,
+        description: document.getElementById("editDescricao").innerHTML,
 
-        // filtros atuais
+        // FILTROS DA TELA (para recarregar a tabela)
         dtInicial: document.getElementById("dtInicial").value,
         dtFinal: document.getElementById("dtFinal").value,
         publico: document.querySelector("input[name='publico']:checked").value,
@@ -427,9 +423,12 @@ function saveEdit() {
         operatorId: Number(document.getElementById("operatorId").value),
         reasonId: Number(document.getElementById("reasonId").value),
         equipId: Number(document.getElementById("equipId").value),
-        sectorId: Number(document.getElementById("sectorId").value),
+        sectorIdFilter: Number(document.getElementById("sectorId").value),
+        localIdFilter: Number(document.getElementById("localId").value),
         search: document.getElementById("txtSearch").value.trim()
     });
+
+    closeEditModal();
 }
 
 function deleteHikitsugui(id) {
@@ -446,5 +445,26 @@ function deleteHikitsugui(id) {
         equipId: Number(document.getElementById("equipId").value),
         sectorId: Number(document.getElementById("sectorId").value),
         search: document.getElementById("txtSearch").value.trim()
+    });
+}
+
+function initEditEditor() {
+    const toolbar = document.querySelector("#modalEdit .edit-toolbar");
+    const editor = document.getElementById("editDescricao");
+
+    toolbar.addEventListener("click", (ev) => {
+        const btn = ev.target.closest("button");
+        if (!btn) return;
+
+        const cmd = btn.getAttribute("data-cmd");
+        if (!cmd) return;
+
+        editor.focus();
+        document.execCommand(cmd, false, null);
+    });
+
+    document.getElementById("btnClearEditFormat").addEventListener("click", () => {
+        const text = editor.innerText;
+        editor.innerHTML = text ? `<p>${text}</p>` : "";
     });
 }

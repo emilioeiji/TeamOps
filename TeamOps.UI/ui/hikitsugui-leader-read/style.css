@@ -194,6 +194,79 @@ td.col-setor {
     resize: vertical;
 }
 
+.modal-edit {
+    width: 650px;
+    padding: 24px;
+    border-radius: 10px;
+    background: white;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+}
+
+.modal-title {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 4px;
+}
+
+.editor {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 10px;
+    min-height: 140px;
+    background: white;
+    line-height: 1.4;
+}
+
+    .editor:empty:before {
+        content: attr(data-placeholder);
+        color: #999;
+    }
+
+.editor-toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+    .editor-toolbar button {
+        background: #f3f3f3;
+        border: 1px solid #ccc;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+        .editor-toolbar button:hover {
+            background: #e6e6e6;
+        }
+
+.separator {
+    width: 1px;
+    background: #ccc;
+    margin: 0 6px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+}
+
 /* =========================================================
    BUTTONS
    ========================================================= */

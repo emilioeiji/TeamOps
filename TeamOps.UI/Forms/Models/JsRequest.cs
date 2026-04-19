@@ -26,16 +26,19 @@
         public int operatorId { get; set; }
         public int reasonId { get; set; }
         public int typeId { get; set; }
-        public int equipId { get; set; }
-        public int sectorId { get; set; }
+        public int equipId { get; set; }          // FILTRO
+        public int sectorIdFilter { get; set; }   // FILTRO (renomeado)
+        public int localIdFilter { get; set; }    // FILTRO
         public string search { get; set; }
-        public int localId { get; set; }
 
         // ============================
-        // CAMPOS NOVOS PARA EDIÇÃO
+        // CAMPOS DO MODAL DE EDIÇÃO
         // ============================
-        public int categoryId { get; set; }     // categoria editada
-        public string description { get; set; } // descrição editada
+        public int categoryId { get; set; }
+        public int equipmentId { get; set; }      // ← AGORA EXISTE
+        public int localId { get; set; }          // ← AGORA É DO MODAL
+        public int sectorId { get; set; }         // ← AGORA É DO MODAL
+        public string description { get; set; }
 
         // ============================
         // PAID LEAVE (já existente)

@@ -69,7 +69,7 @@ function preencherFiltros(data) {
     // -----------------------------
     // DEMAIS SELECTS
     // -----------------------------
-    fillSelect("categoryId", data.categories, "Id", "NamePt");
+    fillSelect("categoryId", data.categories, "Id", "NamePt", true);
     fillSelect("equipId", data.equipments, "Id", "NamePt", true);
     fillSelect("localId", data.locals, "Id", "NamePt", true);
     fillSelect("sectorId", data.sectors, "Id", "NamePt", true);
@@ -159,12 +159,23 @@ function getFullDateTime() {
 // Validação
 // =========================================================
 function validar() {
-    if (!document.getElementById("categoryId").value) {
+
+    if (Number(document.getElementById("categoryId").value) === 0) {
         alert("Selecione uma categoria.");
         return false;
     }
 
-    if (!document.getElementById("sectorId").value) {
+    if (Number(document.getElementById("equipId").value) === 0) {
+        alert("Selecione um equipamento.");
+        return false;
+    }
+
+    if (Number(document.getElementById("localId").value) === 0) {
+        alert("Selecione um local.");
+        return false;
+    }
+
+    if (Number(document.getElementById("sectorId").value) === 0) {
         alert("Selecione um setor.");
         return false;
     }
