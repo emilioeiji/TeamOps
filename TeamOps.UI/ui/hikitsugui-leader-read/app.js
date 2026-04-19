@@ -264,13 +264,18 @@ function renderAttachments(rows) {
 
     rows.forEach(a => {
         list.innerHTML += `
-            <div class="p-2 border rounded mb-2 flex justify-between items-center">
-                <span>${a.FileName}</span>
-                <button class="btn-secondary" onclick="openAttachment('${a.FilePath.replace(/\\/g, "\\\\")}')">
-                    Abrir
-                </button>
+        <div class="attach-item">
+            <div class="attach-info">
+                <span class="attach-icon">📎</span>
+                <span class="attach-name">${a.FileName}</span>
             </div>
-        `;
+
+            <button class="attach-open"
+                onclick="openAttachment('${a.FilePath.replace(/\\/g, "\\\\")}')">
+                Abrir
+            </button>
+        </div>
+    `;
     });
 }
 

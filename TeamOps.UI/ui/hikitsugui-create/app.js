@@ -80,7 +80,7 @@ function fillSelect(id, list, valueField, textField, allowZero = false) {
     sel.innerHTML = "";
 
     if (allowZero)
-        sel.innerHTML += `<option value="0">Nenhum</option>`;
+        sel.innerHTML += `<option value="0">Selecione...</option>`;
 
     list.forEach(item => {
         sel.innerHTML += `<option value="${item[valueField]}">${item[textField]}</option>`;
@@ -93,9 +93,7 @@ function fillSelect(id, list, valueField, textField, allowZero = false) {
 let attachments = [];
 
 async function handleFiles(ev) {
-    attachments = [];
     const list = document.getElementById("fileList");
-    list.innerHTML = "";
 
     for (const file of ev.target.files) {
         const base64 = await toBase64(file);
@@ -104,9 +102,31 @@ async function handleFiles(ev) {
             fileName: file.name,
             base64
         });
-
-        list.innerHTML += `<li>${file.name}</li>`;
     }
+
+    renderAttachmentList();
+    ev.target.value = "";
+}
+
+function renderAttachmentList() {
+    const list = document.getElementById("fileList");
+    list.innerHTML = "";
+
+    attachments.forEach((file, index) => {
+        const li = document.createElement("li");
+        li.innerHTML = `<span>${file.fileName}</span>`;
+
+        const btn = document.createElement("button");
+        btn.textContent = "Excluir";
+
+        btn.onclick = () => {
+            attachments.splice(index, 1);
+            renderAttachmentList();
+        };
+
+        li.appendChild(btn);
+        list.appendChild(li);
+    });
 }
 
 function toBase64(file) {

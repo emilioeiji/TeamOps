@@ -495,3 +495,47 @@ td.col-setor {
     justify-content: center;
     gap: 8px;
 }
+
+/* =========================================================
+   LISTA DE ANEXOS — VISUALIZAR
+   ========================================================= */
+.attach-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background: #f9fafb;
+    margin-bottom: 6px;
+}
+
+.attach-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.attach-icon {
+    font-size: 18px;
+}
+
+.attach-name {
+    font-size: 14px;
+    color: #374151;
+}
+
+.attach-open {
+    padding: 6px 12px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+    .attach-open:hover {
+        background: #1e4fc7;
+    }

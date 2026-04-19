@@ -1,41 +1,78 @@
 ﻿/* =========================================================
-   MINI TAILWIND — UTILITÁRIAS USADAS NO CREATE
+   MINI TAILWIND — UTILITÁRIAS
    ========================================================= */
 
 /* Backgrounds */
-.bg-gray-100 { background-color: #f3f4f6; }
+.bg-gray-100 {
+    background-color: #f3f4f6;
+}
 
 /* Text colors */
-.text-gray-600 { color: #4b5563; }
+.text-gray-600 {
+    color: #4b5563;
+}
 
 /* Margins */
-.mt-4 { margin-top: 16px; }
-.mt-6 { margin-top: 24px; }
-.mb-4 { margin-bottom: 16px; }
+.mt-4 {
+    margin-top: 14px;
+}
+
+.mt-6 {
+    margin-top: 20px;
+}
+
+.mb-4 {
+    margin-bottom: 16px;
+}
 
 /* Padding */
-.p-4 { padding: 16px; }
-.p-6 { padding: 24px; }
+.p-4 {
+    padding: 16px;
+}
+
+.p-6 {
+    padding: 24px;
+}
 
 /* Width */
-.w-full { width: 100%; }
+.w-full {
+    width: 100%;
+}
 
 /* Flexbox */
-.flex { display: flex; }
-.justify-end { justify-content: flex-end; }
+.flex {
+    display: flex;
+}
+
+.justify-end {
+    justify-content: flex-end;
+}
 
 /* Gaps */
-.gap-4 { gap: 16px; }
-.gap-6 { gap: 24px; }
+.gap-4 {
+    gap: 16px;
+}
+
+.gap-6 {
+    gap: 24px;
+}
 
 /* Borders */
-.border { border: 1px solid #d1d5db; }
+.border {
+    border: 1px solid #d1d5db;
+}
 
 /* Rounded */
-.rounded { border-radius: 6px; }
+.rounded {
+    border-radius: 6px;
+}
 
 /* Shadow */
-.shadow { box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+.shadow {
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+
 
 /* =========================================================
    HEADER BAR
@@ -48,12 +85,13 @@
     font-size: 20px;
     font-weight: bold;
     letter-spacing: 0.3px;
-    margin-bottom: 0;
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
+
+
 /* =========================================================
-   FORM CONTAINER (Create)
+   FORM CONTAINER
    ========================================================= */
 .form-container {
     background: white;
@@ -63,8 +101,10 @@
     box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     display: flex;
     flex-direction: column;
-    gap: 26px;
+    gap: 20px;
 }
+
+
 
 /* =========================================================
    GRID 2 COLUNAS
@@ -72,14 +112,17 @@
 .grid-2col {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 22px;
+    column-gap: 26px;
+    row-gap: 18px;
 }
 
-.grid-2col label {
-    font-size: 14px;
-    font-weight: 600;
-    color: #4b5563;
-}
+    .grid-2col label {
+        font-size: 14px;
+        font-weight: 600;
+        color: #4b5563;
+    }
+
+
 
 /* =========================================================
    INPUTS
@@ -91,13 +134,63 @@
     border-radius: 6px;
     font-size: 14px;
     transition: border-color .2s ease, box-shadow .2s ease;
+    background: white;
 }
 
-.input:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.25);
-    outline: none;
+    .input:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.25);
+        outline: none;
+    }
+
+
+
+/* =========================================================
+   INPUT DATE — WebView2 Ajustado
+   ========================================================= */
+input[type="date"].input {
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: #fff;
+    border: 1px solid #d1d5db;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #374151;
+    height: 34px;
+    box-sizing: border-box;
 }
+
+    input[type="date"].input::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+        opacity: 0.55;
+        filter: invert(40%);
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        padding: 0;
+    }
+
+    input[type="date"].input::-webkit-datetime-edit {
+        padding: 0 2px;
+    }
+
+    input[type="date"].input::-webkit-datetime-edit-fields-wrapper {
+        padding: 0;
+    }
+
+    input[type="date"].input::-webkit-datetime-edit-year-field,
+    input[type="date"].input::-webkit-datetime-edit-month-field,
+    input[type="date"].input::-webkit-datetime-edit-day-field {
+        padding: 0 2px;
+    }
+
+    input[type="date"].input:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.25);
+    }
+
+
 
 /* =========================================================
    TEXTAREA
@@ -113,11 +206,13 @@
     transition: border-color .2s ease, box-shadow .2s ease;
 }
 
-.textarea:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.25);
-    outline: none;
-}
+    .textarea:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.25);
+        outline: none;
+    }
+
+
 
 /* =========================================================
    FILE LIST
@@ -129,8 +224,24 @@
     color: #374151;
 }
 
-.file-list li {
-    margin-bottom: 4px;
+    .file-list li {
+        margin-bottom: 4px;
+    }
+
+.file-list button {
+    margin-left: 10px;
+    padding: 2px 6px;
+    color: #b91c1c;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    border-radius: 4px;
+}
+
+.file-list button:hover {
+    background: rgba(185, 28, 28, 0.10);
+    text-decoration: underline;
 }
 
 /* =========================================================
@@ -153,26 +264,28 @@
     border: 1px solid transparent;
 }
 
-.publico-option input {
-    display: none;
-}
+    .publico-option input {
+        display: none;
+    }
 
-.publico-option span {
-    font-size: 14px;
-    color: #374151;
-}
+    .publico-option span {
+        font-size: 14px;
+        color: #374151;
+    }
 
-.publico-option input:checked + span {
-    font-weight: bold;
-    color: #2563eb;
-    background-color: rgba(37, 99, 235, 0.10);
-    padding: 4px 8px;
-    border-radius: 6px;
-}
+    .publico-option input:checked + span {
+        font-weight: bold;
+        color: #2563eb;
+        background-color: rgba(37, 99, 235, 0.10);
+        padding: 4px 8px;
+        border-radius: 6px;
+    }
 
-.publico-option:hover {
-    background: #f3f4f6;
-}
+    .publico-option:hover {
+        background: #f3f4f6;
+    }
+
+
 
 /* =========================================================
    BUTTONS
@@ -189,13 +302,13 @@
     transition: background-color .2s ease, transform .1s ease;
 }
 
-.btn-primary:hover {
-    background-color: #3E6BB8;
-}
+    .btn-primary:hover {
+        background-color: #3E6BB8;
+    }
 
-.btn-primary:active {
-    transform: scale(0.97);
-}
+    .btn-primary:active {
+        transform: scale(0.97);
+    }
 
 .btn-secondary {
     background-color: #9ca3af;
@@ -209,13 +322,15 @@
     transition: background-color .2s ease, transform .1s ease;
 }
 
-.btn-secondary:hover {
-    background-color: #b1b5bd;
-}
+    .btn-secondary:hover {
+        background-color: #b1b5bd;
+    }
 
-.btn-secondary:active {
-    transform: scale(0.97);
-}
+    .btn-secondary:active {
+        transform: scale(0.97);
+    }
+
+
 
 /* =========================================================
    EDITOR HTML + TOOLBAR
@@ -227,26 +342,26 @@
     margin-bottom: 8px;
 }
 
-.editor-toolbar button {
-    padding: 4px 8px;
-    font-size: 13px;
-    border-radius: 4px;
-    border: 1px solid #d1d5db;
-    background: #f9fafb;
-    cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease;
-}
+    .editor-toolbar button {
+        padding: 4px 8px;
+        font-size: 13px;
+        border-radius: 4px;
+        border: 1px solid #d1d5db;
+        background: #f9fafb;
+        cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
 
-.editor-toolbar button:hover {
-    background: #e5e7eb;
-    border-color: #9ca3af;
-}
+        .editor-toolbar button:hover {
+            background: #e5e7eb;
+            border-color: #9ca3af;
+        }
 
-.editor-toolbar .separator {
-    width: 1px;
-    height: 18px;
-    background: #d1d5db;
-}
+    .editor-toolbar .separator {
+        width: 1px;
+        height: 18px;
+        background: #d1d5db;
+    }
 
 .editor {
     width: 100%;
@@ -260,8 +375,13 @@
     overflow-y: auto;
 }
 
-.editor:focus {
-    outline: none;
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.25);
-}
+    .editor:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.25);
+    }
+
+    .editor:empty:before {
+        content: "Digite a descrição...";
+        color: #9ca3af;
+    }
