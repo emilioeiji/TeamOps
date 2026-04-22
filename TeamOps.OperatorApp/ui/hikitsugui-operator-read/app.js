@@ -180,9 +180,10 @@ function renderTable(list) {
             <td class="description-cell">${escapeHtml(truncate(stripHtml(item.Description), 90))}</td>
             <td class="actions-cell">
                 <button class="icon-btn icon-btn-view" type="button" data-preview-id="${item.Id}" title="Abrir" aria-label="Abrir hikitsugui ${item.Id}">
-                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                        <path d="M2.25 12s3.75-6 9.75-6 9.75 6 9.75 6-3.75 6-9.75 6S2.25 12 2.25 12Z"></path>
-                        <path d="M12 14.75A2.75 2.75 0 1 0 12 9.25a2.75 2.75 0 0 0 0 5.5Z"></path>
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="10" cy="10" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/>
+                      <path d="M13.8 13.8L19.5 19.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+                      <circle cx="8.3" cy="8.3" r="1.1" fill="currentColor" opacity="0.18"/>
                     </svg>
                 </button>
             </td>

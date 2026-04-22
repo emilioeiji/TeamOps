@@ -9,9 +9,10 @@ let currentEditId = null;
 
 const ACTION_ICONS = {
     view: `
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M1.5 12s3.8-6.5 10.5-6.5S22.5 12 22.5 12 18.7 18.5 12 18.5 1.5 12 1.5 12Z"></path>
-            <circle cx="12" cy="12" r="3.25"></circle>
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="10" cy="10" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M13.8 13.8L19.5 19.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+          <circle cx="8.3" cy="8.3" r="1.1" fill="currentColor" opacity="0.18"/>
         </svg>
     `,
     edit: `
