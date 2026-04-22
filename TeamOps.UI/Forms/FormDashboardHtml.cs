@@ -89,7 +89,7 @@ namespace TeamOps.UI.Forms
             switch (message)
             {
                 case "open:operadores":
-                    OpenDialog(() => new FormOperators());
+                    OpenDialog(() => new HTMLFormOperators());
                     break;
 
                 case "open:atribuir":

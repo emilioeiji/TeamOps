@@ -98,7 +98,7 @@ namespace TeamOps.OperatorApp.Forms
                                 return;
                             }
 
-                            var locals = _localRepo.GetBySector(op.SectorId);
+                            var locals = GetAllowedLocals(op);
 
                             SendJson("operator_loaded", new
                             {
@@ -125,10 +125,8 @@ namespace TeamOps.OperatorApp.Forms
                             var op = _operatorRepo.GetByCodigoFJ(fj);
                             if (op == null) return;
 
-                            // MAPEAMENTO DE SETOR (SEM QUEBRAR OUTROS APPS)
-                            int sector = op.SectorId;
-                            if (sector < 1 || sector > 3)
-                                sector = 3;
+                            var local = ResolveAllowedLocal(op, localId);
+                            if (local == null) return;
 
                             DateTime now = DateTime.Now;
                             DateTime dataRegistro = now;
@@ -144,7 +142,7 @@ namespace TeamOps.OperatorApp.Forms
 
                             _presenceRepo.RegisterPresence(
                                 op.CodigoFJ,
-                                sector,
+                                local.SectorId,
                                 localId,
                                 op.ShiftId,
                                 dataRegistro
@@ -168,13 +166,10 @@ namespace TeamOps.OperatorApp.Forms
                             DateTime dtFim = DateTime.Parse(msg["dtFinal"].GetString()).AddDays(1);
 
                             int localId = msg["localId"].GetInt32();
+                            var local = ResolveAllowedLocal(op, localId);
+                            if (local == null) return;
 
-                            // MAPEAMENTO DE SETOR
-                            int sector = op.SectorId;
-                            if (sector < 1 || sector > 3)
-                                sector = 3;
-
-                            var lista = _hikRepo.GetForOperator(dtIni, dtFim, sector, localId);
+                            var lista = _hikRepo.GetForOperator(dtIni, dtFim, local.SectorId, localId);
                             ApplyReadStatus(lista, fj);
 
                             SendJson("hikitsugui_list", lista);
@@ -298,6 +293,24 @@ namespace TeamOps.OperatorApp.Forms
             {
                 _readRepo.MarkAsRead(id, fj);
             }
+        }
+
+        private List<TeamOps.Core.Entities.Local> GetAllowedLocals(TeamOps.Core.Entities.Operator op)
+        {
+            var locals = _localRepo.GetAll();
+
+            return op.SectorId switch
+            {
+                1 => locals.Where(x => x.SectorId == 1).OrderBy(x => x.NamePt).ToList(),
+                2 => locals.Where(x => x.SectorId == 2).OrderBy(x => x.NamePt).ToList(),
+                3 => locals.Where(x => x.SectorId == 1 || x.SectorId == 2).OrderBy(x => x.NamePt).ToList(),
+                _ => new List<TeamOps.Core.Entities.Local>()
+            };
+        }
+
+        private TeamOps.Core.Entities.Local? ResolveAllowedLocal(TeamOps.Core.Entities.Operator op, int localId)
+        {
+            return GetAllowedLocals(op).FirstOrDefault(x => x.Id == localId);
         }
 
         private void SendJson(string type, object? data)

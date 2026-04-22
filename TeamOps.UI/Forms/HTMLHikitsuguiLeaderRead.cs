@@ -152,6 +152,31 @@ namespace TeamOps.UI.Forms
                         break;
                     }
 
+                case "mark_read":
+                    {
+                        using var conn = _factory.CreateOpenConnection();
+
+                        var id = Convert.ToInt32(msg.id);
+                        EnsureRead(conn, id, _currentLeader.CodigoFJ);
+
+                        SendJsonFromSql("select_hikitsugui_for_leader.sql", new
+                        {
+                            dtInicial = (string)msg.dtInicial,
+                            dtFinal = (string)msg.dtFinal,
+                            publico = (string)msg.publico,
+                            shiftId = Convert.ToInt32(msg.shiftId),
+                            operatorId = Convert.ToInt32(msg.operatorId),
+                            reasonId = Convert.ToInt32(msg.reasonId),
+                            typeId = 0,
+                            equipId = Convert.ToInt32(msg.equipId),
+                            sectorId = Convert.ToInt32(msg.sectorId),
+                            codigoFJ = _currentLeader.CodigoFJ,
+                            search = (string)msg.search,
+                            accessLevel = _currentUser.AccessLevel
+                        });
+                        break;
+                    }
+
                 case "load_for_edit":
                     {
                         using var conn = _factory.CreateOpenConnection();
@@ -177,6 +202,31 @@ namespace TeamOps.UI.Forms
 
                 case "select_replies":
                     {
+                        SendJsonFromSql("select_replies.sql", new { id = msg.id });
+                        break;
+                    }
+
+                case "reply":
+                    {
+                        if (string.IsNullOrWhiteSpace(msg.text))
+                        {
+                            webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(
+                                JsonSerializer.Serialize(new
+                                {
+                                    type = "error",
+                                    message = "Digite uma resposta antes de salvar."
+                                })
+                            );
+                            break;
+                        }
+
+                        ExecuteSql("insert_reply.sql", new
+                        {
+                            id = Convert.ToInt32(msg.id),
+                            codigoFJ = _currentLeader.CodigoFJ,
+                            text = (string)msg.text
+                        });
+
                         SendJsonFromSql("select_replies.sql", new { id = msg.id });
                         break;
                     }
@@ -530,6 +580,27 @@ namespace TeamOps.UI.Forms
             using var conn = _factory.CreateOpenConnection();
             conn.Execute(sql, param);
         }
+
+        private void EnsureRead(System.Data.IDbConnection conn, int id, string codigoFJ)
+        {
+            var alreadyRead = conn.ExecuteScalar<int>(
+                @"SELECT COUNT(1)
+                  FROM HikitsuguiReads
+                  WHERE HikitsuguiId = @id
+                    AND ReaderCodigoFJ = @codigoFJ;",
+                new { id, codigoFJ });
+
+            if (alreadyRead == 0)
+            {
+                conn.Execute(
+                    @"INSERT INTO HikitsuguiReads
+                      (HikitsuguiId, ReaderCodigoFJ, ReadAt)
+                      VALUES
+                      (@id, @codigoFJ, CURRENT_TIMESTAMP);",
+                    new { id, codigoFJ });
+            }
+        }
+
         private string SaveAttachment(int hikitsuguiId, string fileName, string base64)
         {
             var root = ConfigurationManager.AppSettings["HikitsuguiAttachmentPath"];

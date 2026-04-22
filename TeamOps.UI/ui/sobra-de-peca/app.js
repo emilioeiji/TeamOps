@@ -166,27 +166,29 @@ function clearForm() {
 function applyFilters() {
     const term = document.getElementById("searchInput").value.trim().toLowerCase();
 
-    const filtered = rows.filter(item => {
-        if (!term) return true;
+    const filtered = rows
+        .filter(item => {
+            if (!term) return true;
 
-        const haystack = [
-            item.data,
-            item.shiftName,
-            item.lote,
-            item.operatorName,
-            item.machineName,
-            item.shainName,
-            item.item,
-            item.lider,
-            item.observacao,
-            item.createdAt
-        ]
-            .filter(Boolean)
-            .join(" ")
-            .toLowerCase();
+            const haystack = [
+                item.data,
+                item.shiftName,
+                item.lote,
+                item.operatorName,
+                item.machineName,
+                item.shainName,
+                item.item,
+                item.lider,
+                item.observacao,
+                item.createdAt
+            ]
+                .filter(Boolean)
+                .join(" ")
+                .toLowerCase();
 
-        return haystack.includes(term);
-    });
+            return haystack.includes(term);
+        })
+        .sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
 
     renderTable(filtered);
 }

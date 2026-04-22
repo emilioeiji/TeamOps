@@ -231,7 +231,7 @@ namespace TeamOps.UI.Forms
                 LEFT JOIN Operators o ON o.CodigoFJ = s.OperadorId
                 LEFT JOIN Machines m ON m.Id = s.MachineId
                 LEFT JOIN Shain sa ON sa.Id = s.ShainId
-                ORDER BY s.CreatedAt DESC, s.Id DESC
+                ORDER BY s.Id DESC
                 LIMIT 100;";
 
             return conn.Query(sql);

@@ -62,6 +62,23 @@
         public string item { get; set; }
 
         // ============================
+        // OPERATORS
+        // ============================
+        public string codigoFJ { get; set; }
+        public string nameRomanji { get; set; }
+        public string nameNihongo { get; set; }
+        public int groupId { get; set; }
+        public string startDate { get; set; }
+        public bool hasEndDate { get; set; }
+        public string endDate { get; set; }
+        public bool trainer { get; set; }
+        public bool status { get; set; }
+        public bool isLeader { get; set; }
+        public string phone { get; set; }
+        public string address { get; set; }
+        public string birthDate { get; set; }
+
+        // ============================
         // ANEXOS DO EDITAR
         // ============================
         public List<AttachmentExistingDto> existingAttachments { get; set; }

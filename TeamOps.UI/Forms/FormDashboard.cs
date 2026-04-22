@@ -93,7 +93,7 @@ namespace TeamOps.UI.Forms
 
         private void btnOperadores_Click(object sender, EventArgs e)
         {
-            var form = new FormOperators();
+            var form = new HTMLFormOperators();
             form.ShowDialog();
         }
 
