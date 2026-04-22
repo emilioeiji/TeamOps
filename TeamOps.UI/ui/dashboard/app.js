@@ -1,82 +1,80 @@
-﻿// -------------------------------------------------------------
-// ENVIO DE MENSAGENS PARA O BACKEND (C#)
-// -------------------------------------------------------------
-function openModule(module) {
-    window.chrome.webview.postMessage(`open:${module}`);
-}
+const ACCESS_LABELS = {
+    0: "Operador",
+    1: "KL",
+    2: "GL",
+    3: "Admin"
+};
 
-// -------------------------------------------------------------
-// RECEBIMENTO DE MENSAGENS DO BACKEND (C# → JS)
-// -------------------------------------------------------------
-window.chrome?.webview?.addEventListener("message", (event) => {
-    const data = event.data;
+const PERMISSION_RULES = {
+    btnRelatorios: 2,
+    btnPresenca: 2,
+    btnPresenca2: 2,
+    btnFollowUp: 1,
+    btnHikitsugui: 1,
+    btnHikitsuguiLeaderRead: 1,
+    btnPR: 1,
+    btnCL: 1,
+    btnSobraDePeca: 1,
+    btnAdmin: 3,
+    btnAccessControl: 3
+};
 
-    // Preenche nome do usuário no header
-    if (data.user) {
-        const lblUser = document.getElementById("lblUser");
-        if (lblUser) lblUser.textContent = data.user;
-    }
-
-    // Preenche data no footer (caso venha do C#)
-    if (data.date) {
-        const lblDate = document.getElementById("lblDate");
-        if (lblDate) lblDate.textContent = data.date;
-    }
-
-    // Controle de permissões (Admin, GL, KL etc.)
-    if (data.accessLevel !== undefined) {
-        applyPermissions(data.accessLevel);
-    }
-
-    if (data.operatorName)
-    document.getElementById("lblOperator").innerText = " | Operador: " + data.operatorName;
-});
-
-// -------------------------------------------------------------
-// PERMISSÕES (oculta botões conforme AccessLevel)
-// -------------------------------------------------------------
-function applyPermissions(level) {
-    // AccessLevel enum no C#:
-    // 0 = Operator
-    // 1 = KL
-    // 2 = GL
-    // 3 = Admin
-
-    // Admin-only
-    if (level < 3) {
-        hideButton("btnAdmin");
-        hideButton("btnAccessControl");
-        hideButton("btnAtribuir");
-    }
-
-    // GL-only
-    if (level < 2) {
-        hideButton("btnRelatorios");
-    }
-
-    // KL-only
-    if (level < 1) {
-        hideButton("btnFollowUp");
-        hideButton("btnHikitsugui");
-        hideButton("btnHikitsuguiLeaderRead");
-        hideButton("btnPR");
-        hideButton("btnCL");
-        hideButton("btnSobraDePeca");
-    }
-}
-
-function hideButton(id) {
-    const el = document.getElementById(id);
-    if (el) el.style.display = "none";
-}
-
-// -------------------------------------------------------------
-// INICIALIZAÇÃO DO FRONTEND
-// -------------------------------------------------------------
 document.addEventListener("DOMContentLoaded", () => {
-    // Preenche data local caso o C# não envie
-    const lblDate = document.getElementById("lblDate");
-    if (lblDate) {
-        lblDate.textContent = new Date().toLocaleString("pt-BR");
-    }
+    bindActions();
 });
+
+function bindActions() {
+    document.querySelectorAll("[data-action]").forEach(button => {
+        button.addEventListener("click", () => {
+            window.chrome.webview.postMessage(button.dataset.action);
+        });
+    });
+}
+
+window.chrome?.webview?.addEventListener("message", event => {
+    const payload = event.data;
+
+    if (!payload || payload.type !== "init") {
+        return;
+    }
+
+    hydrateDashboard(payload);
+});
+
+function hydrateDashboard(payload) {
+    setText("lblUser", payload.user);
+    setText("lblOperator", payload.operatorName);
+    setText("lblShift", payload.shiftName);
+    setText("lblDate", payload.date);
+
+    const level = Number(payload.accessLevel ?? 0);
+    const label = ACCESS_LABELS[level] || `Nivel ${level}`;
+
+    setText("lblAccessLevel", label);
+    setText("accessBadge", `Perfil ${label}`);
+
+    applyPermissions(level);
+}
+
+function applyPermissions(level) {
+    Object.entries(PERMISSION_RULES).forEach(([id, minimumLevel]) => {
+        const button = document.getElementById(id);
+        if (!button) return;
+
+        button.classList.toggle("hidden", level < minimumLevel);
+    });
+
+    document.querySelectorAll("[data-group]").forEach(group => {
+        const visibleActions = Array.from(group.querySelectorAll(".action-tile"))
+            .filter(button => !button.classList.contains("hidden"));
+
+        group.classList.toggle("hidden", visibleActions.length === 0);
+    });
+}
+
+function setText(id, value) {
+    const element = document.getElementById(id);
+    if (element) {
+        element.textContent = value ?? "-";
+    }
+}

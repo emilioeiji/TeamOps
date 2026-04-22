@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Sobra de Peça</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-100">
+    <div class="header-bar">
+        Sobra de Peca
+    </div>
+
+    <div class="page-shell">
+        <section class="table-card">
+            <div class="panel-top">
+                <div class="title-stack">
+                    <h1>Sobra de Peca</h1>
+                    <p>Cadastro rapido com historico dos ultimos 100 registros</p>
+                </div>
+
+                <div class="search-group">
+                    <label for="searchInput">Buscar</label>
+                    <input id="searchInput" class="input" type="text" placeholder="Buscar lote, operador, maquina, item ou observacao...">
+                </div>
+            </div>
+
+            <div id="tableContainer" class="table-container">
+                Carregando...
+            </div>
+        </section>
+
+        <section class="panel-card">
+            <div class="title-stack">
+                <h2>Novo Registro</h2>
+                <p>Preencha os dados abaixo para registrar a sobra de peca.</p>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="txtDate">Data</label>
+                    <input id="txtDate" class="input" type="date">
+                </div>
+
+                <div class="form-group">
+                    <label for="txtTurno">Turno</label>
+                    <input id="txtTurno" class="input" type="text" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label for="txtLote">Lote</label>
+                    <input id="txtLote" class="input" type="text" maxlength="120">
+                </div>
+
+                <div class="form-group">
+                    <label for="cmbOperador">Operador</label>
+                    <select id="cmbOperador" class="input">
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="txtTanjuu">Tanjuu</label>
+                    <input id="txtTanjuu" class="input" type="text" inputmode="decimal" placeholder="0,00">
+                </div>
+
+                <div class="form-group">
+                    <label for="txtPeso">Peso (g)</label>
+                    <input id="txtPeso" class="input" type="text" inputmode="decimal" placeholder="0,00">
+                </div>
+
+                <div class="form-group">
+                    <label for="txtQuantidade">Quantidade</label>
+                    <input id="txtQuantidade" class="input" type="text" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label for="cmbMaquina">Maquina</label>
+                    <select id="cmbMaquina" class="input">
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="cmbShain">Shain</label>
+                    <select id="cmbShain" class="input">
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="txtItem">Item</label>
+                    <input id="txtItem" class="input" type="text" maxlength="120">
+                </div>
+
+                <div class="form-group">
+                    <label for="txtLider">Lider</label>
+                    <input id="txtLider" class="input" type="text" readonly>
+                </div>
+            </div>
+
+            <div class="form-group form-group-full">
+                <label for="txtObservacao">Observacao</label>
+                <textarea id="txtObservacao" class="input textarea" rows="4" placeholder="Detalhes complementares..."></textarea>
+            </div>
+
+            <div class="modal-actions">
+                <button id="btnCancelar" type="button" class="btn-secondary">Cancelar</button>
+                <button id="btnSalvar" type="button" class="btn-primary">Salvar</button>
+            </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

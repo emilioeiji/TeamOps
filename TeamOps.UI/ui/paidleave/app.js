@@ -22,6 +22,7 @@ const ACTION_ICONS = {
 
 window.addEventListener("DOMContentLoaded", () => {
     closeModal();
+    setDefaultDateRange();
     bindEvents();
     send({ action: "paidleave_load" });
 });
@@ -39,6 +40,10 @@ function bindEvents() {
             });
         });
     });
+
+    document.getElementById("startDate").addEventListener("change", applyFilters);
+    document.getElementById("endDate").addEventListener("change", applyFilters);
+    document.getElementById("searchInput").addEventListener("input", applyFilters);
 
     document.addEventListener("mousemove", (e) => {
         tooltip.style.left = `${e.clientX + 12}px`;
@@ -80,7 +85,7 @@ window.chrome.webview.addEventListener("message", event => {
 
     if (msg.type === "select_all" || msg.type === "select_all_by_shift") {
         requests = msg.data || [];
-        renderTable(requests);
+        applyFilters();
         return;
     }
 
@@ -107,6 +112,63 @@ function fillMotivos(items) {
     items.forEach(item => {
         sel.innerHTML += `<option value="${item.Id}">${item.NomePt}</option>`;
     });
+}
+
+function setDefaultDateRange() {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    document.getElementById("startDate").value = formatDateInput(start);
+    document.getElementById("endDate").value = formatDateInput(end);
+}
+
+function formatDateInput(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
+
+function applyFilters() {
+    const searchTerm = document.getElementById("searchInput").value.trim().toLowerCase();
+    const startDate = document.getElementById("startDate").value;
+    const endDate = document.getElementById("endDate").value;
+
+    const filtered = requests.filter(item => {
+        const itemDate = normalizeDate(item.requestDate);
+        const matchesDate =
+            (!startDate || itemDate >= startDate) &&
+            (!endDate || itemDate <= endDate);
+
+        if (!matchesDate) {
+            return false;
+        }
+
+        if (!searchTerm) {
+            return true;
+        }
+
+        const haystack = [
+            item.operatorName,
+            item.operatorCodigoFJ,
+            item.authorizedBy,
+            item.todokeMotivoName,
+            item.notes,
+            item.requestDate
+        ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+
+        return haystack.includes(searchTerm);
+    });
+
+    renderTable(filtered);
+}
+
+function normalizeDate(value) {
+    return String(value || "").slice(0, 10);
 }
 
 function renderTable(items) {

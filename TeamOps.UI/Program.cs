@@ -37,7 +37,7 @@ namespace TeamOps.UI
             {
                 if (loginForm.ShowDialog() == DialogResult.OK && Program.CurrentUser != null)
                 {
-                    Application.Run(new Forms.FormDashboard(Program.CurrentUser));
+                    Application.Run(new Forms.FormDashboardHtml(Program.CurrentUser));
                 }
             }
         }

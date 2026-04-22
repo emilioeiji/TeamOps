@@ -15,33 +15,33 @@
 
         private void InitializeComponent()
         {
-            this.webViewDashboard = new Microsoft.Web.WebView2.WinForms.WebView2();
-            ((System.ComponentModel.ISupportInitialize)(this.webViewDashboard)).BeginInit();
-            this.SuspendLayout();
+            webViewDashboard = new Microsoft.Web.WebView2.WinForms.WebView2();
+            ((System.ComponentModel.ISupportInitialize)webViewDashboard).BeginInit();
+            SuspendLayout();
             // 
             // webViewDashboard
             // 
-            this.webViewDashboard.AllowExternalDrop = true;
-            this.webViewDashboard.CreationProperties = null;
-            this.webViewDashboard.DefaultBackgroundColor = System.Drawing.Color.White;
-            this.webViewDashboard.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.webViewDashboard.Location = new System.Drawing.Point(0, 0);
-            this.webViewDashboard.Name = "webViewDashboard";
-            this.webViewDashboard.Size = new System.Drawing.Size(984, 661);
-            this.webViewDashboard.TabIndex = 0;
-            this.webViewDashboard.ZoomFactor = 1D;
+            webViewDashboard.AllowExternalDrop = true;
+            webViewDashboard.CreationProperties = null;
+            webViewDashboard.DefaultBackgroundColor = Color.White;
+            webViewDashboard.Dock = DockStyle.Fill;
+            webViewDashboard.Location = new Point(0, 0);
+            webViewDashboard.Name = "webViewDashboard";
+            webViewDashboard.Size = new Size(1134, 661);
+            webViewDashboard.TabIndex = 0;
+            webViewDashboard.ZoomFactor = 1D;
             // 
             // FormDashboardHtml
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(984, 661);
-            this.Controls.Add(this.webViewDashboard);
-            this.Name = "FormDashboardHtml";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "TeamOps Dashboard";
-            ((System.ComponentModel.ISupportInitialize)(this.webViewDashboard)).EndInit();
-            this.ResumeLayout(false);
+            AutoScaleDimensions = new SizeF(7F, 15F);
+            AutoScaleMode = AutoScaleMode.Font;
+            ClientSize = new Size(1134, 661);
+            Controls.Add(webViewDashboard);
+            Name = "FormDashboardHtml";
+            StartPosition = FormStartPosition.CenterScreen;
+            Text = "TeamOps Dashboard";
+            ((System.ComponentModel.ISupportInitialize)webViewDashboard).EndInit();
+            ResumeLayout(false);
         }
     }
 }

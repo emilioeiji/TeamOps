@@ -4,6 +4,7 @@
 using Microsoft.Web.WebView2.Core;
 using System;
 using System.IO;
+using System.Text.Json;
 using System.Windows.Forms;
 using TeamOps.Core.Common;
 using TeamOps.Core.Entities;
@@ -43,22 +44,38 @@ namespace TeamOps.UI.Forms
 
         private async void InitializeWebView()
         {
-            await webViewDashboard.EnsureCoreWebView2Async();
+            await webViewDashboard.EnsureCoreWebView2Async(null);
 
-            webViewDashboard.CoreWebView2.WebMessageReceived += WebMessageReceived;
+            var core = webViewDashboard.CoreWebView2;
 
-            string htmlPath = Path.Combine(Application.StartupPath, "ui", "dashboard", "index.html");
-            webViewDashboard.CoreWebView2.Navigate(htmlPath);
+            core.Settings.IsWebMessageEnabled = true;
+            core.Settings.AreDefaultScriptDialogsEnabled = true;
+            core.Settings.AreDefaultContextMenusEnabled = true;
+            core.Settings.AreDevToolsEnabled = true;
 
-            // 🔹 É AQUI que você coloca o PostWebMessageAsJson
-            webViewDashboard.CoreWebView2.NavigationCompleted += (s, e) =>
+            core.WebMessageReceived += WebMessageReceived;
+
+            core.SetVirtualHostNameToFolderMapping(
+                "app",
+                Path.Combine(Application.StartupPath, "ui", "dashboard"),
+                CoreWebView2HostResourceAccessKind.Allow
+            );
+
+            core.Navigate("https://app/index.html");
+
+            core.NavigationCompleted += (s, e) =>
             {
-                webViewDashboard.CoreWebView2.PostWebMessageAsJson($@"{{
-                ""user"": ""{_user.Name}"",
-                ""operatorName"": ""{_currentOperator.NameRomanji}"",
-                ""accessLevel"": {_user.AccessLevel},
-                ""date"": ""{DateTime.Now:dd/MM/yyyy HH:mm}""
-            }}");
+                var payload = JsonSerializer.Serialize(new
+                {
+                    type = "init",
+                    user = _user.Name,
+                    operatorName = _currentOperator.NameRomanji,
+                    accessLevel = (int)_user.AccessLevel,
+                    shiftName = _currentShift.NamePt,
+                    date = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                });
+
+                core.PostWebMessageAsJson(payload);
 
                 _ready = true;
             };
@@ -72,123 +89,139 @@ namespace TeamOps.UI.Forms
             switch (message)
             {
                 case "open:operadores":
-                    new FormOperators().ShowDialog();
+                    OpenDialog(() => new FormOperators());
                     break;
 
                 case "open:atribuir":
                     if (!HasAccess(AccessLevel.Admin))
-                        ShowAccessDenied();
+                        ShowAccessDeniedAsync();
                     else
-                        new FormAssignments().ShowDialog();
+                        OpenDialog(() => new FormAssignments());
                     break;
 
                 case "open:relatorios":
                     if (!HasAccess(AccessLevel.GL))
-                        ShowAccessDenied();
+                        ShowAccessDeniedAsync();
                     else
-                        new FormReports(
+                        OpenDialog(() => new FormReports(
                             _currentOperator,
                             _currentShift,
                             new HikitsuguiRepository(_factory),
                             new HikitsuguiReadRepository(_factory),
                             new OperatorRepository(_factory),
                             _factory
-                        ).ShowDialog();
+                        ));
+                    break;
+
+                case "open:presence_gbareru":
+                    if (!HasAccess(AccessLevel.GL))
+                        ShowAccessDeniedAsync();
+                    else
+                        OpenDialog(() => new FormPresenceLayout(
+                            1,
+                            "G-Bareru",
+                            _factory
+                        ));
+                    break;
+
+                case "open:presence_dad":
+                    if (!HasAccess(AccessLevel.GL))
+                        ShowAccessDeniedAsync();
+                    else
+                        OpenDialog(() => new FormPresenceLayout(
+                            2,
+                            "DAD",
+                            _factory
+                        ));
                     break;
 
                 case "open:followup":
                     if (!HasAccess(AccessLevel.KL))
-                        ShowAccessDenied();
+                        ShowAccessDeniedAsync();
                     else
-                        new FormFollowUp().ShowDialog();
+                        OpenDialog(() => new FormFollowUp());
                     break;
 
                 case "open:hikitsugui":
                     if (!HasAccess(AccessLevel.KL))
-                        ShowAccessDenied();
+                        ShowAccessDeniedAsync();
                     else
-                        new FormHikitsugui(
-                            _currentShift,
-                            _currentOperator,
-                            new HikitsuguiRepository(_factory),
-                            new CategoryRepository(_factory),
-                            new EquipmentRepository(_factory),
-                            new LocalRepository(_factory),
-                            new SectorRepository(_factory)
-                        ).ShowDialog();
+                        OpenDialog(() => new HTMLHikitsuguiCreate(
+                            _factory,
+                            _user,
+                            _currentOperator
+                        ));
                     break;
 
                 case "open:hikitsugui_read":
                     if (!HasAccess(AccessLevel.KL))
-                        ShowAccessDenied();
+                        ShowAccessDeniedAsync();
                     else
-                        new FormHikitsuguiLeaderRead(
-                            new HikitsuguiRepository(_factory),
-                            new HikitsuguiReadRepository(_factory),
+                        OpenDialog(() => new HTMLHikitsuguiLeaderRead(
+                            _factory,
                             _user,
                             _currentOperator
-                        ).ShowDialog();
+                        ));
                     break;
 
                 case "open:sobradepeca":
                     if (!HasAccess(AccessLevel.KL))
-                        ShowAccessDenied();
+                        ShowAccessDeniedAsync();
                     else
-                        new FormSobraDePeca().ShowDialog();
+                        OpenDialog(() => new HTMLFormSobraDePeca(
+                            _factory,
+                            _currentOperator
+                        ));
                     break;
 
                 case "open:pr":
                     if (!HasAccess(AccessLevel.KL))
-                        ShowAccessDenied();
+                        ShowAccessDeniedAsync();
                     else
-                        new FormPR(
+                        OpenDialog(() => new FormPR(
                             new PRRepository(_factory),
                             new PRCategoriaRepository(_factory),
                             new PRPrioridadeRepository(_factory),
                             new SectorRepository(_factory),
                             new OperatorRepository(_factory),
                             _currentOperator
-                        ).ShowDialog();
+                        ));
                     break;
 
                 case "open:cl":
                     if (!HasAccess(AccessLevel.KL))
-                        ShowAccessDenied();
+                        ShowAccessDeniedAsync();
                     else
-                        new FormCL(
+                        OpenDialog(() => new FormCL(
                             new CLRepository(_factory),
                             new CLCategoriaRepository(_factory),
                             new CLPrioridadeRepository(_factory),
                             new SectorRepository(_factory),
                             new OperatorRepository(_factory),
                             _currentOperator
-                        ).ShowDialog();
+                        ));
                     break;
 
                 case "open:yukyu":
-                    BeginInvoke(new Action(() =>
-                    {
-                        using var form = new FormPaidLeaveTracking(
-                            _currentOperator,
-                            _currentShift,
-                            _factory
-                        );
-                        form.ShowDialog();
-                    }));
+                    OpenDialog(() => new FormPaidLeaveTracking(
+                        _currentOperator,
+                        _currentShift,
+                        _factory
+                    ));
                     break;
 
                 case "open:admin":
                     if (!HasAccess(AccessLevel.Admin))
-                        ShowAccessDenied();
+                        ShowAccessDeniedAsync();
                     else
-                        new FormAdmin().ShowDialog();
+                        OpenDialog(() => new FormAdmin());
                     break;
 
                 case "open:accesscontrol":
                     if (!HasAccess(AccessLevel.Admin))
-                        ShowAccessDenied();
+                        ShowAccessDeniedAsync();
                     else
-                        new FormAccessControl().ShowDialog();
+                        OpenDialog(() => new FormAccessControl());
                     break;
             }
         }
@@ -208,6 +241,20 @@ namespace TeamOps.UI.Forms
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Warning
             );
+        }
+
+        private void ShowAccessDeniedAsync()
+        {
+            BeginInvoke(new Action(ShowAccessDenied));
+        }
+
+        private void OpenDialog(Func<Form> factory)
+        {
+            BeginInvoke(new Action(() =>
+            {
+                using var form = factory();
+                form.ShowDialog(this);
+            }));
         }
     }
 }

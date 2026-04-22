@@ -49,6 +49,19 @@
         public int motivoId { get; set; }
 
         // ============================
+        // SOBRA DE PECA
+        // ============================
+        public string date { get; set; }
+        public string lote { get; set; }
+        public decimal tanjuu { get; set; }
+        public decimal pesoGramas { get; set; }
+        public decimal quantidade { get; set; }
+        public int machineId { get; set; }
+        public int shainId { get; set; }
+        public string observacao { get; set; }
+        public string item { get; set; }
+
+        // ============================
         // ANEXOS DO EDITAR
         // ============================
         public List<AttachmentExistingDto> existingAttachments { get; set; }

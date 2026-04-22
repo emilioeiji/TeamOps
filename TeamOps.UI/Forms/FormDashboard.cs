@@ -249,7 +249,10 @@ namespace TeamOps.UI.Forms
                 return;
             }
 
-            using var form = new FormSobraDePeca();
+            using var form = new HTMLFormSobraDePeca(
+                Program.ConnectionFactory,
+                _currentOperator
+            );
             form.ShowDialog();
         }
         // ---------------------------------------------------------
