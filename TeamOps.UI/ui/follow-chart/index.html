@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Grafico Follow</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="header-bar">
+        <div class="header-copy">
+            <h1>Grafico Follow</h1>
+            <p>Painel visual dos acompanhamentos por tipo, motivo, turno e operador.</p>
+        </div>
+        <div class="header-badge" id="periodLabel">Carregando...</div>
+    </header>
+
+    <main class="page-shell">
+        <section class="filter-card">
+            <div class="filter-grid">
+                <label class="filter-field">
+                    <span>Data Inicial</span>
+                    <input id="dtInicial" class="input" type="date">
+                </label>
+
+                <label class="filter-field">
+                    <span>Data Final</span>
+                    <input id="dtFinal" class="input" type="date">
+                </label>
+
+                <label class="filter-field">
+                    <span>Turno</span>
+                    <select id="cmbShift" class="input"></select>
+                </label>
+
+                <label class="filter-field">
+                    <span>Tipo</span>
+                    <select id="cmbType" class="input"></select>
+                </label>
+
+                <label class="filter-field">
+                    <span>Motivo</span>
+                    <select id="cmbReason" class="input"></select>
+                </label>
+
+                <label class="filter-field">
+                    <span>Setor</span>
+                    <select id="cmbSector" class="input"></select>
+                </label>
+
+                <div class="filter-actions">
+                    <button id="btnAplicar" class="btn-primary" type="button">Atualizar</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="summary-grid">
+            <article class="summary-card">
+                <span class="summary-label">Total no periodo</span>
+                <strong id="sumTotal">0</strong>
+            </article>
+            <article class="summary-card">
+                <span class="summary-label">Erros</span>
+                <strong id="sumErrors">0</strong>
+            </article>
+            <article class="summary-card">
+                <span class="summary-label">Orientacoes</span>
+                <strong id="sumGuidance">0</strong>
+            </article>
+            <article class="summary-card">
+                <span class="summary-label">Setores ativos</span>
+                <strong id="sumSectors">0</strong>
+            </article>
+        </section>
+
+        <section class="chart-grid">
+            <article class="chart-card">
+                <div class="chart-head">
+                    <h2>Distribuicao por Tipo</h2>
+                    <p>Volume de acompanhamentos por classificacao.</p>
+                </div>
+                <div id="chartType" class="bar-list"></div>
+            </article>
+
+            <article class="chart-card">
+                <div class="chart-head">
+                    <h2>Distribuicao por Motivo</h2>
+                    <p>Principais razoes cadastradas no periodo.</p>
+                </div>
+                <div id="chartReason" class="bar-list"></div>
+            </article>
+
+            <article class="chart-card">
+                <div class="chart-head">
+                    <h2>Top Operadores</h2>
+                    <p>Operadores com mais acompanhamentos registrados.</p>
+                </div>
+                <div id="chartOperator" class="bar-list"></div>
+            </article>
+
+            <article class="chart-card chart-card-donut">
+                <div class="chart-head">
+                    <h2>Distribuicao por Turno</h2>
+                    <p>Leitura rapida para comparar concentracao do periodo.</p>
+                </div>
+                <div class="donut-layout">
+                    <div id="shiftDonut" class="donut-chart"></div>
+                    <div id="shiftLegend" class="legend-list"></div>
+                </div>
+            </article>
+
+            <article class="chart-card chart-card-wide">
+                <div class="chart-head">
+                    <h2>Participacao por Setor</h2>
+                    <p>Setores com maior incidencia dentro dos filtros atuais.</p>
+                </div>
+                <div id="chartSector" class="bar-list"></div>
+            </article>
+        </section>
+    </main>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

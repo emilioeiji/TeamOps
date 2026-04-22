@@ -88,7 +88,7 @@ namespace TeamOps.UI.Forms
             var equipRepo = new EquipmentRepository(Program.ConnectionFactory);
             var localRepo = new LocalRepository(Program.ConnectionFactory);
 
-            using var form = new FormFollowReport(
+            using var form = new HTMLFormFollowReport(
                 followRepo,
                 opRepo,
                 shiftRepo,
@@ -113,7 +113,7 @@ namespace TeamOps.UI.Forms
             var equipRepo = new EquipmentRepository(Program.ConnectionFactory);
             var localRepo = new LocalRepository(Program.ConnectionFactory);
 
-            using var form = new FormFollowChart(
+            using var form = new HTMLFormFollowChart(
                 followRepo,
                 opRepo,
                 shiftRepo,

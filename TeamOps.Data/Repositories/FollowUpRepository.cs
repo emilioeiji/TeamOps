@@ -204,14 +204,14 @@ namespace TeamOps.Data.Repositories
             -- JOINs
             s.NamePt AS ShiftName,
 
-            op.NamePt AS OperatorNamePt,
-            op.NameJp AS OperatorNameJp,
+            op.NameRomanji AS OperatorNamePt,
+            op.NameNihongo AS OperatorNameJp,
 
-            ex.NamePt AS ExecutorNamePt,
-            ex.NameJp AS ExecutorNameJp,
+            ex.NameRomanji AS ExecutorNamePt,
+            ex.NameNihongo AS ExecutorNameJp,
 
-            wi.NamePt AS WitnessNamePt,
-            wi.NameJp AS WitnessNameJp,
+            wi.NameRomanji AS WitnessNamePt,
+            wi.NameNihongo AS WitnessNameJp,
 
             r.NamePt AS ReasonName,
             t.NamePt AS TypeName,

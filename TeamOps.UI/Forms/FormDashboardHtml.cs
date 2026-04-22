@@ -103,7 +103,7 @@ namespace TeamOps.UI.Forms
                     if (!HasAccess(AccessLevel.GL))
                         ShowAccessDeniedAsync();
                     else
-                        OpenDialog(() => new FormReports(
+                        OpenDialog(() => new HTMLFormReports(
                             _currentOperator,
                             _currentShift,
                             new HikitsuguiRepository(_factory),

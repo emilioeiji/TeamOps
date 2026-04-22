@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Historico Follow por Operador</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="toolbar no-print">
+        <button id="btnPrint" class="btn-primary" type="button">Imprimir</button>
+        <button id="btnPdf" class="btn-secondary" type="button">Salvar PDF</button>
+    </div>
+
+    <main class="sheet">
+        <header class="report-header">
+            <div>
+                <p class="eyebrow">Historico de acompanhamento</p>
+                <h1>FOLLOW HISTORY BY OPERATOR</h1>
+                <p class="generated">Gerado em <span id="generatedAt">-</span></p>
+            </div>
+            <img id="logo" class="brand-logo" alt="TeamOps">
+        </header>
+
+        <section class="hero-card">
+            <div>
+                <span class="section-label">Operador</span>
+                <h2 id="operatorName">-</h2>
+                <p id="operatorCode">-</p>
+            </div>
+            <div class="hero-meta">
+                <div class="meta-item">
+                    <span>Admissao</span>
+                    <strong id="startDate">-</strong>
+                </div>
+                <div class="meta-item">
+                    <span>Total</span>
+                    <strong id="totalCount">0</strong>
+                </div>
+                <div class="meta-item">
+                    <span>Ultimo registro</span>
+                    <strong id="lastDate">-</strong>
+                </div>
+            </div>
+        </section>
+
+        <section id="timeline" class="timeline"></section>
+    </main>
+
+    <div id="toast" class="toast hidden">
+        <strong id="toastTitle">-</strong>
+        <span id="toastMessage">-</span>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

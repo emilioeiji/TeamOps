@@ -249,7 +249,7 @@ namespace TeamOps.UI.Forms
 
             int followId = Convert.ToInt32(dgvFollow.Rows[e.RowIndex].Cells["Id"].Value);
 
-            using var frm = new FormFollowSingleReport(
+            using var frm = new HTMLFormFollowSingleReport(
                 followId,
                 _followRepo,
                 _opRepo

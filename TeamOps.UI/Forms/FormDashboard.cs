@@ -143,7 +143,7 @@ namespace TeamOps.UI.Forms
                 return;
             }
 
-            var form = new FormReports(
+            var form = new HTMLFormReports(
                 _currentOperator,
                 _currentShift,
                 _hikRepo,

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>FollowUp Report</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="toolbar no-print">
+        <button id="btnPrint" class="btn-primary" type="button">Imprimir</button>
+        <button id="btnPdf" class="btn-secondary" type="button">Salvar PDF</button>
+    </div>
+
+    <main id="sheet" class="sheet">
+        <header class="report-header">
+            <div>
+                <p class="eyebrow" id="reportSubtitle">Formulario individual para impressao</p>
+                <h1 id="reportTitle">FOLLOW-UP REPORT</h1>
+                <p class="generated">Gerado em <span id="generatedAt">-</span></p>
+            </div>
+            <img id="logo" class="brand-logo" alt="TeamOps">
+        </header>
+
+        <section class="hero-card">
+            <div>
+                <span class="section-label">Operador</span>
+                <h2 id="operatorName">-</h2>
+                <p id="operatorCode">-</p>
+            </div>
+            <div class="hero-meta">
+                <div class="meta-item">
+                    <span>Admissao</span>
+                    <strong id="startDate">-</strong>
+                </div>
+                <div class="meta-item">
+                    <span>Data</span>
+                    <strong id="followDate">-</strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="detail-grid">
+            <article class="detail-card"><span class="section-label">Turno</span><strong id="shift">-</strong></article>
+            <article class="detail-card"><span class="section-label">Executor</span><strong id="executor">-</strong></article>
+            <article class="detail-card"><span class="section-label">Testemunha</span><strong id="witness">-</strong></article>
+            <article class="detail-card"><span class="section-label">Motivo</span><strong id="reason">-</strong></article>
+            <article class="detail-card"><span class="section-label">Tipo</span><strong id="type">-</strong></article>
+            <article class="detail-card"><span class="section-label">Local</span><strong id="local">-</strong></article>
+            <article class="detail-card"><span class="section-label">Equipamento</span><strong id="equipment">-</strong></article>
+            <article class="detail-card"><span class="section-label">Setor</span><strong id="sector">-</strong></article>
+        </section>
+
+        <section class="content-card">
+            <span class="section-label">Descricao</span>
+            <div id="description" class="content-box">-</div>
+        </section>
+
+        <section class="content-card">
+            <span class="section-label">Orientacao</span>
+            <div id="guidance" class="content-box">-</div>
+        </section>
+    </main>
+
+    <div id="toast" class="toast hidden">
+        <strong id="toastTitle">-</strong>
+        <span id="toastMessage">-</span>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

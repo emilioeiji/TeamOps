@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatorio Follow</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="header-bar">
+        <div class="header-copy">
+            <h1>Relatorio Follow</h1>
+            <p>Consulta dos acompanhamentos com busca rapida, exportacao e impressao.</p>
+        </div>
+        <div class="header-badge"><strong id="totalCount">0</strong><span> registros</span></div>
+    </header>
+
+    <main class="page-shell">
+        <section class="filter-card">
+            <div class="filter-grid">
+                <label class="filter-field">
+                    <span>Data Inicial</span>
+                    <input id="dtInicial" class="input" type="date">
+                </label>
+
+                <label class="filter-field">
+                    <span>Data Final</span>
+                    <input id="dtFinal" class="input" type="date">
+                </label>
+
+                <label class="filter-field">
+                    <span>Turno</span>
+                    <select id="cmbShift" class="input"></select>
+                </label>
+
+                <label class="filter-field">
+                    <span>Tipo</span>
+                    <select id="cmbType" class="input"></select>
+                </label>
+
+                <label class="filter-field">
+                    <span>Motivo</span>
+                    <select id="cmbReason" class="input"></select>
+                </label>
+
+                <label class="filter-field">
+                    <span>Setor</span>
+                    <select id="cmbSector" class="input"></select>
+                </label>
+
+                <label class="filter-field filter-field-wide">
+                    <span>Buscar</span>
+                    <input id="txtSearch" class="input" type="text" placeholder="Operador, descricao, orientacao, setor...">
+                </label>
+
+                <div class="filter-actions">
+                    <button id="btnBuscar" class="btn-secondary" type="button">Buscar</button>
+                    <button id="btnLimpar" class="btn-ghost" type="button">Limpar</button>
+                    <button id="btnExportar" class="btn-primary" type="button">Exportar</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="table-card">
+            <div class="table-head">
+                <div>
+                    <h2>Registros</h2>
+                    <p>Filtros reduzidos para manter a busca mais rapida no dia a dia.</p>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Turno</th>
+                            <th>Operador</th>
+                            <th>Tipo</th>
+                            <th>Motivo</th>
+                            <th>Setor</th>
+                            <th>Descricao</th>
+                            <th>Orientacao</th>
+                            <th class="actions-col">Acoes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tblBody">
+                        <tr>
+                            <td colspan="9" class="empty-cell">Carregando...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <button id="btnCloseModal" class="close" type="button" aria-label="Fechar">x</button>
+            <div class="modal-head">
+                <h3>Detalhes do Acompanhamento</h3>
+                <div class="modal-actions">
+                    <button id="btnModalOperator" class="btn-secondary" type="button">Historico do operador</button>
+                    <button id="btnModalPrint" class="btn-primary" type="button">Ficha para impressao</button>
+                </div>
+            </div>
+            <div id="modalBody" class="modal-body"></div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast hidden">
+        <strong id="toastTitle">-</strong>
+        <span id="toastMessage">-</span>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
