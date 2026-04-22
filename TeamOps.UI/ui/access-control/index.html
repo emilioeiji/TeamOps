@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Controle de Acesso</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="header-bar">
+        Controle de Acesso
+    </div>
+
+    <div class="page-shell">
+        <section class="hero-card">
+            <div class="hero-copy">
+                <p class="eyebrow">Administracao de Usuarios</p>
+                <h1>Permissoes e senhas em um fluxo mais simples</h1>
+                <p class="hero-text">
+                    Busque rapidamente, ajuste nivel de acesso com seguranca e cadastre novos usuarios sem sair da tela.
+                </p>
+            </div>
+
+            <div class="metrics-strip">
+                <div class="metric-card">
+                    <span class="metric-label">Total</span>
+                    <strong id="metricTotal">0</strong>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Admins</span>
+                    <strong id="metricAdmins">0</strong>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Managers+</span>
+                    <strong id="metricManagers">0</strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="table-card">
+            <div class="panel-top">
+                <div class="title-stack">
+                    <h2>Usuarios cadastrados</h2>
+                    <p>Pesquise por login, nome, FJ ou nivel de acesso.</p>
+                </div>
+
+                <div class="header-actions">
+                    <div class="search-group">
+                        <label for="searchInput">Buscar</label>
+                        <input id="searchInput" class="input" type="text" placeholder="Digite o login, nome, FJ ou nivel...">
+                    </div>
+
+                    <button id="btnHeaderNovo" type="button" class="btn-primary">Novo Usuario</button>
+                </div>
+            </div>
+
+            <div id="tableContainer" class="table-container">
+                Carregando...
+            </div>
+        </section>
+    </div>
+
+    <div id="userModal" class="modal-shell hidden">
+        <div id="userModalBackdrop" class="modal-backdrop"></div>
+        <section class="modal-card modal-card-narrow">
+            <div class="modal-top">
+                <div class="title-stack">
+                    <h2 id="userFormTitle">Novo Usuario</h2>
+                    <p id="userFormSubtitle">Cadastre um novo usuario com o nivel de acesso correto.</p>
+                </div>
+
+                <button id="btnCloseUserModal" type="button" class="icon-close" aria-label="Fechar modal">X</button>
+            </div>
+
+            <div class="form-grid form-grid-2">
+                <div class="form-group">
+                    <label for="txtLogin">Login</label>
+                    <input id="txtLogin" class="input" type="text" maxlength="40">
+                </div>
+
+                <div class="form-group">
+                    <label for="cmbAccessLevel">Nivel de Acesso</label>
+                    <select id="cmbAccessLevel" class="input">
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+
+                <div class="form-group form-group-span-2">
+                    <label for="txtName">Nome</label>
+                    <input id="txtName" class="input" type="text" maxlength="120" placeholder="Opcional, mas ajuda a localizar mais rapido">
+                </div>
+            </div>
+
+            <div id="createPasswordBlock" class="password-block">
+                <div class="section-label">Senha inicial</div>
+                <div class="form-grid form-grid-2">
+                    <div class="form-group">
+                        <label for="txtPassword">Senha</label>
+                        <input id="txtPassword" class="input" type="password" maxlength="120">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="txtConfirmPassword">Confirmar Senha</label>
+                        <input id="txtConfirmPassword" class="input" type="password" maxlength="120">
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button id="btnCancelUserModal" type="button" class="btn-secondary">Cancelar</button>
+                <button id="btnSaveUserModal" type="button" class="btn-primary">Cadastrar</button>
+            </div>
+        </section>
+    </div>
+
+    <div id="passwordModal" class="modal-shell hidden">
+        <div id="passwordModalBackdrop" class="modal-backdrop"></div>
+        <section class="modal-card modal-card-compact">
+            <div class="modal-top">
+                <div class="title-stack">
+                    <h2>Redefinir Senha</h2>
+                    <p id="passwordSubtitle">Defina uma nova senha para o usuario selecionado.</p>
+                </div>
+
+                <button id="btnClosePasswordModal" type="button" class="icon-close" aria-label="Fechar modal">X</button>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="txtPasswordLogin">Login</label>
+                    <input id="txtPasswordLogin" class="input" type="text" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label for="txtNewPassword">Nova Senha</label>
+                    <input id="txtNewPassword" class="input" type="password" maxlength="120">
+                </div>
+
+                <div class="form-group">
+                    <label for="txtConfirmNewPassword">Confirmar Nova Senha</label>
+                    <input id="txtConfirmNewPassword" class="input" type="password" maxlength="120">
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button id="btnCancelPasswordModal" type="button" class="btn-secondary">Cancelar</button>
+                <button id="btnSavePasswordModal" type="button" class="btn-primary">Salvar Nova Senha</button>
+            </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

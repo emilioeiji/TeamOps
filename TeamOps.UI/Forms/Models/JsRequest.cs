@@ -79,6 +79,15 @@
         public string birthDate { get; set; }
 
         // ============================
+        // ACCESS CONTROL
+        // ============================
+        public string login { get; set; }
+        public string name { get; set; }
+        public int accessLevel { get; set; }
+        public string password { get; set; }
+        public string confirmPassword { get; set; }
+
+        // ============================
         // ANEXOS DO EDITAR
         // ============================
         public List<AttachmentExistingDto> existingAttachments { get; set; }

@@ -221,7 +221,7 @@ namespace TeamOps.UI.Forms
                     if (!HasAccess(AccessLevel.Admin))
                         ShowAccessDeniedAsync();
                     else
-                        OpenDialog(() => new FormAccessControl());
+                        OpenDialog(() => new HTMLFormAccessControl());
                     break;
             }
         }
