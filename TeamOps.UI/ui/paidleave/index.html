@@ -1,93 +1,100 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <title>Controle Todoke | 届出管理</title>
     <link href="style.css" rel="stylesheet">
 </head>
 
-<body class="bg-gray-100 p-6">
+<body class="bg-gray-100">
 
-    <!-- TOOLTIP -->
     <div id="tooltip" class="tooltip hidden">
         <div id="tooltipContent"></div>
     </div>
 
-    <div class="max-w-5xl mx-auto bg-white p-6 rounded-xl shadow">
-
-        <!-- Linha 1: Título -->
-        <div class="mb-4">
-            <h1 class="text-2xl font-bold">
-                Controle Todoke<br>
-                <span class="text-lg text-gray-500">届出管理</span>
-            </h1>
-        </div>
-
-        <!-- Linha 2: Botão + Filtros -->
-        <div class="flex items-center justify-between mb-6">
-
-            <!-- Botão -->
-            <button id="btnAdd" class="btn-add">＋ Solicitar Yukyu</button>
-
-            <!-- Filtros com ícones -->
-            <div class="flex items-center gap-6">
-
-                <!-- TODOS -->
-                <label class="shift-option">
-                    <input type="radio" name="shiftFilter" value="0" checked>
-                    <span class="icon icon-all"></span>
-                    <span>Todos</span>
-                </label>
-
-                <!-- DIA -->
-                <label class="shift-option">
-                    <input type="radio" name="shiftFilter" value="1">
-                    <span class="icon icon-day"></span>
-                    <span>Dia</span>
-                </label>
-
-                <!-- NOITE -->
-                <label class="shift-option">
-                    <input type="radio" name="shiftFilter" value="2">
-                    <span class="icon icon-night"></span>
-                    <span>Noite</span>
-                </label>
-
-            </div>
-        </div>
-
-        <!-- Tabela -->
-        <div id="tableContainer" class="text-gray-600">
-            Carregando...
-        </div>
-
+    <div class="header-bar">
+        Controle Todoke
     </div>
 
-    <!-- MODAL ADD REQUEST -->
-    <div id="modalAdd" class="modal hidden">
-        <div class="modal-content">
-            <h2 class="text-xl font-bold mb-4">Adicionar solicitação de yukyu</h2>
+    <div class="page-shell">
+        <section class="panel-card">
+            <div class="panel-top">
+                <div class="title-stack">
+                    <h1>Controle Todoke</h1>
+                    <p>届出管理</p>
+                </div>
 
-            <label class="block mb-2">Operator (CodigoFJ)</label>
-            <input id="opSearch" class="input" type="text" placeholder="Digite nome ou FJ...">
-            <div id="opSuggestions" class="suggestions hidden"></div>
+                <button id="btnAdd" class="btn-primary btn-add">+ Solicitar Yukyu</button>
+            </div>
 
-            <input id="opCodigoFJ" type="hidden">
+            <div class="filter-bar">
+                <div class="shift-group" aria-label="Filtro por turno">
+                    <label class="shift-option">
+                        <input type="radio" name="shiftFilter" value="0" checked>
+                        <span class="icon icon-all"></span>
+                        <span>Todos</span>
+                    </label>
 
-            <label class="block mt-4 mb-2">Data Solicitação</label>
-            <input id="reqDate" class="input" type="date">
+                    <label class="shift-option">
+                        <input type="radio" name="shiftFilter" value="1">
+                        <span class="icon icon-day"></span>
+                        <span>Dia</span>
+                    </label>
 
-            <label class="block mt-4 mb-2">Motivo</label>
-            <select id="motivoId" class="input">
-                <option value="">Selecione...</option>
-            </select>
+                    <label class="shift-option">
+                        <input type="radio" name="shiftFilter" value="2">
+                        <span class="icon icon-night"></span>
+                        <span>Noite</span>
+                    </label>
+                </div>
+            </div>
+        </section>
 
-            <label class="block mt-4 mb-2">Notas</label>
-            <textarea id="notes" class="input" rows="3"></textarea>
+        <section class="table-card">
+            <div id="tableContainer" class="table-container">
+                Carregando...
+            </div>
+        </section>
+    </div>
 
-            <div class="flex justify-end mt-6">
-                <button onclick="closeModal()" class="btn-secondary mr-2">Cancelar</button>
-                <button onclick="saveRequest()" class="btn-primary">Salvar</button>
+    <div id="modalRequest" class="modal hidden">
+        <div class="modal-content modal-request">
+            <div class="modal-heading">
+                <h2 id="modalTitle">Adicionar solicitação de yukyu</h2>
+                <p id="modalSubtitle">Preencha os dados do registro.</p>
+            </div>
+
+            <input id="requestId" type="hidden">
+
+            <div class="form-group autocomplete-group">
+                <label for="opSearch">Operador</label>
+                <input id="opSearch" class="input" type="text" placeholder="Digite nome ou FJ...">
+                <div id="opSuggestions" class="suggestions hidden"></div>
+                <input id="opCodigoFJ" type="hidden">
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="reqDate">Data Solicitação</label>
+                    <input id="reqDate" class="input" type="date">
+                </div>
+
+                <div class="form-group">
+                    <label for="motivoId">Motivo</label>
+                    <select id="motivoId" class="input">
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Notas</label>
+                <textarea id="notes" class="input textarea" rows="4" placeholder="Observações do pedido..."></textarea>
+            </div>
+
+            <div class="modal-actions">
+                <button id="btnCancelModal" type="button" class="btn-secondary">Cancelar</button>
+                <button id="btnSaveModal" type="button" class="btn-primary">Salvar</button>
             </div>
         </div>
     </div>

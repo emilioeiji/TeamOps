@@ -1,116 +1,134 @@
-﻿// Garantir que o modal comece escondido
-window.addEventListener("load", () => {
-    const modal = document.getElementById("modalAdd");
-    modal.classList.add("hidden");
-});
-
 let operators = [];
+let requests = [];
+let requestMode = "create";
 
-// Tooltip
 const tooltip = document.getElementById("tooltip");
 const tooltipContent = document.getElementById("tooltipContent");
 
-document.addEventListener("mousemove", (e) => {
-    tooltip.style.left = (e.clientX + 12) + "px";
-    tooltip.style.top = (e.clientY + 12) + "px";
-});
-
-// Filtro por turno
-document.querySelectorAll("input[name='shiftFilter']").forEach(r => {
-    r.addEventListener("change", () => {
-        const shiftId = parseInt(r.value);
-
-        window.chrome.webview.postMessage({
-            action: "filter_shift",
-            shiftId
-        });
-    });
-});
-
-document.addEventListener("mouseover", (e) => {
-    const cell = e.target.closest(".motivo-cell");
-    if (!cell) return;
-
-    const text = cell.dataset.notes || "";
-    showNotesTooltip(text);
-});
-
-document.addEventListener("mouseout", (e) => {
-    if (!e.target.closest(".motivo-cell")) return;
-    if (e.relatedTarget && e.relatedTarget.closest(".motivo-cell")) return;
-    hideTooltip();
-});
-
-// Carregar dados ao abrir
-window.onload = () => {
-    window.chrome.webview.postMessage({
-        action: "paidleave_load"
-    });
+const ACTION_ICONS = {
+    edit: `
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M3 17.25V21h3.75L18.3 9.45l-3.75-3.75L3 17.25Z"></path>
+            <path d="m14.55 5.7 3.75 3.75 1.15-1.15a1.32 1.32 0 0 0 0-1.9l-1.85-1.85a1.32 1.32 0 0 0-1.9 0L14.55 5.7Z"></path>
+        </svg>
+    `,
+    delete: `
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M9 3.75h6l.75 1.5H20v1.5H4V5.25h4.25L9 3.75Z"></path>
+            <path d="M6.75 8.25h10.5l-.8 10.1A1.5 1.5 0 0 1 14.95 19.75h-5.9a1.5 1.5 0 0 1-1.49-1.4l-.81-10.1Z"></path>
+        </svg>
+    `
 };
 
-// Receber mensagens do backend
-window.chrome.webview.addEventListener('message', event => {
+window.addEventListener("DOMContentLoaded", () => {
+    closeModal();
+    bindEvents();
+    send({ action: "paidleave_load" });
+});
+
+function bindEvents() {
+    document.getElementById("btnAdd").addEventListener("click", () => openCreateModal());
+    document.getElementById("btnCancelModal").addEventListener("click", closeModal);
+    document.getElementById("btnSaveModal").addEventListener("click", saveRequest);
+
+    document.querySelectorAll("input[name='shiftFilter']").forEach(radio => {
+        radio.addEventListener("change", () => {
+            send({
+                action: "filter_shift",
+                shiftId: getCurrentShiftId()
+            });
+        });
+    });
+
+    document.addEventListener("mousemove", (e) => {
+        tooltip.style.left = `${e.clientX + 12}px`;
+        tooltip.style.top = `${e.clientY + 12}px`;
+    });
+
+    document.addEventListener("mouseover", (e) => {
+        const cell = e.target.closest(".motivo-cell");
+        if (!cell) return;
+
+        showNotesTooltip(cell.dataset.notes || "");
+    });
+
+    document.addEventListener("mouseout", (e) => {
+        if (!e.target.closest(".motivo-cell")) return;
+        if (e.relatedTarget && e.relatedTarget.closest(".motivo-cell")) return;
+        hideTooltip();
+    });
+
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest(".autocomplete-group")) {
+            document.getElementById("opSuggestions").classList.add("hidden");
+        }
+    });
+
+    document.getElementById("opSearch").addEventListener("input", handleOperatorSearch);
+}
+
+function send(payload) {
+    window.chrome.webview.postMessage(payload);
+}
+
+function getCurrentShiftId() {
+    return Number(document.querySelector("input[name='shiftFilter']:checked")?.value ?? 0);
+}
+
+window.chrome.webview.addEventListener("message", event => {
     const msg = event.data;
 
-    if (msg.type === "select_all") {
-        renderTable(msg.data);
+    if (msg.type === "select_all" || msg.type === "select_all_by_shift") {
+        requests = msg.data || [];
+        renderTable(requests);
         return;
     }
 
-    if (msg.type === "select_all_by_shift") {
-        renderTable(msg.data);
-        return;
-    }
-
-    if (msg.type === "get_todoke_info") {
-        showTooltip(msg.data);
-        return;
-    }
-
-    if (msg.type === "get_folha_info") {
-        showTooltip(msg.data);
-        return;
-    }
-
-    if (msg.type === "get_conferencia_info") {
+    if (msg.type === "get_todoke_info" || msg.type === "get_folha_info" || msg.type === "get_conferencia_info") {
         showTooltip(msg.data);
         return;
     }
 
     if (msg.type === "select_operators") {
-        operators = msg.data;
+        operators = msg.data || [];
         return;
     }
 
     if (msg.type === "select_motivos") {
-        const sel = document.getElementById("motivoId");
-        sel.innerHTML = '<option value="">Selecione...</option>';
-
-        msg.data.forEach(m => {
-            sel.innerHTML += `<option value="${m.Id}">${m.NomePt}</option>`;
-        });
+        fillMotivos(msg.data || []);
+        return;
     }
 });
 
-// Renderizar tabela
+function fillMotivos(items) {
+    const sel = document.getElementById("motivoId");
+    sel.innerHTML = '<option value="">Selecione...</option>';
+
+    items.forEach(item => {
+        sel.innerHTML += `<option value="${item.Id}">${item.NomePt}</option>`;
+    });
+}
+
 function renderTable(items) {
+    const container = document.getElementById("tableContainer");
+
     if (!items || items.length === 0) {
-        document.getElementById("tableContainer").innerHTML =
-            "<p>Nenhum registro encontrado.</p>";
+        container.innerHTML = `<div class="empty-state">Nenhum registro encontrado.</div>`;
         return;
     }
 
     let html = `
-        <table class="min-w-full text-sm border-collapse">
-            <thead class="bg-gray-200">
+        <table class="min-w-full paidleave-table">
+            <thead>
                 <tr>
-                    <th class="p-2 border">Operador</th>
-                    <th class="p-2 border">Data Solicitação</th>
-                    <th class="p-2 border">Lancado por</th>
-                    <th class="p-2 border">Motivo<br>届出理由</th>
-                    <th class="p-2 border">Todoke</th>
-                    <th class="p-2 border">Folha Yukyu</th>
-                    <th class="p-2 border text-center">Conferência<br>確認</th>
+                    <th>Operador</th>
+                    <th>Data Solicitação</th>
+                    <th>Lançado por</th>
+                    <th>Motivo</th>
+                    <th>Todoke</th>
+                    <th>Folha Yukyu</th>
+                    <th>Conferência</th>
+                    <th class="text-center actions-col">Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -118,59 +136,66 @@ function renderTable(items) {
 
     for (const item of items) {
         html += `
-            <tr class="border-b hover:bg-gray-50">
-                <td class="p-2 border">${item.operatorName}</td>
-                <td class="p-2 border text-center">${item.requestDate}</td>
-                <td class="p-2 border text-center">${item.authorizedBy}</td>
-
-                <!-- MOTIVO -->
-                <!-- MOTIVO -->
-                <td class="p-2 border text-center motivo-cell"
-                    data-notes="${(item.notes || '').replace(/"/g, '&quot;')}">
+            <tr>
+                <td>${item.operatorName}</td>
+                <td class="text-center">${item.requestDate}</td>
+                <td class="text-center">${item.authorizedBy}</td>
+                <td class="text-center motivo-cell" data-notes="${escapeHtmlAttr(item.notes || "")}">
                     ${item.todokeMotivoName ?? ""}
                 </td>
-
-                <!-- TODOKE -->
-                <td class="p-2 border text-center">
+                <td class="text-center">
                     <span class="cursor-pointer"
                           onclick="toggleTodoke(${item.id})"
                           onmouseenter="requestTodokeInfo(${item.id})"
                           onmouseleave="hideTooltip()">
                         ${item.hasTodoke
-                ? "<span class='maru'>○</span>"
-                : "<span class='batsu'>×</span>"}
+                            ? "<span class='maru'>○</span>"
+                            : "<span class='batsu'>×</span>"}
                     </span>
                 </td>
-
-                <!-- FOLHA CONTROLE -->
-                <td class="p-2 border text-center">
+                <td class="text-center">
                     ${item.todokeMotivoName === "Yukyu"
-                ? `
+                        ? `
                             <span class="cursor-pointer"
                                   onclick="toggleFolha(${item.id})"
                                   onmouseenter="requestFolhaInfo(${item.id})"
                                   onmouseleave="hideTooltip()">
                                 ${item.hasFolha
-                    ? "<span class='maru'>○</span>"
-                    : "<span class='batsu'>×</span>"}
+                                    ? "<span class='maru'>○</span>"
+                                    : "<span class='batsu'>×</span>"}
                             </span>
                         `
-                : `
-                            <span class="text-gray-300 cursor-not-allowed">—</span>
-                        `
-            }
+                        : "<span class='text-muted'>—</span>"}
                 </td>
-
-                <!-- CONFERÊNCIA -->
-                <td class="p-2 border text-center">
+                <td class="text-center">
                     <span class="cursor-pointer"
                           onclick="toggleConferencia(${item.id})"
                           onmouseenter="requestConferenciaInfo(${item.id})"
                           onmouseleave="hideTooltip()">
                         ${item.hasConferencia
-                ? "<span class='maru'>○</span>"
-                : "<span class='batsu'>×</span>"}
+                            ? "<span class='maru'>○</span>"
+                            : "<span class='batsu'>×</span>"}
                     </span>
+                </td>
+                <td class="text-center actions-cell">
+                    <div class="action-buttons">
+                        <button
+                            type="button"
+                            class="icon-btn icon-btn-edit"
+                            onclick="openEditModal(${item.id})"
+                            title="Editar"
+                            aria-label="Editar solicitação ${item.id}">
+                            ${ACTION_ICONS.edit}
+                        </button>
+                        <button
+                            type="button"
+                            class="icon-btn icon-btn-delete"
+                            onclick="deleteRequest(${item.id})"
+                            title="Excluir"
+                            aria-label="Excluir solicitação ${item.id}">
+                            ${ACTION_ICONS.delete}
+                        </button>
+                    </div>
                 </td>
             </tr>
         `;
@@ -181,60 +206,51 @@ function renderTable(items) {
         </table>
     `;
 
-    document.getElementById("tableContainer").innerHTML = html;
+    container.innerHTML = html;
 }
 
-// Requests de tooltip
 function requestTodokeInfo(id) {
-    window.chrome.webview.postMessage({
-        action: "get_todoke_info",
-        id
-    });
+    send({ action: "get_todoke_info", id });
 }
 
 function requestFolhaInfo(id) {
-    window.chrome.webview.postMessage({
-        action: "get_folha_info",
-        id
-    });
+    send({ action: "get_folha_info", id });
 }
 
 function requestConferenciaInfo(id) {
-    window.chrome.webview.postMessage({
-        action: "get_conferencia_info",
-        id
-    });
+    send({ action: "get_conferencia_info", id });
 }
 
-// Toggles
 function toggleTodoke(id) {
     if (!confirm("Registrar Todoke para este operador?")) return;
 
-    window.chrome.webview.postMessage({
+    send({
         action: "toggle_todoke",
-        id
+        id,
+        shiftId: getCurrentShiftId()
     });
 }
 
 function toggleFolha(id) {
     if (!confirm("Registrar Folha de Controle para este operador?")) return;
 
-    window.chrome.webview.postMessage({
+    send({
         action: "toggle_folha",
-        id
+        id,
+        shiftId: getCurrentShiftId()
     });
 }
 
 function toggleConferencia(id) {
     if (!confirm("Registrar Conferência para este operador?")) return;
 
-    window.chrome.webview.postMessage({
+    send({
         action: "toggle_conferencia",
-        id
+        id,
+        shiftId: getCurrentShiftId()
     });
 }
 
-// Tooltip
 function showTooltip(info) {
     if (!info || info.length === 0) {
         tooltipContent.innerHTML = "Nenhum registro";
@@ -251,10 +267,7 @@ function showTooltip(info) {
 }
 
 function showNotesTooltip(text) {
-    tooltipContent.innerHTML = text && text.trim() !== ""
-        ? text
-        : "Sem notas";
-
+    tooltipContent.innerHTML = text && text.trim() !== "" ? text : "Sem notas";
     tooltip.classList.remove("hidden");
     tooltip.classList.add("show");
 }
@@ -264,34 +277,60 @@ function hideTooltip() {
     setTimeout(() => tooltip.classList.add("hidden"), 150);
 }
 
-// Modal
-document.getElementById("btnAdd").onclick = () => {
-    document.getElementById("modalAdd").classList.remove("hidden");
-};
+function openCreateModal() {
+    requestMode = "create";
+    document.getElementById("modalTitle").textContent = "Adicionar solicitação de yukyu";
+    document.getElementById("modalSubtitle").textContent = "Crie um novo registro de solicitação.";
+    document.getElementById("btnSaveModal").textContent = "Salvar";
+    document.getElementById("requestId").value = "";
+    clearForm();
+    document.getElementById("modalRequest").classList.remove("hidden");
+}
+
+function openEditModal(id) {
+    const item = requests.find(x => Number(x.id) === Number(id));
+    if (!item) return;
+
+    requestMode = "edit";
+    document.getElementById("modalTitle").textContent = "Editar solicitação";
+    document.getElementById("modalSubtitle").textContent = "Atualize os dados do cadastro selecionado.";
+    document.getElementById("btnSaveModal").textContent = "Atualizar";
+
+    document.getElementById("requestId").value = item.id;
+    document.getElementById("opSearch").value = `${item.operatorName} (${item.operatorCodigoFJ})`;
+    document.getElementById("opCodigoFJ").value = item.operatorCodigoFJ;
+    document.getElementById("reqDate").value = item.requestDate;
+    document.getElementById("motivoId").value = item.todokeMotivoId ?? "";
+    document.getElementById("notes").value = item.notes ?? "";
+    document.getElementById("opSuggestions").classList.add("hidden");
+
+    document.getElementById("modalRequest").classList.remove("hidden");
+}
 
 function closeModal() {
-    document.getElementById("modalAdd").classList.add("hidden");
+    document.getElementById("modalRequest").classList.add("hidden");
+    clearForm();
 }
 
 function clearForm() {
+    document.getElementById("requestId").value = "";
     document.getElementById("opSearch").value = "";
     document.getElementById("opCodigoFJ").value = "";
     document.getElementById("reqDate").value = "";
     document.getElementById("notes").value = "";
-
-    const sug = document.getElementById("opSuggestions");
-    if (sug) sug.classList.add("hidden");
+    document.getElementById("motivoId").value = "";
+    document.getElementById("opSuggestions").classList.add("hidden");
 }
 
-// Salvar request
 function saveRequest() {
+    const id = Number(document.getElementById("requestId").value || 0);
     const opCodigoFJ = document.getElementById("opCodigoFJ").value;
     const reqDate = document.getElementById("reqDate").value;
     const notes = document.getElementById("notes").value;
     const motivoIdStr = document.getElementById("motivoId").value;
 
     if (!opCodigoFJ || !reqDate) {
-        alert("Operator and Request Date are required.");
+        alert("Operador e Data Solicitação são obrigatórios.");
         return;
     }
 
@@ -300,30 +339,36 @@ function saveRequest() {
         return;
     }
 
-    const motivoId = parseInt(motivoIdStr, 10);
-
-    window.chrome.webview.postMessage({
-        action: "add_request",
+    const payload = {
+        action: requestMode === "edit" ? "update_request" : "add_request",
+        id,
         opCodigoFJ,
         reqDate,
         notes,
-        motivoId
-    });
+        motivoId: Number(motivoIdStr),
+        shiftId: getCurrentShiftId()
+    };
 
+    send(payload);
     closeModal();
-    clearForm();
 }
 
-// Autocomplete
-const opSearch = document.getElementById("opSearch");
-const opCodigoFJ = document.getElementById("opCodigoFJ");
-const opSuggestions = document.getElementById("opSuggestions");
+function deleteRequest(id) {
+    if (!confirm("Tem certeza que deseja excluir esta solicitação?")) return;
 
-opSearch.addEventListener("input", () => {
-    const text = opSearch.value.toLowerCase();
+    send({
+        action: "delete_request",
+        id,
+        shiftId: getCurrentShiftId()
+    });
+}
+
+function handleOperatorSearch() {
+    const text = document.getElementById("opSearch").value.toLowerCase();
+    const suggestions = document.getElementById("opSuggestions");
 
     if (!text) {
-        opSuggestions.classList.add("hidden");
+        suggestions.classList.add("hidden");
         return;
     }
 
@@ -334,7 +379,7 @@ opSearch.addEventListener("input", () => {
     );
 
     if (filtered.length === 0) {
-        opSuggestions.classList.add("hidden");
+        suggestions.classList.add("hidden");
         return;
     }
 
@@ -342,18 +387,26 @@ opSearch.addEventListener("input", () => {
     for (const op of filtered) {
         html += `
             <div class="suggestion-item"
-                 onclick="selectOperator('${op.CodigoFJ}', '${op.NameRomanji}')">
+                 onclick='selectOperator(${JSON.stringify(op.CodigoFJ)}, ${JSON.stringify(op.NameRomanji)})'>
                 ${op.NameRomanji} (${op.CodigoFJ})
             </div>
         `;
     }
 
-    opSuggestions.innerHTML = html;
-    opSuggestions.classList.remove("hidden");
-});
+    suggestions.innerHTML = html;
+    suggestions.classList.remove("hidden");
+}
 
 function selectOperator(codigoFJ, name) {
-    opSearch.value = name + " (" + codigoFJ + ")";
-    opCodigoFJ.value = codigoFJ;
-    opSuggestions.classList.add("hidden");
+    document.getElementById("opSearch").value = `${name} (${codigoFJ})`;
+    document.getElementById("opCodigoFJ").value = codigoFJ;
+    document.getElementById("opSuggestions").classList.add("hidden");
+}
+
+function escapeHtmlAttr(value) {
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
 }

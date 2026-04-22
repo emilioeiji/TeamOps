@@ -6,6 +6,7 @@ using Dapper;
 using Microsoft.Web.WebView2.Core;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Db;
+using TeamOps.Data.Repositories;
 using TeamOps.UI.Forms.Models;
 
 namespace TeamOps.UI.Forms
@@ -46,7 +47,7 @@ namespace TeamOps.UI.Forms
             switch (msg.action)
             {
                 case "paidleave_load":
-                    SendJsonFromSql("select_all.sql");
+                    RefreshTable(0);
                     SendJsonFromSql("select_operators.sql");
                     SendJsonFromSql("select_motivos.sql");
                     break;
@@ -59,7 +60,7 @@ namespace TeamOps.UI.Forms
                         TakenAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
                     });
 
-                    SendJsonFromSql("select_all.sql");
+                    RefreshTable(msg.shiftId);
                     break;
 
                 case "toggle_folha":
@@ -70,7 +71,7 @@ namespace TeamOps.UI.Forms
                         TakenAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
                     });
 
-                    SendJsonFromSql("select_all.sql");
+                    RefreshTable(msg.shiftId);
                     break;
 
                 case "get_todoke_info":
@@ -91,11 +92,35 @@ namespace TeamOps.UI.Forms
                         TodokeMotivoId = msg.motivoId
                     });
 
-                    SendJsonFromSql("select_all.sql");
+                    RefreshTable(msg.shiftId);
+                    break;
+
+                case "update_request":
+                    ExecuteSql("update_acomp.sql", new
+                    {
+                        Id = msg.id,
+                        OperatorCodigoFJ = msg.opCodigoFJ,
+                        RequestDate = msg.reqDate,
+                        Notes = msg.notes,
+                        TodokeMotivoId = msg.motivoId
+                    });
+
+                    TryLogSystem("PaidLeave", "Editou", msg.id, $"Motivo={msg.motivoId}");
+                    RefreshTable(msg.shiftId);
+                    break;
+
+                case "delete_request":
+                    ExecuteSql("delete_acomp.sql", new
+                    {
+                        Id = msg.id
+                    });
+
+                    TryLogSystem("PaidLeave", "Excluiu", msg.id);
+                    RefreshTable(msg.shiftId);
                     break;
                 
                 case "filter_shift":
-                    SendJsonFromSql("select_all_by_shift.sql", new { ShiftId = msg.shiftId });
+                    RefreshTable(msg.shiftId);
                     break;
 
                 case "toggle_conferencia":
@@ -106,7 +131,7 @@ namespace TeamOps.UI.Forms
                         TakenAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
                     });
 
-                    SendJsonFromSql("select_all.sql");
+                    RefreshTable(msg.shiftId);
                     break;
 
                 case "get_conferencia_info":
@@ -145,6 +170,30 @@ namespace TeamOps.UI.Forms
 
             using var conn = _factory.CreateOpenConnection();
             conn.Execute(sql, param);
+        }
+
+        private void RefreshTable(int shiftId)
+        {
+            if (shiftId <= 0)
+            {
+                SendJsonFromSql("select_all.sql");
+                return;
+            }
+
+            SendJsonFromSql("select_all_by_shift.sql", new { ShiftId = shiftId });
+        }
+
+        private void TryLogSystem(string module, string action, int? targetId = null, string? details = null)
+        {
+            try
+            {
+                var logRepo = new SystemLogRepository(_factory);
+                logRepo.Log(_currentOperator.CodigoFJ, module, action, targetId, details);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("SYSTEM LOG ERROR: " + ex);
+            }
         }
     }
 }

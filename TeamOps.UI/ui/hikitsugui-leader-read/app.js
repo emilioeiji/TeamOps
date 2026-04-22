@@ -1,7 +1,32 @@
-﻿// ======================================================
+﻿console.log("JS CARREGOU");
+// ======================================================
 // Variáveis globais
 // ======================================================
 let currentUserAccessLevel = 0;
+let editExistingAttachments = [];
+let editNewAttachments = [];
+let currentEditId = null;
+
+const ACTION_ICONS = {
+    view: `
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M1.5 12s3.8-6.5 10.5-6.5S22.5 12 22.5 12 18.7 18.5 12 18.5 1.5 12 1.5 12Z"></path>
+            <circle cx="12" cy="12" r="3.25"></circle>
+        </svg>
+    `,
+    edit: `
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M3 17.25V21h3.75L18.3 9.45l-3.75-3.75L3 17.25Z"></path>
+            <path d="m14.55 5.7 3.75 3.75 1.15-1.15a1.32 1.32 0 0 0 0-1.9l-1.85-1.85a1.32 1.32 0 0 0-1.9 0L14.55 5.7Z"></path>
+        </svg>
+    `,
+    delete: `
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M9 3.75h6l.75 1.5H20v1.5H4V5.25h4.25L9 3.75Z"></path>
+            <path d="M6.75 8.25h10.5l-.8 10.1A1.5 1.5 0 0 1 14.95 19.75h-5.9a1.5 1.5 0 0 1-1.49-1.4l-.81-10.1Z"></path>
+        </svg>
+    `
+};
 
 // ======================================================
 // Função padrão para enviar mensagens ao C#
@@ -17,8 +42,10 @@ function send(action, extra = {}) {
 // Ao carregar a página
 // ======================================================
 window.addEventListener("DOMContentLoaded", () => {
+
     // Carrega dados iniciais
     send("load");
+    console.log("LOAD DISPARADO");
 
     initReplyEditor();
 
@@ -32,12 +59,11 @@ window.addEventListener("DOMContentLoaded", () => {
         document.getElementById("btnBuscar").click();
     });
 
-    // Botão Buscar
+    // ✅ BOTÃO BUSCAR
     document.getElementById("btnBuscar").addEventListener("click", () => {
 
         const publico = document.querySelector("input[name='publico']:checked").value;
 
-        // Bloqueio (camada 2)
         if (publico === "masv" && currentUserAccessLevel < 3) {
             alert("Seu nível de acesso não permite visualizar MA/SV.");
             return;
@@ -59,23 +85,53 @@ window.addEventListener("DOMContentLoaded", () => {
         send("filter", payload);
     });
 
-    // Botão fechar modal
-    document.getElementById("btnFecharModal").addEventListener("click", closeModal);
+    // -----------------------------
+    // OUTROS EVENTOS
+    // -----------------------------
 
-    // Botão enviar reply
-    document.getElementById("btnEnviarReply").addEventListener("click", () => {
-        const text = document.getElementById("replyEditor").innerHTML;
-        const id = document.getElementById("replyEditor").dataset.hikitsuguiId;
+    const btnFechar = document.getElementById("btnFecharModal");
+    if (btnFechar) {
+        btnFechar.addEventListener("click", closeModal);
+    }
 
-        if (!text.trim()) return;
+    const btnReply = document.getElementById("btnEnviarReply");
+    if (btnReply) {
+        btnReply.addEventListener("click", () => {
+            const text = document.getElementById("replyEditor").innerHTML;
+            const id = document.getElementById("replyEditor").dataset.hikitsuguiId;
 
-        send("reply", { id: Number(id), text });
-    });
-});
+            if (!text.trim()) return;
+
+            send("reply", { id: Number(id), text });
+        });
+    }
+
+    const upload = document.getElementById("editFileUpload");
+    if (upload) {
+        upload.addEventListener("change", async ev => {
+
+            if (!ev.target.files || ev.target.files.length === 0) return;
+
+            for (const file of ev.target.files) {
+                const base64 = await toBase64(file);
+                editNewAttachments.push({
+                    fileName: file.name,
+                    base64
+                });
+            }
+
+            renderEditNewFiles();
+        }); // ← FECHAMENTO CORRETO DO addEventListener
+    } // ← FECHAMENTO CORRETO DO if(upload)
+
+}); // ← FECHAMENTO CORRETO DO DOMContentLoaded
+
 
 function initReplyEditor() {
-    const toolbar = document.querySelector(".editor-toolbar");
+    const toolbar = document.querySelector("#modal .editor-toolbar");
     const editor = document.getElementById("replyEditor");
+
+    if (!toolbar || !editor) return; // 👈 ESSENCIAL
 
     toolbar.addEventListener("click", (ev) => {
         const btn = ev.target.closest("button");
@@ -88,7 +144,7 @@ function initReplyEditor() {
         document.execCommand(cmd, false, null);
     });
 
-    document.getElementById("btnClearReplyFormat").addEventListener("click", () => {
+    document.getElementById("btnClearReplyFormat")?.addEventListener("click", () => {
         const text = editor.innerText;
         editor.innerHTML = text ? `<p>${text}</p>` : "";
     });
@@ -120,6 +176,7 @@ window.chrome.webview.addEventListener("message", e => {
 
         case "hikitsugui_for_leader":
             renderTable(msg.data);
+            closeEditModal();
             break;
 
         case "hikitsugui_by_id":
@@ -134,12 +191,23 @@ window.chrome.webview.addEventListener("message", e => {
             break;
 
         case "hikitsugui_edit":
-            console.log("hikitsugui_edit recebido:", msg.data);
-            openEditModal(msg.data[0]);
+            console.log("msg.data:", msg.data);
+
+            setTimeout(() => {
+                openEditModal(msg.data[0]);              // Preenche selects e descrição
+                renderEditAttachments(msg.attachments);  // Agora o DOM existe
+                renderEditNewFiles();                    // Agora o DOM existe
+            }, 50);
+
             break;
 
         case "attachments":
             renderAttachments(msg.data);
+            break;
+
+        case "error":
+            console.error("C# ERROR:", msg.message);
+            alert("Erro: " + msg.message);
             break;
     }
 });
@@ -205,11 +273,32 @@ function renderTable(rows) {
                 <td class="border p-2">
                     ${truncateHtmlPreservingFormat(r.DescriptionHtml, 120)}
                 </td>
-                <td class="border p-2">
+                <td class="border p-2 actions-cell">
                     <div class="action-buttons">
-                        <button class="btn-primary" onclick="preview(${r.Id})">Ver</button>
-                        <button class="btn-warning" onclick="openEdit(${r.Id})">Editar</button>
-                        <button class="btn-danger" onclick="deleteHikitsugui(${r.Id})">Excluir</button>
+                        <button
+                            type="button"
+                            class="icon-btn icon-btn-view"
+                            onclick="preview(${r.Id})"
+                            title="Visualizar"
+                            aria-label="Visualizar hikitsugui ${r.Id}">
+                            ${ACTION_ICONS.view}
+                        </button>
+                        <button
+                            type="button"
+                            class="icon-btn icon-btn-edit"
+                            onclick="openEdit(${r.Id})"
+                            title="Editar"
+                            aria-label="Editar hikitsugui ${r.Id}">
+                            ${ACTION_ICONS.edit}
+                        </button>
+                        <button
+                            type="button"
+                            class="icon-btn icon-btn-delete"
+                            onclick="deleteHikitsugui(${r.Id})"
+                            title="Excluir"
+                            aria-label="Excluir hikitsugui ${r.Id}">
+                            ${ACTION_ICONS.delete}
+                        </button>
                     </div>
                 </td>
             </tr>
@@ -279,8 +368,53 @@ function renderAttachments(rows) {
     });
 }
 
+function renderEditAttachments(rows) {
+    editExistingAttachments = rows || [];
+
+    const list = document.getElementById("editExistingFiles");
+    list.innerHTML = "";
+
+    if (!rows || rows.length === 0) {
+        list.innerHTML = `<i>Nenhum anexo existente</i>`;
+        return;
+    }
+
+    rows.forEach((a, index) => {
+        list.innerHTML += `
+            <li>
+                <span>${a.FileName}</span>
+                <button class="btn-delete-file" onclick="removeExistingAttachment(${index})">Excluir</button>
+            </li>
+        `;
+    });
+}
+
+function removeExistingAttachment(index) {
+    editExistingAttachments.splice(index, 1);
+    renderEditAttachments(editExistingAttachments);
+}
+
 function openAttachment(path) {
     send("open_attachment", { path });
+}
+
+function renderEditNewFiles() {
+    const list = document.getElementById("editNewFiles");
+    list.innerHTML = "";
+
+    editNewAttachments.forEach((file, index) => {
+        list.innerHTML += `
+            <li>
+                <span>${file.fileName}</span>
+                <button class="btn-delete-file" onclick="removeNewEditAttachment(${index})">Excluir</button>
+            </li>
+        `;
+    });
+}
+
+function removeNewEditAttachment(index) {
+    editNewAttachments.splice(index, 1);
+    renderEditNewFiles();
 }
 
 // ======================================================
@@ -347,8 +481,11 @@ function openModal(row) {
 
     // GARANTIR QUE O ELEMENTO EXISTE ANTES DE SETAR O DATASET
     const replyEditor = document.getElementById("replyEditor");
-    replyEditor.dataset.hikitsuguiId = row.Id;
-    replyEditor.innerHTML = ""; // limpa ao abrir
+
+    if (replyEditor) {
+        replyEditor.dataset.hikitsuguiId = row.Id;
+        replyEditor.innerHTML = "";
+    }
 
     // Aguarda DOM atualizar
     setTimeout(() => {
@@ -357,9 +494,11 @@ function openModal(row) {
     }, 50);
 }
 
-let currentEditId = null;
-
 function openEditModal(row) {
+    console.log("openEditModal row:", row);
+
+    editNewAttachments = []; // só limpa novos
+
     currentEditId = row.Id;
 
     document.getElementById("editCategoria").value = row.CategoryId;
@@ -405,22 +544,35 @@ function closeEditModal() {
 }
 
 function openEdit(id) {
-    console.log("ENVIANDO load_for_edit ID=", id);
     send("load_for_edit", { id });
 }
 
 function saveEdit() {
-    send("save_edit", {
+    console.log("existingAttachments:", editExistingAttachments);
+    console.log("newAttachments:", editNewAttachments);
+
+    const payload = {
         id: currentEditId,
 
-        // CAMPOS DO MODAL (corretos!)
         categoryId: Number(document.getElementById("editCategoria").value),
         equipmentId: Number(document.getElementById("editEquipamento").value),
         localId: Number(document.getElementById("editLocal").value),
         sectorId: Number(document.getElementById("editSector").value),
+
         description: document.getElementById("editDescricao").innerHTML,
 
-        // FILTROS DA TELA (para recarregar a tabela)
+        // 🔥 CORREÇÃO AQUI
+        existingAttachments: editExistingAttachments.map(x => ({
+            FileName: x.FileName ?? x.fileName,
+            FilePath: x.FilePath ?? x.filePath
+        })),
+
+        // Os novos anexos seguem o contrato esperado pelo C# (camelCase)
+        newAttachments: editNewAttachments.map(x => ({
+            fileName: x.fileName,
+            base64: x.base64
+        })),
+
         dtInicial: document.getElementById("dtInicial").value,
         dtFinal: document.getElementById("dtFinal").value,
         publico: document.querySelector("input[name='publico']:checked").value,
@@ -429,11 +581,20 @@ function saveEdit() {
         reasonId: Number(document.getElementById("reasonId").value),
         equipId: Number(document.getElementById("equipId").value),
         sectorIdFilter: Number(document.getElementById("sectorId").value),
-        localIdFilter: Number(document.getElementById("localId").value),
         search: document.getElementById("txtSearch").value.trim()
-    });
+    };
 
-    closeEditModal();
+    document.activeElement.blur();
+
+    send("save_edit", payload);
+}
+function toBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
 }
 
 function deleteHikitsugui(id) {
@@ -454,8 +615,11 @@ function deleteHikitsugui(id) {
 }
 
 function initEditEditor() {
-    const toolbar = document.querySelector("#modalEdit .edit-toolbar");
     const editor = document.getElementById("editDescricao");
+    const toolbar = document.querySelector("#modalEdit .edit-toolbar");
+
+    if (toolbar.dataset.initialized) return;
+    toolbar.dataset.initialized = "true";
 
     toolbar.addEventListener("click", (ev) => {
         const btn = ev.target.closest("button");

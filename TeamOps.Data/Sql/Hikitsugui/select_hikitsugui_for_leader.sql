@@ -1,4 +1,4 @@
-﻿SELECT
+﻿SELECT DISTINCT
     h.Id,
     h.Date,
     o.NameRomanji AS OperatorName,
@@ -27,36 +27,27 @@ LEFT JOIN HikitsuguiReads r
 WHERE 1=1
 AND h.Date BETWEEN @dtInicial AND @dtFinal
 
--- FILTRO POR PÚBLICO (HIERARQUIA CORRETA)
 AND (
         (@publico = 'operador' AND h.ForOperators = 1)
         OR (@publico = 'lider' AND h.ForLeaders = 1)
         OR (@publico = 'masv' AND h.ForMaSv = 1)
 
-        -- TODOS → retorna tudo que o usuário pode ver
         OR (
             @publico = 'todos'
             AND (
-                -- operador → só operador
                 (@accessLevel = 1 AND h.ForOperators = 1)
-
-                -- líder → operador + líder
                 OR (@accessLevel = 2 AND (h.ForOperators = 1 OR h.ForLeaders = 1))
-
-                -- GL → operador + líder + masv
                 OR (@accessLevel >= 3 AND (h.ForOperators = 1 OR h.ForLeaders = 1 OR h.ForMaSv = 1))
             )
         )
     )
 
--- FILTROS ADICIONAIS
 AND (@shiftId = 0 OR h.ShiftId = @shiftId)
 AND (@operatorId = 0 OR h.CreatorCodigoFJ = @operatorId)
 AND (@reasonId = 0 OR h.CategoryId = @reasonId)
 AND (@equipId = 0 OR h.EquipmentId = @equipId)
 AND (@sectorId = 0 OR h.SectorId = @sectorId)
 
--- FILTRO DE TEXTO (PT / JP / QUALQUER IDIOMA)
 AND (
         @search = ''
         OR h.Description LIKE '%' || @search || '%'

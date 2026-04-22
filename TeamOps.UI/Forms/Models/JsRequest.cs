@@ -47,6 +47,12 @@
         public string reqDate { get; set; }
         public string notes { get; set; }
         public int motivoId { get; set; }
+
+        // ============================
+        // ANEXOS DO EDITAR
+        // ============================
+        public List<AttachmentExistingDto> existingAttachments { get; set; }
+        public List<AttachmentNewDto> newAttachments { get; set; }
     }
 
     public class AttachmentItem
@@ -54,4 +60,18 @@
         public string fileName { get; set; }
         public string base64 { get; set; }
     }
+
+    public class AttachmentExistingDto
+    {
+        public int Id { get; set; }
+        public string FileName { get; set; }
+        public string FilePath { get; set; }
+    }
+
+    public class AttachmentNewDto
+    {
+        public string fileName { get; set; }
+        public string base64 { get; set; }
+    }
+
 }

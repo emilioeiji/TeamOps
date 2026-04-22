@@ -1,25 +1,16 @@
-﻿SELECT 
+SELECT 
     a.Id AS id,
-
-    -- Nome do operador
+    a.OperatorCodigoFJ AS operatorCodigoFJ,
+    a.TodokeMotivoId AS todokeMotivoId,
     o.NameRomanji AS operatorName,
-
-    -- Data da solicitação
     a.RequestDate AS requestDate,
-
-    -- Nome de quem autorizou
     COALESCE(l.NameRomanji, '') AS authorizedBy,
-
-    -- Motivo (TodokeMotivo)
     (
         SELECT m.NomePt
         FROM TodokeMotivo m
         WHERE m.Id = a.TodokeMotivoId
     ) AS todokeMotivoName,
-
     a.Notes AS notes,
-
-    -- Flags booleanas
     CASE 
         WHEN EXISTS (
             SELECT 1 
@@ -27,7 +18,6 @@
             WHERE t.AcompYukyuId = a.Id
         ) THEN 1 ELSE 0
     END AS hasTodoke,
-
     CASE 
         WHEN EXISTS (
             SELECT 1 
@@ -35,7 +25,6 @@
             WHERE f.AcompYukyuId = a.Id
         ) THEN 1 ELSE 0
     END AS hasFolha,
-
     CASE 
         WHEN EXISTS (
             SELECT 1 
@@ -43,7 +32,6 @@
             WHERE c.AcompYukyuId = a.Id
         ) THEN 1 ELSE 0
     END AS hasConferencia,
-
     (
         SELECT c.TakenBy || '|' || c.TakenAt
         FROM YukyuConferencia c
@@ -51,11 +39,8 @@
         ORDER BY c.Id DESC
         LIMIT 1
     ) AS conferenciaInfo
-
 FROM AcompYukyu a
 JOIN Operators o ON o.CodigoFJ = a.OperatorCodigoFJ
 LEFT JOIN Operators l ON l.CodigoFJ = a.AuthorizedByCodigoFJ
-
 WHERE (@ShiftId = 0 OR o.ShiftId = @ShiftId)
-
 ORDER BY a.RequestDate DESC;

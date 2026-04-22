@@ -1,6 +1,7 @@
 ﻿using Dapper;
 using Microsoft.Web.WebView2.Core;
 using System;
+using System.Configuration;
 using System.IO;
 using System.Text.Json;
 using System.Windows.Forms;
@@ -62,6 +63,7 @@ namespace TeamOps.UI.Forms
 
         private void WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
+            Console.WriteLine("WEBVIEW MSG: " + e.WebMessageAsJson);
 
             var msg = JsonSerializer.Deserialize<JsRequest>(e.WebMessageAsJson);
 
@@ -75,9 +77,6 @@ namespace TeamOps.UI.Forms
 
             switch (msg.action)
             {
-                // ============================================================
-                // LOAD INICIAL
-                // ============================================================
                 case "load":
                     {
                         using var conn = _factory.CreateOpenConnection();
@@ -92,7 +91,6 @@ namespace TeamOps.UI.Forms
                         var dtInicial = DateTime.Today.AddDays(-31).ToString("yyyy-MM-dd");
                         var dtFinal = DateTime.Today.AddDays(1).ToString("yyyy-MM-dd");
 
-                        // Envia filtros + ACCESS LEVEL
                         var jsonFilters = JsonSerializer.Serialize(new
                         {
                             type = "filters",
@@ -104,12 +102,11 @@ namespace TeamOps.UI.Forms
                             sectors,
                             dtInicial,
                             dtFinal,
-                            accessLevel = _currentUser.AccessLevel   // ← ADICIONADO
+                            accessLevel = _currentUser.AccessLevel
                         });
 
                         webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(jsonFilters);
 
-                        // Envia tabela inicial
                         SendJsonFromSql("select_hikitsugui_for_leader.sql", new
                         {
                             dtInicial,
@@ -129,151 +126,61 @@ namespace TeamOps.UI.Forms
                         break;
                     }
 
-                case "load_for_edit":
-                    {
-                           Console.WriteLine("LOAD_FOR_EDIT RECEBIDO — ID = " + msg.id);
-
-                        var sqlPath = Path.Combine(Application.StartupPath, "Sql", "Hikitsugui", "get_hikitsugui_by_id.sql");
-                        var sql = File.ReadAllText(sqlPath);
-
-                        using var conn = _factory.CreateOpenConnection();
-                        var rows = conn.Query(sql, new { id = msg.id }).ToList();
-
-                        webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(
-                            JsonSerializer.Serialize(new
-                            {
-                                type = "hikitsugui_edit",
-                                data = rows
-                            })
-                        );
-                        break;
-                    }
-
-                // ============================================================
-                // FILTRO
-                // ============================================================
                 case "filter":
                     {
                         SendJsonFromSql("select_hikitsugui_for_leader.sql", new
                         {
-                            dtInicial = msg.dtInicial,
-                            dtFinal = msg.dtFinal,
-                            publico = msg.publico,
-                            shiftId = msg.shiftId,
-                            operatorId = msg.operatorId,
-                            reasonId = msg.reasonId,
+                            dtInicial = (string)msg.dtInicial,
+                            dtFinal = (string)msg.dtFinal,
+                            publico = (string)msg.publico,
+                            shiftId = Convert.ToInt32(msg.shiftId),
+                            operatorId = Convert.ToInt32(msg.operatorId),
+                            reasonId = Convert.ToInt32(msg.reasonId),
                             typeId = 0,
-                            equipId = msg.equipId,
-                            sectorId = msg.sectorId,
+                            equipId = Convert.ToInt32(msg.equipId),
+                            sectorId = Convert.ToInt32(msg.sectorId),
                             codigoFJ = _currentLeader.CodigoFJ,
-                            search = msg.search,
+                            search = (string)msg.search,
                             accessLevel = _currentUser.AccessLevel
                         });
                         break;
                     }
 
-                // ============================================================
-                // PREVIEW
-                // ============================================================
                 case "preview":
-                    SendJsonFromSql("select_hikitsugui_by_id.sql", new { id = msg.id });
-                    break;
+                    {
+                        SendJsonFromSql("select_hikitsugui_by_id.sql", new { id = msg.id });
+                        break;
+                    }
 
-                // ============================================================
-                // INSERT REPLY
-                // ============================================================
+                case "load_for_edit":
+                    {
+                        using var conn = _factory.CreateOpenConnection();
+
+                        var row = conn.QueryFirstOrDefault(
+                            "SELECT * FROM Hikitsugui WHERE Id = @id",
+                            new { id = msg.id });
+
+                        var attachments = conn.Query(
+                            "SELECT FileName, FilePath FROM HikitsuguiAttachments WHERE HikitsuguiId = @id",
+                            new { id = msg.id });
+
+                        var json = JsonSerializer.Serialize(new
+                        {
+                            type = "hikitsugui_edit",
+                            data = new[] { row },
+                            attachments
+                        });
+
+                        webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(json);
+                        break;
+                    }
+
                 case "select_replies":
                     {
                         SendJsonFromSql("select_replies.sql", new { id = msg.id });
                         break;
                     }
 
-                case "reply":
-                    {
-                        ExecuteSql("insert_reply.sql", new
-                        {
-                            id = msg.id,
-                            text = msg.text,
-                            codigoFJ = _currentLeader.CodigoFJ
-                        });
-
-                        SendJsonFromSql("select_replies.sql", new { id = msg.id });
-                        break;
-                    }
-
-                // ============================================================
-                // DELETE REPLY
-                // ============================================================
-                case "delete_reply":
-                    {
-                        ExecuteSql("delete_reply.sql", new { id = msg.parentId });
-                        SendJsonFromSql("select_replies.sql", new { id = msg.parentId });
-                        break;
-                    }
-
-                case "delete_hikitsugui":
-                    {
-                        ExecuteSql("delete_attachments_by_hikitsugui.sql", new { id = msg.id });
-                        ExecuteSql("delete_hikitsugui.sql", new { id = msg.id });
-
-                        // LOG
-                        var logRepo = new SystemLogRepository(_factory);
-                        logRepo.Log(
-                            _currentLeader.CodigoFJ,
-                            "Hikitsugui",
-                            "Excluiu",
-                            msg.id
-                        );
-
-                        // Atualiza tabela
-                        SendJsonFromSql("select_hikitsugui_for_leader.sql", new
-                        {
-                            dtInicial = msg.dtInicial,
-                            dtFinal = msg.dtFinal,
-                            publico = msg.publico,
-                            shiftId = msg.shiftId,
-                            operatorId = msg.operatorId,
-                            reasonId = msg.reasonId,
-                            typeId = 0,
-                            equipId = msg.equipId,
-                            sectorId = msg.sectorId,
-                            codigoFJ = _currentLeader.CodigoFJ,
-                            search = msg.search,
-                            accessLevel = _currentUser.AccessLevel
-                        });
-
-                        break;
-                    }
-
-                // ============================================================
-                // MARK READ
-                // ============================================================
-                case "mark_read":
-                    {
-                        ExecuteSql("insert_read.sql", new
-                        {
-                            id = msg.id,
-                            codigoFJ = _currentLeader.CodigoFJ
-                        });
-
-                        SendJsonFromSql("select_hikitsugui_for_leader.sql", new
-                        {
-                            dtInicial = msg.dtInicial,
-                            dtFinal = msg.dtFinal,
-                            publico = msg.publico,
-                            shiftId = msg.shiftId,
-                            operatorId = msg.operatorId,
-                            reasonId = msg.reasonId,
-                            typeId = 0,
-                            equipId = msg.equipId,
-                            sectorId = msg.sectorId,
-                            codigoFJ = _currentLeader.CodigoFJ,
-                            search = msg.search,
-                            accessLevel = _currentUser.AccessLevel
-                        });
-
-                        break;
-                    }
                 case "select_attachments":
                     {
                         SendJsonFromSql("select_attachments.sql", new { id = msg.id });
@@ -282,55 +189,298 @@ namespace TeamOps.UI.Forms
 
                 case "open_attachment":
                     {
-                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        if (string.IsNullOrWhiteSpace(msg.path))
                         {
-                            FileName = msg.path,
-                            UseShellExecute = true
-                        });
+                            webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(
+                                JsonSerializer.Serialize(new
+                                {
+                                    type = "error",
+                                    message = "Caminho do anexo inválido."
+                                })
+                            );
+                            break;
+                        }
+
+                        try
+                        {
+                            var ext = Path.GetExtension(msg.path).ToLowerInvariant();
+                            var blockedExtensions = new[] { ".dll", ".exe", ".bin", ".sys" };
+
+                            if (Array.Exists(blockedExtensions, x => x == ext))
+                            {
+                                webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(
+                                    JsonSerializer.Serialize(new
+                                    {
+                                        type = "error",
+                                        message = "Este tipo de arquivo não pode ser aberto diretamente."
+                                    })
+                                );
+                                break;
+                            }
+
+                            if (!File.Exists(msg.path))
+                            {
+                                webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(
+                                    JsonSerializer.Serialize(new
+                                    {
+                                        type = "error",
+                                        message = "Arquivo não encontrado."
+                                    })
+                                );
+                                break;
+                            }
+
+                            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                            {
+                                FileName = msg.path,
+                                UseShellExecute = true
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("OPEN_ATTACHMENT ERROR: " + ex);
+
+                            webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(
+                                JsonSerializer.Serialize(new
+                                {
+                                    type = "error",
+                                    message = ex.Message
+                                })
+                            );
+                        }
+
                         break;
                     }
 
-                // ============================================================
-                // MARK READ
-                // ============================================================
+                case "delete_hikitsugui":
+                    {
+                        using var conn = _factory.CreateOpenConnection();
+                        using var tran = conn.BeginTransaction();
+
+                        try
+                        {
+                            conn.Execute(
+                                "DELETE FROM HikitsuguiAttachments WHERE HikitsuguiId = @id",
+                                new { id = msg.id },
+                                tran
+                            );
+
+                            conn.Execute(
+                                "DELETE FROM HikitsuguiReads WHERE HikitsuguiId = @id",
+                                new { id = msg.id },
+                                tran
+                            );
+
+                            conn.Execute(
+                                "DELETE FROM HikitsuguiCorrections WHERE HikitsuguiId = @id",
+                                new { id = msg.id },
+                                tran
+                            );
+
+                            conn.Execute(
+                                "DELETE FROM HikitsuguiResponses WHERE HikitsuguiId = @id",
+                                new { id = msg.id },
+                                tran
+                            );
+
+                            conn.Execute(
+                                "DELETE FROM Hikitsugui WHERE Id = @id",
+                                new { id = msg.id },
+                                tran
+                            );
+
+                            tran.Commit();
+
+                            try
+                            {
+                                var logRepo = new SystemLogRepository(_factory);
+                                logRepo.Log(
+                                    _currentLeader.CodigoFJ,
+                                    "Hikitsugui",
+                                    "Excluiu",
+                                    msg.id
+                                );
+                            }
+                            catch (Exception logEx)
+                            {
+                                Console.WriteLine("DELETE_HIKITSUGUI LOG ERROR: " + logEx);
+                            }
+
+                            SendJsonFromSql("select_hikitsugui_for_leader.sql", new
+                            {
+                                dtInicial = (string)msg.dtInicial,
+                                dtFinal = (string)msg.dtFinal,
+                                publico = (string)msg.publico,
+                                shiftId = Convert.ToInt32(msg.shiftId),
+                                operatorId = Convert.ToInt32(msg.operatorId),
+                                reasonId = Convert.ToInt32(msg.reasonId),
+                                typeId = 0,
+                                equipId = Convert.ToInt32(msg.equipId),
+                                sectorId = Convert.ToInt32(msg.sectorId),
+                                codigoFJ = _currentLeader.CodigoFJ,
+                                search = (string)msg.search,
+                                accessLevel = _currentUser.AccessLevel
+                            });
+
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            try
+                            {
+                                tran.Rollback();
+                            }
+                            catch (Exception rollbackEx)
+                            {
+                                Console.WriteLine("DELETE_HIKITSUGUI ROLLBACK ERROR: " + rollbackEx);
+                            }
+
+                            Console.WriteLine("DELETE_HIKITSUGUI ERROR: " + ex);
+
+                            webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(
+                                JsonSerializer.Serialize(new
+                                {
+                                    type = "error",
+                                    message = ex.Message
+                                })
+                            );
+
+                            break;
+                        }
+                    }
+
                 case "save_edit":
                     {
-                        ExecuteSql("update_hikitsugui.sql", new
+                        using var conn = _factory.CreateOpenConnection();
+                        using var tran = conn.BeginTransaction();
+
+                        try
                         {
-                            id = msg.id,
-                            categoryId = msg.categoryId,
-                            equipmentId = msg.equipmentId == 0 ? (int?)null : msg.equipmentId,
-                            localId = msg.localId == 0 ? (int?)null : msg.localId,
-                            sectorId = msg.sectorId == 0 ? (int?)null : msg.sectorId,
-                            description = msg.description
-                        });
+                            var sqlUpdate = File.ReadAllText(
+                                Path.Combine(Application.StartupPath, "Sql", "Hikitsugui", "update_hikitsugui.sql")
+                            );
 
-                        var logRepo = new SystemLogRepository(_factory);
-                        logRepo.Log(
-                            _currentLeader.CodigoFJ,
-                            "Hikitsugui",
-                            "Editou",
-                            msg.id,
-                            $"Categoria={msg.categoryId}"
-                        );
+                            var sqlInsertAttachment = File.ReadAllText(
+                                Path.Combine(Application.StartupPath, "Sql", "Hikitsugui", "insert_hikitsugui_attachment.sql")
+                            );
 
-                        SendJsonFromSql("select_hikitsugui_for_leader.sql", new
+                            int id = Convert.ToInt32(msg.id);
+
+                            int? equipmentId = (msg.equipmentId == null || Convert.ToInt32(msg.equipmentId) == 0)
+                                ? null
+                                : Convert.ToInt32(msg.equipmentId);
+
+                            int? localId = (msg.localId == null || Convert.ToInt32(msg.localId) == 0)
+                                ? null
+                                : Convert.ToInt32(msg.localId);
+
+                            int? sectorId = (msg.sectorId == null || Convert.ToInt32(msg.sectorId) == 0)
+                                ? null
+                                : Convert.ToInt32(msg.sectorId);
+
+                            conn.Execute(sqlUpdate, new
+                            {
+                                id,
+                                categoryId = Convert.ToInt32(msg.categoryId),
+                                equipmentId,
+                                localId,
+                                sectorId,
+                                description = (string)msg.description
+                            }, tran);
+
+                            conn.Execute(
+                                "DELETE FROM HikitsuguiAttachments WHERE HikitsuguiId = @id",
+                                new { id },
+                                tran
+                            );
+
+                            if (msg.existingAttachments != null)
+                            {
+                                foreach (var item in msg.existingAttachments)
+                                {
+                                    conn.Execute(sqlInsertAttachment, new
+                                    {
+                                        hikitsuguiId = id,
+                                        fileName = item.FileName,
+                                        filePath = item.FilePath
+                                    }, tran);
+                                }
+                            }
+
+                            if (msg.newAttachments != null)
+                            {
+                                foreach (var item in msg.newAttachments)
+                                {
+                                    var savedPath = SaveAttachment(id, item.fileName, item.base64);
+
+                                    conn.Execute(sqlInsertAttachment, new
+                                    {
+                                        hikitsuguiId = id,
+                                        fileName = item.fileName,
+                                        filePath = savedPath
+                                    }, tran);
+                                }
+                            }
+
+                            tran.Commit();
+
+                            try
+                            {
+                                var logRepo = new SystemLogRepository(_factory);
+                                logRepo.Log(
+                                    _currentLeader.CodigoFJ,
+                                    "Hikitsugui",
+                                    "Editou",
+                                    id,
+                                    $"Categoria={msg.categoryId}"
+                                );
+                            }
+                            catch (Exception logEx)
+                            {
+                                Console.WriteLine("SAVE_EDIT LOG ERROR: " + logEx);
+                            }
+
+                            SendJsonFromSql("select_hikitsugui_for_leader.sql", new
+                            {
+                                dtInicial = (string)msg.dtInicial,
+                                dtFinal = (string)msg.dtFinal,
+                                publico = (string)msg.publico,
+                                shiftId = Convert.ToInt32(msg.shiftId),
+                                operatorId = Convert.ToInt32(msg.operatorId),
+                                reasonId = Convert.ToInt32(msg.reasonId),
+                                typeId = 0,
+                                equipId = Convert.ToInt32(msg.equipId),
+                                sectorId = Convert.ToInt32(msg.sectorIdFilter),
+                                codigoFJ = _currentLeader.CodigoFJ,
+                                search = (string)msg.search,
+                                accessLevel = _currentUser.AccessLevel
+                            });
+
+                            break; // 👈 ESSENCIAL
+                        }
+                        catch (Exception ex)
                         {
-                            dtInicial = msg.dtInicial,
-                            dtFinal = msg.dtFinal,
-                            publico = msg.publico,
-                            shiftId = msg.shiftId,
-                            operatorId = msg.operatorId,
-                            reasonId = msg.reasonId,
-                            typeId = 0,
-                            equipId = msg.equipId,
-                            sectorId = msg.sectorIdFilter,
-                            codigoFJ = _currentLeader.CodigoFJ,
-                            search = msg.search,
-                            accessLevel = _currentUser.AccessLevel
-                        });
+                            try
+                            {
+                                tran.Rollback();
+                            }
+                            catch (Exception rollbackEx)
+                            {
+                                Console.WriteLine("ROLLBACK ERROR: " + rollbackEx);
+                            }
 
-                        break;
+                            Console.WriteLine("SAVE_EDIT ERROR: " + ex);
+
+                            webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(
+                                JsonSerializer.Serialize(new
+                                {
+                                    type = "error",
+                                    message = ex.Message
+                                })
+                            );
+
+                            break;
+                        }
                     }
             }
         }
@@ -380,5 +530,19 @@ namespace TeamOps.UI.Forms
             using var conn = _factory.CreateOpenConnection();
             conn.Execute(sql, param);
         }
+        private string SaveAttachment(int hikitsuguiId, string fileName, string base64)
+        {
+            var root = ConfigurationManager.AppSettings["HikitsuguiAttachmentPath"];
+            var dir = Path.Combine(root, hikitsuguiId.ToString());
+
+            if (!Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+
+            var filePath = Path.Combine(dir, fileName);
+            File.WriteAllBytes(filePath, Convert.FromBase64String(base64));
+
+            return filePath;
+        }
+
     }
 }
