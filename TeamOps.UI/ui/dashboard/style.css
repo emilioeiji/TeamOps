@@ -154,7 +154,7 @@ button {
 
 .hero-stats {
     display: grid;
-    grid-template-columns: repeat(2, minmax(180px, 1fr));
+    grid-template-columns: repeat(3, minmax(180px, 1fr));
     gap: 14px;
 }
 
@@ -180,6 +180,17 @@ button {
 .stat-card strong {
     font-size: 18px;
     color: #11233a;
+}
+
+.stat-card-highlight {
+    border-color: rgba(31, 78, 163, 0.22);
+    background:
+        linear-gradient(180deg, rgba(232, 240, 255, 0.95) 0%, rgba(255, 255, 255, 0.98) 100%);
+}
+
+.stat-card-highlight strong {
+    color: #1f4ea3;
+    font-size: 24px;
 }
 
 .dashboard-grid {
@@ -308,7 +319,7 @@ button {
 
     .hero-stats {
         width: 100%;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
 

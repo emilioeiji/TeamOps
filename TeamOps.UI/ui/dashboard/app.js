@@ -1,22 +1,24 @@
 const ACCESS_LABELS = {
-    0: "Operador",
-    1: "KL",
-    2: "GL",
-    3: "Admin"
+    1: "Basic",
+    2: "KL",
+    3: "GL",
+    4: "Manager",
+    5: "Admin"
 };
 
 const PERMISSION_RULES = {
-    btnRelatorios: 2,
-    btnPresenca: 2,
-    btnPresenca2: 2,
-    btnFollowUp: 1,
-    btnHikitsugui: 1,
-    btnHikitsuguiLeaderRead: 1,
-    btnPR: 1,
-    btnCL: 1,
-    btnSobraDePeca: 1,
-    btnAdmin: 3,
-    btnAccessControl: 3
+    btnRelatorios: 3,
+    btnPresenca: 3,
+    btnPresenca2: 3,
+    btnFollowUp: 2,
+    btnTasks: 3,
+    btnHikitsugui: 2,
+    btnHikitsuguiLeaderRead: 2,
+    btnPR: 2,
+    btnCL: 2,
+    btnSobraDePeca: 2,
+    btnAdmin: 5,
+    btnAccessControl: 5
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -46,6 +48,7 @@ function hydrateDashboard(payload) {
     setText("lblOperator", payload.operatorName);
     setText("lblShift", payload.shiftName);
     setText("lblDate", payload.date);
+    setText("lblOpenTasks", payload.openTasksForShift ?? 0);
 
     const level = Number(payload.accessLevel ?? 0);
     const label = ACCESS_LABELS[level] || `Nivel ${level}`;

@@ -1,6 +1,7 @@
 ﻿// Project: TeamOps.UI
 // File: Forms/FormDashboardHtml.cs
 
+using Dapper;
 using Microsoft.Web.WebView2.Core;
 using System;
 using System.IO;
@@ -65,6 +66,8 @@ namespace TeamOps.UI.Forms
 
             core.NavigationCompleted += (s, e) =>
             {
+                var openTasksForShift = GetOpenTasksForCurrentShift();
+
                 var payload = JsonSerializer.Serialize(new
                 {
                     type = "init",
@@ -72,7 +75,8 @@ namespace TeamOps.UI.Forms
                     operatorName = _currentOperator.NameRomanji,
                     accessLevel = (int)_user.AccessLevel,
                     shiftName = _currentShift.NamePt,
-                    date = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                    date = DateTime.Now.ToString("dd/MM/yyyy HH:mm"),
+                    openTasksForShift
                 });
 
                 core.PostWebMessageAsJson(payload);
@@ -140,6 +144,17 @@ namespace TeamOps.UI.Forms
                         ShowAccessDeniedAsync();
                     else
                         OpenDialog(() => new FormFollowUp());
+                    break;
+
+                case "open:tasks":
+                    if (!HasAccess(AccessLevel.GL))
+                        ShowAccessDeniedAsync();
+                    else
+                        OpenDialog(() => new HTMLFormTasks(
+                            _factory,
+                            _user,
+                            _currentOperator
+                        ));
                     break;
 
                 case "open:hikitsugui":
@@ -224,6 +239,32 @@ namespace TeamOps.UI.Forms
                         OpenDialog(() => new HTMLFormAccessControl());
                     break;
             }
+        }
+
+        private int GetOpenTasksForCurrentShift()
+        {
+            using var conn = _factory.CreateOpenConnection();
+
+            var tasksTableExists = conn.ExecuteScalar<int>(
+                @"SELECT COUNT(1)
+                  FROM sqlite_master
+                  WHERE type = 'table'
+                    AND name = 'Tasks'"
+            ) > 0;
+
+            if (!tasksTableExists)
+                return 0;
+
+            return conn.ExecuteScalar<int>(
+                @"SELECT COUNT(1)
+                  FROM Tasks
+                  WHERE ShiftId = @ShiftId
+                    AND Status NOT IN ('completed', 'cancelled')",
+                new
+                {
+                    ShiftId = _currentShift.Id
+                }
+            );
         }
 
         private bool _ready = false;

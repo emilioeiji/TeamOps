@@ -48,6 +48,11 @@
                     <span class="stat-label">Perfil Atual</span>
                     <strong id="lblAccessLevel">-</strong>
                 </div>
+
+                <div class="stat-card stat-card-highlight">
+                    <span class="stat-label">Tasks em Aberto</span>
+                    <strong id="lblOpenTasks">-</strong>
+                </div>
             </div>
         </section>
 
@@ -79,6 +84,33 @@
                         </span>
                     </button>
 
+                    <button id="btnTasks" class="action-tile" type="button" data-action="open:tasks">
+                        <span class="tile-icon tile-icon-teal">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                              <!-- folha -->
+                              <path d="M7.5 3.75h6.75L18.75 8.25V18A2.25 2.25 0 0 1 16.5 20.25h-9A2.25 2.25 0 0 1 5.25 18V6A2.25 2.25 0 0 1 7.5 3.75Z"/>
+                              <path d="M14.25 3.75V8.25H18.75"/>
+                            
+                              <!-- checkboxes -->
+                              <rect x="8.25" y="10" width="1.8" height="1.8" rx="0.4"/>
+                              <rect x="8.25" y="13" width="1.8" height="1.8" rx="0.4"/>
+                              <rect x="8.25" y="16" width="1.8" height="1.8" rx="0.4"/>
+                            
+                              <!-- linhas -->
+                              <path d="M11 10.9h4.5"/>
+                              <path d="M11 13.9h4.5"/>
+                              <path d="M11 16.9h4.5"/>
+                            
+                              <!-- check marcado -->
+                              <path d="M8.5 13.9l0.6 0.6 1.2-1.2"/>
+                            </svg>
+                        </span>
+                        <span class="tile-copy">
+                            <strong>Tasks</strong>
+                            <small>タスク管理</small>
+                        </span>
+                    </button>
+
                     <button id="btnSobraDePeca" class="action-tile" type="button" data-action="open:sobradepeca">
                         <span class="tile-icon tile-icon-emerald">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.75h16v10.5H4z"/><path d="M8 4.5h8M8 19.5h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
@@ -91,7 +123,7 @@
 
                     <button id="btnRelatorios" class="action-tile" type="button" data-action="open:relatorios">
                         <span class="tile-icon tile-icon-violet">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.25 4.5h13.5v15H5.25z"/><path d="M8.25 15.75V12m3 3.75v-6m3 6v-9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 3.75h6.75L18.75 8.25V18A2.25 2.25 0 0 1 16.5 20.25h-9A2.25 2.25 0 0 1 5.25 18V6A2.25 2.25 0 0 1 7.5 3.75Z"/><path d="M14.25 3.75V8.25H18.75" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.25 11.25h7.5M8.25 15h4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M8.25 17.25v-3m2.5 3v-5.25m2.5 5.25v-2m2.5 2v-4.25" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                         </span>
                         <span class="tile-copy">
                             <strong>Relatorios</strong>

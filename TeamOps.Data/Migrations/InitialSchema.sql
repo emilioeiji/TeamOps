@@ -466,6 +466,40 @@ CREATE TABLE SystemLog (
     Details TEXT NULL
 );
 
+CREATE TABLE IF NOT EXISTS Tasks (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Description TEXT NOT NULL,
+    DueDate DATE NOT NULL,
+    ShiftId INTEGER NOT NULL,
+    AssigneeCodigoFJ TEXT,
+    Status TEXT NOT NULL,
+    CreatedByCodigoFJ TEXT NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UpdatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    StartedAt DATETIME,
+    CompletedAt DATETIME,
+    CancelledAt DATETIME,
+    FOREIGN KEY (ShiftId) REFERENCES Shifts(Id),
+    FOREIGN KEY (AssigneeCodigoFJ) REFERENCES Operators(CodigoFJ),
+    FOREIGN KEY (CreatedByCodigoFJ) REFERENCES Operators(CodigoFJ)
+);
+
+CREATE TABLE IF NOT EXISTS TaskStatusHistory (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    TaskId INTEGER NOT NULL,
+    PreviousStatus TEXT,
+    NewStatus TEXT NOT NULL,
+    ChangedByCodigoFJ TEXT NOT NULL,
+    ChangedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    Note TEXT,
+    FOREIGN KEY (TaskId) REFERENCES Tasks(Id),
+    FOREIGN KEY (ChangedByCodigoFJ) REFERENCES Operators(CodigoFJ)
+);
+
+CREATE INDEX IF NOT EXISTS IX_Tasks_Status_DueDate ON Tasks(Status, DueDate);
+CREATE INDEX IF NOT EXISTS IX_Tasks_Shift_Assignee ON Tasks(ShiftId, AssigneeCodigoFJ);
+CREATE INDEX IF NOT EXISTS IX_TaskStatusHistory_TaskId ON TaskStatusHistory(TaskId, ChangedAt);
+
 CREATE INDEX IF NOT EXISTS IX_Operators_BadgeCode ON Operators(BadgeCode);
 CREATE INDEX IF NOT EXISTS IX_GL_Login ON GroupLeaders(Login);
 CREATE INDEX IF NOT EXISTS IX_Assignments_GL_Operator ON Assignments(GLId, OperatorId);

@@ -88,6 +88,13 @@
         public string confirmPassword { get; set; }
 
         // ============================
+        // TASKS
+        // ============================
+        public string dueDate { get; set; }
+        public string leaderCodigoFJ { get; set; }
+        public string taskStatus { get; set; }
+
+        // ============================
         // ANEXOS DO EDITAR
         // ============================
         public List<AttachmentExistingDto> existingAttachments { get; set; }

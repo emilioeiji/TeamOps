@@ -4,7 +4,6 @@ using System;
 using System.Windows.Forms;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Repositories;
-using TeamOps.Core.Common;
 
 namespace TeamOps.UI.Forms
 {
@@ -17,24 +16,19 @@ namespace TeamOps.UI.Forms
             InitializeComponent();
             _userRepo = new UserRepository(Program.ConnectionFactory);
             pictureBoxLogo.Image = Image.FromFile("Logo.png");
-            this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
         }
 
         private void btnEntrar_Click(object sender, EventArgs e)
         {
-            var login = txtLogin.Text.Trim();
+            var login = NormalizeLogin(txtLogin.Text);
             var senha = txtSenha.Text;
 
             if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(senha))
             {
-                lblMensagem.Text = "Informe login e senha.";
+                lblMensagem.ForeColor = Color.Firebrick;
+                lblMensagem.Text = "Informe login e senha. / ログインとパスワードを入力してください。";
                 return;
-            }
-
-            // 🔹 Normaliza login se começar com "FJ"
-            if (login.StartsWith("FJ", StringComparison.OrdinalIgnoreCase))
-            {
-                login = login.ToUpper();
             }
 
             var user = _userRepo.GetByLogin(login);
@@ -43,12 +37,34 @@ namespace TeamOps.UI.Forms
             {
                 Program.CurrentUser = user;
                 lblMensagem.Text = string.Empty;
-                this.DialogResult = DialogResult.OK;
+                DialogResult = DialogResult.OK;
             }
             else
             {
-                lblMensagem.Text = "Login ou senha inválidos.";
+                lblMensagem.ForeColor = Color.Firebrick;
+                lblMensagem.Text = "Login ou senha invalidos. / ログインまたはパスワードが正しくありません。";
             }
+        }
+
+        private void btnAlterarSenha_Click(object sender, EventArgs e)
+        {
+            using var form = new FormChangePassword(txtLogin.Text);
+            if (form.ShowDialog(this) == DialogResult.OK)
+            {
+                txtSenha.Clear();
+                lblMensagem.ForeColor = Color.FromArgb(30, 108, 67);
+                lblMensagem.Text = "Senha alterada. Entre com a nova senha. / 新しいパスワードでログインしてください。";
+            }
+        }
+
+        private static string NormalizeLogin(string? login)
+        {
+            var normalized = (login ?? string.Empty).Trim();
+
+            if (normalized.StartsWith("FJ", StringComparison.OrdinalIgnoreCase))
+                return normalized.ToUpperInvariant();
+
+            return normalized;
         }
     }
 }
