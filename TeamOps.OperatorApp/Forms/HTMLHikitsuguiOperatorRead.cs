@@ -1,7 +1,9 @@
 ﻿using Microsoft.Web.WebView2.Core;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -21,6 +23,7 @@ namespace TeamOps.OperatorApp.Forms
         public HTMLHikitsuguiOperatorRead()
         {
             InitializeComponent();
+            ApplyBranding();
 
             _operatorRepo = new OperatorRepository(Program.ConnectionFactory);
             _localRepo = new LocalRepository(Program.ConnectionFactory);
@@ -40,9 +43,16 @@ namespace TeamOps.OperatorApp.Forms
 
             core.Settings.IsWebMessageEnabled = true;
             core.Settings.AreDefaultScriptDialogsEnabled = true;
-            core.Settings.AreDevToolsEnabled = true;
+            core.Settings.AreDefaultContextMenusEnabled = false;
+            core.Settings.AreDevToolsEnabled = false;
 
             core.WebMessageReceived += WebMessageReceived;
+
+            core.SetVirtualHostNameToFolderMapping(
+                "assets",
+                Path.Combine(Application.StartupPath, "Assets"),
+                CoreWebView2HostResourceAccessKind.Allow
+            );
 
             core.SetVirtualHostNameToFolderMapping(
                 "app",
@@ -51,6 +61,15 @@ namespace TeamOps.OperatorApp.Forms
             );
 
             core.Navigate("https://app/index.html");
+        }
+
+        private void ApplyBranding()
+        {
+            string iconPath = Path.Combine(Application.StartupPath, "Assets", "HikitsuguiOperatorRead.ico");
+            if (File.Exists(iconPath))
+            {
+                Icon = new Icon(iconPath);
+            }
         }
 
         private void WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
@@ -156,6 +175,7 @@ namespace TeamOps.OperatorApp.Forms
                                 sector = 3;
 
                             var lista = _hikRepo.GetForOperator(dtIni, dtFim, sector, localId);
+                            ApplyReadStatus(lista, fj);
 
                             SendJson("hikitsugui_list", lista);
                         });
@@ -176,7 +196,10 @@ namespace TeamOps.OperatorApp.Forms
                             if (h == null) return;
 
                             if (!string.IsNullOrEmpty(fj))
-                                _readRepo.MarkAsRead(id, fj);
+                            {
+                                EnsureRead(id, fj);
+                                SendJson("read_status", new { id, lido = true });
+                            }
 
                             SendJson("hikitsugui_preview", h);
 
@@ -224,7 +247,7 @@ namespace TeamOps.OperatorApp.Forms
                             int id = msg["id"].GetInt32();
                             string fj = msg["fj"].GetString();
 
-                            _readRepo.MarkAsRead(id, fj);
+                            EnsureRead(id, fj);
 
                             SendJson("read_status", new { id, lido = true });
                         });
@@ -233,10 +256,67 @@ namespace TeamOps.OperatorApp.Forms
             }
         }
 
+        private void ApplyReadStatus(List<TeamOps.Core.Entities.HikitsuguiListItem> lista, string fj)
+        {
+            if (lista.Count == 0 || string.IsNullOrWhiteSpace(fj))
+                return;
+
+            using var conn = Program.ConnectionFactory.CreateOpenConnection();
+            using var cmd = conn.CreateCommand();
+
+            var ids = lista.Select(x => x.Id).Distinct().ToList();
+            var placeholders = new List<string>(ids.Count);
+
+            cmd.CommandText = "SELECT HikitsuguiId FROM HikitsuguiReads WHERE ReaderCodigoFJ = @fj AND HikitsuguiId IN (";
+            cmd.Parameters.AddWithValue("@fj", fj);
+
+            for (int i = 0; i < ids.Count; i++)
+            {
+                var name = $"@id{i}";
+                placeholders.Add(name);
+                cmd.Parameters.AddWithValue(name, ids[i]);
+            }
+
+            cmd.CommandText += string.Join(", ", placeholders) + ")";
+
+            var readIds = new HashSet<int>();
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                readIds.Add(reader.GetInt32(0));
+            }
+
+            foreach (var item in lista)
+            {
+                item.IsRead = readIds.Contains(item.Id);
+            }
+        }
+
+        private void EnsureRead(int id, string fj)
+        {
+            if (!_readRepo.HasRead(id, fj))
+            {
+                _readRepo.MarkAsRead(id, fj);
+            }
+        }
+
         private void SendJson(string type, object? data)
         {
             var json = JsonSerializer.Serialize(new { type, data });
-            webView.CoreWebView2.PostWebMessageAsJson(json);
+
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() =>
+                {
+                    if (webView.CoreWebView2 != null)
+                        webView.CoreWebView2.PostWebMessageAsJson(json);
+                }));
+
+                return;
+            }
+
+            if (webView.CoreWebView2 != null)
+                webView.CoreWebView2.PostWebMessageAsJson(json);
         }
     }
 }

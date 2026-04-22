@@ -1,77 +1,110 @@
-﻿<!DOCTYPE html>
-<html lang="pt-br">
+<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <title>Hikitsugui - Operador</title>
+    <link rel="icon" type="image/png" href="https://assets/HikitsuguiOperatorRead.png">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<div class="container">
-
-    <h2 class="title">Hikitsugui - Operador</h2>
-
-    <div class="filters">
-
-        <div class="field">
-            <label>Código FJ</label>
-            <input id="txtFJ" type="text" maxlength="7" autocomplete="off">
+    <header class="header-bar">
+        <div class="header-brand">
+            <img class="brand-logo" src="https://assets/HikitsuguiOperatorRead.png" alt="Hikitsugui Operador">
+            <div class="header-copy">
+                <h1>Hikitsugui Operador</h1>
+                <p>Consulta rapida de comunicados para leitura no posto.</p>
+            </div>
         </div>
+    </header>
 
-        <div class="field">
-            <label>Nome</label>
-            <input id="txtNome" type="text" disabled>
+    <main class="page-shell">
+        <section class="filter-card">
+            <div class="filter-grid">
+                <div class="filter-field">
+                    <label for="txtFJ">Codigo FJ</label>
+                    <input id="txtFJ" class="input input-compact" type="text" maxlength="7" autocomplete="off" placeholder="FJ00000">
+                </div>
+
+                <div class="filter-field filter-field-wide">
+                    <label for="txtNome">Nome</label>
+                    <input id="txtNome" class="input input-compact" type="text" disabled>
+                </div>
+
+                <div class="filter-field">
+                    <label for="cboLocal">Area / Local</label>
+                    <select id="cboLocal" class="input input-compact">
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+
+                <div class="filter-field">
+                    <label for="dtInicial">Data Inicial</label>
+                    <input id="dtInicial" class="input input-compact" type="date">
+                </div>
+
+                <div class="filter-field">
+                    <label for="dtFinal">Data Final</label>
+                    <input id="dtFinal" class="input input-compact" type="date">
+                </div>
+
+                <div class="filter-actions">
+                    <button id="btnFiltrar" type="button" class="btn-primary">Filtrar</button>
+                </div>
+            </div>
+
+            <div class="status-row">
+                <span id="statusBadge" class="status-badge">Informe o codigo FJ para iniciar.</span>
+            </div>
+        </section>
+
+        <section class="table-card">
+            <div class="table-header">
+                <div>
+                    <h2>Comunicados</h2>
+                    <p>Somente itens liberados para operador na area selecionada.</p>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table id="tblHikitsugui">
+                    <thead>
+                        <tr>
+                            <th>Lido</th>
+                            <th>ID</th>
+                            <th>Data</th>
+                            <th>Categoria</th>
+                            <th>Criador</th>
+                            <th>Descricao</th>
+                            <th class="actions-col">Abrir</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="7" class="empty-cell">Nenhum registro carregado.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <button id="btnCloseModal" class="close" type="button" aria-label="Fechar">×</button>
+
+            <div class="modal-heading">
+                <h3>Detalhes do Hikitsugui</h3>
+            </div>
+
+            <div id="modalBody" class="modal-body"></div>
+
+            <div class="attachments-section">
+                <h4>Anexos</h4>
+                <div id="attachmentList" class="attachment-list"></div>
+            </div>
         </div>
-
-        <div class="field">
-            <label>Local</label>
-            <select id="cboLocal"></select>
-        </div>
-
-        <div class="field">
-            <label>Data Inicial</label>
-            <input id="dtInicial" type="date">
-        </div>
-
-        <div class="field">
-            <label>Data Final</label>
-            <input id="dtFinal" type="date">
-        </div>
-
-        <button id="btnFiltrar" class="btn">Filtrar</button>
     </div>
 
-    <table id="tblHikitsugui">
-        <thead>
-            <tr>
-                <th>Lido</th>
-                <th>ID</th>
-                <th>Data</th>
-                <th>Categoria</th>
-                <th>Criador</th>
-                <th>Descrição</th>
-                <th>Ver</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-
-</div>
-
-<!-- Modal -->
-<div id="modal" class="modal hidden">
-    <div class="modal-content medium">
-        <button id="btnCloseModal" class="close">×</button>
-
-        <h3 class="modal-title">Detalhes</h3>
-
-        <div id="modalBody" class="modal-body"></div>
-
-        <h3 class="modal-title">Anexos</h3>
-        <div id="attachmentList" class="attachment-list"></div>
-    </div>
-</div>
-
-<script src="app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>

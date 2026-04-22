@@ -7,6 +7,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Platforms>AnyCPU;x86</Platforms>
+    <ApplicationIcon>Assets\HikitsuguiOperatorRead.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,6 +27,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Assets\HikitsuguiOperatorRead.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\HikitsuguiOperatorRead.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="ui\hikitsugui-operator-read\app.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

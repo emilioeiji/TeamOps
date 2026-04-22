@@ -1,10 +1,11 @@
-﻿const txtFJ = document.getElementById("txtFJ");
+const txtFJ = document.getElementById("txtFJ");
 const txtNome = document.getElementById("txtNome");
 const cboLocal = document.getElementById("cboLocal");
 const dtInicial = document.getElementById("dtInicial");
 const dtFinal = document.getElementById("dtFinal");
 const btnFiltrar = document.getElementById("btnFiltrar");
 const tblBody = document.querySelector("#tblHikitsugui tbody");
+const statusBadge = document.getElementById("statusBadge");
 
 const modal = document.getElementById("modal");
 const btnCloseModal = document.getElementById("btnCloseModal");
@@ -12,118 +13,108 @@ const modalBody = document.getElementById("modalBody");
 const attachmentList = document.getElementById("attachmentList");
 
 let fjTimer = null;
-let currentFJ = null;
+let currentFJ = "";
+let currentRows = [];
 
-// ===============================
-// Inicializar datas automaticamente
-// ===============================
 window.addEventListener("DOMContentLoaded", () => {
-    const hoje = new Date();
-    const mesAtras = new Date();
-    mesAtras.setDate(hoje.getDate() - 31);
-
-    dtFinal.value = hoje.toISOString().split("T")[0];
-    dtInicial.value = mesAtras.toISOString().split("T")[0];
+    applyDefaultDates();
+    bindEvents();
 });
 
-// ===============================
-// Debounce FJ
-// ===============================
-txtFJ.addEventListener("input", () => {
+function bindEvents() {
+    txtFJ.addEventListener("input", handleFjInput);
+    btnFiltrar.addEventListener("click", runFilter);
+    cboLocal.addEventListener("change", handleLocalChange);
+    btnCloseModal.addEventListener("click", closeModal);
+
+    document.addEventListener("click", event => {
+        if (event.target === modal) {
+            closeModal();
+        }
+    });
+}
+
+function applyDefaultDates() {
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(today.getDate() - 31);
+
+    dtFinal.value = formatDate(today);
+    dtInicial.value = formatDate(start);
+}
+
+function handleFjInput() {
     txtFJ.value = txtFJ.value.toUpperCase();
     clearTimeout(fjTimer);
 
     fjTimer = setTimeout(() => {
         const fj = txtFJ.value.trim();
-        if (fj.length >= 4) {
-            send("load_operator", { fj });
+
+        if (fj.length < 4) {
+            resetOperatorState(true);
+            setStatus("Informe ao menos 4 caracteres do codigo FJ.");
+            return;
         }
-    }, 300);
-});
 
-// ===============================
-// Filtrar
-// ===============================
-btnFiltrar.addEventListener("click", () => {
+        setStatus("Buscando operador...");
+        send("load_operator", { fj });
+    }, 220);
+}
+
+function handleLocalChange() {
     if (!currentFJ) return;
 
-    const localId = cboLocal.value === "" ? -1 : parseInt(cboLocal.value);
-
-    if (localId === -1) return;
-
-    send("filter", {
-        fj: currentFJ,
-        dtInicial: dtInicial.value,
-        dtFinal: dtFinal.value,
-        localId
-    });
-});
-
-cboLocal.addEventListener("change", () => {
-    if (!currentFJ) return;
-
-    const localId = cboLocal.value === "" ? -1 : parseInt(cboLocal.value);
-    if (localId === -1) return;
+    const localId = Number(cboLocal.value || 0);
+    if (localId <= 0) return;
 
     send("register_presence", {
         fj: currentFJ,
         localId
     });
 
+    setStatus("Presenca confirmada. Carregando hikitsugui...");
+    runFilter();
+}
+
+function runFilter() {
+    if (!currentFJ) {
+        setStatus("Informe um operador valido antes de filtrar.");
+        return;
+    }
+
+    const localId = Number(cboLocal.value || 0);
+    if (localId <= 0) {
+        setStatus("Selecione a area para continuar.");
+        return;
+    }
+
+    setStatus("Carregando hikitsugui...");
+
     send("filter", {
         fj: currentFJ,
         dtInicial: dtInicial.value,
         dtFinal: dtFinal.value,
         localId
     });
-});
+}
 
-// ===============================
-// Modal
-// ===============================
-btnCloseModal.addEventListener("click", () => {
-    modal.classList.add("hidden");
-});
-
-// ===============================
-// Receber mensagens do C#
-// ===============================
-window.chrome.webview.addEventListener("message", e => {
-    const msg = e.data;
+window.chrome.webview.addEventListener("message", event => {
+    const msg = event.data;
 
     switch (msg.type) {
-
         case "operator_not_found":
-            txtNome.value = "";
-            cboLocal.innerHTML = "";
-            currentFJ = null;
+            resetOperatorState(true);
+            setStatus("Operador nao encontrado.");
             break;
 
         case "operator_loaded":
-            currentFJ = msg.data.CodigoFJ;
-            txtNome.value = msg.data.NameRomanji;
-
-            cboLocal.innerHTML = "";
-
-            const optDefault = document.createElement("option");
-            optDefault.value = "";
-            optDefault.textContent = "Selecione...";
-            cboLocal.appendChild(optDefault);
-            
-            msg.data.locals.forEach(l => {
-                const opt = document.createElement("option");
-                opt.value = l.Id;
-                opt.textContent = l.NamePt;
-                cboLocal.appendChild(opt);
-            });
-            
-            // garante que não dispara change automático
-            cboLocal.selectedIndex = 0;
-
+            hydrateOperator(msg.data);
             break;
 
         case "hikitsugui_list":
-            renderTable(msg.data);
+            currentRows = msg.data || [];
+            renderTable(currentRows);
+            setStatus(`${currentRows.length} hikitsugui encontrado(s).`);
             break;
 
         case "hikitsugui_preview":
@@ -131,102 +122,194 @@ window.chrome.webview.addEventListener("message", e => {
             break;
 
         case "attachments":
-            renderAttachments(msg.data);
+            renderAttachments(msg.data || []);
             break;
 
         case "read_status":
             updateReadStatus(msg.data.id, msg.data.lido);
             break;
-
     }
 });
 
-// ===============================
-// Renderizar tabela
-// ===============================
-function renderTable(lista) {
+function hydrateOperator(data) {
+    currentFJ = data.CodigoFJ;
+    txtNome.value = data.NameRomanji || "";
+    cboLocal.innerHTML = `<option value="">Selecione...</option>`;
+
+    (data.locals || []).forEach(local => {
+        const option = document.createElement("option");
+        option.value = local.Id;
+        option.textContent = local.NamePt;
+        cboLocal.appendChild(option);
+    });
+
+    if ((data.locals || []).length === 1) {
+        cboLocal.value = String(data.locals[0].Id);
+        handleLocalChange();
+        return;
+    }
+
+    setStatus("Operador carregado. Selecione a area para confirmar a presenca.");
+}
+
+function renderTable(list) {
     tblBody.innerHTML = "";
 
-    lista.forEach(h => {
-        const tr = document.createElement("tr");
+    if (!list || list.length === 0) {
+        tblBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="empty-cell">Nenhum hikitsugui encontrado para o filtro atual.</td>
+            </tr>
+        `;
+        return;
+    }
 
-        const lido = h.IsRead ? "〇" : "×";
+    const fragment = document.createDocumentFragment();
 
-        tr.innerHTML = `
-            <td id="read-${h.Id}">…</td>
-            <td>${h.Id}</td>
-            <td>${h.Date}</td>
-            <td>${h.CategoryName}</td>
-            <td>${h.CreatorCodigoFJ}</td>
-            <td>${truncate(h.Description, 80)}</td>
-            <td><button class="btn-view" onclick="openPreview(${h.Id})">Ver</button></td>
+    list.forEach(item => {
+        const row = document.createElement("tr");
+        const readSymbol = item.IsRead ? "○" : "×";
+        const readClass = item.IsRead ? "status-read" : "status-unread";
+
+        row.innerHTML = `
+            <td id="read-${item.Id}" class="${readClass}">${readSymbol}</td>
+            <td>${item.Id}</td>
+            <td>${formatServerDate(item.Date)}</td>
+            <td>${escapeHtml(item.CategoryName)}</td>
+            <td>${escapeHtml(item.CreatorCodigoFJ)}</td>
+            <td class="description-cell">${escapeHtml(truncate(stripHtml(item.Description), 90))}</td>
+            <td class="actions-cell">
+                <button class="icon-btn icon-btn-view" type="button" data-preview-id="${item.Id}" title="Abrir" aria-label="Abrir hikitsugui ${item.Id}">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M2.25 12s3.75-6 9.75-6 9.75 6 9.75 6-3.75 6-9.75 6S2.25 12 2.25 12Z"></path>
+                        <path d="M12 14.75A2.75 2.75 0 1 0 12 9.25a2.75 2.75 0 0 0 0 5.5Z"></path>
+                    </svg>
+                </button>
+            </td>
         `;
 
-        tblBody.appendChild(tr);
+        row.querySelector("[data-preview-id]").addEventListener("click", () => openPreview(item.Id));
+        fragment.appendChild(row);
     });
 
-    lista.forEach(h => {
-        send("has_read", { id: h.Id, fj: currentFJ });
+    tblBody.appendChild(fragment);
+}
+
+function openPreview(id) {
+    send("preview", { id, fj: currentFJ });
+}
+
+function renderPreview(item) {
+    modalBody.innerHTML = `
+        <div class="preview-grid">
+            <div><span class="preview-label">ID</span><strong>${item.Id}</strong></div>
+            <div><span class="preview-label">Data</span><strong>${formatServerDate(item.Date)}</strong></div>
+            <div><span class="preview-label">Criador</span><strong>${escapeHtml(item.CreatorCodigoFJ || "")}</strong></div>
+            <div><span class="preview-label">Categoria</span><strong>${escapeHtml(item.CategoryName || "")}</strong></div>
+        </div>
+        <div class="preview-description">${item.Description || ""}</div>
+    `;
+
+    attachmentList.innerHTML = `<div class="attachment-empty">Carregando anexos...</div>`;
+    modal.classList.remove("hidden");
+}
+
+function renderAttachments(list) {
+    attachmentList.innerHTML = "";
+
+    if (!list || list.length === 0) {
+        attachmentList.innerHTML = `<div class="attachment-empty">Nenhum anexo.</div>`;
+        return;
+    }
+
+    const fragment = document.createDocumentFragment();
+
+    list.forEach(item => {
+        const row = document.createElement("div");
+        row.className = "attach-item";
+        row.innerHTML = `
+            <div class="attach-name">${escapeHtml(item.FileName)}</div>
+            <button class="btn-attach" type="button">Abrir</button>
+        `;
+
+        row.querySelector("button").addEventListener("click", () => {
+            send("open_attachment", { path: item.FilePath });
+        });
+
+        fragment.appendChild(row);
     });
 
+    attachmentList.appendChild(fragment);
+}
+
+function updateReadStatus(id, isRead) {
+    const cell = document.getElementById(`read-${id}`);
+    if (!cell) return;
+
+    cell.textContent = isRead ? "○" : "×";
+    cell.className = isRead ? "status-read" : "status-unread";
+
+    const row = currentRows.find(item => Number(item.Id) === Number(id));
+    if (row) {
+        row.IsRead = isRead;
+    }
+}
+
+function closeModal() {
+    modal.classList.add("hidden");
+}
+
+function resetOperatorState(clearFj) {
+    if (clearFj) {
+        currentFJ = "";
+    }
+
+    txtNome.value = "";
+    cboLocal.innerHTML = `<option value="">Selecione...</option>`;
+    currentRows = [];
+    renderTable([]);
+}
+
+function setStatus(text) {
+    statusBadge.textContent = text;
+}
+
+function send(action, data = {}) {
+    window.chrome.webview.postMessage({ action, ...data });
 }
 
 function truncate(text, max) {
     if (!text) return "";
-    return text.length > max ? text.substring(0, max) + "..." : text;
+    return text.length > max ? `${text.substring(0, max)}...` : text;
 }
 
-// ===============================
-// Preview
-// ===============================
-function openPreview(id) {
-    send("preview", { id, fj: currentFJ });
-    send("mark_read", { id, fj: currentFJ });
+function stripHtml(html) {
+    const div = document.createElement("div");
+    div.innerHTML = html || "";
+    return div.textContent || div.innerText || "";
 }
 
-function renderPreview(h) {
-    modalBody.innerHTML = `
-        <p><b>ID:</b> ${h.Id}</p>
-        <p><b>Data:</b> ${h.Date}</p>
-        <p><b>Criador:</b> ${h.CreatorCodigoFJ}</p>
-        <p><b>Categoria:</b> ${h.CategoryName}</p>
-        <hr>
-        <div>${h.Description}</div>
-    `;
-
-    modal.classList.remove("hidden");
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 }
 
-// ===============================
-// Anexos
-// ===============================
-function renderAttachments(list) {
-    attachmentList.innerHTML = "";
-
-    list.forEach(a => {
-        const btn = document.createElement("button");
-        btn.textContent = a.FileName;
-        btn.onclick = () => send("open_attachment", { path: a.FilePath });
-        attachmentList.appendChild(btn);
-    });
+function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
 }
 
-// ===============================
-// Enviar mensagem ao C#
-// ===============================
-function send(action, data) {
-    chrome.webview.postMessage({ action, ...data });
-}
-
-function updateReadStatus(id, lido) {
-    const cell = document.getElementById(`read-${id}`);
-    if (!cell) return;
-
-    if (lido) {
-        cell.textContent = "〇";
-        cell.style.color = "green";
-    } else {
-        cell.textContent = "×";
-        cell.style.color = "red";
+function formatServerDate(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return value ?? "";
     }
+
+    return date.toLocaleDateString("pt-BR");
 }
