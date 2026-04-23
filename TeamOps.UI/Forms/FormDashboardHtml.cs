@@ -143,7 +143,11 @@ namespace TeamOps.UI.Forms
                     if (!HasAccess(AccessLevel.KL))
                         ShowAccessDeniedAsync();
                     else
-                        OpenDialog(() => new FormFollowUp());
+                        OpenDialog(() => new HTMLFormFollowUp(
+                            _factory,
+                            _user,
+                            _currentOperator
+                        ));
                     break;
 
                 case "open:tasks":

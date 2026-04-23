@@ -99,6 +99,15 @@
     <None Update="ui\follow-chart\style.css">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="ui\follow-up\app.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="ui\follow-up\index.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="ui\follow-up\style.css">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="ui\follow-operator-report\app.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

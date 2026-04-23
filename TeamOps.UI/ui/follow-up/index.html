@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cadastro de Acompanhamento</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <header class="header-bar">
+        <div class="header-copy">
+            <p class="eyebrow">TeamOps FollowUp</p>
+            <h1 id="pageTitle">Cadastro de acompanhamento</h1>
+            <p id="pageSubtitle">Registro rapido de erros, orientacoes e observacoes do operador.</p>
+        </div>
+        <img class="header-logo" src="https://assets/logo_rodape.png" alt="TeamOps" />
+    </header>
+
+    <main class="page-shell">
+        <section class="hero-card">
+            <div class="hero-copy">
+                <span class="hero-badge">Formulario HTML</span>
+                <h2>Fluxo leve para cadastro rapido</h2>
+                <p>Setor e turno filtram o operador no navegador para deixar a tela mais responsiva.</p>
+            </div>
+            <div class="hero-meta">
+                <div class="meta-item">
+                    <span class="meta-label">Registrado por</span>
+                    <strong id="creatorName">-</strong>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Executor padrao</span>
+                    <strong id="executorName">-</strong>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Operador atual</span>
+                    <strong id="currentOperatorName">-</strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="form-card">
+            <div class="section-heading">
+                <div>
+                    <p class="section-kicker">Contexto</p>
+                    <h3>Dados do acompanhamento</h3>
+                </div>
+                <div class="inline-pill">
+                    <span id="filteredCount">0</span>
+                    <small>operadores no filtro</small>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <label class="field">
+                    <span>Data</span>
+                    <input id="txtDate" type="date" class="input" />
+                </label>
+
+                <label class="field">
+                    <span>Setor</span>
+                    <select id="cmbSector" class="input"></select>
+                </label>
+
+                <label class="field">
+                    <span>Turno</span>
+                    <select id="cmbShift" class="input"></select>
+                </label>
+
+                <label class="field">
+                    <span>Operador</span>
+                    <select id="cmbOperator" class="input"></select>
+                </label>
+
+                <label class="field">
+                    <span>Executor</span>
+                    <select id="cmbExecutor" class="input"></select>
+                </label>
+
+                <label class="field">
+                    <span>Testemunha</span>
+                    <select id="cmbWitness" class="input"></select>
+                </label>
+
+                <label class="field">
+                    <span>Motivo</span>
+                    <select id="cmbReason" class="input"></select>
+                </label>
+
+                <label class="field">
+                    <span>Tipo</span>
+                    <select id="cmbType" class="input"></select>
+                </label>
+
+                <label class="field">
+                    <span>Local</span>
+                    <select id="cmbLocal" class="input"></select>
+                </label>
+
+                <label class="field">
+                    <span>Equipamento</span>
+                    <select id="cmbEquipment" class="input"></select>
+                </label>
+            </div>
+
+            <div class="text-grid">
+                <label class="field field-block">
+                    <span>Descricao</span>
+                    <textarea id="txtDescription" class="textarea" placeholder="Descreva o que aconteceu."></textarea>
+                </label>
+
+                <label class="field field-block">
+                    <span>Orientacao</span>
+                    <textarea id="txtGuidance" class="textarea" placeholder="Registre a orientacao aplicada."></textarea>
+                </label>
+            </div>
+
+            <div class="footer-actions">
+                <button id="btnCancelar" type="button" class="btn btn-secondary">Cancelar</button>
+                <button id="btnSalvar" type="button" class="btn btn-primary">Salvar acompanhamento</button>
+            </div>
+        </section>
+    </main>
+
+    <aside id="toast" class="toast hidden" aria-live="polite">
+        <strong id="toastTitle">Aviso</strong>
+        <p id="toastMessage"></p>
+    </aside>
+
+    <script src="app.js"></script>
+</body>
+</html>

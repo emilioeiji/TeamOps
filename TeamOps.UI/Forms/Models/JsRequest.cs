@@ -60,6 +60,10 @@
         public int shainId { get; set; }
         public string observacao { get; set; }
         public string item { get; set; }
+        public string operatorCodigoFJ { get; set; }
+        public string executorCodigoFJ { get; set; }
+        public string witnessCodigoFJ { get; set; }
+        public string guidance { get; set; }
 
         // ============================
         // OPERATORS
