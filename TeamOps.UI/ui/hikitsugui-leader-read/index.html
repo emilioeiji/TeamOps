@@ -12,7 +12,7 @@
          BARRA AZUL (igual PaidLeave)
     ========================================================= -->
     <div class="header-bar">
-        Hikitsugui Leader Read
+        <span id="txtHeaderTitle">Hikitsugui Leader Read</span>
     </div>
 
     <!-- =========================================================
@@ -21,54 +21,54 @@
     <div class="filter-container">
 
         <div>
-            <label class="text-gray-600">Período Inicial</label>
+            <label id="txtDateFromLabel" class="text-gray-600">Período Inicial</label>
             <input type="date" id="dtInicial" class="input" />
         </div>
 
         <div>
-            <label class="text-gray-600">Período Final</label>
+            <label id="txtDateToLabel" class="text-gray-600">Período Final</label>
             <input type="date" id="dtFinal" class="input" />
         </div>
 
         <div>
-            <label class="text-gray-600">Turno</label>
+            <label id="txtShiftLabel" class="text-gray-600">Turno</label>
             <select id="shiftId" class="input">
-                <option value="0">Todos</option>
+                <option id="txtShiftAll" value="0">Todos</option>
             </select>
         </div>
 
         <div>
-            <label class="text-gray-600">Operador</label>
+            <label id="txtOperatorLabel" class="text-gray-600">Operador</label>
             <select id="operatorId" class="input">
-                <option value="0">Todos</option>
+                <option id="txtOperatorAll" value="0">Todos</option>
             </select>
         </div>
 
         <div>
-            <label class="text-gray-600">Categoria</label>
+            <label id="txtCategoryLabel" class="text-gray-600">Categoria</label>
             <select id="reasonId" class="input">
-                <option value="0">Todos</option>
+                <option id="txtCategoryAll" value="0">Todos</option>
             </select>
         </div>
 
         <div>
-            <label class="text-gray-600">Equipamento</label>
+            <label id="txtEquipmentLabel" class="text-gray-600">Equipamento</label>
             <select id="equipId" class="input">
-                <option value="0">Todos</option>
+                <option id="txtEquipmentAll" value="0">Todos</option>
             </select>
         </div>
 
         <div>
-            <label class="text-gray-600">Local</label>
+            <label id="txtLocalLabel" class="text-gray-600">Local</label>
             <select id="localId" class="input">
-                <option value="0">Todos</option>
+                <option id="txtLocalAll" value="0">Todos</option>
             </select>
         </div>
 
         <div>
-            <label class="text-gray-600">Setor</label>
+            <label id="txtSectorLabel" class="text-gray-600">Setor</label>
             <select id="sectorId" class="input">
-                <option value="0">Todos</option>
+                <option id="txtSectorAll" value="0">Todos</option>
             </select>
         </div>
 
@@ -76,22 +76,22 @@
         <div class="publico-container">
             <label class="publico-option">
                 <input type="radio" name="publico" value="todos" checked>
-                <span>Todos</span>
+                <span id="txtPublicAll">Todos</span>
             </label>
 
             <label class="publico-option">
                 <input type="radio" name="publico" value="operador" />
-                <span>Operador</span>
+                <span id="txtPublicOperator">Operador</span>
             </label>
 
             <label class="publico-option">
                 <input type="radio" name="publico" value="lider" />
-                <span>Líder</span>
+                <span id="txtPublicLeader">Líder</span>
             </label>
 
             <label class="publico-option">
                 <input type="radio" name="publico" value="masv" />
-                <span>MA/SV</span>
+                <span id="txtPublicMasv">MA/SV</span>
             </label>
         </div>
 
@@ -107,16 +107,16 @@
         <table class="min-w-full border rounded shadow bg-white">
             <thead>
                 <tr>
-                    <th class="border p-2 text-center">Lido</th>
+                    <th id="txtColRead" class="border p-2 text-center">Lido</th>
                     <th class="border p-2">ID</th>
-                    <th class="border p-2 col-data">Data</th>
-                    <th class="border p-2">Operador</th>
-                    <th class="border p-2">Categoria</th>
-                    <th class="border p-2">Equipamento</th>
-                    <th class="border p-2">Local</th>
-                    <th class="border p-2 col-setor">Setor</th>
-                    <th class="border p-2">Descrição</th>
-                    <th class="border p-2 text-center">Ações</th>
+                    <th id="txtColDate" class="border p-2 col-data">Data</th>
+                    <th id="txtColOperator" class="border p-2">Operador</th>
+                    <th id="txtColCategory" class="border p-2">Categoria</th>
+                    <th id="txtColEquipment" class="border p-2">Equipamento</th>
+                    <th id="txtColLocal" class="border p-2">Local</th>
+                    <th id="txtColSector" class="border p-2 col-setor">Setor</th>
+                    <th id="txtColDescription" class="border p-2">Descrição</th>
+                    <th id="txtColActions" class="border p-2 text-center">Ações</th>
                 </tr>
             </thead>
             <tbody id="tblHikitsugui"></tbody>
@@ -129,11 +129,11 @@
     <div id="modal" class="modal hidden">
         <div class="modal-content">
 
-            <h2 class="mb-4">Detalhes do Hikitsugui</h2>
+            <h2 id="txtReadModalTitle" class="mb-4">Detalhes do Hikitsugui</h2>
 
             <div id="modal-body" class="mb-4"></div>
 
-            <label class="text-gray-600 font-semibold">Responder</label>
+            <label id="txtReplyLabel" class="text-gray-600 font-semibold">Responder</label>
 
             <div class="mb-4">
                 <div class="editor-toolbar">
@@ -141,7 +141,7 @@
                     <button type="button" data-cmd="italic"><i>I</i></button>
                     <button type="button" data-cmd="underline"><u>U</u></button>
                     <span class="separator"></span>
-                    <button type="button" data-cmd="insertUnorderedList">• Lista</button>
+                    <button type="button" id="btnReplyList" data-cmd="insertUnorderedList">• Lista</button>
                     <button type="button" id="btnClearReplyFormat">Limpar</button>
                 </div>
 
@@ -167,39 +167,39 @@
     <div id="modalEdit" class="modal hidden">
         <div class="modal-content modal-edit">
 
-            <h2 class="modal-title">Editar Hikitsugui</h2>
+            <h2 id="txtEditModalTitle" class="modal-title">Editar Hikitsugui</h2>
 
             <div class="form-grid">
                 <div class="form-group">
-                    <label>Categoria</label>
+                    <label id="txtEditCategoryLabel">Categoria</label>
                     <select id="editCategoria" class="input"></select>
                 </div>
 
                 <div class="form-group">
-                    <label>Equipamento</label>
+                    <label id="txtEditEquipmentLabel">Equipamento</label>
                     <select id="editEquipamento" class="input"></select>
                 </div>
 
                 <div class="form-group">
-                    <label>Local</label>
+                    <label id="txtEditLocalLabel">Local</label>
                     <select id="editLocal" class="input"></select>
                 </div>
 
                 <div class="form-group">
-                    <label>Setor</label>
+                    <label id="txtEditSectorLabel">Setor</label>
                     <select id="editSector" class="input"></select>
                 </div>
             </div>
 
             <div class="form-group mt-4">
-                <label>Descrição</label>
+                <label id="txtEditDescriptionLabel">Descrição</label>
 
                 <div class="editor-toolbar edit-toolbar">
                     <button type="button" data-cmd="bold"><b>B</b></button>
                     <button type="button" data-cmd="italic"><i>I</i></button>
                     <button type="button" data-cmd="underline"><u>U</u></button>
                     <span class="separator"></span>
-                    <button type="button" data-cmd="insertUnorderedList">• Lista</button>
+                    <button type="button" id="btnEditList" data-cmd="insertUnorderedList">• Lista</button>
                     <button type="button" id="btnClearEditFormat">Limpar</button>
                 </div>
 
@@ -210,7 +210,7 @@
             </div>
 
             <div class="mt-4">
-                <label class="text-gray-600">Anexos</label>
+                <label id="txtEditAttachmentsLabel" class="text-gray-600">Anexos</label>
 
                 <input id="editFileUpload" type="file" multiple class="input" />
 
@@ -219,9 +219,9 @@
             </div>
 
             <div class="modal-actions">
-                <button type="button" onclick="saveEdit()" class="btn-primary">Salvar</button>
+                <button id="btnSaveEdit" type="button" onclick="saveEdit()" class="btn-primary">Salvar</button>
 
-                <button type="button" onclick="closeEditModal()" class="btn-secondary">Cancelar</button>
+                <button id="btnCancelEdit" type="button" onclick="closeEditModal()" class="btn-secondary">Cancelar</button>
             </div>
 
         </div>

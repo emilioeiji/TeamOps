@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leitura de Hikitsugui</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="header-bar">
+        <div class="header-copy">
+            <h1 id="txtHeaderTitle">Leitura de Hikitsugui</h1>
+            <p id="txtHeaderSubtitle">Matriz de leitura por publico, turno e setor, no padrao TeamOps HTML.</p>
+        </div>
+
+        <div class="header-meta">
+            <div class="meta-pill">
+                <span id="txtMetaOperator" class="meta-label">Operador</span>
+                <strong id="lblOperator">-</strong>
+            </div>
+        </div>
+    </header>
+
+    <main class="page-shell">
+        <section class="filter-card">
+            <div class="filters-grid">
+                <label class="field">
+                    <span id="txtStartDate">Data Inicial</span>
+                    <input id="startDate" type="date" class="input">
+                </label>
+
+                <label class="field">
+                    <span id="txtEndDate">Data Final</span>
+                    <input id="endDate" type="date" class="input">
+                </label>
+
+                <label class="field">
+                    <span id="txtShift">Turno</span>
+                    <select id="shiftId" class="input"></select>
+                </label>
+
+                <label class="field">
+                    <span id="txtSector">Setor</span>
+                    <select id="sectorId" class="input"></select>
+                </label>
+            </div>
+
+            <div class="filters-footer">
+                <div class="audience-toggle" role="group" aria-label="Publico">
+                    <label class="audience-pill">
+                        <input type="radio" name="audience" value="operators" checked>
+                        <span id="txtAudienceOperators">Operadores</span>
+                    </label>
+                    <label class="audience-pill">
+                        <input type="radio" name="audience" value="leaders">
+                        <span id="txtAudienceLeaders">Lideres</span>
+                    </label>
+                    <label class="audience-pill">
+                        <input type="radio" name="audience" value="masv">
+                        <span id="txtAudienceMasv">MA/SV</span>
+                    </label>
+                </div>
+
+                <button id="btnFilter" type="button" class="btn-primary">Atualizar Matriz</button>
+            </div>
+        </section>
+
+        <section class="matrix-card">
+            <div class="matrix-head">
+                <div>
+                    <h2 id="txtMatrixTitle">Matriz de leitura</h2>
+                    <p id="txtMatrixSubtitle">Cada coluna representa um operador ou lider. Clique no card do hikitsugui para abrir o preview.</p>
+                </div>
+
+                <div class="matrix-summary">
+                    <div class="summary-pill">
+                        <span id="txtSummaryMembers" class="meta-label">Colunas</span>
+                        <strong id="lblMemberCount">0</strong>
+                    </div>
+                    <div class="summary-pill">
+                        <span id="txtSummaryRows" class="meta-label">Registros</span>
+                        <strong id="lblRowCount">0</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div id="matrixContainer" class="matrix-container"></div>
+        </section>
+    </main>
+
+    <div id="previewModal" class="modal-shell hidden">
+        <div id="previewBackdrop" class="modal-backdrop"></div>
+        <section class="modal-card">
+            <div class="modal-top">
+                <div class="title-stack">
+                    <h2 id="txtPreviewTitle">Visualizar Hikitsugui</h2>
+                    <p id="txtPreviewSubtitle">Descricao completa e anexos do registro selecionado.</p>
+                </div>
+
+                <button id="btnCloseModalX" type="button" class="icon-close" aria-label="Fechar">X</button>
+            </div>
+
+            <div class="meta-row">
+                <div class="meta-item">
+                    <span id="txtPreviewDate" class="meta-label">Data</span>
+                    <strong id="previewDate">-</strong>
+                </div>
+                <div class="meta-item">
+                    <span id="txtPreviewCategory" class="meta-label">Categoria</span>
+                    <strong id="previewCategory">-</strong>
+                </div>
+                <div class="meta-item">
+                    <span id="txtPreviewSector" class="meta-label">Setor</span>
+                    <strong id="previewSector">-</strong>
+                </div>
+                <div class="meta-item">
+                    <span id="txtPreviewCreator" class="meta-label">Criador</span>
+                    <strong id="previewCreator">-</strong>
+                </div>
+            </div>
+
+            <section class="detail-section">
+                <div class="section-head">
+                    <h3 id="txtDescriptionTitle">Descricao</h3>
+                </div>
+                <div id="previewDescription" class="description-box"></div>
+            </section>
+
+            <section class="detail-section">
+                <div class="section-head">
+                    <h3 id="txtAttachmentsTitle">Anexos</h3>
+                </div>
+                <div id="attachmentList" class="attachment-list"></div>
+            </section>
+
+            <div class="modal-actions">
+                <button id="btnCloseModal" type="button" class="btn-secondary">Fechar</button>
+            </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -2,29 +2,29 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Relatórios - TeamOps</title>
+    <title>Relatorios - TeamOps</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header class="header-bar">
         <div class="header-copy">
-            <h1>Relatórios</h1>
-            <p>Hub rápido para consulta e análise dos principais relatórios do time.</p>
+            <h1 id="txtHeaderTitle">Relatorios</h1>
+            <p id="txtHeaderSubtitle">Hub rapido para consulta e analise dos principais relatorios do time.</p>
         </div>
 
         <div class="header-meta">
             <div class="meta-pill">
-                <span class="meta-label">Operador</span>
+                <span id="txtMetaOperator" class="meta-label">Operador</span>
                 <strong id="lblOperator">-</strong>
             </div>
 
             <div class="meta-pill">
-                <span class="meta-label">Turno</span>
+                <span id="txtMetaShift" class="meta-label">Turno</span>
                 <strong id="lblShift">-</strong>
             </div>
 
             <div class="meta-pill">
-                <span class="meta-label">Atualizado</span>
+                <span id="txtMetaDate" class="meta-label">Atualizado</span>
                 <strong id="lblDate">-</strong>
             </div>
         </div>
@@ -33,19 +33,19 @@
     <main class="page-shell">
         <section class="hero-card">
             <div class="hero-copy">
-                <span class="access-badge">Centro de relatórios</span>
-                <h2>Mesmo atalho do menu atual, agora em HTML</h2>
-                <p>Os relatórios ativos abrem imediatamente. Os itens ainda não migrados aparecem sinalizados para evitar clique sem retorno.</p>
+                <span id="txtHeroBadge" class="access-badge">Centro de relatorios</span>
+                <h2 id="txtHeroTitle">Mesmo atalho do menu atual, agora em HTML</h2>
+                <p id="txtHeroSubtitle">Os relatorios ativos abrem imediatamente. Os itens ainda nao migrados aparecem sinalizados para evitar clique sem retorno.</p>
             </div>
 
             <div class="hero-stats">
                 <div class="stat-card">
-                    <span class="stat-label">Disponíveis</span>
+                    <span id="txtAvailableLabel" class="stat-label">Disponiveis</span>
                     <strong id="lblAvailable">-</strong>
                 </div>
 
                 <div class="stat-card">
-                    <span class="stat-label">Total</span>
+                    <span id="txtTotalLabel" class="stat-label">Total</span>
                     <strong id="lblTotal">-</strong>
                 </div>
             </div>
@@ -53,8 +53,8 @@
 
         <section class="module-card">
             <div class="module-head">
-                <h3>Relatórios Ativos</h3>
-                <p>Entradas que já possuem fluxo conectado e funcional.</p>
+                <h3 id="txtActiveTitle">Relatorios Ativos</h3>
+                <p id="txtActiveSubtitle">Entradas que ja possuem fluxo conectado e funcional.</p>
             </div>
 
             <div class="module-actions">
@@ -63,8 +63,8 @@
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h12A1.5 1.5 0 0 1 19.5 6v12A1.5 1.5 0 0 1 18 19.5H6A1.5 1.5 0 0 1 4.5 18V6A1.5 1.5 0 0 1 6 4.5Z"/><path d="M8.25 8.25h7.5M8.25 12h7.5M8.25 15.75H12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                     </span>
                     <span class="tile-copy">
-                        <strong>Hikitsugui</strong>
-                        <small>Leitura e consulta dos registros publicados</small>
+                        <strong id="txtTileHikitsuguiTitle">Hikitsugui</strong>
+                        <small id="txtTileHikitsuguiSubtitle">Matriz de leitura e consulta dos registros publicados</small>
                     </span>
                 </button>
 
@@ -73,8 +73,8 @@
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.25 4.5h13.5v15H5.25z"/><path d="M8.25 15.75V12m3 3.75v-6m3 6v-9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                     </span>
                     <span class="tile-copy">
-                        <strong>Relatório Follow</strong>
-                        <small>Visão analítica completa dos follow-ups</small>
+                        <strong id="txtTileFollowReportTitle">Relatorio Follow</strong>
+                        <small id="txtTileFollowReportSubtitle">Visao analitica completa dos follow-ups</small>
                     </span>
                 </button>
 
@@ -83,8 +83,8 @@
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 18.75h15"/><path d="M7.5 15.75V10.5m4.5 5.25V7.5m4.5 8.25V4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                     </span>
                     <span class="tile-copy">
-                        <strong>Gráfico Follow</strong>
-                        <small>Acompanhamento visual por indicadores</small>
+                        <strong id="txtTileFollowChartTitle">Grafico Follow</strong>
+                        <small id="txtTileFollowChartSubtitle">Acompanhamento visual por indicadores</small>
                     </span>
                 </button>
             </div>
@@ -92,8 +92,8 @@
 
         <section class="module-card module-card-muted">
             <div class="module-head">
-                <h3>Em Desenvolvimento</h3>
-                <p>Atalhos reservados para manter o mesmo mapa do menu antigo.</p>
+                <h3 id="txtDevTitle">Em Desenvolvimento</h3>
+                <p id="txtDevSubtitle">Atalhos reservados para manter o mesmo mapa do menu antigo.</p>
             </div>
 
             <div class="module-actions">
@@ -102,8 +102,8 @@
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4.5 4.5 0 1 0-4.5-4.5A4.5 4.5 0 0 0 12 12Zm0 2.25c-4 0-7.5 2-7.5 4.5V21h15v-2.25c0-2.5-3.5-4.5-7.5-4.5Z"/></svg>
                     </span>
                     <span class="tile-copy">
-                        <strong>Operadores</strong>
-                        <small>Em breve</small>
+                        <strong id="txtTileOperatorsTitle">Operadores</strong>
+                        <small id="txtTileSoon1">Em breve</small>
                     </span>
                 </button>
 
@@ -112,8 +112,8 @@
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.75h8.25L18 7.5v12.75H6z"/><path d="M14.25 3.75V7.5H18M8.25 11.25h7.5M8.25 15h5.25" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                     </span>
                     <span class="tile-copy">
-                        <strong>PR</strong>
-                        <small>Em breve</small>
+                        <strong id="txtTilePrTitle">PR</strong>
+                        <small id="txtTileSoon2">Em breve</small>
                     </span>
                 </button>
 
@@ -122,8 +122,8 @@
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.75h8.25L18 7.5v12.75H6z"/><path d="M14.25 3.75V7.5H18M8.25 11.25h7.5M8.25 15h7.5M8.25 18.75h4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                     </span>
                     <span class="tile-copy">
-                        <strong>CL</strong>
-                        <small>Em breve</small>
+                        <strong id="txtTileClTitle">CL</strong>
+                        <small id="txtTileSoon3">Em breve</small>
                     </span>
                 </button>
 
@@ -132,8 +132,8 @@
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.75h16v10.5H4z"/><path d="M8 4.5h8M8 19.5h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                     </span>
                     <span class="tile-copy">
-                        <strong>Sobra de Peça</strong>
-                        <small>Em breve</small>
+                        <strong id="txtTileSobraTitle">Sobra de Peca</strong>
+                        <small id="txtTileSoon4">Em breve</small>
                     </span>
                 </button>
             </div>

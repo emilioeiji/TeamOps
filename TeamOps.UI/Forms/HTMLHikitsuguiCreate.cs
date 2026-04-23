@@ -79,29 +79,55 @@ namespace TeamOps.UI.Forms
         {
             using var conn = _factory.CreateOpenConnection();
 
-            var shifts = conn.Query(File.ReadAllText(
-                Path.Combine(Application.StartupPath, "Sql", "Hikitsugui", "select_shifts.sql")
-            ));
+            var shifts = conn.Query(
+                @"SELECT
+                      Id,
+                      COALESCE(NamePt, '') AS NamePt,
+                      COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp
+                  FROM Shifts
+                  ORDER BY Id;"
+            );
 
-            var categories = conn.Query(File.ReadAllText(
-                Path.Combine(Application.StartupPath, "Sql", "Hikitsugui", "select_categories.sql")
-            ));
+            var categories = conn.Query(
+                @"SELECT
+                      Id,
+                      COALESCE(NamePt, '') AS NamePt,
+                      COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp
+                  FROM Categories
+                  ORDER BY NamePt;"
+            );
 
-            var equipments = conn.Query(File.ReadAllText(
-                Path.Combine(Application.StartupPath, "Sql", "Hikitsugui", "select_equipments.sql")
-            ));
+            var equipments = conn.Query(
+                @"SELECT
+                      Id,
+                      COALESCE(NamePt, '') AS NamePt,
+                      COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp
+                  FROM Equipments
+                  ORDER BY NamePt;"
+            );
 
-            var locals = conn.Query(File.ReadAllText(
-                Path.Combine(Application.StartupPath, "Sql", "Hikitsugui", "select_locals.sql")
-            ));
+            var locals = conn.Query(
+                @"SELECT
+                      Id,
+                      COALESCE(NamePt, '') AS NamePt,
+                      COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp
+                  FROM Locals
+                  ORDER BY NamePt;"
+            );
 
-            var sectors = conn.Query(File.ReadAllText(
-                Path.Combine(Application.StartupPath, "Sql", "Hikitsugui", "select_sectors.sql")
-            ));
+            var sectors = conn.Query(
+                @"SELECT
+                      Id,
+                      COALESCE(NamePt, '') AS NamePt,
+                      COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp
+                  FROM Sectors
+                  ORDER BY NamePt;"
+            );
 
             var json = JsonSerializer.Serialize(new
             {
                 type = "filters",
+                locale = Program.CurrentLocale,
                 shifts,
                 categories,
                 equipments,
@@ -109,7 +135,10 @@ namespace TeamOps.UI.Forms
                 sectors,
                 shiftId = _currentOperator.ShiftId,
                 creatorCodigoFJ = _currentOperator.CodigoFJ,
-                creatorName = _currentOperator.NameRomanji,
+                creatorNamePt = _currentOperator.NameRomanji,
+                creatorNameJp = string.IsNullOrWhiteSpace(_currentOperator.NameNihongo)
+                    ? _currentOperator.NameRomanji
+                    : _currentOperator.NameNihongo,
                 now = DateTime.Now.ToString("yyyy-MM-dd HH:mm")
             });
 

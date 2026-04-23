@@ -81,12 +81,59 @@ namespace TeamOps.UI.Forms
                     {
                         using var conn = _factory.CreateOpenConnection();
 
-                        var shifts = conn.Query("SELECT Id, NamePt FROM Shifts ORDER BY Id;");
-                        var operators = conn.Query("SELECT CodigoFJ, NameRomanji FROM Operators ORDER BY NameRomanji;");
-                        var categories = conn.Query("SELECT Id, NamePt FROM Categories ORDER BY NamePt;");
-                        var equipments = conn.Query("SELECT Id, NamePt FROM Equipments ORDER BY NamePt;");
-                        var locals = conn.Query("SELECT Id, NamePt FROM Locals ORDER BY NamePt;");
-                        var sectors = conn.Query("SELECT Id, NamePt FROM Sectors ORDER BY NamePt;");
+                        var shifts = conn.Query(
+                            @"SELECT
+                                  Id,
+                                  COALESCE(NamePt, '') AS NamePt,
+                                  COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp
+                              FROM Shifts
+                              ORDER BY Id;"
+                        );
+
+                        var operators = conn.Query(
+                            @"SELECT
+                                  CodigoFJ,
+                                  COALESCE(NameRomanji, CodigoFJ) AS NamePt,
+                                  COALESCE(NULLIF(NameNihongo, ''), NameRomanji, CodigoFJ) AS NameJp
+                              FROM Operators
+                              ORDER BY NameRomanji;"
+                        );
+
+                        var categories = conn.Query(
+                            @"SELECT
+                                  Id,
+                                  COALESCE(NamePt, '') AS NamePt,
+                                  COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp
+                              FROM Categories
+                              ORDER BY NamePt;"
+                        );
+
+                        var equipments = conn.Query(
+                            @"SELECT
+                                  Id,
+                                  COALESCE(NamePt, '') AS NamePt,
+                                  COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp
+                              FROM Equipments
+                              ORDER BY NamePt;"
+                        );
+
+                        var locals = conn.Query(
+                            @"SELECT
+                                  Id,
+                                  COALESCE(NamePt, '') AS NamePt,
+                                  COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp
+                              FROM Locals
+                              ORDER BY NamePt;"
+                        );
+
+                        var sectors = conn.Query(
+                            @"SELECT
+                                  Id,
+                                  COALESCE(NamePt, '') AS NamePt,
+                                  COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp
+                              FROM Sectors
+                              ORDER BY NamePt;"
+                        );
 
                         var dtInicial = DateTime.Today.AddDays(-31).ToString("yyyy-MM-dd");
                         var dtFinal = DateTime.Today.AddDays(1).ToString("yyyy-MM-dd");
@@ -94,6 +141,7 @@ namespace TeamOps.UI.Forms
                         var jsonFilters = JsonSerializer.Serialize(new
                         {
                             type = "filters",
+                            locale = Program.CurrentLocale,
                             shifts,
                             operators,
                             categories,
@@ -107,48 +155,30 @@ namespace TeamOps.UI.Forms
 
                         webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(jsonFilters);
 
-                        SendJsonFromSql("select_hikitsugui_for_leader.sql", new
-                        {
-                            dtInicial,
-                            dtFinal,
-                            publico = "todos",
-                            shiftId = 0,
-                            operatorId = 0,
-                            reasonId = 0,
-                            typeId = 0,
-                            equipId = 0,
-                            sectorId = 0,
-                            codigoFJ = _currentLeader.CodigoFJ,
-                            search = "",
-                            accessLevel = _currentUser.AccessLevel
-                        });
+                        SendLeaderRows(dtInicial, dtFinal, "todos", 0, 0, 0, 0, 0, "");
 
                         break;
                     }
 
                 case "filter":
                     {
-                        SendJsonFromSql("select_hikitsugui_for_leader.sql", new
-                        {
-                            dtInicial = (string)msg.dtInicial,
-                            dtFinal = (string)msg.dtFinal,
-                            publico = (string)msg.publico,
-                            shiftId = Convert.ToInt32(msg.shiftId),
-                            operatorId = Convert.ToInt32(msg.operatorId),
-                            reasonId = Convert.ToInt32(msg.reasonId),
-                            typeId = 0,
-                            equipId = Convert.ToInt32(msg.equipId),
-                            sectorId = Convert.ToInt32(msg.sectorId),
-                            codigoFJ = _currentLeader.CodigoFJ,
-                            search = (string)msg.search,
-                            accessLevel = _currentUser.AccessLevel
-                        });
+                        SendLeaderRows(
+                            (string)msg.dtInicial,
+                            (string)msg.dtFinal,
+                            (string)msg.publico,
+                            Convert.ToInt32(msg.shiftId),
+                            Convert.ToInt32(msg.operatorId),
+                            Convert.ToInt32(msg.reasonId),
+                            Convert.ToInt32(msg.equipId),
+                            Convert.ToInt32(msg.sectorId),
+                            (string)msg.search
+                        );
                         break;
                     }
 
                 case "preview":
                     {
-                        SendJsonFromSql("select_hikitsugui_by_id.sql", new { id = msg.id });
+                        SendPreview(Convert.ToInt32(msg.id));
                         break;
                     }
 
@@ -159,21 +189,17 @@ namespace TeamOps.UI.Forms
                         var id = Convert.ToInt32(msg.id);
                         EnsureRead(conn, id, _currentLeader.CodigoFJ);
 
-                        SendJsonFromSql("select_hikitsugui_for_leader.sql", new
-                        {
-                            dtInicial = (string)msg.dtInicial,
-                            dtFinal = (string)msg.dtFinal,
-                            publico = (string)msg.publico,
-                            shiftId = Convert.ToInt32(msg.shiftId),
-                            operatorId = Convert.ToInt32(msg.operatorId),
-                            reasonId = Convert.ToInt32(msg.reasonId),
-                            typeId = 0,
-                            equipId = Convert.ToInt32(msg.equipId),
-                            sectorId = Convert.ToInt32(msg.sectorId),
-                            codigoFJ = _currentLeader.CodigoFJ,
-                            search = (string)msg.search,
-                            accessLevel = _currentUser.AccessLevel
-                        });
+                        SendLeaderRows(
+                            (string)msg.dtInicial,
+                            (string)msg.dtFinal,
+                            (string)msg.publico,
+                            Convert.ToInt32(msg.shiftId),
+                            Convert.ToInt32(msg.operatorId),
+                            Convert.ToInt32(msg.reasonId),
+                            Convert.ToInt32(msg.equipId),
+                            Convert.ToInt32(msg.sectorId),
+                            (string)msg.search
+                        );
                         break;
                     }
 
@@ -202,7 +228,7 @@ namespace TeamOps.UI.Forms
 
                 case "select_replies":
                     {
-                        SendJsonFromSql("select_replies.sql", new { id = msg.id });
+                        SendReplies(Convert.ToInt32(msg.id));
                         break;
                     }
 
@@ -214,7 +240,7 @@ namespace TeamOps.UI.Forms
                                 JsonSerializer.Serialize(new
                                 {
                                     type = "error",
-                                    message = "Digite uma resposta antes de salvar."
+                                    message = L("Digite uma resposta antes de salvar.", "保存する前に返信を入力してください。")
                                 })
                             );
                             break;
@@ -227,13 +253,13 @@ namespace TeamOps.UI.Forms
                             text = (string)msg.text
                         });
 
-                        SendJsonFromSql("select_replies.sql", new { id = msg.id });
+                        SendReplies(Convert.ToInt32(msg.id));
                         break;
                     }
 
                 case "select_attachments":
                     {
-                        SendJsonFromSql("select_attachments.sql", new { id = msg.id });
+                        SendAttachments(Convert.ToInt32(msg.id));
                         break;
                     }
 
@@ -245,7 +271,7 @@ namespace TeamOps.UI.Forms
                                 JsonSerializer.Serialize(new
                                 {
                                     type = "error",
-                                    message = "Caminho do anexo inválido."
+                                    message = L("Caminho do anexo inválido.", "添付ファイルのパスが無効です。")
                                 })
                             );
                             break;
@@ -262,7 +288,7 @@ namespace TeamOps.UI.Forms
                                     JsonSerializer.Serialize(new
                                     {
                                         type = "error",
-                                        message = "Este tipo de arquivo não pode ser aberto diretamente."
+                                        message = L("Este tipo de arquivo não pode ser aberto diretamente.", "この種類のファイルは直接開けません。")
                                     })
                                 );
                                 break;
@@ -274,7 +300,7 @@ namespace TeamOps.UI.Forms
                                     JsonSerializer.Serialize(new
                                     {
                                         type = "error",
-                                        message = "Arquivo não encontrado."
+                                        message = L("Arquivo não encontrado.", "ファイルが見つかりません。")
                                     })
                                 );
                                 break;
@@ -356,21 +382,17 @@ namespace TeamOps.UI.Forms
                                 Console.WriteLine("DELETE_HIKITSUGUI LOG ERROR: " + logEx);
                             }
 
-                            SendJsonFromSql("select_hikitsugui_for_leader.sql", new
-                            {
-                                dtInicial = (string)msg.dtInicial,
-                                dtFinal = (string)msg.dtFinal,
-                                publico = (string)msg.publico,
-                                shiftId = Convert.ToInt32(msg.shiftId),
-                                operatorId = Convert.ToInt32(msg.operatorId),
-                                reasonId = Convert.ToInt32(msg.reasonId),
-                                typeId = 0,
-                                equipId = Convert.ToInt32(msg.equipId),
-                                sectorId = Convert.ToInt32(msg.sectorId),
-                                codigoFJ = _currentLeader.CodigoFJ,
-                                search = (string)msg.search,
-                                accessLevel = _currentUser.AccessLevel
-                            });
+                            SendLeaderRows(
+                                (string)msg.dtInicial,
+                                (string)msg.dtFinal,
+                                (string)msg.publico,
+                                Convert.ToInt32(msg.shiftId),
+                                Convert.ToInt32(msg.operatorId),
+                                Convert.ToInt32(msg.reasonId),
+                                Convert.ToInt32(msg.equipId),
+                                Convert.ToInt32(msg.sectorId),
+                                (string)msg.search
+                            );
 
                             break;
                         }
@@ -490,21 +512,17 @@ namespace TeamOps.UI.Forms
                                 Console.WriteLine("SAVE_EDIT LOG ERROR: " + logEx);
                             }
 
-                            SendJsonFromSql("select_hikitsugui_for_leader.sql", new
-                            {
-                                dtInicial = (string)msg.dtInicial,
-                                dtFinal = (string)msg.dtFinal,
-                                publico = (string)msg.publico,
-                                shiftId = Convert.ToInt32(msg.shiftId),
-                                operatorId = Convert.ToInt32(msg.operatorId),
-                                reasonId = Convert.ToInt32(msg.reasonId),
-                                typeId = 0,
-                                equipId = Convert.ToInt32(msg.equipId),
-                                sectorId = Convert.ToInt32(msg.sectorIdFilter),
-                                codigoFJ = _currentLeader.CodigoFJ,
-                                search = (string)msg.search,
-                                accessLevel = _currentUser.AccessLevel
-                            });
+                            SendLeaderRows(
+                                (string)msg.dtInicial,
+                                (string)msg.dtFinal,
+                                (string)msg.publico,
+                                Convert.ToInt32(msg.shiftId),
+                                Convert.ToInt32(msg.operatorId),
+                                Convert.ToInt32(msg.reasonId),
+                                Convert.ToInt32(msg.equipId),
+                                Convert.ToInt32(msg.sectorIdFilter),
+                                (string)msg.search
+                            );
 
                             break; // 👈 ESSENCIAL
                         }
@@ -536,40 +554,234 @@ namespace TeamOps.UI.Forms
         }
 
         // ============================================================
-        // EXECUTAR SQL E ENVIAR JSON
+        // QUERIES BILÍNGUES
         // ============================================================
-        private void SendJsonFromSql(string sqlFile, object? param = null)
+        private void SendLeaderRows(
+            string dtInicial,
+            string dtFinal,
+            string publico,
+            int shiftId,
+            int operatorId,
+            int reasonId,
+            int equipId,
+            int sectorId,
+            string search)
         {
-            var sqlPath = Path.Combine(Application.StartupPath, "Sql", "Hikitsugui", sqlFile);
-            var sql = File.ReadAllText(sqlPath);
+            const string sql = @"
+                SELECT DISTINCT
+                    h.Id,
+                    h.Date,
+                    COALESCE(o.NameRomanji, h.CreatorCodigoFJ) AS OperatorNamePt,
+                    COALESCE(NULLIF(o.NameNihongo, ''), o.NameRomanji, h.CreatorCodigoFJ) AS OperatorNameJp,
+                    COALESCE(c.NamePt, '') AS CategoryPt,
+                    COALESCE(NULLIF(c.NameJp, ''), c.NamePt, '') AS CategoryJp,
+                    COALESCE(e.NamePt, '') AS EquipmentPt,
+                    COALESCE(NULLIF(e.NameJp, ''), e.NamePt, '') AS EquipmentJp,
+                    COALESCE(l.NamePt, '') AS LocalPt,
+                    COALESCE(NULLIF(l.NameJp, ''), l.NamePt, '') AS LocalJp,
+                    COALESCE(s.NamePt, '') AS SectorPt,
+                    COALESCE(NULLIF(s.NameJp, ''), s.NamePt, '') AS SectorJp,
+                    h.Description,
+                    h.AttachmentPath,
+                    CASE WHEN r.Id IS NULL THEN 0 ELSE 1 END AS IsRead
+                FROM Hikitsugui h
+                JOIN Operators o ON o.CodigoFJ = h.CreatorCodigoFJ
+                LEFT JOIN Categories c ON c.Id = h.CategoryId
+                LEFT JOIN Equipments e ON e.Id = h.EquipmentId
+                LEFT JOIN Locals l ON l.Id = h.LocalId
+                LEFT JOIN Sectors s ON s.Id = h.SectorId
+                LEFT JOIN HikitsuguiReads r
+                    ON r.HikitsuguiId = h.Id
+                    AND r.ReaderCodigoFJ = @codigoFJ
+                WHERE 1=1
+                  AND h.Date BETWEEN @dtInicial AND @dtFinal
+                  AND (
+                        (@publico = 'operador' AND h.ForOperators = 1)
+                        OR (@publico = 'lider' AND h.ForLeaders = 1)
+                        OR (@publico = 'masv' AND h.ForMaSv = 1)
+                        OR (
+                            @publico = 'todos'
+                            AND (
+                                (@accessLevel = 1 AND h.ForOperators = 1)
+                                OR (@accessLevel = 2 AND (h.ForOperators = 1 OR h.ForLeaders = 1))
+                                OR (@accessLevel >= 3 AND (h.ForOperators = 1 OR h.ForLeaders = 1 OR h.ForMaSv = 1))
+                            )
+                        )
+                    )
+                  AND (@shiftId = 0 OR h.ShiftId = @shiftId)
+                  AND (@operatorId = 0 OR h.CreatorCodigoFJ = @operatorId)
+                  AND (@reasonId = 0 OR h.CategoryId = @reasonId)
+                  AND (@equipId = 0 OR h.EquipmentId = @equipId)
+                  AND (@sectorId = 0 OR h.SectorId = @sectorId)
+                  AND (
+                        @search = ''
+                        OR h.Description LIKE '%' || @search || '%'
+                        OR COALESCE(o.NameRomanji, '') LIKE '%' || @search || '%'
+                        OR COALESCE(o.NameNihongo, '') LIKE '%' || @search || '%'
+                        OR COALESCE(c.NamePt, '') LIKE '%' || @search || '%'
+                        OR COALESCE(c.NameJp, '') LIKE '%' || @search || '%'
+                        OR COALESCE(e.NamePt, '') LIKE '%' || @search || '%'
+                        OR COALESCE(e.NameJp, '') LIKE '%' || @search || '%'
+                        OR COALESCE(l.NamePt, '') LIKE '%' || @search || '%'
+                        OR COALESCE(l.NameJp, '') LIKE '%' || @search || '%'
+                        OR COALESCE(s.NamePt, '') LIKE '%' || @search || '%'
+                        OR COALESCE(s.NameJp, '') LIKE '%' || @search || '%'
+                    )
+                ORDER BY h.Date DESC, h.Id DESC;";
 
             using var conn = _factory.CreateOpenConnection();
-            var rows = conn.Query(sql, param).ToList();
-
-            foreach (var row in rows)
+            var rows = conn.Query(sql, new
             {
-                var dict = row as IDictionary<string, object>;
+                dtInicial,
+                dtFinal,
+                publico,
+                shiftId,
+                operatorId,
+                reasonId,
+                equipId,
+                sectorId,
+                codigoFJ = _currentLeader.CodigoFJ,
+                search,
+                accessLevel = _currentUser.AccessLevel
+            }).Select(row => new
+            {
+                row.Id,
+                row.Date,
+                row.OperatorNamePt,
+                row.OperatorNameJp,
+                row.CategoryPt,
+                row.CategoryJp,
+                row.EquipmentPt,
+                row.EquipmentJp,
+                row.LocalPt,
+                row.LocalJp,
+                row.SectorPt,
+                row.SectorJp,
+                row.Description,
+                DescriptionHtml = row.Description ?? string.Empty,
+                row.AttachmentPath,
+                row.IsRead
+            }).ToList();
 
-                // Se a query não tem Description, não mexe em nada
-                if (!dict.ContainsKey("Description"))
-                    continue;
-
-                if (dict["Description"] == null)
+            webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(
+                JsonSerializer.Serialize(new
                 {
-                    dict["DescriptionHtml"] = "";
-                    continue;
-                }
+                    type = "hikitsugui_for_leader",
+                    data = rows
+                })
+            );
+        }
 
-                dict["DescriptionHtml"] = dict["Description"];
-            }
+        private void SendPreview(int id)
+        {
+            const string sql = @"
+                SELECT
+                    h.Id,
+                    h.Date,
+                    COALESCE(o.NameRomanji, h.CreatorCodigoFJ) AS OperatorNamePt,
+                    COALESCE(NULLIF(o.NameNihongo, ''), o.NameRomanji, h.CreatorCodigoFJ) AS OperatorNameJp,
+                    COALESCE(c.NamePt, '') AS CategoryPt,
+                    COALESCE(NULLIF(c.NameJp, ''), c.NamePt, '') AS CategoryJp,
+                    COALESCE(e.NamePt, '') AS EquipmentPt,
+                    COALESCE(NULLIF(e.NameJp, ''), e.NamePt, '') AS EquipmentJp,
+                    COALESCE(l.NamePt, '') AS LocalPt,
+                    COALESCE(NULLIF(l.NameJp, ''), l.NamePt, '') AS LocalJp,
+                    COALESCE(s.NamePt, '') AS SectorPt,
+                    COALESCE(NULLIF(s.NameJp, ''), s.NamePt, '') AS SectorJp,
+                    h.Description,
+                    h.AttachmentPath
+                FROM Hikitsugui h
+                JOIN Operators o ON o.CodigoFJ = h.CreatorCodigoFJ
+                LEFT JOIN Categories c ON c.Id = h.CategoryId
+                LEFT JOIN Equipments e ON e.Id = h.EquipmentId
+                LEFT JOIN Locals l ON l.Id = h.LocalId
+                LEFT JOIN Sectors s ON s.Id = h.SectorId
+                WHERE h.Id = @id;";
 
-            var json = JsonSerializer.Serialize(new
-            {
-                type = Path.GetFileNameWithoutExtension(sqlFile).Replace("select_", ""),
-                data = rows
-            });
+            using var conn = _factory.CreateOpenConnection();
+            var row = conn.QueryFirstOrDefault(sql, new { id });
+            if (row == null)
+                return;
 
-            webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(json);
+            webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(
+                JsonSerializer.Serialize(new
+                {
+                    type = "hikitsugui_by_id",
+                    data = new[]
+                    {
+                        new
+                        {
+                            row.Id,
+                            row.Date,
+                            row.OperatorNamePt,
+                            row.OperatorNameJp,
+                            row.CategoryPt,
+                            row.CategoryJp,
+                            row.EquipmentPt,
+                            row.EquipmentJp,
+                            row.LocalPt,
+                            row.LocalJp,
+                            row.SectorPt,
+                            row.SectorJp,
+                            row.Description,
+                            DescriptionHtml = row.Description ?? string.Empty,
+                            row.AttachmentPath
+                        }
+                    }
+                })
+            );
+        }
+
+        private void SendReplies(int id)
+        {
+            const string sql = @"
+                SELECT
+                    r.Id,
+                    r.HikitsuguiId,
+                    r.Message,
+                    r.Date,
+                    COALESCE(o.NameRomanji, r.ResponderCodigoFJ) AS ResponderNamePt,
+                    COALESCE(NULLIF(o.NameNihongo, ''), o.NameRomanji, r.ResponderCodigoFJ) AS ResponderNameJp
+                FROM HikitsuguiResponses r
+                JOIN Operators o ON o.CodigoFJ = r.ResponderCodigoFJ
+                WHERE r.HikitsuguiId = @id
+                ORDER BY r.Date ASC;";
+
+            using var conn = _factory.CreateOpenConnection();
+            var rows = conn.Query(sql, new { id }).ToList();
+
+            webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(
+                JsonSerializer.Serialize(new
+                {
+                    type = "replies",
+                    data = rows
+                })
+            );
+        }
+
+        private void SendAttachments(int id)
+        {
+            const string sql = @"
+                SELECT
+                    Id,
+                    HikitsuguiId,
+                    FileName,
+                    FilePath,
+                    CreatedAt
+                FROM HikitsuguiAttachments
+                WHERE HikitsuguiId = @id
+                ORDER BY Id;";
+
+            using var conn = _factory.CreateOpenConnection();
+            var rows = conn.Query(sql, new { id }).ToList();
+
+            webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(
+                JsonSerializer.Serialize(new
+                {
+                    type = "attachments",
+                    data = rows
+                })
+            );
         }
 
         private void ExecuteSql(string sqlFile, object param)
@@ -613,6 +825,13 @@ namespace TeamOps.UI.Forms
             File.WriteAllBytes(filePath, Convert.FromBase64String(base64));
 
             return filePath;
+        }
+
+        private static string L(string pt, string jp)
+        {
+            return string.Equals(Program.CurrentLocale, "ja-JP", StringComparison.OrdinalIgnoreCase)
+                ? jp
+                : pt;
         }
 
     }

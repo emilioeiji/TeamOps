@@ -71,6 +71,82 @@ button {
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 12px;
+    align-items: center;
+}
+
+.locale-toggle {
+    border: none;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.locale-track {
+    position: relative;
+    width: 126px;
+    height: 52px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: center;
+    padding: 5px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(12px);
+    overflow: hidden;
+}
+
+.locale-thumb {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    width: 56px;
+    height: 40px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 8px 18px rgba(13, 24, 45, 0.16);
+    transition: transform var(--transition-fast);
+}
+
+.locale-toggle.locale-ja .locale-thumb {
+    transform: translateX(60px);
+}
+
+.locale-option {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: rgba(255, 255, 255, 0.76);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+}
+
+.locale-toggle.locale-pt .locale-option-left,
+.locale-toggle.locale-ja .locale-option-right {
+    color: #12315f;
+}
+
+.locale-flag {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.08);
+}
+
+.locale-flag-br {
+    background:
+        radial-gradient(circle at center, #ffdf00 0 33%, transparent 34%),
+        linear-gradient(135deg, #009b3a 0%, #009b3a 100%);
+}
+
+.locale-flag-jp {
+    background:
+        radial-gradient(circle at center, #bc002d 0 34%, transparent 35%),
+        linear-gradient(135deg, #ffffff 0%, #ffffff 100%);
 }
 
 .meta-pill {
@@ -344,6 +420,8 @@ button {
 }
 
 @media (max-width: 640px) {
+    .locale-toggle,
+    .locale-track,
     .meta-pill,
     .action-tile {
         width: 100%;

@@ -153,6 +153,15 @@
     <None Update="ui\hikitsugui-leader-read\style.css">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="ui\hikitsugui-reader\app.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="ui\hikitsugui-reader\index.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="ui\hikitsugui-reader\style.css">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="ui\operators\app.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

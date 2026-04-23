@@ -13,16 +13,17 @@ namespace TeamOps.UI
 {
     internal static class Program
     {
+        private const string DefaultLocale = "pt-BR";
+
         public static DbSettings DbSettings { get; private set; } = null!;
         public static SqliteConnectionFactory ConnectionFactory { get; private set; } = null!;
         public static User? CurrentUser { get; set; }
+        public static string CurrentLocale { get; private set; } = DefaultLocale;
 
         [STAThread]
         private static void Main()
         {
-            var culture = "pt-BR";
-            Thread.CurrentThread.CurrentCulture = CultureInfo.GetCultureInfo(culture);
-            Thread.CurrentThread.CurrentUICulture = CultureInfo.GetCultureInfo(culture);
+            SetCurrentLocale(DefaultLocale);
 
             ApplicationConfiguration.Initialize();
 
@@ -40,6 +41,19 @@ namespace TeamOps.UI
                     Application.Run(new Forms.FormDashboardHtml(Program.CurrentUser));
                 }
             }
+        }
+
+        public static void SetCurrentLocale(string? locale)
+        {
+            var normalized = string.Equals(locale, "ja-JP", StringComparison.OrdinalIgnoreCase)
+                ? "ja-JP"
+                : DefaultLocale;
+
+            CurrentLocale = normalized;
+
+            var culture = CultureInfo.GetCultureInfo(normalized);
+            Thread.CurrentThread.CurrentCulture = culture;
+            Thread.CurrentThread.CurrentUICulture = culture;
         }
     }
 }

@@ -18,13 +18,13 @@ namespace TeamOps.UI.Forms
         private readonly User _currentUser;
         private readonly Operator _currentOperator;
 
-        private static readonly (string Value, string Label)[] TaskStatuses =
+        private static readonly (string Value, string LabelPt, string LabelJp)[] TaskStatuses =
         {
-            ("pending", "Pendente"),
-            ("in_progress", "Em andamento"),
-            ("blocked", "Bloqueada"),
-            ("completed", "Concluida"),
-            ("cancelled", "Cancelada")
+            ("pending", "Pendente", "未着手"),
+            ("in_progress", "Em andamento", "進行中"),
+            ("blocked", "Bloqueada", "保留"),
+            ("completed", "Concluida", "完了"),
+            ("cancelled", "Cancelada", "取消")
         };
 
         public HTMLFormTasks(
@@ -102,28 +102,20 @@ namespace TeamOps.UI.Forms
             PostJson(new
             {
                 type = "init",
-                currentOperatorName = _currentOperator.NameRomanji,
+                locale = Program.CurrentLocale,
+                currentOperatorNamePt = _currentOperator.NameRomanji,
+                currentOperatorNameJp = string.IsNullOrWhiteSpace(_currentOperator.NameNihongo)
+                    ? _currentOperator.NameRomanji
+                    : _currentOperator.NameNihongo,
                 currentUser = _currentUser.Name,
                 statuses = TaskStatuses.Select(status => new
                 {
                     value = status.Value,
-                    label = status.Label
+                    labelPt = status.LabelPt,
+                    labelJp = status.LabelJp
                 }),
-                shifts = conn.Query(
-                    @"SELECT Id, NamePt
-                      FROM Shifts
-                      ORDER BY Id"
-                ).ToList(),
-                leaders = conn.Query(
-                    @"SELECT
-                          CodigoFJ,
-                          NameRomanji,
-                          ShiftId
-                      FROM Operators
-                      WHERE Status = 1
-                        AND IsLeader = 1
-                      ORDER BY ShiftId, NameRomanji"
-                ).ToList(),
+                shifts = QueryShifts(conn).ToList(),
+                leaders = QueryLeaders(conn).ToList(),
                 rows = QueryTasks(conn).ToList()
             });
         }
@@ -136,7 +128,7 @@ namespace TeamOps.UI.Forms
                 EnsureSchema(conn);
 
                 if (!TaskExists(conn, taskId))
-                    throw new InvalidOperationException("Task nao encontrada.");
+                    throw new InvalidOperationException(L("Task nao encontrada.", "Task が見つかりません。"));
 
                 PostJson(new
                 {
@@ -222,13 +214,21 @@ namespace TeamOps.UI.Forms
                     tx
                 );
 
-                InsertTaskHistory(conn, tx, newId, null, taskStatus, _currentOperator.CodigoFJ, "Task criada.");
+                InsertTaskHistory(
+                    conn,
+                    tx,
+                    newId,
+                    null,
+                    taskStatus,
+                    _currentOperator.CodigoFJ,
+                    L("Task criada.", "Task を作成しました。")
+                );
                 tx.Commit();
 
                 PostJson(new
                 {
                     type = "saved",
-                    message = "Task cadastrada com sucesso."
+                    message = L("Task cadastrada com sucesso.", "Task を登録しました。")
                 });
 
                 SendRows(conn);
@@ -251,7 +251,7 @@ namespace TeamOps.UI.Forms
                 EnsureSchema(conn);
 
                 var current = GetTaskState(conn, msg.id)
-                    ?? throw new InvalidOperationException("Task nao encontrada para edicao.");
+                    ?? throw new InvalidOperationException(L("Task nao encontrada para edicao.", "編集対象の Task が見つかりません。"));
 
                 var description = NormalizeDescription(msg.description);
                 var dueDate = ParseDueDate(msg.dueDate);
@@ -297,14 +297,24 @@ namespace TeamOps.UI.Forms
                 );
 
                 if (statusChanged)
-                    InsertTaskHistory(conn, tx, msg.id, current.Status, taskStatus, _currentOperator.CodigoFJ, "Status alterado na edicao da task.");
+                {
+                    InsertTaskHistory(
+                        conn,
+                        tx,
+                        msg.id,
+                        current.Status,
+                        taskStatus,
+                        _currentOperator.CodigoFJ,
+                        L("Status alterado na edicao da task.", "Task 編集でステータスを変更しました。")
+                    );
+                }
 
                 tx.Commit();
 
                 PostJson(new
                 {
                     type = "updated",
-                    message = "Task atualizada com sucesso."
+                    message = L("Task atualizada com sucesso.", "Task を更新しました。")
                 });
 
                 SendRows(conn);
@@ -327,7 +337,7 @@ namespace TeamOps.UI.Forms
                 EnsureSchema(conn);
 
                 var current = GetTaskState(conn, msg.id)
-                    ?? throw new InvalidOperationException("Task nao encontrada para atualizar status.");
+                    ?? throw new InvalidOperationException(L("Task nao encontrada para atualizar status.", "ステータス更新対象の Task が見つかりません。"));
 
                 var taskStatus = NormalizeTaskStatus(msg.taskStatus);
                 if (string.Equals(current.Status, taskStatus, StringComparison.OrdinalIgnoreCase))
@@ -335,7 +345,7 @@ namespace TeamOps.UI.Forms
                     PostJson(new
                     {
                         type = "status_changed",
-                        message = "A task ja estava com este status."
+                        message = L("A task ja estava com este status.", "Task はすでにこのステータスです。")
                     });
                     return;
                 }
@@ -367,15 +377,23 @@ namespace TeamOps.UI.Forms
                     tx
                 );
 
-                InsertTaskHistory(conn, tx, msg.id, current.Status, taskStatus, _currentOperator.CodigoFJ, "Status alterado rapidamente.");
+                InsertTaskHistory(
+                    conn,
+                    tx,
+                    msg.id,
+                    current.Status,
+                    taskStatus,
+                    _currentOperator.CodigoFJ,
+                    L("Status alterado rapidamente.", "ステータスを簡易更新しました。")
+                );
                 tx.Commit();
 
                 PostJson(new
                 {
                     type = "status_changed",
                     message = taskStatus == "completed"
-                        ? "Task finalizada com sucesso."
-                        : "Status da task atualizado com sucesso."
+                        ? L("Task finalizada com sucesso.", "Task を完了しました。")
+                        : L("Status da task atualizado com sucesso.", "Task のステータスを更新しました。")
                 });
 
                 SendRows(conn);
@@ -412,7 +430,7 @@ namespace TeamOps.UI.Forms
         private static DateTime ParseDueDate(string? dueDate)
         {
             if (!DateTime.TryParse(dueDate, out var parsed))
-                throw new InvalidOperationException("Informe uma data valida para a task.");
+                throw new InvalidOperationException(L("Informe uma data valida para a task.", "Task の有効な日付を入力してください。"));
 
             return parsed.Date;
         }
@@ -425,14 +443,20 @@ namespace TeamOps.UI.Forms
                 return "pending";
 
             if (!TaskStatuses.Any(status => status.Value == normalized))
-                throw new InvalidOperationException("Selecione um status valido para a task.");
+                throw new InvalidOperationException(L("Selecione um status valido para a task.", "Task の有効なステータスを選択してください。"));
 
             return normalized;
         }
 
-        private static string GetTaskStatusLabel(string taskStatus)
+        private static string GetTaskStatusLabel(string taskStatus, string locale)
         {
-            return TaskStatuses.FirstOrDefault(status => status.Value == taskStatus).Label ?? taskStatus;
+            var match = TaskStatuses.FirstOrDefault(status => status.Value == taskStatus);
+            if (match == default)
+                return taskStatus;
+
+            return string.Equals(locale, "ja-JP", StringComparison.OrdinalIgnoreCase)
+                ? match.LabelJp
+                : match.LabelPt;
         }
 
         private static void ValidatePayload(
@@ -446,19 +470,19 @@ namespace TeamOps.UI.Forms
             int taskId)
         {
             if (isUpdate && taskId <= 0)
-                throw new InvalidOperationException("Selecione uma task valida para editar.");
+                throw new InvalidOperationException(L("Selecione uma task valida para editar.", "編集対象の Task を選択してください。"));
 
             if (string.IsNullOrWhiteSpace(description))
-                throw new InvalidOperationException("Informe o que deve ser feito na task.");
+                throw new InvalidOperationException(L("Informe o que deve ser feito na task.", "Task の内容を入力してください。"));
 
             if (shiftId <= 0)
-                throw new InvalidOperationException("Selecione o turno da task.");
+                throw new InvalidOperationException(L("Selecione o turno da task.", "Task のシフトを選択してください。"));
 
             if (dueDate == default)
-                throw new InvalidOperationException("Informe quando a task deve ser concluida.");
+                throw new InvalidOperationException(L("Informe quando a task deve ser concluida.", "Task の期限を入力してください。"));
 
             if (!TaskStatuses.Any(status => status.Value == taskStatus))
-                throw new InvalidOperationException("Status da task invalido.");
+                throw new InvalidOperationException(L("Status da task invalido.", "Task のステータスが無効です。"));
 
             if (!string.IsNullOrWhiteSpace(leaderCodigoFJ))
             {
@@ -478,7 +502,7 @@ namespace TeamOps.UI.Forms
                 ) > 0;
 
                 if (!isValidLeader)
-                    throw new InvalidOperationException("O lider selecionado nao pertence ao turno informado.");
+                    throw new InvalidOperationException(L("O lider selecionado nao pertence ao turno informado.", "選択したリーダーは指定したシフトに属していません。"));
             }
         }
 
@@ -597,7 +621,47 @@ namespace TeamOps.UI.Forms
             );
         }
 
-        private static IEnumerable<dynamic> QueryTasks(System.Data.IDbConnection conn)
+        private static IEnumerable<object> QueryShifts(System.Data.IDbConnection conn)
+        {
+            const string sql = @"
+                SELECT
+                    Id AS id,
+                    COALESCE(NamePt, '') AS namePt,
+                    COALESCE(NULLIF(NameJp, ''), NamePt, '') AS nameJp
+                FROM Shifts
+                ORDER BY Id;";
+
+            return conn.Query(sql).Select(row => new
+            {
+                id = row.id,
+                namePt = row.namePt,
+                nameJp = row.nameJp
+            });
+        }
+
+        private static IEnumerable<object> QueryLeaders(System.Data.IDbConnection conn)
+        {
+            const string sql = @"
+                SELECT
+                    CodigoFJ AS codigoFJ,
+                    COALESCE(NameRomanji, CodigoFJ) AS namePt,
+                    COALESCE(NULLIF(NameNihongo, ''), NameRomanji, CodigoFJ) AS nameJp,
+                    ShiftId AS shiftId
+                FROM Operators
+                WHERE Status = 1
+                  AND IsLeader = 1
+                ORDER BY ShiftId, NameRomanji;";
+
+            return conn.Query(sql).Select(row => new
+            {
+                codigoFJ = row.codigoFJ,
+                namePt = row.namePt,
+                nameJp = row.nameJp,
+                shiftId = row.shiftId
+            });
+        }
+
+        private static IEnumerable<object> QueryTasks(System.Data.IDbConnection conn)
         {
             const string sql = @"
                 SELECT
@@ -605,16 +669,19 @@ namespace TeamOps.UI.Forms
                     t.Description AS description,
                     substr(t.DueDate, 1, 10) AS dueDate,
                     t.ShiftId AS shiftId,
-                    sh.NamePt AS shiftName,
+                    COALESCE(sh.NamePt, '') AS shiftNamePt,
+                    COALESCE(NULLIF(sh.NameJp, ''), sh.NamePt, '') AS shiftNameJp,
                     COALESCE(t.AssigneeCodigoFJ, '') AS leaderCodigoFJ,
-                    COALESCE(op.NameRomanji, '') AS leaderName,
+                    COALESCE(op.NameRomanji, '') AS leaderNamePt,
+                    COALESCE(NULLIF(op.NameNihongo, ''), op.NameRomanji, '') AS leaderNameJp,
                     t.Status AS taskStatus,
                     substr(t.CreatedAt, 1, 16) AS createdAt,
                     substr(t.UpdatedAt, 1, 16) AS updatedAt,
                     CASE WHEN t.StartedAt IS NULL THEN '' ELSE substr(t.StartedAt, 1, 16) END AS startedAt,
                     CASE WHEN t.CompletedAt IS NULL THEN '' ELSE substr(t.CompletedAt, 1, 16) END AS completedAt,
                     CASE WHEN t.CancelledAt IS NULL THEN '' ELSE substr(t.CancelledAt, 1, 16) END AS cancelledAt,
-                    COALESCE(creator.NameRomanji, t.CreatedByCodigoFJ) AS createdByName,
+                    COALESCE(creator.NameRomanji, t.CreatedByCodigoFJ) AS createdByNamePt,
+                    COALESCE(NULLIF(creator.NameNihongo, ''), creator.NameRomanji, t.CreatedByCodigoFJ) AS createdByNameJp,
                     t.CreatedByCodigoFJ AS createdByCodigoFJ
                 FROM Tasks t
                 LEFT JOIN Shifts sh ON sh.Id = t.ShiftId
@@ -631,29 +698,32 @@ namespace TeamOps.UI.Forms
                 description = row.description,
                 dueDate = row.dueDate,
                 shiftId = row.shiftId,
-                shiftName = row.shiftName,
+                shiftNamePt = row.shiftNamePt,
+                shiftNameJp = row.shiftNameJp,
                 leaderCodigoFJ = row.leaderCodigoFJ,
-                leaderName = row.leaderName,
+                leaderNamePt = row.leaderNamePt,
+                leaderNameJp = row.leaderNameJp,
                 taskStatus = row.taskStatus,
-                statusLabel = GetTaskStatusLabel((string)row.taskStatus),
                 createdAt = row.createdAt,
                 updatedAt = row.updatedAt,
                 startedAt = row.startedAt,
                 completedAt = row.completedAt,
                 cancelledAt = row.cancelledAt,
-                createdByName = row.createdByName,
+                createdByNamePt = row.createdByNamePt,
+                createdByNameJp = row.createdByNameJp,
                 createdByCodigoFJ = row.createdByCodigoFJ
             });
         }
 
-        private static IEnumerable<dynamic> QueryTaskHistory(System.Data.IDbConnection conn, int taskId)
+        private static IEnumerable<object> QueryTaskHistory(System.Data.IDbConnection conn, int taskId)
         {
             const string sql = @"
                 SELECT
                     h.Id AS id,
                     COALESCE(h.PreviousStatus, '') AS previousStatus,
                     h.NewStatus AS newStatus,
-                    COALESCE(changer.NameRomanji, h.ChangedByCodigoFJ) AS changedByName,
+                    COALESCE(changer.NameRomanji, h.ChangedByCodigoFJ) AS changedByNamePt,
+                    COALESCE(NULLIF(changer.NameNihongo, ''), changer.NameRomanji, h.ChangedByCodigoFJ) AS changedByNameJp,
                     substr(h.ChangedAt, 1, 16) AS changedAt,
                     COALESCE(h.Note, '') AS note
                 FROM TaskStatusHistory h
@@ -665,10 +735,17 @@ namespace TeamOps.UI.Forms
             {
                 id = row.id,
                 previousStatus = row.previousStatus,
-                previousStatusLabel = string.IsNullOrWhiteSpace((string)row.previousStatus) ? string.Empty : GetTaskStatusLabel((string)row.previousStatus),
+                previousStatusLabelPt = string.IsNullOrWhiteSpace((string)row.previousStatus)
+                    ? string.Empty
+                    : GetTaskStatusLabel((string)row.previousStatus, "pt-BR"),
+                previousStatusLabelJp = string.IsNullOrWhiteSpace((string)row.previousStatus)
+                    ? string.Empty
+                    : GetTaskStatusLabel((string)row.previousStatus, "ja-JP"),
                 newStatus = row.newStatus,
-                newStatusLabel = GetTaskStatusLabel((string)row.newStatus),
-                changedByName = row.changedByName,
+                newStatusLabelPt = GetTaskStatusLabel((string)row.newStatus, "pt-BR"),
+                newStatusLabelJp = GetTaskStatusLabel((string)row.newStatus, "ja-JP"),
+                changedByNamePt = row.changedByNamePt,
+                changedByNameJp = row.changedByNameJp,
                 changedAt = row.changedAt,
                 note = row.note
             });
@@ -724,6 +801,13 @@ namespace TeamOps.UI.Forms
             webViewTasks.CoreWebView2.PostWebMessageAsJson(
                 JsonSerializer.Serialize(payload)
             );
+        }
+
+        private static string L(string pt, string jp)
+        {
+            return string.Equals(Program.CurrentLocale, "ja-JP", StringComparison.OrdinalIgnoreCase)
+                ? jp
+                : pt;
         }
 
         private sealed class TaskStateRow

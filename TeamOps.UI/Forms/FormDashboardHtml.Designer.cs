@@ -27,7 +27,7 @@
             webViewDashboard.Dock = DockStyle.Fill;
             webViewDashboard.Location = new Point(0, 0);
             webViewDashboard.Name = "webViewDashboard";
-            webViewDashboard.Size = new Size(1134, 661);
+            webViewDashboard.Size = new Size(1134, 820);
             webViewDashboard.TabIndex = 0;
             webViewDashboard.ZoomFactor = 1D;
             // 
@@ -35,7 +35,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1134, 661);
+            ClientSize = new Size(1134, 820);
             Controls.Add(webViewDashboard);
             Name = "FormDashboardHtml";
             StartPosition = FormStartPosition.CenterScreen;

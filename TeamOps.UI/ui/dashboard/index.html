@@ -8,23 +8,37 @@
 <body class="bg-gray-100">
     <header class="header-bar">
         <div class="header-copy">
-            <h1>TeamOps Dashboard</h1>
-            <p>Central de operacoes e acompanhamento da equipe</p>
+            <h1 id="txtHeaderTitle">TeamOps Dashboard</h1>
+            <p id="txtHeaderSubtitle">Central de operacoes e acompanhamento da equipe</p>
         </div>
 
         <div class="header-meta">
+            <button id="btnLocaleToggle" class="locale-toggle locale-pt" type="button" aria-label="Alternar idioma">
+                <span class="locale-track">
+                    <span class="locale-thumb"></span>
+                    <span class="locale-option locale-option-left">
+                        <span class="locale-flag locale-flag-br" aria-hidden="true"></span>
+                        <span>PT</span>
+                    </span>
+                    <span class="locale-option locale-option-right">
+                        <span class="locale-flag locale-flag-jp" aria-hidden="true"></span>
+                        <span>JP</span>
+                    </span>
+                </span>
+            </button>
+
             <div class="meta-pill">
-                <span class="meta-label">Usuario</span>
+                <span id="txtMetaUser" class="meta-label">Usuario</span>
                 <strong id="lblUser">-</strong>
             </div>
 
             <div class="meta-pill">
-                <span class="meta-label">Operador</span>
+                <span id="txtMetaOperator" class="meta-label">Operador</span>
                 <strong id="lblOperator">-</strong>
             </div>
 
             <div class="meta-pill">
-                <span class="meta-label">Turno</span>
+                <span id="txtMetaShift" class="meta-label">Turno</span>
                 <strong id="lblShift">-</strong>
             </div>
         </div>
@@ -34,23 +48,23 @@
         <section class="hero-card">
             <div class="hero-copy">
                 <span id="accessBadge" class="access-badge">Carregando...</span>
-                <h2>Atalhos principais do time</h2>
-                <p>Mesmo fluxo do dashboard atual, agora em HTML com layout mais leve e organizado.</p>
+                <h2 id="txtHeroTitle">Atalhos principais do time</h2>
+                <p id="txtHeroSubtitle">Mesmo fluxo do dashboard atual, agora em HTML com layout mais leve e organizado.</p>
             </div>
 
             <div class="hero-stats">
                 <div class="stat-card">
-                    <span class="stat-label">Data e Hora</span>
+                    <span id="txtStatDate" class="stat-label">Data e Hora</span>
                     <strong id="lblDate">-</strong>
                 </div>
 
                 <div class="stat-card">
-                    <span class="stat-label">Perfil Atual</span>
+                    <span id="txtStatProfile" class="stat-label">Perfil Atual</span>
                     <strong id="lblAccessLevel">-</strong>
                 </div>
 
                 <div class="stat-card stat-card-highlight">
-                    <span class="stat-label">Tasks em Aberto</span>
+                    <span id="txtStatTasks" class="stat-label">Tasks em Aberto</span>
                     <strong id="lblOpenTasks">-</strong>
                 </div>
             </div>
@@ -59,8 +73,8 @@
         <section class="dashboard-grid">
             <article class="module-card" data-group>
                 <div class="module-head">
-                    <h3>Operacao</h3>
-                    <p>Cadastros, acompanhamento e consulta de registros.</p>
+                    <h3 id="txtGroupOpsTitle">Operacao</h3>
+                    <p id="txtGroupOpsSubtitle">Cadastros, acompanhamento e consulta de registros.</p>
                 </div>
 
                 <div class="module-actions">
@@ -69,8 +83,8 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4.5 4.5 0 1 0-4.5-4.5A4.5 4.5 0 0 0 12 12Zm0 2.25c-4 0-7.5 2-7.5 4.5V21h15v-2.25c0-2.5-3.5-4.5-7.5-4.5Z"/></svg>
                         </span>
                         <span class="tile-copy">
-                            <strong>Operadores</strong>
-                            <small>作業者</small>
+                            <strong id="txtTileOperatorsTitle">Operadores</strong>
+                            <small id="txtTileOperatorsSubtitle">Cadastro e consulta</small>
                         </span>
                     </button>
 
@@ -79,35 +93,28 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5.25A2.25 2.25 0 0 1 6.75 3h10.5a2.25 2.25 0 0 1 2.25 2.25v11.5A2.25 2.25 0 0 1 17.25 19H9l-4.5 3v-16.75Z"/><path d="M8 8.25h8M8 12h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                         </span>
                         <span class="tile-copy">
-                            <strong>Acompanhamento</strong>
-                            <small>フォロー</small>
+                            <strong id="txtTileFollowTitle">Acompanhamento</strong>
+                            <small id="txtTileFollowSubtitle">Registro e orientacao</small>
                         </span>
                     </button>
 
                     <button id="btnTasks" class="action-tile" type="button" data-action="open:tasks">
                         <span class="tile-icon tile-icon-teal">
                             <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                              <!-- folha -->
-                              <path d="M7.5 3.75h6.75L18.75 8.25V18A2.25 2.25 0 0 1 16.5 20.25h-9A2.25 2.25 0 0 1 5.25 18V6A2.25 2.25 0 0 1 7.5 3.75Z"/>
-                              <path d="M14.25 3.75V8.25H18.75"/>
-                            
-                              <!-- checkboxes -->
-                              <rect x="8.25" y="10" width="1.8" height="1.8" rx="0.4"/>
-                              <rect x="8.25" y="13" width="1.8" height="1.8" rx="0.4"/>
-                              <rect x="8.25" y="16" width="1.8" height="1.8" rx="0.4"/>
-                            
-                              <!-- linhas -->
-                              <path d="M11 10.9h4.5"/>
-                              <path d="M11 13.9h4.5"/>
-                              <path d="M11 16.9h4.5"/>
-                            
-                              <!-- check marcado -->
-                              <path d="M8.5 13.9l0.6 0.6 1.2-1.2"/>
+                                <path d="M7.5 3.75h6.75L18.75 8.25V18A2.25 2.25 0 0 1 16.5 20.25h-9A2.25 2.25 0 0 1 5.25 18V6A2.25 2.25 0 0 1 7.5 3.75Z"/>
+                                <path d="M14.25 3.75V8.25H18.75"/>
+                                <rect x="8.25" y="10" width="1.8" height="1.8" rx="0.4"/>
+                                <rect x="8.25" y="13" width="1.8" height="1.8" rx="0.4"/>
+                                <rect x="8.25" y="16" width="1.8" height="1.8" rx="0.4"/>
+                                <path d="M11 10.9h4.5"/>
+                                <path d="M11 13.9h4.5"/>
+                                <path d="M11 16.9h4.5"/>
+                                <path d="M8.5 13.9l0.6 0.6 1.2-1.2"/>
                             </svg>
                         </span>
                         <span class="tile-copy">
-                            <strong>Tasks</strong>
-                            <small>タスク管理</small>
+                            <strong id="txtTileTasksTitle">Tasks</strong>
+                            <small id="txtTileTasksSubtitle">Planejamento do turno</small>
                         </span>
                     </button>
 
@@ -116,8 +123,8 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.75h16v10.5H4z"/><path d="M8 4.5h8M8 19.5h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                         </span>
                         <span class="tile-copy">
-                            <strong>Sobra de Peca</strong>
-                            <small>製品残り</small>
+                            <strong id="txtTileScrapTitle">Sobra de Peca</strong>
+                            <small id="txtTileScrapSubtitle">Lancamento de perdas</small>
                         </span>
                     </button>
 
@@ -126,8 +133,8 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 3.75h6.75L18.75 8.25V18A2.25 2.25 0 0 1 16.5 20.25h-9A2.25 2.25 0 0 1 5.25 18V6A2.25 2.25 0 0 1 7.5 3.75Z"/><path d="M14.25 3.75V8.25H18.75" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.25 11.25h7.5M8.25 15h4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M8.25 17.25v-3m2.5 3v-5.25m2.5 5.25v-2m2.5 2v-4.25" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                         </span>
                         <span class="tile-copy">
-                            <strong>Relatorios</strong>
-                            <small>レポート</small>
+                            <strong id="txtTileReportsTitle">Relatorios</strong>
+                            <small id="txtTileReportsSubtitle">Consultas e impressao</small>
                         </span>
                     </button>
                 </div>
@@ -135,8 +142,8 @@
 
             <article class="module-card" data-group>
                 <div class="module-head">
-                    <h3>Hikitsugui e Documentos</h3>
-                    <p>Fluxos de comunicacao e documentos de processo.</p>
+                    <h3 id="txtGroupDocsTitle">Hikitsugui e Documentos</h3>
+                    <p id="txtGroupDocsSubtitle">Fluxos de comunicacao e documentos de processo.</p>
                 </div>
 
                 <div class="module-actions">
@@ -145,8 +152,8 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h12A1.5 1.5 0 0 1 19.5 6v12A1.5 1.5 0 0 1 18 19.5H6A1.5 1.5 0 0 1 4.5 18V6A1.5 1.5 0 0 1 6 4.5Z"/><path d="M8.25 8.25h7.5M8.25 12h7.5M8.25 15.75H12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                         </span>
                         <span class="tile-copy">
-                            <strong>Hikitsugui</strong>
-                            <small>引継ぎ</small>
+                            <strong id="txtTileHikiCreateTitle">Hikitsugui</strong>
+                            <small id="txtTileHikiCreateSubtitle">Cadastro rapido</small>
                         </span>
                     </button>
 
@@ -155,8 +162,8 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.25 12s3.75-6 9.75-6 9.75 6 9.75 6-3.75 6-9.75 6S2.25 12 2.25 12Z"/><path d="M12 14.75A2.75 2.75 0 1 0 12 9.25a2.75 2.75 0 0 0 0 5.5Z"/></svg>
                         </span>
                         <span class="tile-copy">
-                            <strong>Leitura Hikitsugui</strong>
-                            <small>引継ぎ閲覧</small>
+                            <strong id="txtTileHikiReadTitle">Leitura Hikitsugui</strong>
+                            <small id="txtTileHikiReadSubtitle">Consulta e resposta</small>
                         </span>
                     </button>
 
@@ -165,8 +172,8 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.75h8.25L18 7.5v12.75H6z"/><path d="M14.25 3.75V7.5H18M8.25 11.25h7.5M8.25 15h5.25" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                         </span>
                         <span class="tile-copy">
-                            <strong>PR</strong>
-                            <small>PR文書</small>
+                            <strong id="txtTilePrTitle">PR</strong>
+                            <small id="txtTilePrSubtitle">Documento de processo</small>
                         </span>
                     </button>
 
@@ -175,8 +182,8 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.75h8.25L18 7.5v12.75H6z"/><path d="M14.25 3.75V7.5H18M8.25 11.25h7.5M8.25 15h7.5M8.25 18.75h4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                         </span>
                         <span class="tile-copy">
-                            <strong>CL</strong>
-                            <small>CL文書</small>
+                            <strong id="txtTileClTitle">CL</strong>
+                            <small id="txtTileClSubtitle">Controle de linha</small>
                         </span>
                     </button>
 
@@ -185,8 +192,8 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 4.5h9A2.25 2.25 0 0 1 18.75 6.75v10.5A2.25 2.25 0 0 1 16.5 19.5h-9a2.25 2.25 0 0 1-2.25-2.25V6.75A2.25 2.25 0 0 1 7.5 4.5Z"/><path d="M8.25 8.25h7.5M8.25 12h7.5M8.25 15.75h4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                         </span>
                         <span class="tile-copy">
-                            <strong>Todoke</strong>
-                            <small>届出書</small>
+                            <strong id="txtTileTodokeTitle">Todoke</strong>
+                            <small id="txtTileTodokeSubtitle">Solicitacoes e folhas</small>
                         </span>
                     </button>
                 </div>
@@ -194,8 +201,8 @@
 
             <article class="module-card" data-group>
                 <div class="module-head">
-                    <h3>Presenca</h3>
-                    <p>Acesso rapido aos paineis por setor.</p>
+                    <h3 id="txtGroupPresenceTitle">Presenca</h3>
+                    <p id="txtGroupPresenceSubtitle">Acesso rapido aos paineis por setor.</p>
                 </div>
 
                 <div class="module-actions">
@@ -204,8 +211,8 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.75A2.25 2.25 0 0 1 6.75 4.5h10.5a2.25 2.25 0 0 1 2.25 2.25v10.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 17.25Z"/><path d="M8.25 8.25h7.5M8.25 12h7.5M8.25 15.75h4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                         </span>
                         <span class="tile-copy">
-                            <strong>Presenca G-Bareru</strong>
-                            <small>出勤管理</small>
+                            <strong id="txtTilePresenceGTitle">Presenca G-Bareru</strong>
+                            <small id="txtTilePresenceGSubtitle">Painel do setor</small>
                         </span>
                     </button>
 
@@ -214,8 +221,8 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.75A2.25 2.25 0 0 1 6.75 4.5h10.5a2.25 2.25 0 0 1 2.25 2.25v10.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 17.25Z"/><path d="M8.25 8.25h7.5M8.25 12h7.5M8.25 15.75h4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                         </span>
                         <span class="tile-copy">
-                            <strong>Presenca DAD</strong>
-                            <small>出勤管理</small>
+                            <strong id="txtTilePresenceDTitle">Presenca DAD</strong>
+                            <small id="txtTilePresenceDSubtitle">Painel do setor</small>
                         </span>
                     </button>
                 </div>
@@ -223,8 +230,8 @@
 
             <article class="module-card" data-group>
                 <div class="module-head">
-                    <h3>Administracao</h3>
-                    <p>Configuracoes e controle de acesso.</p>
+                    <h3 id="txtGroupAdminTitle">Administracao</h3>
+                    <p id="txtGroupAdminSubtitle">Configuracoes e controle de acesso.</p>
                 </div>
 
                 <div class="module-actions">
@@ -233,8 +240,8 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.25 3.75 6v5.25c0 5.3 3.6 10.23 8.25 11.63 4.65-1.4 8.25-6.33 8.25-11.63V6Z"/><path d="M9.75 12 11.25 13.5 14.75 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         </span>
                         <span class="tile-copy">
-                            <strong>Admin</strong>
-                            <small>Administracao</small>
+                            <strong id="txtTileAdminTitle">Admin</strong>
+                            <small id="txtTileAdminSubtitle">Configuracoes do sistema</small>
                         </span>
                     </button>
 
@@ -243,8 +250,8 @@
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.25a4.5 4.5 0 0 0-4.5 4.5V9H6.75A2.25 2.25 0 0 0 4.5 11.25v8.25a2.25 2.25 0 0 0 2.25 2.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-8.25A2.25 2.25 0 0 0 17.25 9H16.5V6.75A4.5 4.5 0 0 0 12 2.25Zm-3 6.75V6.75a3 3 0 0 1 6 0V9Z"/></svg>
                         </span>
                         <span class="tile-copy">
-                            <strong>Acesso</strong>
-                            <small>アクセス権</small>
+                            <strong id="txtTileAccessTitle">Acesso</strong>
+                            <small id="txtTileAccessSubtitle">Permissoes e usuarios</small>
                         </span>
                     </button>
                 </div>

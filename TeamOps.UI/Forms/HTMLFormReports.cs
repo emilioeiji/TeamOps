@@ -1,6 +1,5 @@
 using Microsoft.Web.WebView2.Core;
 using System;
-using System.Drawing;
 using System.IO;
 using System.Text.Json;
 using System.Windows.Forms;
@@ -14,9 +13,6 @@ namespace TeamOps.UI.Forms
     {
         private readonly Operator _currentOperator;
         private readonly Shift _currentShift;
-        private readonly HikitsuguiRepository _hikRepo;
-        private readonly HikitsuguiReadRepository _readRepo;
-        private readonly OperatorRepository _opRepo;
         private readonly SqliteConnectionFactory _factory;
 
         public HTMLFormReports(
@@ -29,12 +25,10 @@ namespace TeamOps.UI.Forms
         {
             InitializeComponent();
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            Text = L("Relatorios", "\u30ec\u30dd\u30fc\u30c8");
 
             _currentOperator = currentOperator;
             _currentShift = currentShift;
-            _hikRepo = hikRepo;
-            _readRepo = readRepo;
-            _opRepo = opRepo;
             _factory = factory;
 
             InitializeWebView();
@@ -68,9 +62,16 @@ namespace TeamOps.UI.Forms
                     type = "init",
                     data = new
                     {
-                        operatorName = _currentOperator.NameRomanji,
-                        shiftName = _currentShift.NamePt,
-                        date = DateTime.Now.ToString("dd/MM/yyyy HH:mm"),
+                        locale = Program.CurrentLocale,
+                        operatorNamePt = _currentOperator.NameRomanji,
+                        operatorNameJp = string.IsNullOrWhiteSpace(_currentOperator.NameNihongo)
+                            ? _currentOperator.NameRomanji
+                            : _currentOperator.NameNihongo,
+                        shiftNamePt = _currentShift.NamePt,
+                        shiftNameJp = string.IsNullOrWhiteSpace(_currentShift.NameJp)
+                            ? _currentShift.NamePt
+                            : _currentShift.NameJp,
+                        dateIso = DateTime.Now.ToString("O"),
                         availableCount = 3,
                         totalCount = 7
                     }
@@ -108,19 +109,7 @@ namespace TeamOps.UI.Forms
             switch (action)
             {
                 case "open:hikitsugui":
-                    OpenDialog(() =>
-                    {
-                        var shiftRepo = new ShiftRepository(_factory);
-                        var sectorRepo = new SectorRepository(_factory);
-
-                        return new FormHikitsuguiReader(
-                            _hikRepo,
-                            _readRepo,
-                            _opRepo,
-                            shiftRepo,
-                            sectorRepo
-                        );
-                    });
+                    OpenDialog(() => new HTMLFormHikitsuguiReader(_factory, _currentOperator));
                     break;
 
                 case "open:follow_report":
@@ -150,19 +139,39 @@ namespace TeamOps.UI.Forms
                     break;
 
                 case "todo:operadores":
-                    SendNotify("Em desenvolvimento", "O relatório de Operadores ainda não foi migrado.");
+                    SendNotify(
+                        L("Em desenvolvimento", "\u958b\u767a\u4e2d"),
+                        L(
+                            "O relatorio de Operadores ainda nao foi migrado.",
+                            "\u30aa\u30da\u30ec\u30fc\u30bf\u30fc\u306e\u30ec\u30dd\u30fc\u30c8\u306f\u307e\u3060\u79fb\u884c\u3055\u308c\u3066\u3044\u307e\u305b\u3093\u3002")
+                    );
                     break;
 
                 case "todo:pr":
-                    SendNotify("Em desenvolvimento", "O relatório de PR ainda não foi migrado.");
+                    SendNotify(
+                        L("Em desenvolvimento", "\u958b\u767a\u4e2d"),
+                        L(
+                            "O relatorio de PR ainda nao foi migrado.",
+                            "PR \u30ec\u30dd\u30fc\u30c8\u306f\u307e\u3060\u79fb\u884c\u3055\u308c\u3066\u3044\u307e\u305b\u3093\u3002")
+                    );
                     break;
 
                 case "todo:cl":
-                    SendNotify("Em desenvolvimento", "O relatório de CL ainda não foi migrado.");
+                    SendNotify(
+                        L("Em desenvolvimento", "\u958b\u767a\u4e2d"),
+                        L(
+                            "O relatorio de CL ainda nao foi migrado.",
+                            "CL \u30ec\u30dd\u30fc\u30c8\u306f\u307e\u3060\u79fb\u884c\u3055\u308c\u3066\u3044\u307e\u305b\u3093\u3002")
+                    );
                     break;
 
                 case "todo:sobra":
-                    SendNotify("Em desenvolvimento", "O relatório de Sobra de Peça ainda não foi migrado.");
+                    SendNotify(
+                        L("Em desenvolvimento", "\u958b\u767a\u4e2d"),
+                        L(
+                            "O relatorio de Sobra de Peca ainda nao foi migrado.",
+                            "Sobra de Peca \u30ec\u30dd\u30fc\u30c8\u306f\u307e\u3060\u79fb\u884c\u3055\u308c\u3066\u3044\u307e\u305b\u3093\u3002")
+                    );
                     break;
             }
         }
@@ -212,6 +221,13 @@ namespace TeamOps.UI.Forms
 
             if (webViewReports.CoreWebView2 != null)
                 webViewReports.CoreWebView2.PostWebMessageAsJson(json);
+        }
+
+        private static string L(string pt, string jp)
+        {
+            return string.Equals(Program.CurrentLocale, "ja-JP", StringComparison.OrdinalIgnoreCase)
+                ? jp
+                : pt;
         }
     }
 }

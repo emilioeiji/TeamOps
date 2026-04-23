@@ -1,4 +1,4 @@
-﻿// Project: TeamOps.UI
+// Project: TeamOps.UI
 // File: Forms/FormDashboardHtml.cs
 
 using Dapper;
@@ -24,19 +24,17 @@ namespace TeamOps.UI.Forms
         public FormDashboardHtml(User user)
         {
             InitializeComponent();
-            this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
 
             _user = user;
 
-            // Carrega Operator
             var opRepo = new OperatorRepository(Program.ConnectionFactory);
             _currentOperator = opRepo.GetByCodigoFJ(_user.CodigoFJ!)
-                               ?? throw new InvalidOperationException("Operador não encontrado.");
+                               ?? throw new InvalidOperationException("Operador nao encontrado.");
 
-            // Carrega Shift
             var shiftRepo = new ShiftRepository(Program.ConnectionFactory);
             _currentShift = shiftRepo.GetById(_currentOperator.ShiftId)
-                            ?? throw new InvalidOperationException("Turno não encontrado.");
+                            ?? throw new InvalidOperationException("Turno nao encontrado.");
 
             _factory = Program.ConnectionFactory;
 
@@ -64,34 +62,26 @@ namespace TeamOps.UI.Forms
 
             core.Navigate("https://app/index.html");
 
-            core.NavigationCompleted += (s, e) =>
-            {
-                var openTasksForShift = GetOpenTasksForCurrentShift();
-
-                var payload = JsonSerializer.Serialize(new
-                {
-                    type = "init",
-                    user = _user.Name,
-                    operatorName = _currentOperator.NameRomanji,
-                    accessLevel = (int)_user.AccessLevel,
-                    shiftName = _currentShift.NamePt,
-                    date = DateTime.Now.ToString("dd/MM/yyyy HH:mm"),
-                    openTasksForShift
-                });
-
-                core.PostWebMessageAsJson(payload);
-
-                _ready = true;
-            };
+            core.NavigationCompleted += (s, e) => SendDashboard();
         }
 
         private void WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
-            var message = e.TryGetWebMessageAsString();
-            Console.WriteLine($"[Dashboard HTML] Mensagem recebida: {message}");
+            using var json = JsonDocument.Parse(e.WebMessageAsJson);
+            var root = json.RootElement;
 
-            switch (message)
+            var action = ReadAction(root);
+            var locale = ReadString(root, "locale");
+
+            Console.WriteLine($"[Dashboard HTML] Mensagem recebida: {action}");
+
+            switch (action)
             {
+                case "set_locale":
+                    Program.SetCurrentLocale(locale);
+                    SendLocale();
+                    break;
+
                 case "open:operadores":
                     OpenDialog(() => new HTMLFormOperators());
                     break;
@@ -245,6 +235,36 @@ namespace TeamOps.UI.Forms
             }
         }
 
+        private void SendDashboard()
+        {
+            PostJson(new
+            {
+                type = "init",
+                user = _user.Name,
+                locale = Program.CurrentLocale,
+                operatorNamePt = _currentOperator.NameRomanji,
+                operatorNameJp = string.IsNullOrWhiteSpace(_currentOperator.NameNihongo)
+                    ? _currentOperator.NameRomanji
+                    : _currentOperator.NameNihongo,
+                accessLevel = (int)_user.AccessLevel,
+                shiftNamePt = _currentShift.NamePt,
+                shiftNameJp = string.IsNullOrWhiteSpace(_currentShift.NameJp)
+                    ? _currentShift.NamePt
+                    : _currentShift.NameJp,
+                dateIso = DateTime.Now.ToString("O"),
+                openTasksForShift = GetOpenTasksForCurrentShift()
+            });
+        }
+
+        private void SendLocale()
+        {
+            PostJson(new
+            {
+                type = "locale_changed",
+                locale = Program.CurrentLocale
+            });
+        }
+
         private int GetOpenTasksForCurrentShift()
         {
             using var conn = _factory.CreateOpenConnection();
@@ -271,8 +291,6 @@ namespace TeamOps.UI.Forms
             );
         }
 
-        private bool _ready = false;
-
         private bool HasAccess(AccessLevel level)
         {
             return _user.AccessLevel >= level;
@@ -281,7 +299,7 @@ namespace TeamOps.UI.Forms
         private void ShowAccessDenied()
         {
             MessageBox.Show(
-                "Acesso negado. Permissão insuficiente.",
+                "Acesso negado. Permissao insuficiente.",
                 "Acesso Negado",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Warning
@@ -300,6 +318,43 @@ namespace TeamOps.UI.Forms
                 using var form = factory();
                 form.ShowDialog(this);
             }));
+        }
+
+        private void PostJson(object payload)
+        {
+            var json = JsonSerializer.Serialize(payload);
+
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() =>
+                {
+                    if (webViewDashboard.CoreWebView2 != null)
+                        webViewDashboard.CoreWebView2.PostWebMessageAsJson(json);
+                }));
+                return;
+            }
+
+            if (webViewDashboard.CoreWebView2 != null)
+                webViewDashboard.CoreWebView2.PostWebMessageAsJson(json);
+        }
+
+        private static string ReadAction(JsonElement root)
+        {
+            if (root.ValueKind == JsonValueKind.String)
+                return root.GetString() ?? "";
+
+            if (root.ValueKind == JsonValueKind.Object)
+                return ReadString(root, "action");
+
+            return "";
+        }
+
+        private static string ReadString(JsonElement root, string name)
+        {
+            return root.ValueKind == JsonValueKind.Object &&
+                   root.TryGetProperty(name, out var prop)
+                ? prop.GetString() ?? ""
+                : "";
         }
     }
 }

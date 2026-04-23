@@ -12,7 +12,7 @@
          BARRA AZUL (padrão TeamOps)
     ========================================================= -->
     <div class="header-bar">
-        Registrar Hikitsugui
+        <span id="txtHeaderTitle">Registrar Hikitsugui</span>
     </div>
 
     <!-- =========================================================
@@ -24,43 +24,43 @@
         <div class="grid-2col">
 
             <div>
-                <label class="text-gray-600">Data</label>
+                <label id="txtDateLabel" class="text-gray-600">Data</label>
                 <input id="txtDate" type="date" class="input"/>
             </div>
 
             <div>
-                <label class="text-gray-600">Criador</label>
+                <label id="txtCreatorLabel" class="text-gray-600">Criador</label>
                 <input id="txtCreator" type="text" class="input" readonly />
             </div>
 
             <div>
-                <label class="text-gray-600">Shift</label>
+                <label id="txtShiftLabel" class="text-gray-600">Turno</label>
                 <select id="shiftId" class="input"></select>
             </div>
 
             <div>
-                <label class="text-gray-600">Categoria</label>
+                <label id="txtCategoryLabel" class="text-gray-600">Categoria</label>
                 <select id="categoryId" class="input"></select>
             </div>
 
             <div>
-                <label class="text-gray-600">Equipamento</label>
+                <label id="txtEquipmentLabel" class="text-gray-600">Equipamento</label>
                 <select id="equipId" class="input">
-                    <option value="0">Selecionar...</option>
+                    <option id="txtEquipPlaceholder" value="0">Selecionar...</option>
                 </select>
             </div>
 
             <div>
-                <label class="text-gray-600">Local</label>
+                <label id="txtLocalLabel" class="text-gray-600">Local</label>
                 <select id="localId" class="input">
-                    <option value="0">Selecionar...</option>
+                    <option id="txtLocalPlaceholder" value="0">Selecionar...</option>
                 </select>
             </div>
 
             <div>
-                <label class="text-gray-600">Setor</label>
+                <label id="txtSectorLabel" class="text-gray-600">Setor</label>
                 <select id="sectorId" class="input">
-                    <option value="0">Selecionar...</option>
+                    <option id="txtSectorPlaceholder" value="0">Selecionar...</option>
                 </select>
             </div>
 
@@ -73,17 +73,17 @@
 
             <label class="publico-option">
                 <input type="radio" name="publico" value="operador" checked>
-                <span>Operador</span>
+                <span id="txtPublicOperator">Operador</span>
             </label>
 
             <label class="publico-option">
                 <input type="radio" name="publico" value="lider">
-                <span>Líder</span>
+                <span id="txtPublicLeader">Líder</span>
             </label>
 
             <label class="publico-option">
                 <input type="radio" name="publico" value="masv">
-                <span>MA/SV</span>
+                <span id="txtPublicMasv">MA/SV</span>
             </label>
 
         </div>
@@ -92,7 +92,7 @@
         DESCRIÇÃO
         ========================================================= -->
         <div class="mt-4">
-            <label class="text-gray-600">Descrição</label>
+            <label id="txtDescriptionLabel" class="text-gray-600">Descrição</label>
         
             <!-- Toolbar -->
             <div class="editor-toolbar">
@@ -100,7 +100,7 @@
                 <button type="button" data-cmd="italic"><i>I</i></button>
                 <button type="button" data-cmd="underline"><u>U</u></button>
                 <span class="separator"></span>
-                <button type="button" data-cmd="insertUnorderedList">• Lista</button>
+                <button type="button" id="btnBulletList" data-cmd="insertUnorderedList">• Lista</button>
                 <button type="button" id="btnClearFormat">Limpar</button>
             </div>
         
@@ -112,7 +112,7 @@
              ANEXOS
         ========================================================= -->
         <div class="mt-4">
-            <label class="text-gray-600">Anexos</label>
+            <label id="txtAttachmentsLabel" class="text-gray-600">Anexos</label>
             <input id="fileUpload" type="file" multiple class="input" />
             <ul id="fileList" class="file-list"></ul>
         </div>
