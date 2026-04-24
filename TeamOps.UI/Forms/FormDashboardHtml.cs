@@ -111,10 +111,9 @@ namespace TeamOps.UI.Forms
                     if (!HasAccess(AccessLevel.GL))
                         ShowAccessDeniedAsync();
                     else
-                        OpenDialog(() => new FormPresenceLayout(
-                            1,
-                            "G-Bareru",
-                            _factory
+                        OpenDialog(() => new HTMLFormPresenceLayout(
+                            _factory,
+                            _currentShift.Id
                         ));
                     break;
 
@@ -122,10 +121,9 @@ namespace TeamOps.UI.Forms
                     if (!HasAccess(AccessLevel.GL))
                         ShowAccessDeniedAsync();
                     else
-                        OpenDialog(() => new FormPresenceLayout(
-                            2,
-                            "DAD",
-                            _factory
+                        OpenDialog(() => new HTMLFormPresenceLayout(
+                            _factory,
+                            _currentShift.Id
                         ));
                     break;
 

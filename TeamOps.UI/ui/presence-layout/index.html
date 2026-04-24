@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Presence Layout</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="header-bar">
+        <div class="header-copy">
+            <h1 id="txtHeaderTitle">Presenca por setor</h1>
+            <p id="txtHeaderSubtitle">Previsto do haidai, confirmacao do operador e leitura visual dos dois setores em uma unica tela.</p>
+        </div>
+
+        <div class="header-meta">
+            <div class="meta-pill">
+                <span id="txtMetaDate" class="meta-label">Data</span>
+                <strong id="lblCurrentDate">-</strong>
+            </div>
+
+            <div class="meta-pill">
+                <span id="txtMetaShift" class="meta-label">Turno</span>
+                <strong id="lblCurrentShift">-</strong>
+            </div>
+
+            <div class="meta-pill">
+                <span id="txtMetaImport" class="meta-label">Schedule</span>
+                <strong id="lblImportState">-</strong>
+            </div>
+        </div>
+    </header>
+
+    <main class="page-shell">
+        <section class="toolbar-card">
+            <div class="toolbar-copy">
+                <span id="toolbarBadge" class="access-badge">Layout combinado</span>
+                <h2 id="txtToolbarTitle">Filtro unico para os dois setores</h2>
+                <p id="txtToolbarSubtitle">Importe o haidai uma vez e acompanhe G-Bareru e DAD lado a lado com o mesmo periodo e turno.</p>
+            </div>
+
+            <div class="toolbar-actions">
+                <label class="filter-field">
+                    <span id="txtDateLabel">Data</span>
+                    <input id="datePicker" class="input" type="date">
+                </label>
+
+                <label class="filter-field">
+                    <span id="txtShiftLabel">Turno</span>
+                    <select id="shiftPicker" class="input"></select>
+                </label>
+
+                <button id="btnRefresh" type="button" class="btn-secondary">Atualizar</button>
+                <button id="btnImportSchedule" type="button" class="btn-primary">Importar haidai</button>
+            </div>
+        </section>
+
+        <section class="summary-grid" id="summaryGrid">
+            <article class="summary-card">
+                <span id="txtSummaryPlanned" class="summary-label">Previstos</span>
+                <strong id="summaryPlanned">0</strong>
+            </article>
+
+            <article class="summary-card summary-card-confirmed">
+                <span id="txtSummaryConfirmed" class="summary-label">Confirmados</span>
+                <strong id="summaryConfirmed">0</strong>
+            </article>
+
+            <article class="summary-card summary-card-missing">
+                <span id="txtSummaryMissing" class="summary-label">Faltantes</span>
+                <strong id="summaryMissing">0</strong>
+            </article>
+
+            <article class="summary-card summary-card-extra">
+                <span id="txtSummaryExtra" class="summary-label">Extras</span>
+                <strong id="summaryExtra">0</strong>
+            </article>
+        </section>
+
+        <section id="importNotice" class="notice-banner hidden"></section>
+        <section id="sectorsGrid" class="sectors-grid"></section>
+    </main>
+
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <div id="txtLoading" class="loading-text">Importando schedule...</div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
