@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Administracao</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="header-bar">
+        <div class="header-copy">
+            <h1 id="txtHeaderTitle">Administracao</h1>
+            <p id="txtHeaderSubtitle">Cadastros administrativos concentrados em um unico painel, com edicao em modal.</p>
+        </div>
+        <div class="header-metrics">
+            <div class="meta-pill">
+                <span id="txtMetaEntity" class="meta-label">Cadastro ativo</span>
+                <strong id="lblActiveEntity">-</strong>
+            </div>
+            <div class="meta-pill">
+                <span id="txtMetaTotal" class="meta-label">Registros</span>
+                <strong id="lblTotalRows">0</strong>
+            </div>
+        </div>
+    </header>
+
+    <main class="page-shell">
+        <aside class="sidebar-card">
+            <div class="sidebar-head">
+                <h2 id="txtSidebarTitle">Itens</h2>
+                <p id="txtSidebarSubtitle">Selecione o cadastro que deseja manter.</p>
+            </div>
+            <div id="entityList" class="entity-list"></div>
+        </aside>
+
+        <section class="content-shell">
+            <section class="toolbar-card">
+                <div class="toolbar-copy">
+                    <span id="txtBadge" class="access-badge">Painel administrativo</span>
+                    <h2 id="entityTitle">-</h2>
+                    <p id="entityDescription">-</p>
+                </div>
+                <div class="toolbar-actions">
+                    <label class="search-field">
+                        <span id="txtSearchLabel">Buscar</span>
+                        <input id="searchInput" type="text" class="input" placeholder="Buscar por nome...">
+                    </label>
+                    <button id="btnNew" type="button" class="btn-primary">Novo</button>
+                </div>
+            </section>
+
+            <section class="table-card">
+                <div class="table-head">
+                    <div>
+                        <h3 id="txtTableTitle">Registros</h3>
+                        <p id="txtTableSubtitle">Edite ou exclua direto da lista para manter o fluxo rapido.</p>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr id="tableHeadRow"></tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <tr>
+                                <td class="empty-cell" colspan="4">Carregando...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <div id="modal" class="modal hidden">
+        <div class="modal-backdrop" id="modalBackdrop"></div>
+        <section class="modal-card">
+            <div class="modal-top">
+                <div>
+                    <h2 id="modalTitle">Cadastro</h2>
+                    <p id="modalSubtitle">Preencha os campos e salve.</p>
+                </div>
+                <button id="btnCloseModalX" type="button" class="icon-close" aria-label="Fechar">x</button>
+            </div>
+
+            <div id="modalFields" class="form-grid"></div>
+
+            <div class="modal-actions">
+                <button id="btnCancelModal" type="button" class="btn-secondary">Cancelar</button>
+                <button id="btnSaveModal" type="button" class="btn-primary">Salvar</button>
+            </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

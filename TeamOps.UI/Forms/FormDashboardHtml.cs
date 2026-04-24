@@ -223,7 +223,7 @@ namespace TeamOps.UI.Forms
                     if (!HasAccess(AccessLevel.Admin))
                         ShowAccessDeniedAsync();
                     else
-                        OpenDialog(() => new FormAdmin());
+                        OpenDialog(() => new HTMLFormAdmin());
                     break;
 
                 case "open:accesscontrol":

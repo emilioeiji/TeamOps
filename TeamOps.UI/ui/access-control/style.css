@@ -4,8 +4,8 @@
     --color-surface: rgba(255, 255, 255, 0.96);
     --color-border: #d8e2ed;
     --color-border-strong: #bfd0e0;
-    --color-primary: #0d6a73;
-    --color-primary-hover: #09575f;
+    --color-primary: #1f4ea3;
+    --color-primary-hover: #2a63c8;
     --color-secondary: #6b7a8d;
     --color-secondary-hover: #586779;
     --shadow-soft: 0 18px 42px rgba(17, 35, 57, 0.1);
@@ -24,9 +24,9 @@ body {
     color: var(--color-ink);
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     background:
-        radial-gradient(circle at top left, rgba(13, 106, 115, 0.14), transparent 26%),
-        radial-gradient(circle at right, rgba(240, 168, 74, 0.12), transparent 24%),
-        linear-gradient(180deg, #eff6f6 0%, #f8fafc 100%);
+        radial-gradient(circle at top right, rgba(31, 78, 163, 0.15), transparent 22%),
+        radial-gradient(circle at bottom left, rgba(14, 116, 144, 0.08), transparent 18%),
+        linear-gradient(180deg, #eef4fb 0%, #f6f8fb 100%);
 }
 
 button,
@@ -41,7 +41,7 @@ select {
     color: #fff;
     font-size: 31px;
     font-weight: 700;
-    background: linear-gradient(135deg, #084c54 0%, #0d6a73 100%);
+    background: linear-gradient(135deg, #173c80 0%, #2458b8 100%);
     box-shadow: 0 10px 24px rgba(17, 35, 57, 0.16);
 }
 
@@ -78,7 +78,7 @@ select {
     width: 220px;
     height: 220px;
     border-radius: 999px;
-    background: radial-gradient(circle, rgba(13, 106, 115, 0.14) 0%, rgba(13, 106, 115, 0) 70%);
+    background: radial-gradient(circle, rgba(31, 78, 163, 0.14) 0%, rgba(31, 78, 163, 0) 70%);
     pointer-events: none;
 }
 
@@ -88,7 +88,7 @@ select {
     font-weight: 800;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: #0d6a73;
+    color: #1f4ea3;
 }
 
 .hero-copy h1,
@@ -122,7 +122,7 @@ select {
 .metric-card {
     padding: 16px 18px;
     border-radius: 18px;
-    background: linear-gradient(180deg, #ffffff 0%, #f3f8fb 100%);
+    background: linear-gradient(180deg, #ffffff 0%, #f5f9ff 100%);
     border: 1px solid #dde7f0;
 }
 
@@ -193,7 +193,7 @@ select {
 .input:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 4px rgba(13, 106, 115, 0.12);
+    box-shadow: 0 0 0 4px rgba(42, 99, 200, 0.14);
 }
 
 .input[readonly],
@@ -215,7 +215,7 @@ table {
 
 thead th {
     padding: 14px 12px;
-    background: #eef7f7;
+    background: #eff4fa;
     color: #3f5668;
     font-size: 12px;
     font-weight: 800;
@@ -237,11 +237,11 @@ tbody td {
 }
 
 tbody tr:hover td {
-    background: #f5fbfb;
+    background: #f8fbff;
 }
 
 tbody tr.is-selected td {
-    background: #e7f5f7;
+    background: #eef5ff;
 }
 
 tbody tr:last-child td {
@@ -282,12 +282,12 @@ tbody tr:last-child td {
 }
 
 .row-btn-edit {
-    background: #165ea8;
+    background: #1f4ea3;
     margin-right: 8px;
 }
 
 .row-btn-password {
-    background: #8556cc;
+    background: #4456d8;
 }
 
 .btn-primary {
@@ -296,7 +296,7 @@ tbody tr:last-child td {
 
 .btn-primary:hover {
     background: var(--color-primary-hover);
-    box-shadow: 0 12px 24px rgba(13, 106, 115, 0.2);
+    box-shadow: 0 12px 24px rgba(31, 78, 163, 0.2);
 }
 
 .btn-secondary {
@@ -325,13 +325,13 @@ tbody tr:last-child td {
 }
 
 .access-kl {
-    background: rgba(22, 94, 168, 0.12);
-    color: #165ea8;
+    background: rgba(31, 78, 163, 0.12);
+    color: #1f4ea3;
 }
 
 .access-gl {
-    background: rgba(13, 106, 115, 0.12);
-    color: #0d6a73;
+    background: rgba(42, 99, 200, 0.14);
+    color: #2a63c8;
 }
 
 .access-manager {
@@ -439,7 +439,7 @@ tbody tr:last-child td {
     padding: 18px;
     border: 1px solid #e2eaf2;
     border-radius: 18px;
-    background: linear-gradient(180deg, #fbfdff 0%, #f4f8fb 100%);
+    background: linear-gradient(180deg, #fbfdff 0%, #f3f8ff 100%);
 }
 
 .section-label {
