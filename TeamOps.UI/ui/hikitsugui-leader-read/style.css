@@ -377,6 +377,14 @@ td.col-setor {
     line-height: 1;
 }
 
+.read-indicator-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+}
+
 .maru {
     color: var(--color-success);
 }
@@ -384,6 +392,25 @@ td.col-setor {
 .batsu {
     color: var(--color-danger);
     cursor: pointer;
+}
+
+.reply-badge {
+    position: absolute;
+    top: -10px;
+    right: -14px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: var(--color-danger);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 4px 10px rgba(217, 45, 32, 0.28);
 }
 
 .animate {

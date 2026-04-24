@@ -30,6 +30,8 @@ const I18N = {
         tileFollowReportSubtitle: "Visao analitica completa dos follow-ups",
         tileFollowChartTitle: "Grafico Follow",
         tileFollowChartSubtitle: "Acompanhamento visual por indicadores",
+        tileTasksReportTitle: "Relatorio Tasks",
+        tileTasksReportSubtitle: "Visao PDCA das tasks cadastradas",
         devTitle: "Em Desenvolvimento",
         devSubtitle: "Atalhos reservados para manter o mesmo mapa do menu antigo.",
         tileOperatorsTitle: "Operadores",
@@ -59,6 +61,8 @@ const I18N = {
         tileFollowReportSubtitle: "\u30d5\u30a9\u30ed\u30fc\u30a2\u30c3\u30d7\u306e\u5206\u6790\u30ec\u30dd\u30fc\u30c8",
         tileFollowChartTitle: "Follow Chart",
         tileFollowChartSubtitle: "\u6307\u6a19\u3054\u3068\u306e\u30d3\u30b8\u30e5\u30a2\u30eb\u63a8\u79fb",
+        tileTasksReportTitle: "Tasks Report",
+        tileTasksReportSubtitle: "Task \u3092 PDCA \u8996\u70b9\u3067\u78ba\u8a8d",
         devTitle: "\u958b\u767a\u4e2d",
         devSubtitle: "\u65e7\u30e1\u30cb\u30e5\u30fc\u69cb\u6210\u3092\u7dad\u6301\u3059\u308b\u305f\u3081\u306e\u4e88\u7d04\u67a0\u3067\u3059\u3002",
         tileOperatorsTitle: "\u30aa\u30da\u30ec\u30fc\u30bf\u30fc",
@@ -133,6 +137,8 @@ function applyLocale() {
     setText("txtTileFollowReportSubtitle", t("tileFollowReportSubtitle"));
     setText("txtTileFollowChartTitle", t("tileFollowChartTitle"));
     setText("txtTileFollowChartSubtitle", t("tileFollowChartSubtitle"));
+    setText("txtTileTasksReportTitle", t("tileTasksReportTitle"));
+    setText("txtTileTasksReportSubtitle", t("tileTasksReportSubtitle"));
     setText("txtDevTitle", t("devTitle"));
     setText("txtDevSubtitle", t("devSubtitle"));
     setText("txtTileOperatorsTitle", t("tileOperatorsTitle"));

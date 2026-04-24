@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatorio de Tasks</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="header-bar">
+        <div class="header-copy">
+            <h1 id="txtHeaderTitle">Relatorio de Tasks</h1>
+            <p id="txtHeaderSubtitle">Leitura PDCA das tasks cadastradas, com foco em prazo, andamento e fechamento.</p>
+        </div>
+    </header>
+
+    <main class="page-shell">
+        <section class="hero-card">
+            <div class="metric-card">
+                <span id="txtMetricTotal">Total</span>
+                <strong id="metricTotal">0</strong>
+            </div>
+            <div class="metric-card">
+                <span id="txtMetricOpen">Abertas</span>
+                <strong id="metricOpen">0</strong>
+            </div>
+            <div class="metric-card">
+                <span id="txtMetricCompleted">Concluidas</span>
+                <strong id="metricCompleted">0</strong>
+            </div>
+            <div class="metric-card">
+                <span id="txtMetricOverdue">Atrasadas</span>
+                <strong id="metricOverdue">0</strong>
+            </div>
+        </section>
+
+        <section class="filter-card">
+            <div class="filter-grid">
+                <label class="filter-field">
+                    <span id="txtDateFrom">Data Inicial</span>
+                    <input id="dtInicial" class="input" type="date">
+                </label>
+
+                <label class="filter-field">
+                    <span id="txtDateTo">Data Final</span>
+                    <input id="dtFinal" class="input" type="date">
+                </label>
+
+                <label class="filter-field">
+                    <span id="txtShift">Turno</span>
+                    <select id="cmbShift" class="input"></select>
+                </label>
+
+                <label class="filter-field">
+                    <span id="txtStatus">Status</span>
+                    <select id="cmbStatus" class="input"></select>
+                </label>
+
+                <label class="filter-field filter-field-wide">
+                    <span id="txtSearch">Buscar</span>
+                    <input id="txtSearchInput" class="input" type="text" placeholder="Task, lider, turno ou criador...">
+                </label>
+
+                <div class="filter-actions">
+                    <button id="btnApply" class="btn-primary" type="button">Buscar</button>
+                    <button id="btnClear" class="btn-ghost" type="button">Limpar</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="table-card">
+            <div class="table-head">
+                <div>
+                    <h2 id="txtTableTitle">Painel PDCA</h2>
+                    <p id="txtTableSubtitle">Plan, Do, Check e Act resumidos para leitura rapida.</p>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th id="txtColTask">Task</th>
+                            <th id="txtColPlan">Plan</th>
+                            <th id="txtColDo">Do</th>
+                            <th id="txtColCheck">Check</th>
+                            <th id="txtColAct">Act</th>
+                            <th id="txtColStatus">Status</th>
+                            <th id="txtColActions" class="actions-col">Acoes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tblBody">
+                        <tr>
+                            <td colspan="8" class="empty-cell">Carregando...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <button id="btnCloseModalX" class="close" type="button" aria-label="Fechar">x</button>
+            <div class="modal-head">
+                <div>
+                    <h3 id="modalTitle">Task</h3>
+                    <p id="modalSubtitle">Leitura completa da task em PDCA.</p>
+                </div>
+                <span id="modalStatus" class="status-pill">-</span>
+            </div>
+
+            <div class="pdca-grid">
+                <section class="pdca-card">
+                    <h4 id="txtModalPlan">Plan</h4>
+                    <div id="modalPlan" class="detail-stack"></div>
+                </section>
+                <section class="pdca-card">
+                    <h4 id="txtModalDo">Do</h4>
+                    <div id="modalDo" class="detail-stack"></div>
+                </section>
+                <section class="pdca-card">
+                    <h4 id="txtModalCheck">Check</h4>
+                    <div id="modalCheck" class="detail-stack"></div>
+                </section>
+                <section class="pdca-card">
+                    <h4 id="txtModalAct">Act</h4>
+                    <div id="modalAct" class="detail-stack"></div>
+                </section>
+            </div>
+
+            <section class="history-card">
+                <div class="history-head">
+                    <h4 id="txtHistoryTitle">Historico</h4>
+                    <p id="txtHistorySubtitle">Mudancas registradas no andamento da task.</p>
+                </div>
+                <div id="historyList" class="history-list"></div>
+            </section>
+
+            <div class="modal-actions">
+                <button id="btnCloseModal" class="btn-primary" type="button">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

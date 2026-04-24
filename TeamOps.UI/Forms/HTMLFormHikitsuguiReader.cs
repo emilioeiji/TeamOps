@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Windows.Forms;
+using TeamOps.Core.Common;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Db;
 using TeamOps.UI.Forms.Models;
@@ -175,22 +176,29 @@ namespace TeamOps.UI.Forms
 
         private IEnumerable<object> QueryMembers(System.Data.IDbConnection conn, string audience, int shiftId, int sectorId)
         {
-            var isLeader = audience != "operators";
-
             const string sql = @"
                 SELECT
-                    CodigoFJ,
-                    COALESCE(NameRomanji, CodigoFJ) AS NamePt,
-                    COALESCE(NULLIF(NameNihongo, ''), NameRomanji, CodigoFJ) AS NameJp,
-                    ShiftId,
-                    SectorId,
-                    COALESCE(GroupId, 0) AS GroupId
-                FROM Operators
-                WHERE Status = 1
-                  AND IsLeader = @isLeader
+                    o.CodigoFJ,
+                    COALESCE(o.NameRomanji, o.CodigoFJ) AS NamePt,
+                    COALESCE(NULLIF(o.NameNihongo, ''), o.NameRomanji, o.CodigoFJ) AS NameJp,
+                    o.ShiftId,
+                    o.SectorId,
+                    COALESCE(o.GroupId, 0) AS GroupId,
+                    o.IsLeader,
+                    COALESCE(u.AccessLevel, 0) AS AccessLevel
+                FROM Operators o
+                LEFT JOIN Users u ON u.CodigoFJ = o.CodigoFJ
+                WHERE o.Status = 1
                 ORDER BY NameRomanji;";
 
-            var rows = conn.Query<MemberRow>(sql, new { isLeader = isLeader ? 1 : 0 }).ToList();
+            var rows = conn.Query<MemberRow>(sql).ToList();
+
+            rows = audience switch
+            {
+                "leaders" => rows.Where(row => row.IsLeader).ToList(),
+                "masv" => rows.Where(row => row.AccessLevel >= (int)AccessLevel.GL).ToList(),
+                _ => rows.Where(row => !row.IsLeader).ToList()
+            };
 
             if (shiftId > 0)
             {
@@ -203,7 +211,7 @@ namespace TeamOps.UI.Forms
             }
 
             rows = rows
-                .OrderBy(row => isLeader ? row.GroupId : row.SectorId)
+                .OrderBy(row => audience == "operators" ? row.SectorId : row.GroupId)
                 .ThenBy(row => row.GroupId)
                 .ThenBy(row => row.NamePt)
                 .ToList();
@@ -427,7 +435,7 @@ namespace TeamOps.UI.Forms
         {
             return audience switch
             {
-                "leaders" => row.ForLeaders,
+                "leaders" => row.ForLeaders || row.ForOperators,
                 "masv" => row.ForMaSv,
                 _ => row.ForOperators
             };
@@ -448,6 +456,8 @@ namespace TeamOps.UI.Forms
             public int ShiftId { get; set; }
             public int? SectorId { get; set; }
             public int GroupId { get; set; }
+            public bool IsLeader { get; set; }
+            public int AccessLevel { get; set; }
         }
 
         private sealed class HikitsuguiRow

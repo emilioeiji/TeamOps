@@ -581,6 +581,11 @@ namespace TeamOps.UI.Forms
                     COALESCE(NULLIF(l.NameJp, ''), l.NamePt, '') AS LocalJp,
                     COALESCE(s.NamePt, '') AS SectorPt,
                     COALESCE(NULLIF(s.NameJp, ''), s.NamePt, '') AS SectorJp,
+                    (
+                        SELECT COUNT(1)
+                        FROM HikitsuguiResponses hr
+                        WHERE hr.HikitsuguiId = h.Id
+                    ) AS ReplyCount,
                     h.Description,
                     h.AttachmentPath,
                     CASE WHEN r.Id IS NULL THEN 0 ELSE 1 END AS IsRead
@@ -657,6 +662,7 @@ namespace TeamOps.UI.Forms
                 row.LocalJp,
                 row.SectorPt,
                 row.SectorJp,
+                row.ReplyCount,
                 row.Description,
                 DescriptionHtml = row.Description ?? string.Empty,
                 row.AttachmentPath,

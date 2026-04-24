@@ -59,6 +59,7 @@ const I18N = {
         openAttachment: "Abrir",
         deleteAttachment: "Excluir",
         confirmDelete: "Tem certeza que deseja excluir?",
+        replyBadge: count => `${count} resposta(s)`,
         editModalTitle: "Editar Hikitsugui",
         editCategoryLabel: "Categoria",
         editEquipmentLabel: "Equipamento",
@@ -126,6 +127,7 @@ const I18N = {
         openAttachment: "開く",
         deleteAttachment: "削除",
         confirmDelete: "削除してもよろしいですか。",
+        replyBadge: count => `返信 ${count} 件`,
         editModalTitle: "Hikitsugui を編集",
         editCategoryLabel: "カテゴリ",
         editEquipmentLabel: "設備",
@@ -400,9 +402,10 @@ function renderTable(rows) {
     tbody.innerHTML = "";
 
     rows.forEach(r => {
+        const replyCount = Number(r.ReplyCount || 0);
         const icon = Number(r.IsRead) === 1
-            ? `<span class="maru animate">○</span>`
-            : `<span class="batsu animate" onclick="markRead(${r.Id})">×</span>`;
+            ? `<span class="read-indicator-wrap"><span class="maru animate">○</span>${renderReplyBadge(replyCount)}</span>`
+            : `<span class="read-indicator-wrap"><span class="batsu animate" onclick="markRead(${r.Id})">×</span>${renderReplyBadge(replyCount)}</span>`;
 
         const dataFormatada = r.Date?.split(" ")[0] ?? "";
         const operatorName = getLocalizedValue(r, "OperatorNamePt", "OperatorNameJp");
@@ -517,6 +520,15 @@ function renderAttachments(rows) {
             </div>
         `;
     });
+}
+
+function renderReplyBadge(count) {
+    if (!count) {
+        return "";
+    }
+
+    const label = t("replyBadge")(count);
+    return `<span class="reply-badge" title="${escapeHtmlAttr(label)}" aria-label="${escapeHtmlAttr(label)}">${count}</span>`;
 }
 
 function renderEditAttachments(rows) {
