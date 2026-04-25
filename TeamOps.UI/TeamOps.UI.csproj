@@ -216,6 +216,9 @@
     <None Update="ui\presence-layout\index.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="ui\presence-layout\layouts.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="ui\presence-layout\style.css">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

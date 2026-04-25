@@ -25,6 +25,7 @@ const I18N = {
         new: "Novo",
         tableTitle: "Registros",
         tableSubtitle: "Edite ou exclua direto da lista para manter o fluxo rapido.",
+        tableReadonlySubtitle: "Consulta simples do historico, sem permitir inclusao, edicao ou exclusao.",
         actions: "Acoes",
         actionEdit: "Editar",
         actionDelete: "Excluir",
@@ -36,6 +37,7 @@ const I18N = {
         modalEditSubtitle: "Ajuste os dados e salve as alteracoes.",
         cancel: "Cancelar",
         save: "Salvar",
+        readonlyBadge: "Somente leitura",
         selectPlaceholder: "Selecione...",
         confirmDelete: entity => `Deseja excluir este registro de ${entity}?`,
         saved: "Cadastro salvo com sucesso.",
@@ -56,6 +58,7 @@ const I18N = {
         new: "\u65b0\u898f",
         tableTitle: "\u30ec\u30b3\u30fc\u30c9",
         tableSubtitle: "\u30ea\u30b9\u30c8\u304b\u3089\u3059\u3070\u3084\u304f\u7de8\u96c6\u30fb\u524a\u9664\u3067\u304d\u307e\u3059\u3002",
+        tableReadonlySubtitle: "\u5c65\u6b74\u3092\u53c2\u7167\u3059\u308b\u305f\u3081\u306e\u4e00\u89a7\u3067\u3001\u8ffd\u52a0\u30fb\u7de8\u96c6\u30fb\u524a\u9664\u306f\u3067\u304d\u307e\u305b\u3093\u3002",
         actions: "\u64cd\u4f5c",
         actionEdit: "\u7de8\u96c6",
         actionDelete: "\u524a\u9664",
@@ -67,6 +70,7 @@ const I18N = {
         modalEditSubtitle: "\u5185\u5bb9\u3092\u4fee\u6b63\u3057\u3066\u4fdd\u5b58\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
         cancel: "\u30ad\u30e3\u30f3\u30bb\u30eb",
         save: "\u4fdd\u5b58",
+        readonlyBadge: "\u95b2\u89a7\u306e\u307f",
         selectPlaceholder: "\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044",
         confirmDelete: entity => `${entity} \u306e\u3053\u306e\u30ec\u30b3\u30fc\u30c9\u3092\u524a\u9664\u3057\u307e\u3059\u304b\u3002`,
         saved: "\u767b\u9332\u3092\u4fdd\u5b58\u3057\u307e\u3057\u305f\u3002",
@@ -155,6 +159,7 @@ function normalizeEntity(entity) {
     return {
         key: entity.key,
         group: entity.group || "misc",
+        readOnly: !!entity.readOnly,
         titlePt: entity.titlePt || entity.key,
         titleJp: entity.titleJp || entity.titlePt || entity.key,
         descriptionPt: entity.descriptionPt || "",
@@ -193,7 +198,6 @@ function applyLocale() {
     document.getElementById("searchInput").placeholder = t("searchPlaceholder");
     setText("btnNew", t("new"));
     setText("txtTableTitle", t("tableTitle"));
-    setText("txtTableSubtitle", t("tableSubtitle"));
     setText("btnCancelModal", t("cancel"));
     setText("btnSaveModal", t("save"));
 
@@ -202,6 +206,13 @@ function applyLocale() {
     setText("entityDescription", entity ? entityDescription(entity) : "-");
     setText("lblActiveEntity", entity ? entityTitle(entity) : "-");
     setText("lblTotalRows", state.rows.length);
+
+    const tableSubtitle = entity?.readOnly ? t("tableReadonlySubtitle") : t("tableSubtitle");
+    setText("txtTableSubtitle", tableSubtitle);
+
+    const btnNew = document.getElementById("btnNew");
+    btnNew.classList.toggle("hidden", !!entity?.readOnly);
+    btnNew.disabled = !!entity?.readOnly;
 }
 
 function renderEntityList() {
@@ -263,29 +274,35 @@ function renderTable() {
 
     head.innerHTML = `
         ${entity.columns.map(column => `<th>${escapeHtml(columnLabel(column))}</th>`).join("")}
-        <th class="actions-col">${escapeHtml(t("actions"))}</th>
+        ${entity.readOnly ? "" : `<th class="actions-col">${escapeHtml(t("actions"))}</th>`}
     `;
 
     if (!state.filteredRows.length) {
-        body.innerHTML = `<tr><td class="empty-cell" colspan="${entity.columns.length + 1}">${escapeHtml(state.rows.length ? t("empty") : t("loading"))}</td></tr>`;
+        body.innerHTML = `<tr><td class="empty-cell" colspan="${entity.columns.length + (entity.readOnly ? 0 : 1)}">${escapeHtml(state.rows.length ? t("empty") : t("loading"))}</td></tr>`;
         return;
     }
 
     body.innerHTML = state.filteredRows.map(row => `
         <tr>
             ${entity.columns.map(column => `<td>${escapeHtml(displayValue(row, column))}</td>`).join("")}
-            <td class="actions-col">
-                <div class="action-buttons">
-                    <button class="icon-btn icon-btn-edit" type="button" data-edit="${row.id}" title="${escapeHtmlAttr(t("actionEdit"))}" aria-label="${escapeHtmlAttr(t("actionEdit"))}">
-                        ${iconEdit()}
-                    </button>
-                    <button class="icon-btn icon-btn-delete" type="button" data-delete="${row.id}" title="${escapeHtmlAttr(t("actionDelete"))}" aria-label="${escapeHtmlAttr(t("actionDelete"))}">
-                        ${iconDelete()}
-                    </button>
-                </div>
-            </td>
+            ${entity.readOnly ? "" : `
+                <td class="actions-col">
+                    <div class="action-buttons">
+                        <button class="icon-btn icon-btn-edit" type="button" data-edit="${row.id}" title="${escapeHtmlAttr(t("actionEdit"))}" aria-label="${escapeHtmlAttr(t("actionEdit"))}">
+                            ${iconEdit()}
+                        </button>
+                        <button class="icon-btn icon-btn-delete" type="button" data-delete="${row.id}" title="${escapeHtmlAttr(t("actionDelete"))}" aria-label="${escapeHtmlAttr(t("actionDelete"))}">
+                            ${iconDelete()}
+                        </button>
+                    </div>
+                </td>
+            `}
         </tr>
     `).join("");
+
+    if (entity.readOnly) {
+        return;
+    }
 
     body.querySelectorAll("[data-edit]").forEach(button => {
         button.addEventListener("click", () => openModal("edit", Number(button.dataset.edit)));
@@ -324,7 +341,7 @@ function applySearch() {
 
 function openModal(mode, id = 0) {
     const entity = currentEntity();
-    if (!entity) return;
+    if (!entity || entity.readOnly) return;
 
     state.modalMode = mode;
     state.editingId = id;
@@ -374,7 +391,7 @@ function renderField(entity, field, row) {
 
 function saveModal() {
     const entity = currentEntity();
-    if (!entity) return;
+    if (!entity || entity.readOnly) return;
 
     const values = {};
     document.querySelectorAll("[data-field]").forEach(input => {
@@ -398,7 +415,7 @@ function saveModal() {
 
 function deleteRow(id) {
     const entity = currentEntity();
-    if (!entity || id <= 0) return;
+    if (!entity || entity.readOnly || id <= 0) return;
 
     if (!confirm(t("confirmDelete")(entityTitle(entity)))) {
         return;

@@ -103,6 +103,7 @@ namespace TeamOps.UI.Forms
                     {
                         key = entity.Key,
                         group = entity.Group,
+                        readOnly = entity.ReadOnly,
                         titlePt = entity.TitlePt,
                         titleJp = entity.TitleJp,
                         descriptionPt = entity.DescriptionPt,
@@ -174,6 +175,9 @@ namespace TeamOps.UI.Forms
             if (!_entities.TryGetValue(entityKey, out var entity))
                 throw new InvalidOperationException(L("Item administrativo invalido.", "\u7121\u52b9\u306a\u7ba1\u7406\u9805\u76ee\u3067\u3059\u3002"));
 
+            if (entity.ReadOnly)
+                throw new InvalidOperationException(L("Este item e somente leitura.", "\u3053\u306e\u9805\u76ee\u306f\u95b2\u89a7\u306e\u307f\u3067\u3059\u3002"));
+
             var values = root.GetProperty("values");
             var parameters = entity.BuildParameters(values);
 
@@ -196,6 +200,9 @@ namespace TeamOps.UI.Forms
 
             if (!_entities.TryGetValue(entityKey, out var entity))
                 throw new InvalidOperationException(L("Item administrativo invalido.", "\u7121\u52b9\u306a\u7ba1\u7406\u9805\u76ee\u3067\u3059\u3002"));
+
+            if (entity.ReadOnly)
+                throw new InvalidOperationException(L("Este item e somente leitura.", "\u3053\u306e\u9805\u76ee\u306f\u95b2\u89a7\u306e\u307f\u3067\u3059\u3002"));
 
             var values = root.GetProperty("values");
             var parameters = entity.BuildParameters(values);
@@ -220,6 +227,9 @@ namespace TeamOps.UI.Forms
 
             if (!_entities.TryGetValue(entityKey, out var entity))
                 throw new InvalidOperationException(L("Item administrativo invalido.", "\u7121\u52b9\u306a\u7ba1\u7406\u9805\u76ee\u3067\u3059\u3002"));
+
+            if (entity.ReadOnly)
+                throw new InvalidOperationException(L("Este item e somente leitura.", "\u3053\u306e\u9805\u76ee\u306f\u95b2\u89a7\u306e\u307f\u3067\u3059\u3002"));
 
             using var conn = _factory.CreateOpenConnection();
             conn.Execute(entity.DeleteSql, new { id });
@@ -286,7 +296,8 @@ namespace TeamOps.UI.Forms
                     "Tipos de acompanhamento para os formularios de follow.",
                     "\u30d5\u30a9\u30ed\u30fc\u30d5\u30a9\u30fc\u30e0\u3067\u4f7f\u3046\u7a2e\u5225\u30de\u30b9\u30bf\u3067\u3059\u3002",
                     "FollowUpTypes"),
-                CreateShainEntity()
+                CreateShainEntity(),
+                CreateSystemLogEntity()
             }.ToDictionary(item => item.Key, StringComparer.OrdinalIgnoreCase);
         }
 
@@ -454,6 +465,53 @@ namespace TeamOps.UI.Forms
             };
         }
 
+        private static AdminEntityDefinition CreateSystemLogEntity()
+        {
+            return new AdminEntityDefinition
+            {
+                Key = "system_log",
+                Group = "misc",
+                ReadOnly = true,
+                TitlePt = "Log do Sistema",
+                TitleJp = "\u30b7\u30b9\u30c6\u30e0\u30ed\u30b0",
+                DescriptionPt = "Historico de eventos gravados pelo sistema, somente para consulta.",
+                DescriptionJp = "\u30b7\u30b9\u30c6\u30e0\u304c\u8a18\u9332\u3057\u305f\u5c65\u6b74\u3092\u95b2\u89a7\u3059\u308b\u305f\u3081\u306e\u4e00\u89a7\u3067\u3059\u3002",
+                Columns =
+                {
+                    new AdminColumnDefinition("timestamp", null, "Data/Hora", "\u65e5\u6642"),
+                    new AdminColumnDefinition("userFJ", null, "FJ", "FJ"),
+                    new AdminColumnDefinition("module", null, "Modulo", "\u30e2\u30b8\u30e5\u30fc\u30eb"),
+                    new AdminColumnDefinition("action", null, "Acao", "\u64cd\u4f5c"),
+                    new AdminColumnDefinition("targetId", null, "Target", "\u5bfe\u8c61"),
+                    new AdminColumnDefinition("details", null, "Detalhes", "\u8a73\u7d30")
+                },
+                QueryRows = conn => conn.ExecuteScalar<int>(
+                        @"SELECT COUNT(1)
+                          FROM sqlite_master
+                          WHERE type = 'table'
+                            AND name = 'SystemLog';"
+                    ) > 0
+                        ? conn.Query(
+                            @"
+                                SELECT
+                                    COALESCE(Timestamp, '') AS timestamp,
+                                    COALESCE(UserFJ, '') AS userFJ,
+                                    COALESCE(Module, '') AS module,
+                                    COALESCE(Action, '') AS action,
+                                    COALESCE(CAST(TargetId AS TEXT), '') AS targetId,
+                                    COALESCE(Details, '') AS details
+                                FROM SystemLog
+                                ORDER BY Timestamp DESC, Id DESC
+                                LIMIT 500;"
+                        )
+                        : Array.Empty<object>(),
+                InsertSql = string.Empty,
+                UpdateSql = string.Empty,
+                DeleteSql = string.Empty,
+                BuildParameters = _ => throw new InvalidOperationException(L("O log do sistema e somente leitura.", "\u30b7\u30b9\u30c6\u30e0\u30ed\u30b0\u306f\u95b2\u89a7\u306e\u307f\u3067\u3059\u3002"))
+            };
+        }
+
         private void PostJson(object payload)
         {
             var json = JsonSerializer.Serialize(payload);
@@ -491,6 +549,7 @@ namespace TeamOps.UI.Forms
         {
             public string Key { get; set; } = string.Empty;
             public string Group { get; set; } = string.Empty;
+            public bool ReadOnly { get; set; }
             public string TitlePt { get; set; } = string.Empty;
             public string TitleJp { get; set; } = string.Empty;
             public string DescriptionPt { get; set; } = string.Empty;

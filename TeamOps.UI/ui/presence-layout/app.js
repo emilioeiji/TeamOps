@@ -67,84 +67,18 @@ const I18N = {
     }
 };
 
-const LAYOUTS = {
-    1: {
-        width: 540,
-        height: 580,
-        locals: [
-            { id: 18, x: 16, y: 16, w: 84, h: 66 },
-            { id: 16, x: 132, y: 16, w: 84, h: 66 },
-            { id: 12, x: 252, y: 16, w: 84, h: 66 },
-            { id: 8, x: 336, y: 16, w: 84, h: 66 },
-            { id: 4, x: 454, y: 16, w: 84, h: 66 },
-            { id: 11, x: 252, y: 82, w: 84, h: 66 },
-            { id: 7, x: 336, y: 82, w: 84, h: 66 },
-            { id: 3, x: 454, y: 82, w: 84, h: 66 },
-            { id: 14, x: 132, y: 148, w: 84, h: 66 },
-            { id: 10, x: 252, y: 148, w: 84, h: 66 },
-            { id: 6, x: 336, y: 148, w: 84, h: 66 },
-            { id: 2, x: 454, y: 148, w: 84, h: 66 },
-            { id: 13, x: 132, y: 214, w: 84, h: 66 },
-            { id: 9, x: 252, y: 214, w: 84, h: 66 },
-            { id: 5, x: 336, y: 214, w: 84, h: 66 },
-            { id: 1, x: 454, y: 214, w: 84, h: 66 },
-            { id: 17, x: 16, y: 214, w: 84, h: 66 }
-        ],
-        corridors: [
-            { x: 110, y: 108, w: 18, h: 172, rotate: true },
-            { x: 222, y: 78, w: 18, h: 202, rotate: true },
-            { x: 424, y: 86, w: 22, h: 180, rotate: true }
-        ]
-    },
-    2: {
-        width: 820,
-        height: 330,
-        locals: [
-            { id: 7, x: 10, y: 14, w: 102, h: 72 },
-            { id: 6, x: 112, y: 14, w: 102, h: 72 },
-            { id: 5, x: 214, y: 14, w: 102, h: 72 },
-            { id: 4, x: 352, y: 14, w: 102, h: 72 },
-            { id: 3, x: 454, y: 14, w: 102, h: 72 },
-            { id: 2, x: 592, y: 14, w: 102, h: 72 },
-            { id: 1, x: 694, y: 14, w: 102, h: 72 },
-            { id: 14, x: 10, y: 112, w: 102, h: 72 },
-            { id: 13, x: 112, y: 112, w: 102, h: 72 },
-            { id: 12, x: 214, y: 112, w: 102, h: 72 },
-            { id: 11, x: 352, y: 112, w: 102, h: 72 },
-            { id: 10, x: 454, y: 112, w: 102, h: 72 },
-            { id: 9, x: 592, y: 112, w: 102, h: 72 },
-            { id: 8, x: 694, y: 112, w: 102, h: 72 },
-            { id: 21, x: 10, y: 210, w: 102, h: 72 },
-            { id: 20, x: 112, y: 210, w: 102, h: 72 },
-            { id: 19, x: 214, y: 210, w: 102, h: 72 },
-            { id: 18, x: 352, y: 210, w: 102, h: 72 },
-            { id: 17, x: 454, y: 210, w: 102, h: 72 },
-            { id: 16, x: 592, y: 210, w: 102, h: 72 },
-            { id: 15, x: 694, y: 210, w: 102, h: 72 }
-        ],
-        corridors: [
-            { x: 10, y: 86, w: 306, h: 20, rotate: false },
-            { x: 352, y: 86, w: 204, h: 20, rotate: false },
-            { x: 592, y: 86, w: 204, h: 20, rotate: false },
-            { x: 10, y: 184, w: 306, h: 20, rotate: false },
-            { x: 352, y: 184, w: 204, h: 20, rotate: false },
-            { x: 592, y: 184, w: 204, h: 20, rotate: false },
-            { x: 320, y: 112, w: 24, h: 170, rotate: true },
-            { x: 560, y: 112, w: 24, h: 170, rotate: true }
-        ]
-    }
-};
-
 const state = {
     locale: "pt-BR",
     shifts: [],
+    layouts: {},
+    localsCatalog: [],
     board: null,
     pinnedNotice: false
 };
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     bindEvents();
-    window.chrome?.webview?.postMessage({ action: "load" });
+    await bootstrap();
 });
 
 window.chrome?.webview?.addEventListener("message", event => {
@@ -181,9 +115,29 @@ function bindEvents() {
     document.getElementById("shiftPicker").addEventListener("change", refreshBoard);
 }
 
+async function bootstrap() {
+    state.layouts = await loadLayouts();
+    window.chrome?.webview?.postMessage({ action: "load" });
+}
+
+async function loadLayouts() {
+    try {
+        const response = await fetch("layouts.json", { cache: "no-store" });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error("Nao foi possivel carregar layouts.json", error);
+        return {};
+    }
+}
+
 function hydrateInit(data) {
     state.locale = data.locale === "ja-JP" ? "ja-JP" : "pt-BR";
     state.shifts = data.shifts || [];
+    state.localsCatalog = data.locals || [];
 
     const datePicker = document.getElementById("datePicker");
     const shiftPicker = document.getElementById("shiftPicker");
@@ -249,18 +203,24 @@ function renderSectors(sectors) {
 }
 
 function renderSectorCard(sector) {
-    const layout = LAYOUTS[sector.id];
+    const layout = state.layouts[String(sector.id)] || state.layouts[sector.id];
+    if (!layout) {
+        return renderFallbackSectorCard(sector);
+    }
+
     const localsMap = new Map((sector.locals || []).map(local => [Number(local.localId), local]));
 
-    const blueprint = layout.locals.map(slot => {
-        const localState = localsMap.get(slot.id) || createEmptyLocal(slot.id);
+    const blueprint = (layout.locals || []).map(slot => {
+        const localId = Number(slot.localId || 0);
+        const localState = localsMap.get(localId) || createEmptyLocal(localId, resolveLocalName(localId, slot.label));
         const statusClass = getLocalStatusClass(localState);
         const style = toBlueprintStyle(slot, layout);
+        const localTitle = localState.localName || resolveLocalName(localId, slot.label);
 
         return `
-            <div class="local-slot ${statusClass}" style="${style}" title="${escapeHtml(localState.tooltip || `${t("local")} ${slot.id}`)}">
+            <div class="local-slot ${statusClass}" style="${style}" title="${escapeHtml(localState.tooltip || localTitle)}">
                 <div class="local-slot-head">
-                    <span class="local-slot-id">${slot.id}</span>
+                    <span class="local-slot-name">${escapeHtml(localTitle)}</span>
                     <span class="local-slot-state">${escapeHtml(getLocalStateLabel(localState))}</span>
                 </div>
                 <div class="local-slot-metrics">
@@ -274,7 +234,7 @@ function renderSectorCard(sector) {
         `;
     }).join("");
 
-    const corridors = layout.corridors.map(corridor => `
+    const corridors = (layout.corridors || []).map(corridor => `
         <div class="corridor-label ${corridor.rotate ? "corridor-vertical" : ""}" style="${toBlueprintStyle(corridor, layout)}">
             ${escapeHtml(t("corridor"))}
         </div>
@@ -295,9 +255,49 @@ function renderSectorCard(sector) {
                 </div>
             </div>
 
-            <div class="sector-blueprint" style="aspect-ratio:${layout.width} / ${layout.height}">
-                ${corridors}
-                ${blueprint}
+            <div class="sector-blueprint-stage">
+                <div class="sector-blueprint" style="aspect-ratio:${layout.width} / ${layout.height}">
+                    ${corridors}
+                    ${blueprint}
+                </div>
+            </div>
+        </article>
+    `;
+}
+
+function renderFallbackSectorCard(sector) {
+    const items = (sector.locals || []).map(local => `
+        <div class="fallback-local-card ${getLocalStatusClass(local)}">
+            <div class="local-slot-head">
+                <span class="local-slot-name">${escapeHtml(local.localName || resolveLocalName(local.localId))}</span>
+                <span class="local-slot-state">${escapeHtml(getLocalStateLabel(local))}</span>
+            </div>
+            <div class="local-slot-metrics">
+                <span>P ${local.plannedCount ?? 0}</span>
+                <span>C ${local.confirmedCount ?? 0}</span>
+            </div>
+            <div class="local-people">
+                ${renderPeople(local)}
+            </div>
+        </div>
+    `).join("");
+
+    return `
+        <article class="sector-card">
+            <div class="sector-head">
+                <div>
+                    <h3>${escapeHtml(sector.name)}</h3>
+                    <p>${escapeHtml(buildSectorSubtitle(sector.summary || {}))}</p>
+                </div>
+                <div class="sector-stat-grid">
+                    <span class="sector-stat"><strong>${sector.summary?.plannedCount ?? 0}</strong><small>${escapeHtml(t("sectorPlanned"))}</small></span>
+                    <span class="sector-stat sector-stat-confirmed"><strong>${sector.summary?.confirmedCount ?? 0}</strong><small>${escapeHtml(t("sectorConfirmed"))}</small></span>
+                    <span class="sector-stat sector-stat-missing"><strong>${sector.summary?.missingCount ?? 0}</strong><small>${escapeHtml(t("sectorMissing"))}</small></span>
+                    <span class="sector-stat sector-stat-extra"><strong>${sector.summary?.extraCount ?? 0}</strong><small>${escapeHtml(t("sectorExtra"))}</small></span>
+                </div>
+            </div>
+            <div class="fallback-sector-grid">
+                ${items || `<div class="chip chip-empty">${escapeHtml(t("emptyLocal"))}</div>`}
             </div>
         </article>
     `;
@@ -345,16 +345,30 @@ function getLocalStateLabel(localState) {
     return "-";
 }
 
-function createEmptyLocal(localId) {
+function createEmptyLocal(localId, localName) {
     return {
         localId,
+        localName: localName || resolveLocalName(localId),
         plannedCount: 0,
         confirmedCount: 0,
         missingCount: 0,
         extraCount: 0,
         people: [],
-        tooltip: `${t("local")} ${localId}`
+        tooltip: localName || resolveLocalName(localId)
     };
+}
+
+function resolveLocalName(localId, fallbackLabel = "") {
+    const local = state.localsCatalog.find(item => Number(item.id) === Number(localId));
+    if (local) {
+        if (state.locale === "ja-JP" && local.nameJp) {
+            return local.nameJp;
+        }
+
+        return local.namePt || local.nameJp || fallbackLabel || `${t("local")} ${localId}`;
+    }
+
+    return fallbackLabel || `${t("local")} ${localId}`;
 }
 
 function toBlueprintStyle(item, layout) {

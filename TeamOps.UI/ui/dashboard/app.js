@@ -18,7 +18,6 @@ const ACCESS_LABELS = {
 const PERMISSION_RULES = {
     btnRelatorios: 3,
     btnPresenca: 3,
-    btnPresenca2: 3,
     btnFollowUp: 2,
     btnTasks: 3,
     btnHikitsugui: 2,
@@ -72,10 +71,8 @@ const I18N = {
         tileClSubtitle: "Controle de linha",
         tileTodokeTitle: "Todoke",
         tileTodokeSubtitle: "Solicitacoes e folhas",
-        tilePresenceGTitle: "Presenca G-Bareru",
-        tilePresenceGSubtitle: "Painel do setor",
-        tilePresenceDTitle: "Presenca DAD",
-        tilePresenceDSubtitle: "Painel do setor",
+        tilePresenceTitle: "Presenca",
+        tilePresenceSubtitle: "Painel dos setores",
         tileAdminTitle: "Admin",
         tileAdminSubtitle: "Configuracoes do sistema",
         tileAccessTitle: "Acesso",
@@ -124,10 +121,8 @@ const I18N = {
         tileClSubtitle: "\u30e9\u30a4\u30f3\u7ba1\u7406",
         tileTodokeTitle: "\u5c4a\u51fa",
         tileTodokeSubtitle: "\u7533\u8acb\u3068\u66f8\u985e",
-        tilePresenceGTitle: "G-Bareru \u51fa\u52e4",
-        tilePresenceGSubtitle: "\u30bb\u30af\u30bf\u30fc\u30d1\u30cd\u30eb",
-        tilePresenceDTitle: "DAD \u51fa\u52e4",
-        tilePresenceDSubtitle: "\u30bb\u30af\u30bf\u30fc\u30d1\u30cd\u30eb",
+        tilePresenceTitle: "\u51fa\u52e4",
+        tilePresenceSubtitle: "\u30bb\u30af\u30bf\u30fc\u30d1\u30cd\u30eb",
         tileAdminTitle: "\u7ba1\u7406",
         tileAdminSubtitle: "\u30b7\u30b9\u30c6\u30e0\u8a2d\u5b9a",
         tileAccessTitle: "\u30a2\u30af\u30bb\u30b9",
@@ -284,10 +279,8 @@ function setLocale(locale) {
     setText("txtTileClSubtitle", strings.tileClSubtitle);
     setText("txtTileTodokeTitle", strings.tileTodokeTitle);
     setText("txtTileTodokeSubtitle", strings.tileTodokeSubtitle);
-    setText("txtTilePresenceGTitle", strings.tilePresenceGTitle);
-    setText("txtTilePresenceGSubtitle", strings.tilePresenceGSubtitle);
-    setText("txtTilePresenceDTitle", strings.tilePresenceDTitle);
-    setText("txtTilePresenceDSubtitle", strings.tilePresenceDSubtitle);
+    setText("txtTilePresenceTitle", strings.tilePresenceTitle);
+    setText("txtTilePresenceSubtitle", strings.tilePresenceSubtitle);
     setText("txtTileAdminTitle", strings.tileAdminTitle);
     setText("txtTileAdminSubtitle", strings.tileAdminSubtitle);
     setText("txtTileAccessTitle", strings.tileAccessTitle);

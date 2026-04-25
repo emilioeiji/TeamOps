@@ -26,6 +26,7 @@ namespace TeamOps.UI.Forms
         private readonly OperatorScheduleRepository _scheduleRepo;
         private readonly OperatorRepository _operatorRepo;
         private readonly ShiftRepository _shiftRepo;
+        private readonly LocalRepository _localRepo;
         private readonly int _defaultShiftId;
 
         public HTMLFormPresenceLayout(SqliteConnectionFactory factory, int defaultShiftId)
@@ -40,6 +41,7 @@ namespace TeamOps.UI.Forms
             _scheduleRepo = new OperatorScheduleRepository(factory);
             _operatorRepo = new OperatorRepository(factory);
             _shiftRepo = new ShiftRepository(factory);
+            _localRepo = new LocalRepository(factory);
 
             InitializeWebView();
         }
@@ -101,6 +103,7 @@ namespace TeamOps.UI.Forms
         private void LoadInitialData()
         {
             var shifts = _shiftRepo.GetAll();
+            var locals = _localRepo.GetAll();
             var today = DateTime.Today;
             var shiftId = shifts.Any(s => s.Id == _defaultShiftId)
                 ? _defaultShiftId
@@ -123,6 +126,13 @@ namespace TeamOps.UI.Forms
                         namePt = shift.NamePt,
                         nameJp = string.IsNullOrWhiteSpace(shift.NameJp) ? shift.NamePt : shift.NameJp
                     }),
+                    locals = locals.Select(local => new
+                    {
+                        id = local.Id,
+                        sectorId = local.SectorId,
+                        namePt = local.NamePt,
+                        nameJp = string.IsNullOrWhiteSpace(local.NameJp) ? local.NamePt : local.NameJp
+                    }),
                     sectors = SectorDefinitions.Select(sector => new
                     {
                         id = sector.Id,
@@ -142,6 +152,8 @@ namespace TeamOps.UI.Forms
             var operators = _operatorRepo.GetAll()
                 .GroupBy(op => op.CodigoFJ, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+            var locals = _localRepo.GetAll()
+                .ToDictionary(local => local.Id);
 
             var schedules = _scheduleRepo.GetByDateShift(date, shiftId);
 
@@ -154,7 +166,7 @@ namespace TeamOps.UI.Forms
 
                     var sectorPresence = _presenceRepo.GetLatestByDateSectorShift(date, sector.Id, shiftId);
 
-                    return BuildSectorState(sector, sectorSchedule, sectorPresence, operators);
+                    return BuildSectorState(sector, sectorSchedule, sectorPresence, operators, locals);
                 })
                 .ToList();
 
@@ -263,7 +275,8 @@ namespace TeamOps.UI.Forms
             SectorDefinition definition,
             IReadOnlyCollection<OperatorSchedule> schedules,
             IReadOnlyCollection<OperatorPresence> presences,
-            IReadOnlyDictionary<string, Operator> operators)
+            IReadOnlyDictionary<string, Operator> operators,
+            IReadOnlyDictionary<int, Local> localsById)
         {
             var plannedByLocal = schedules
                 .GroupBy(item => item.LocalId)
@@ -291,8 +304,9 @@ namespace TeamOps.UI.Forms
                 .OrderBy(id => id)
                 .ToList();
 
-            var locals = localIds.Select(localId =>
+            var localStates = localIds.Select(localId =>
             {
+                var localName = ResolveLocalName(localId, localsById);
                 var planned = plannedByLocal.TryGetValue(localId, out var scheduledPeople)
                     ? scheduledPeople
                     : new List<PresencePerson>();
@@ -336,12 +350,13 @@ namespace TeamOps.UI.Forms
                 return new
                 {
                     localId,
+                    localName,
                     plannedCount = planned.Count,
                     confirmedCount,
                     missingCount,
                     extraCount,
                     people = combined,
-                    tooltip = BuildLocalTooltip(localId, planned, present)
+                    tooltip = BuildLocalTooltip(localId, localName, planned, present)
                 };
             }).ToList();
 
@@ -359,15 +374,18 @@ namespace TeamOps.UI.Forms
                 presentKeys.Intersect(plannedKeys, StringComparer.OrdinalIgnoreCase).ToHashSet(StringComparer.OrdinalIgnoreCase),
                 plannedKeys.Except(presentKeys, StringComparer.OrdinalIgnoreCase).ToHashSet(StringComparer.OrdinalIgnoreCase),
                 presentKeys.Except(plannedKeys, StringComparer.OrdinalIgnoreCase).ToHashSet(StringComparer.OrdinalIgnoreCase),
-                locals.Cast<object>().ToList());
+                localStates.Cast<object>().ToList());
         }
 
-        private static string BuildLocalTooltip(int localId, IEnumerable<PresencePerson> planned, IEnumerable<PresencePerson> present)
+        private static string BuildLocalTooltip(int localId, string localName, IEnumerable<PresencePerson> planned, IEnumerable<PresencePerson> present)
         {
             var plannedList = planned.Select(item => item.Display).ToList();
             var presentList = present.Select(item => item.Display).ToList();
 
-            var lines = new List<string> { $"Local {localId}" };
+            var lines = new List<string>
+            {
+                string.IsNullOrWhiteSpace(localName) ? $"Local {localId}" : localName
+            };
 
             lines.Add(plannedList.Count > 0
                 ? $"{L("Previsto", "予定")}: {string.Join(", ", plannedList)}"
@@ -378,6 +396,27 @@ namespace TeamOps.UI.Forms
                 : $"{L("Confirmado", "確認済み")}: -");
 
             return string.Join(Environment.NewLine, lines);
+        }
+
+        private static string ResolveLocalName(int localId, IReadOnlyDictionary<int, Local> locals)
+        {
+            if (!locals.TryGetValue(localId, out var local))
+                return $"Local {localId}";
+
+            var preferred = string.Equals(Program.CurrentLocale, "ja-JP", StringComparison.OrdinalIgnoreCase)
+                ? local.NameJp
+                : local.NamePt;
+
+            if (!string.IsNullOrWhiteSpace(preferred))
+                return preferred.Trim();
+
+            if (!string.IsNullOrWhiteSpace(local.NamePt))
+                return local.NamePt.Trim();
+
+            if (!string.IsNullOrWhiteSpace(local.NameJp))
+                return local.NameJp.Trim();
+
+            return $"Local {localId}";
         }
 
         private static PresencePerson CreatePerson(

@@ -107,17 +107,7 @@ namespace TeamOps.UI.Forms
                         ));
                     break;
 
-                case "open:presence_gbareru":
-                    if (!HasAccess(AccessLevel.GL))
-                        ShowAccessDeniedAsync();
-                    else
-                        OpenDialog(() => new HTMLFormPresenceLayout(
-                            _factory,
-                            _currentShift.Id
-                        ));
-                    break;
-
-                case "open:presence_dad":
+                case "open:presence":
                     if (!HasAccess(AccessLevel.GL))
                         ShowAccessDeniedAsync();
                     else
