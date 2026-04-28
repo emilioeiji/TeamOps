@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Producao / Machine Monitor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="header-bar">
+        <div class="header-copy">
+            <h1 id="txtHeaderTitle">Producao / Machine Monitor</h1>
+            <p id="txtHeaderSubtitle">Monitor de maquinas, producao por turno e linha do tempo operacional.</p>
+        </div>
+        <div class="header-meta">
+            <div class="meta-pill">
+                <span id="txtMetaUser" class="meta-label">Usuario</span>
+                <strong id="lblUser">-</strong>
+            </div>
+            <div class="meta-pill">
+                <span id="txtMetaOperator" class="meta-label">Operador</span>
+                <strong id="lblOperator">-</strong>
+            </div>
+            <div class="meta-pill">
+                <span id="txtMetaPeriod" class="meta-label">Periodo</span>
+                <strong id="lblPeriod">-</strong>
+            </div>
+        </div>
+    </header>
+
+    <main class="page-shell">
+        <section class="toolbar-card">
+            <div class="toolbar-copy">
+                <span id="txtBadge" class="access-badge">Monitor industrial</span>
+                <h2 id="txtToolbarTitle">Filtros do turno</h2>
+                <p id="txtToolbarSubtitle">Importe os arquivos da rede, filtre setor/area/maquina e acompanhe a saude da producao no mesmo painel.</p>
+            </div>
+
+            <div class="toolbar-grid">
+                <label class="form-field">
+                    <span id="txtDateLabel">Data</span>
+                    <input id="datePicker" class="input" type="date">
+                </label>
+
+                <label class="form-field">
+                    <span id="txtShiftLabel">Turno</span>
+                    <select id="shiftPicker" class="input"></select>
+                </label>
+
+                <label class="form-field">
+                    <span id="txtSectorLabel">Setor</span>
+                    <select id="sectorPicker" class="input"></select>
+                </label>
+
+                <label class="form-field">
+                    <span id="txtLocalLabel">Area</span>
+                    <select id="localPicker" class="input"></select>
+                </label>
+
+                <label class="form-field">
+                    <span id="txtMachineLabel">Maquina</span>
+                    <select id="machinePicker" class="input"></select>
+                </label>
+
+                <div class="toolbar-actions">
+                    <button id="btnRefresh" class="btn-secondary" type="button">Atualizar</button>
+                    <button id="btnImport" class="btn-primary" type="button">Importar</button>
+                </div>
+            </div>
+
+            <div id="importNotice" class="notice-banner hidden"></div>
+        </section>
+
+        <section class="summary-grid">
+            <article class="metric-card metric-card-highlight">
+                <span id="txtMetricProduction" class="metric-label">% Producao</span>
+                <strong id="lblProductionPercent">0%</strong>
+            </article>
+            <article class="metric-card">
+                <span id="txtMetricRunning" class="metric-label">Rodando</span>
+                <strong id="lblMachinesRunning">0</strong>
+            </article>
+            <article class="metric-card">
+                <span id="txtMetricStopped" class="metric-label">Paradas</span>
+                <strong id="lblMachinesStopped">0</strong>
+            </article>
+            <article class="metric-card">
+                <span id="txtMetricError" class="metric-label">Min. erro</span>
+                <strong id="lblErrorMinutes">0</strong>
+            </article>
+            <article class="metric-card">
+                <span id="txtMetricInactive" class="metric-label">Min. inativo</span>
+                <strong id="lblInactiveMinutes">0</strong>
+            </article>
+        </section>
+
+        <section class="content-grid">
+            <article class="table-card">
+                <div class="section-head">
+                    <div>
+                        <h3 id="txtTableTitle">Resumo por maquina</h3>
+                        <p id="txtTableSubtitle">Clique na linha para ver os eventos recentes da maquina selecionada.</p>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th id="txtColMachine">Maquina</th>
+                                <th id="txtColArea">Area</th>
+                                <th id="txtColStatus">Status</th>
+                                <th id="txtColRecipe">Receita</th>
+                                <th id="txtColLot">Lote</th>
+                                <th id="txtColOperators">Operadores</th>
+                                <th id="txtColPercent">%</th>
+                                <th id="txtColUpdated">Atualizado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="machineTableBody">
+                            <tr>
+                                <td colspan="8" class="empty-cell">Carregando...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+
+            <article class="ranking-card">
+                <div class="section-head">
+                    <div>
+                        <h3 id="txtRankingTitle">Ranking de paradas</h3>
+                        <p id="txtRankingSubtitle">Impacto acumulado de parada e erro no periodo selecionado.</p>
+                    </div>
+                </div>
+                <div id="rankingList" class="ranking-list"></div>
+            </article>
+        </section>
+
+        <section class="detail-card">
+            <div class="section-head">
+                <div>
+                    <h3 id="txtDetailTitle">Historico recente da maquina</h3>
+                    <p id="txtDetailSubtitle">Ultimos eventos importados para a maquina selecionada.</p>
+                </div>
+                <strong id="lblDetailMachine">-</strong>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th id="txtDetailColDate">Data/Hora</th>
+                            <th id="txtDetailColStatus">Status</th>
+                            <th id="txtDetailColRecipe">Receita</th>
+                            <th id="txtDetailColLot">Lote</th>
+                            <th id="txtDetailColSource">Arquivo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detailTableBody">
+                        <tr>
+                            <td colspan="5" class="empty-cell">Selecione uma maquina.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="timeline-card">
+            <div class="section-head">
+                <div>
+                    <h3 id="txtTimelineTitle">Timeline de 5 em 5 minutos</h3>
+                    <p id="txtTimelineSubtitle">Leitura visual do status das maquinas ao longo do turno.</p>
+                </div>
+            </div>
+            <div id="timelineWrap" class="timeline-wrap"></div>
+        </section>
+    </main>
+
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-card">
+            <div class="spinner"></div>
+            <strong id="txtLoading">Importando producao...</strong>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

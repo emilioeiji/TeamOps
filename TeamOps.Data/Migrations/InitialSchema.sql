@@ -305,7 +305,52 @@ CREATE TABLE IF NOT EXISTS CL (
 CREATE TABLE IF NOT EXISTS Machines (
     Id INTEGER PRIMARY KEY AUTOINCREMENT,
     NamePt TEXT NOT NULL,
-    NameJp TEXT NOT NULL
+    NameJp TEXT NOT NULL,
+    MachineCode TEXT,
+    LineCode TEXT,
+    LocalId INTEGER,
+    SectorId INTEGER,
+    IsActive INTEGER NOT NULL DEFAULT 1,
+    FOREIGN KEY (LocalId) REFERENCES Locals(Id),
+    FOREIGN KEY (SectorId) REFERENCES Sectors(Id)
+);
+
+CREATE TABLE IF NOT EXISTS MachineEvents (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    MachineId INTEGER NOT NULL,
+    MachineCode TEXT NOT NULL,
+    LineCode TEXT NOT NULL,
+    LocalId INTEGER,
+    SectorId INTEGER,
+    RecipeName TEXT,
+    LotNo TEXT,
+    StatusCode INTEGER NOT NULL,
+    StatusText TEXT NOT NULL,
+    InternalState TEXT NOT NULL,
+    EventDateTime TEXT NOT NULL,
+    SourceFile TEXT NOT NULL,
+    ImportedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (MachineId) REFERENCES Machines(Id),
+    FOREIGN KEY (LocalId) REFERENCES Locals(Id),
+    FOREIGN KEY (SectorId) REFERENCES Sectors(Id)
+);
+
+CREATE TABLE IF NOT EXISTS MachineCurrentStatus (
+    MachineId INTEGER PRIMARY KEY,
+    MachineCode TEXT NOT NULL,
+    LineCode TEXT NOT NULL,
+    LocalId INTEGER,
+    SectorId INTEGER,
+    RecipeName TEXT,
+    LotNo TEXT,
+    StatusCode INTEGER NOT NULL,
+    StatusText TEXT NOT NULL,
+    InternalState TEXT NOT NULL,
+    EventDateTime TEXT NOT NULL,
+    UpdatedAt TEXT NOT NULL,
+    FOREIGN KEY (MachineId) REFERENCES Machines(Id),
+    FOREIGN KEY (LocalId) REFERENCES Locals(Id),
+    FOREIGN KEY (SectorId) REFERENCES Sectors(Id)
 );
 
 CREATE TABLE IF NOT EXISTS TodokeMotivo (

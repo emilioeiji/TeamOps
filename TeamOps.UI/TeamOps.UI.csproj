@@ -180,6 +180,15 @@
     <None Update="ui\operators\style.css">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="ui\production-monitor\app.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="ui\production-monitor\index.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="ui\production-monitor\style.css">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="ui\paidleave\app.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

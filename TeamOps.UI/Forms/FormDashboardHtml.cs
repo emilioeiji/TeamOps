@@ -139,6 +139,17 @@ namespace TeamOps.UI.Forms
                         ));
                     break;
 
+                case "open:production":
+                    if (!HasAccess(AccessLevel.GL))
+                        ShowAccessDeniedAsync();
+                    else
+                        OpenDialog(() => new HTMLFormProductionMonitor(
+                            _factory,
+                            _user,
+                            _currentOperator
+                        ));
+                    break;
+
                 case "open:hikitsugui":
                     if (!HasAccess(AccessLevel.KL))
                         ShowAccessDeniedAsync();

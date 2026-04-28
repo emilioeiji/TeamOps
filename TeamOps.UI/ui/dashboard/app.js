@@ -20,6 +20,7 @@ const PERMISSION_RULES = {
     btnPresenca: 3,
     btnFollowUp: 2,
     btnTasks: 3,
+    btnProduction: 3,
     btnHikitsugui: 2,
     btnHikitsuguiLeaderRead: 2,
     btnPR: 2,
@@ -57,6 +58,8 @@ const I18N = {
         tileFollowSubtitle: "Registro e orientacao",
         tileTasksTitle: "Tasks",
         tileTasksSubtitle: "Planejamento do turno",
+        tileProductionTitle: "Producao",
+        tileProductionSubtitle: "Monitor de maquinas",
         tileScrapTitle: "Sobra de Peca",
         tileScrapSubtitle: "Lancamento de perdas",
         tileReportsTitle: "Relatorios",
@@ -107,6 +110,8 @@ const I18N = {
         tileFollowSubtitle: "\u8a18\u9332\u3068\u6307\u5c0e",
         tileTasksTitle: "\u30bf\u30b9\u30af",
         tileTasksSubtitle: "\u30b7\u30d5\u30c8\u8a08\u753b",
+        tileProductionTitle: "\u751f\u7523",
+        tileProductionSubtitle: "\u8a2d\u5099\u30e2\u30cb\u30bf\u30fc",
         tileScrapTitle: "\u88fd\u54c1\u6b8b\u308a",
         tileScrapSubtitle: "\u30ed\u30b9\u5165\u529b",
         tileReportsTitle: "\u30ec\u30dd\u30fc\u30c8",
@@ -265,6 +270,8 @@ function setLocale(locale) {
     setText("txtTileFollowSubtitle", strings.tileFollowSubtitle);
     setText("txtTileTasksTitle", strings.tileTasksTitle);
     setText("txtTileTasksSubtitle", strings.tileTasksSubtitle);
+    setText("txtTileProductionTitle", strings.tileProductionTitle);
+    setText("txtTileProductionSubtitle", strings.tileProductionSubtitle);
     setText("txtTileScrapTitle", strings.tileScrapTitle);
     setText("txtTileScrapSubtitle", strings.tileScrapSubtitle);
     setText("txtTileReportsTitle", strings.tileReportsTitle);
