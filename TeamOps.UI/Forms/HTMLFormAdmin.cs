@@ -146,6 +146,15 @@ namespace TeamOps.UI.Forms
                             COALESCE(NULLIF(NameJp, ''), NamePt, '') AS nameJp
                         FROM Sectors
                         ORDER BY NamePt;"
+                ).ToList(),
+                locals = conn.Query(
+                    @"
+                        SELECT
+                            l.Id AS id,
+                            COALESCE(l.NamePt, '') AS namePt,
+                            COALESCE(NULLIF(l.NameJp, ''), l.NamePt, '') AS nameJp
+                        FROM Locals l
+                        ORDER BY l.SectorId, l.NamePt, l.Id;"
                 ).ToList()
             };
         }
@@ -272,12 +281,7 @@ namespace TeamOps.UI.Forms
                     "Equipamentos vinculados aos cadastros operacionais.",
                     "\u904b\u7528\u7cfb\u30d5\u30a9\u30fc\u30e0\u306b\u7d10\u4ed8\u304f\u8a2d\u5099\u30de\u30b9\u30bf\u3067\u3059\u3002",
                     "Equipments"),
-                CreateNameEntity(
-                    "machine", "production",
-                    "Maquinas", "\u6a5f\u68b0",
-                    "Maquinas de apoio aos cadastros tecnicos.",
-                    "\u6280\u8853\u7cfb\u767b\u9332\u3067\u4f7f\u3046\u6a5f\u68b0\u30de\u30b9\u30bf\u3067\u3059\u3002",
-                    "Machines"),
+                CreateMachineEntity(),
                 CreateNameEntity(
                     "category", "production",
                     "Categorias", "\u30ab\u30c6\u30b4\u30ea",
@@ -411,6 +415,115 @@ namespace TeamOps.UI.Forms
                     parameters.Add("@namePt", namePt);
                     parameters.Add("@nameJp", nameJp);
                     parameters.Add("@sectorId", sectorId);
+                    return parameters;
+                }
+            };
+        }
+
+        private static AdminEntityDefinition CreateMachineEntity()
+        {
+            return new AdminEntityDefinition
+            {
+                Key = "machine",
+                Group = "production",
+                TitlePt = "Maquinas",
+                TitleJp = "\u6a5f\u68b0",
+                DescriptionPt = "Cadastro das maquinas do monitor de producao com codigo, linha, setor e local.",
+                DescriptionJp = "\u751f\u7523\u30e2\u30cb\u30bf\u30fc\u3067\u4f7f\u3046\u8a2d\u5099\u306e\u30b3\u30fc\u30c9\u3001\u30e9\u30a4\u30f3\u3001\u30bb\u30af\u30bf\u30fc\u3001\u5834\u6240\u3092\u7ba1\u7406\u3057\u307e\u3059\u3002",
+                Fields =
+                {
+                    new AdminFieldDefinition("namePt", "Nome PT", "\u540d\u79f0 PT", "text", true),
+                    new AdminFieldDefinition("nameJp", "Nome JP", "\u540d\u79f0 JP", "text", true),
+                    new AdminFieldDefinition("machineCode", "Codigo da Maquina", "\u8a2d\u5099\u30b3\u30fc\u30c9", "text", true),
+                    new AdminFieldDefinition("lineCode", "Linha", "\u30e9\u30a4\u30f3", "text", false),
+                    new AdminFieldDefinition("sectorId", "Setor", "\u30bb\u30af\u30bf\u30fc", "select", false, "sectors"),
+                    new AdminFieldDefinition("localId", "Local", "\u5834\u6240", "select", false, "locals")
+                },
+                Columns =
+                {
+                    new AdminColumnDefinition("id", null, "ID", "ID"),
+                    new AdminColumnDefinition("machineCode", null, "Codigo", "\u30b3\u30fc\u30c9"),
+                    new AdminColumnDefinition("namePt", "nameJp", "Nome", "\u540d\u79f0"),
+                    new AdminColumnDefinition("lineCode", null, "Linha", "\u30e9\u30a4\u30f3"),
+                    new AdminColumnDefinition("sectorNamePt", "sectorNameJp", "Setor", "\u30bb\u30af\u30bf\u30fc"),
+                    new AdminColumnDefinition("localNamePt", "localNameJp", "Local", "\u5834\u6240")
+                },
+                QueryRows = conn => conn.Query(
+                    @"
+                        SELECT
+                            m.Id AS id,
+                            COALESCE(m.NamePt, '') AS namePt,
+                            COALESCE(m.NameJp, '') AS nameJp,
+                            COALESCE(m.MachineCode, '') AS machineCode,
+                            COALESCE(m.LineCode, '') AS lineCode,
+                            COALESCE(m.SectorId, 0) AS sectorId,
+                            COALESCE(m.LocalId, 0) AS localId,
+                            COALESCE(s.NamePt, '') AS sectorNamePt,
+                            COALESCE(NULLIF(s.NameJp, ''), s.NamePt, '') AS sectorNameJp,
+                            COALESCE(l.NamePt, '') AS localNamePt,
+                            COALESCE(NULLIF(l.NameJp, ''), l.NamePt, '') AS localNameJp
+                        FROM Machines m
+                        LEFT JOIN Sectors s ON s.Id = m.SectorId
+                        LEFT JOIN Locals l ON l.Id = m.LocalId
+                        ORDER BY COALESCE(m.MachineCode, ''), m.Id;"
+                ),
+                InsertSql = @"
+                    INSERT INTO Machines
+                    (
+                        NamePt,
+                        NameJp,
+                        MachineCode,
+                        LineCode,
+                        SectorId,
+                        LocalId,
+                        IsActive
+                    )
+                    VALUES
+                    (
+                        @namePt,
+                        @nameJp,
+                        @machineCode,
+                        @lineCode,
+                        @sectorId,
+                        @localId,
+                        1
+                    );",
+                UpdateSql = @"
+                    UPDATE Machines
+                    SET
+                        NamePt = @namePt,
+                        NameJp = @nameJp,
+                        MachineCode = @machineCode,
+                        LineCode = @lineCode,
+                        SectorId = @sectorId,
+                        LocalId = @localId
+                    WHERE Id = @id;",
+                DeleteSql = "DELETE FROM Machines WHERE Id = @id;",
+                BuildParameters = values =>
+                {
+                    var namePt = ReadString(values, "namePt").Trim();
+                    var nameJp = ReadString(values, "nameJp").Trim();
+                    var machineCode = ReadString(values, "machineCode").Trim();
+                    var lineCode = ReadString(values, "lineCode").Trim();
+                    var sectorId = ReadInt(values, "sectorId");
+                    var localId = ReadInt(values, "localId");
+
+                    if (string.IsNullOrWhiteSpace(namePt) || string.IsNullOrWhiteSpace(nameJp))
+                        throw new InvalidOperationException(L("Preencha os dois campos de nome.", "\u4e21\u65b9\u306e\u540d\u79f0\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
+
+                    if (string.IsNullOrWhiteSpace(machineCode))
+                        throw new InvalidOperationException(L("Informe o codigo da maquina.", "\u8a2d\u5099\u30b3\u30fc\u30c9\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
+
+                    if (localId > 0 && sectorId <= 0)
+                        throw new InvalidOperationException(L("Ao definir um local, selecione tambem o setor.", "\u5834\u6240\u3092\u8a2d\u5b9a\u3059\u308b\u5834\u5408\u306f\u30bb\u30af\u30bf\u30fc\u3082\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
+
+                    var parameters = new DynamicParameters();
+                    parameters.Add("@namePt", namePt);
+                    parameters.Add("@nameJp", nameJp);
+                    parameters.Add("@machineCode", machineCode);
+                    parameters.Add("@lineCode", string.IsNullOrWhiteSpace(lineCode) ? null : lineCode);
+                    parameters.Add("@sectorId", sectorId > 0 ? sectorId : null);
+                    parameters.Add("@localId", localId > 0 ? localId : null);
                     return parameters;
                 }
             };

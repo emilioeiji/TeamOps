@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="tools\**\*.cs" />
     <None Remove="Assets\Icon.ico" />
     <None Remove="Assets\logo_rodape.png" />
     <None Remove="Assets\Publish.txt" />

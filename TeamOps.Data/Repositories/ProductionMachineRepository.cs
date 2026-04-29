@@ -43,14 +43,14 @@ namespace TeamOps.Data.Repositories
             );
         }
 
-        public Machine EnsureMachine(string machineCode, string lineCode)
+        public Machine EnsureMachine(string machineCode, string lineCode, int? sectorId = null)
         {
             using var conn = _factory.CreateOpenConnection();
             ProductionSchemaMigrator.Ensure(conn);
-            return EnsureMachine(conn, machineCode, lineCode);
+            return EnsureMachine(conn, machineCode, lineCode, sectorId);
         }
 
-        public Machine EnsureMachine(System.Data.IDbConnection conn, string machineCode, string lineCode)
+        public Machine EnsureMachine(System.Data.IDbConnection conn, string machineCode, string lineCode, int? sectorId = null)
         {
             var machine = conn.QueryFirstOrDefault<Machine>(
                 @"
@@ -74,7 +74,7 @@ namespace TeamOps.Data.Repositories
 
             if (machine != null)
             {
-                if (string.IsNullOrWhiteSpace(machine.LineCode) && !string.IsNullOrWhiteSpace(lineCode))
+                if (!string.IsNullOrWhiteSpace(lineCode) && !string.Equals(machine.LineCode, lineCode, System.StringComparison.OrdinalIgnoreCase))
                 {
                     conn.Execute(
                         @"
@@ -91,6 +91,23 @@ namespace TeamOps.Data.Repositories
                     machine.LineCode = lineCode;
                 }
 
+                if (sectorId.HasValue && machine.SectorId != sectorId.Value)
+                {
+                    conn.Execute(
+                        @"
+                            UPDATE Machines
+                            SET SectorId = @sectorId
+                            WHERE Id = @id;",
+                        new
+                        {
+                            sectorId,
+                            id = machine.Id
+                        }
+                    );
+
+                    machine.SectorId = sectorId.Value;
+                }
+
                 return machine;
             }
 
@@ -102,6 +119,7 @@ namespace TeamOps.Data.Repositories
                         NameJp,
                         MachineCode,
                         LineCode,
+                        SectorId,
                         IsActive
                     )
                     VALUES
@@ -110,6 +128,7 @@ namespace TeamOps.Data.Repositories
                         @nameJp,
                         @machineCode,
                         @lineCode,
+                        @sectorId,
                         1
                     );
                     SELECT last_insert_rowid();",
@@ -118,7 +137,8 @@ namespace TeamOps.Data.Repositories
                     namePt = machineCode,
                     nameJp = machineCode,
                     machineCode,
-                    lineCode
+                    lineCode,
+                    sectorId
                 }
             );
 
@@ -129,6 +149,7 @@ namespace TeamOps.Data.Repositories
                 NameJp = machineCode,
                 MachineCode = machineCode,
                 LineCode = lineCode,
+                SectorId = sectorId,
                 IsActive = true
             };
         }

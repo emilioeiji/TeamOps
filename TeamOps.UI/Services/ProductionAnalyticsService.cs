@@ -10,6 +10,8 @@ namespace TeamOps.Services
 {
     public sealed class ProductionAnalyticsService
     {
+        private const int HistoryDays = 7;
+
         private readonly SqliteConnectionFactory _factory;
 
         public ProductionAnalyticsService(SqliteConnectionFactory factory)
@@ -21,7 +23,7 @@ namespace TeamOps.Services
         {
             var normalized = (shiftName ?? string.Empty).Trim().ToLowerInvariant();
             var isNightShift = normalized.Contains("yakin", StringComparison.Ordinal)
-                               || normalized.Contains("夜勤", StringComparison.Ordinal);
+                               || normalized.Contains("å¤œå‹¤", StringComparison.Ordinal);
 
             return isNightShift
                 ? new ProductionShiftPeriod
@@ -41,22 +43,24 @@ namespace TeamOps.Services
             using var conn = _factory.CreateOpenConnection();
             ProductionSchemaMigrator.Ensure(conn);
 
-            var shift = conn.QueryFirstOrDefault<ShiftLookupRow>(
+            var shifts = conn.Query<ShiftLookupRow>(
                 @"
                     SELECT
                         Id,
                         COALESCE(NamePt, '') AS NamePt,
                         COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp
                     FROM Shifts
-                    WHERE Id = @id
-                    LIMIT 1;",
-                new
-                {
-                    id = filter.ShiftId
-                }
-            ) ?? throw new InvalidOperationException("Turno nao encontrado para o monitor de producao.");
+                    ORDER BY Id;"
+            ).ToList();
 
-            var period = GetShiftPeriod(filter.Date, shift.NamePt);
+            var shift = shifts.FirstOrDefault(item => item.Id == filter.ShiftId)
+                ?? throw new InvalidOperationException("Turno nao encontrado para o monitor de producao.");
+
+            var period = GetShiftPeriod(filter.Date, BuildShiftPeriodHint(shift.NamePt, shift.NameJp));
+            var dashboard = new ProductionDashboardDto
+            {
+                Period = period
+            };
 
             var machines = conn.Query<MachineRow>(
                 @"
@@ -91,17 +95,16 @@ namespace TeamOps.Services
                 }
             ).ToList();
 
-            var dashboard = new ProductionDashboardDto
-            {
-                Period = period
-            };
-
             if (machines.Count == 0)
             {
                 return dashboard;
             }
 
             var machineIds = machines.Select(machine => machine.Id).ToArray();
+            var historyStartDate = filter.Date.Date.AddDays(-(HistoryDays - 1));
+            var rangeStart = historyStartDate.AddDays(-1);
+            var rangeEnd = filter.Date.Date.AddDays(2);
+
             var statusRows = conn.Query<StatusRow>(
                 @"
                     SELECT
@@ -132,19 +135,25 @@ namespace TeamOps.Services
                     WHERE MachineId IN @machineIds
                       AND datetime(EventDateTime) <= datetime(@rangeEnd)
                       AND datetime(EventDateTime) >= datetime(@rangeStart)
-                    ORDER BY datetime(EventDateTime), Id;",
+                    ORDER BY MachineId, datetime(EventDateTime), Id;",
                 new
                 {
                     machineIds,
-                    rangeStart = period.Start.AddDays(-1).ToString("yyyy-MM-dd HH:mm:ss"),
-                    rangeEnd = period.End.ToString("yyyy-MM-dd HH:mm:ss")
+                    rangeStart = rangeStart.ToString("yyyy-MM-dd HH:mm:ss"),
+                    rangeEnd = rangeEnd.ToString("yyyy-MM-dd HH:mm:ss")
                 }
             ).ToList();
 
-            var scheduleRows = conn.Query<ScheduleRow>(
+            var eventsByMachine = events
+                .GroupBy(row => row.MachineId)
+                .ToDictionary(group => group.Key, group => group.OrderBy(item => item.EventDateTime).ToList());
+
+            var scheduleCurrentRows = conn.Query<ScheduleRow>(
                 @"
                     SELECT
+                        sc.ScheduleDate,
                         sc.LocalId,
+                        COALESCE(sc.CodigoFJ, '') AS OperatorCodigoFJ,
                         COALESCE(op.NameRomanji, sc.CodigoFJ) AS OperatorNamePt,
                         COALESCE(NULLIF(op.NameNihongo, ''), op.NameRomanji, sc.CodigoFJ) AS OperatorNameJp
                     FROM OperatorSchedule sc
@@ -158,23 +167,324 @@ namespace TeamOps.Services
                 }
             ).ToList();
 
-            var operatorsByLocal = scheduleRows
+            var scheduleHistoryRows = conn.Query<ScheduleRow>(
+                @"
+                    SELECT
+                        sc.ScheduleDate,
+                        sc.LocalId,
+                        COALESCE(sc.CodigoFJ, '') AS OperatorCodigoFJ,
+                        COALESCE(op.NameRomanji, sc.CodigoFJ) AS OperatorNamePt,
+                        COALESCE(NULLIF(op.NameNihongo, ''), op.NameRomanji, sc.CodigoFJ) AS OperatorNameJp
+                    FROM OperatorSchedule sc
+                    LEFT JOIN Operators op ON op.CodigoFJ = sc.CodigoFJ
+                    WHERE date(sc.ScheduleDate) BETWEEN date(@startDate) AND date(@endDate)
+                      AND sc.ShiftId = @shiftId;",
+                new
+                {
+                    startDate = historyStartDate.ToString("yyyy-MM-dd"),
+                    endDate = filter.Date.ToString("yyyy-MM-dd"),
+                    shiftId = filter.ShiftId
+                }
+            ).ToList();
+
+            var operatorsByLocal = scheduleCurrentRows
                 .GroupBy(row => row.LocalId)
+                .ToDictionary(group => group.Key, group => group.ToList());
+
+            var machineSummaries = BuildMachineSummaries(
+                machines,
+                statusRows,
+                eventsByMachine,
+                operatorsByLocal,
+                period);
+
+            dashboard.Machines.AddRange(machineSummaries);
+
+            var aggregate = Summarize(machineSummaries);
+            dashboard.ProductionPercent = aggregate.ProductionPercent;
+            dashboard.MachinesRunning = aggregate.MachinesRunning;
+            dashboard.MachinesStopped = aggregate.MachinesStopped;
+            dashboard.ErrorMinutes = aggregate.ErrorMinutes;
+            dashboard.InactiveMinutes = aggregate.InactiveMinutes;
+
+            dashboard.Areas.AddRange(BuildAreaSummaries(machineSummaries, operatorsByLocal));
+
+            dashboard.Ranking.AddRange(
+                machineSummaries
+                    .Select(machine => new ProductionRankingItemDto
+                    {
+                        LocalId = machine.LocalId,
+                        LocalNamePt = machine.LocalNamePt,
+                        LocalNameJp = machine.LocalNameJp,
+                        MachineCode = machine.MachineCode,
+                        MachineNamePt = machine.MachineNamePt,
+                        MachineNameJp = machine.MachineNameJp,
+                        StopMinutes = Math.Round(machine.StoppedMinutes, 1),
+                        ErrorMinutes = Math.Round(machine.ErrorMinutes, 1),
+                        TotalImpactMinutes = Math.Round(machine.StoppedMinutes + machine.ErrorMinutes, 1)
+                    })
+                    .OrderByDescending(item => item.TotalImpactMinutes)
+                    .ThenBy(item => item.MachineCode, StringComparer.OrdinalIgnoreCase)
+                    .Take(12)
+            );
+
+            var cellMoments = BuildTimelineMoments(period);
+            foreach (var machine in machineSummaries)
+            {
+                eventsByMachine.TryGetValue(machine.MachineId, out var machineEvents);
+                machineEvents ??= new List<EventRow>();
+
+                var timelineRow = new ProductionTimelineRowDto
+                {
+                    LocalId = machine.LocalId,
+                    LocalNamePt = machine.LocalNamePt,
+                    LocalNameJp = machine.LocalNameJp,
+                    MachineCode = machine.MachineCode,
+                    MachineNamePt = machine.MachineNamePt,
+                    MachineNameJp = machine.MachineNameJp
+                };
+
+                foreach (var moment in cellMoments)
+                {
+                    var statusCode = ResolveStatusAt(machineEvents, moment);
+                    timelineRow.Cells.Add(new ProductionTimelineCellDto
+                    {
+                        TimeLabel = moment.ToString("HH:mm", CultureInfo.InvariantCulture),
+                        DateTime = moment,
+                        StatusCode = statusCode,
+                        CssClass = GetTimelineClass(statusCode)
+                    });
+                }
+
+                dashboard.Timeline.Add(timelineRow);
+            }
+
+            foreach (var shiftItem in shifts)
+            {
+                var comparisonPeriod = GetShiftPeriod(filter.Date, BuildShiftPeriodHint(shiftItem.NamePt, shiftItem.NameJp));
+                var comparisonSummaries = BuildMachineSummaries(
+                    machines,
+                    statusRows,
+                    eventsByMachine,
+                    new Dictionary<int, List<ScheduleRow>>(),
+                    comparisonPeriod);
+
+                var comparisonAggregate = Summarize(comparisonSummaries);
+                dashboard.ShiftComparisons.Add(new ProductionShiftComparisonDto
+                {
+                    ShiftId = shiftItem.Id,
+                    ShiftNamePt = shiftItem.NamePt,
+                    ShiftNameJp = shiftItem.NameJp,
+                    Start = comparisonPeriod.Start,
+                    End = comparisonPeriod.End,
+                    ProductionPercent = comparisonAggregate.ProductionPercent,
+                    RunningMinutes = comparisonAggregate.RunningMinutes,
+                    StoppedMinutes = comparisonAggregate.StoppedMinutes,
+                    InactiveMinutes = comparisonAggregate.InactiveMinutes,
+                    ErrorMinutes = comparisonAggregate.ErrorMinutes,
+                    MachineCount = comparisonSummaries.Count
+                });
+            }
+
+            var selectedShiftName = BuildShiftPeriodHint(shift.NamePt, shift.NameJp);
+            for (var offset = HistoryDays - 1; offset >= 0; offset--)
+            {
+                var day = filter.Date.Date.AddDays(-offset);
+                var dayPeriod = GetShiftPeriod(day, selectedShiftName);
+                var daySummaries = BuildMachineSummaries(
+                    machines,
+                    statusRows,
+                    eventsByMachine,
+                    new Dictionary<int, List<ScheduleRow>>(),
+                    dayPeriod);
+
+                var dayAggregate = Summarize(daySummaries);
+                dashboard.DailyTrend.Add(new ProductionDailyTrendDto
+                {
+                    Date = day,
+                    Label = day.ToString("MM/dd", CultureInfo.InvariantCulture),
+                    ProductionPercent = dayAggregate.ProductionPercent,
+                    RunningMinutes = dayAggregate.RunningMinutes,
+                    StoppedMinutes = dayAggregate.StoppedMinutes,
+                    InactiveMinutes = dayAggregate.InactiveMinutes,
+                    ErrorMinutes = dayAggregate.ErrorMinutes
+                });
+            }
+
+            foreach (var area in dashboard.Areas.OrderBy(item => item.LocalNamePt, StringComparer.OrdinalIgnoreCase))
+            {
+                var machineRows = machines
+                    .Where(machine => machine.LocalId == area.LocalId)
+                    .ToList();
+
+                var areaHistory = new ProductionAreaHistoryDto
+                {
+                    LocalId = area.LocalId,
+                    LocalNamePt = area.LocalNamePt,
+                    LocalNameJp = area.LocalNameJp
+                };
+
+                for (var offset = HistoryDays - 1; offset >= 0; offset--)
+                {
+                    var day = filter.Date.Date.AddDays(-offset);
+                    var dayPeriod = GetShiftPeriod(day, selectedShiftName);
+                    var areaSummaries = BuildMachineSummaries(
+                        machineRows,
+                        statusRows,
+                        eventsByMachine,
+                        new Dictionary<int, List<ScheduleRow>>(),
+                        dayPeriod);
+
+                    var areaAggregate = Summarize(areaSummaries);
+                    areaHistory.Days.Add(new ProductionDailyTrendDto
+                    {
+                        Date = day,
+                        Label = day.ToString("MM/dd", CultureInfo.InvariantCulture),
+                        ProductionPercent = areaAggregate.ProductionPercent,
+                        RunningMinutes = areaAggregate.RunningMinutes,
+                        StoppedMinutes = areaAggregate.StoppedMinutes,
+                        InactiveMinutes = areaAggregate.InactiveMinutes,
+                        ErrorMinutes = areaAggregate.ErrorMinutes
+                    });
+                }
+
+                dashboard.AreaHistory.Add(areaHistory);
+            }
+
+            var areaDayMap = dashboard.AreaHistory
+                .SelectMany(area => area.Days.Select(day => new
+                {
+                    area.LocalId,
+                    day.Date,
+                    day.RunningMinutes
+                }))
+                .GroupBy(item => new { item.LocalId, Day = item.Date.Date })
                 .ToDictionary(
-                    group => group.Key,
-                    group => group.ToList());
+                    group => (group.Key.LocalId ?? 0, group.Key.Day),
+                    group => group.First().RunningMinutes);
+
+            var operatorScheduleGroups = scheduleHistoryRows
+                .Where(row => row.LocalId > 0 && !string.IsNullOrWhiteSpace(row.OperatorCodigoFJ))
+                .GroupBy(row => new { Day = row.ScheduleDate.Date, row.LocalId });
+
+            var operatorAccumulator = new Dictionary<string, ProductionOperatorAccumulator>(StringComparer.OrdinalIgnoreCase);
+            var selectedPeriodMinutes = Math.Max(0, (period.End - period.Start).TotalMinutes);
+
+            foreach (var scheduleGroup in operatorScheduleGroups)
+            {
+                var key = (scheduleGroup.Key.LocalId, scheduleGroup.Key.Day);
+                if (!areaDayMap.TryGetValue(key, out var areaRunningMinutes) || areaRunningMinutes <= 0)
+                {
+                    continue;
+                }
+
+                var operators = scheduleGroup
+                    .GroupBy(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase)
+                    .Select(group => group.First())
+                    .ToList();
+
+                if (operators.Count == 0)
+                {
+                    continue;
+                }
+
+                foreach (var item in operators)
+                {
+                    if (!operatorAccumulator.TryGetValue(item.OperatorCodigoFJ, out var accumulator))
+                    {
+                        accumulator = new ProductionOperatorAccumulator
+                        {
+                            OperatorCodigoFJ = item.OperatorCodigoFJ,
+                            OperatorNamePt = item.OperatorNamePt,
+                            OperatorNameJp = item.OperatorNameJp
+                        };
+                        operatorAccumulator[item.OperatorCodigoFJ] = accumulator;
+                    }
+
+                    // When an area is worked by a pair, both operators carry the same
+                    // production history for that area/day because the final result depends
+                    // on the full flow executed by the duo, not on splitting machine time.
+                    accumulator.EstimatedRunningMinutes += areaRunningMinutes;
+
+                    var localMachine = machines.FirstOrDefault(machine => machine.LocalId == item.LocalId);
+                    if (localMachine != null)
+                    {
+                        accumulator.LocalNamesPt.Add(localMachine.LocalNamePt);
+                        accumulator.LocalNamesJp.Add(localMachine.LocalNameJp);
+                    }
+                }
+            }
+
+            dashboard.OperatorRanking.AddRange(
+                operatorAccumulator.Values
+                    .Select(item => new ProductionOperatorRankingDto
+                    {
+                        OperatorCodigoFJ = item.OperatorCodigoFJ,
+                        OperatorNamePt = item.OperatorNamePt,
+                        OperatorNameJp = item.OperatorNameJp,
+                        EstimatedRunningMinutes = Math.Round(item.EstimatedRunningMinutes, 1),
+                        EstimatedKadouritsuPercent = selectedPeriodMinutes <= 0
+                            ? 0
+                            : Math.Round((item.EstimatedRunningMinutes / selectedPeriodMinutes) * 100d, 1),
+                        LocalNamesPt = item.LocalNamesPt
+                            .Where(name => !string.IsNullOrWhiteSpace(name))
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .ToList(),
+                        LocalNamesJp = item.LocalNamesJp
+                            .Where(name => !string.IsNullOrWhiteSpace(name))
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .ToList()
+                    })
+                    .OrderByDescending(item => item.EstimatedRunningMinutes)
+                    .ThenBy(item => item.OperatorNamePt, StringComparer.OrdinalIgnoreCase)
+                    .Take(12)
+            );
+
+            return dashboard;
+        }
+
+        private static string BuildShiftPeriodHint(string namePt, string nameJp)
+        {
+            var normalizedPt = (namePt ?? string.Empty).Trim();
+            var normalizedJp = (nameJp ?? string.Empty).Trim();
+            var combined = $"{normalizedPt} {normalizedJp}".Trim();
+
+            if (normalizedPt.Contains("noite", StringComparison.OrdinalIgnoreCase)
+                || normalizedPt.Contains("night", StringComparison.OrdinalIgnoreCase)
+                || normalizedPt.Contains("yakin", StringComparison.OrdinalIgnoreCase)
+                || normalizedJp.Contains("夜", StringComparison.Ordinal)
+                || normalizedJp.Contains("夜勤", StringComparison.Ordinal))
+            {
+                return "yakin";
+            }
+
+            return string.IsNullOrWhiteSpace(combined) ? "hirukin" : combined;
+        }
+
+        private static List<ProductionMachineSummaryDto> BuildMachineSummaries(
+            IReadOnlyCollection<MachineRow> machines,
+            IReadOnlyDictionary<int, StatusRow> statusRows,
+            IReadOnlyDictionary<int, List<EventRow>> eventsByMachine,
+            IReadOnlyDictionary<int, List<ScheduleRow>> operatorsByLocal,
+            ProductionShiftPeriod period)
+        {
+            var summaries = new List<ProductionMachineSummaryDto>(machines.Count);
 
             foreach (var machine in machines)
             {
-                var machineEvents = events
-                    .Where(row => row.MachineId == machine.Id)
-                    .OrderBy(row => row.EventDateTime)
-                    .ToList();
+                eventsByMachine.TryGetValue(machine.Id, out var machineEvents);
+                machineEvents ??= new List<EventRow>();
 
                 var metrics = CalculateMetrics(machineEvents, period);
-                var currentStatus = statusRows.TryGetValue(machine.Id, out var status)
-                    ? status
-                    : machineEvents.LastOrDefault();
+                StatusRow? currentStatus = machineEvents
+                    .Where(item => item.EventDateTime <= period.End)
+                    .OrderByDescending(item => item.EventDateTime)
+                    .FirstOrDefault();
+
+                if (currentStatus == null && statusRows.TryGetValue(machine.Id, out var statusFallback))
+                {
+                    currentStatus = statusFallback;
+                }
 
                 var summary = new ProductionMachineSummaryDto
                 {
@@ -207,71 +517,99 @@ namespace TeamOps.Services
 
                 if (machine.LocalId.HasValue && operatorsByLocal.TryGetValue(machine.LocalId.Value, out var assignedOperators))
                 {
-                    summary.ScheduledOperatorsPt.AddRange(assignedOperators.Select(item => item.OperatorNamePt));
-                    summary.ScheduledOperatorsJp.AddRange(assignedOperators.Select(item => item.OperatorNameJp));
+                    summary.ScheduledOperatorsPt.AddRange(
+                        assignedOperators
+                            .Select(item => item.OperatorNamePt)
+                            .Where(name => !string.IsNullOrWhiteSpace(name))
+                            .Distinct(StringComparer.OrdinalIgnoreCase));
+
+                    summary.ScheduledOperatorsJp.AddRange(
+                        assignedOperators
+                            .Select(item => item.OperatorNameJp)
+                            .Where(name => !string.IsNullOrWhiteSpace(name))
+                            .Distinct(StringComparer.OrdinalIgnoreCase));
                 }
 
-                dashboard.Machines.Add(summary);
+                summaries.Add(summary);
             }
 
-            var totalMinutes = dashboard.Machines.Sum(machine => machine.TotalMinutes);
-            var runningMinutes = dashboard.Machines.Sum(machine => machine.RunningMinutes);
+            return summaries;
+        }
 
-            dashboard.ProductionPercent = totalMinutes <= 0
-                ? 0
-                : Math.Round((runningMinutes / totalMinutes) * 100d, 1);
-            dashboard.MachinesRunning = dashboard.Machines.Count(machine => machine.StatusCode == 0);
-            dashboard.MachinesStopped = dashboard.Machines.Count(machine => machine.StatusCode == 1);
-            dashboard.ErrorMinutes = Math.Round(dashboard.Machines.Sum(machine => machine.ErrorMinutes), 1);
-            dashboard.InactiveMinutes = Math.Round(dashboard.Machines.Sum(machine => machine.InactiveMinutes), 1);
-
-            dashboard.Ranking.AddRange(
-                dashboard.Machines
-                    .Select(machine => new ProductionRankingItemDto
-                    {
-                        MachineCode = machine.MachineCode,
-                        MachineNamePt = machine.MachineNamePt,
-                        MachineNameJp = machine.MachineNameJp,
-                        StopMinutes = Math.Round(machine.StoppedMinutes, 1),
-                        ErrorMinutes = Math.Round(machine.ErrorMinutes, 1),
-                        TotalImpactMinutes = Math.Round(machine.StoppedMinutes + machine.ErrorMinutes, 1)
-                    })
-                    .OrderByDescending(item => item.TotalImpactMinutes)
-                    .ThenBy(item => item.MachineCode, StringComparer.OrdinalIgnoreCase)
-                    .Take(10)
-            );
-
-            var cellMoments = BuildTimelineMoments(period);
-            foreach (var machine in dashboard.Machines)
-            {
-                var machineEvents = events
-                    .Where(row => row.MachineId == machine.MachineId)
-                    .OrderBy(row => row.EventDateTime)
-                    .ToList();
-
-                var timelineRow = new ProductionTimelineRowDto
+        private static List<ProductionAreaSummaryDto> BuildAreaSummaries(
+            IReadOnlyCollection<ProductionMachineSummaryDto> machines,
+            IReadOnlyDictionary<int, List<ScheduleRow>> operatorsByLocal)
+        {
+            return machines
+                .GroupBy(machine => machine.LocalId)
+                .Select(group =>
                 {
-                    MachineCode = machine.MachineCode,
-                    MachineNamePt = machine.MachineNamePt,
-                    MachineNameJp = machine.MachineNameJp
-                };
+                    var machineList = group.ToList();
+                    var first = machineList.First();
+                    var aggregate = Summarize(machineList);
 
-                foreach (var moment in cellMoments)
-                {
-                    var statusCode = ResolveStatusAt(machineEvents, moment);
-                    timelineRow.Cells.Add(new ProductionTimelineCellDto
+                    var area = new ProductionAreaSummaryDto
                     {
-                        TimeLabel = moment.ToString("HH:mm", CultureInfo.InvariantCulture),
-                        DateTime = moment,
-                        StatusCode = statusCode,
-                        CssClass = GetTimelineClass(statusCode)
-                    });
-                }
+                        LocalId = first.LocalId,
+                        SectorId = first.SectorId,
+                        LocalNamePt = first.LocalNamePt,
+                        LocalNameJp = first.LocalNameJp,
+                        SectorNamePt = first.SectorNamePt,
+                        SectorNameJp = first.SectorNameJp,
+                        MachineCount = machineList.Count,
+                        MachinesRunning = aggregate.MachinesRunning,
+                        MachinesStopped = aggregate.MachinesStopped,
+                        RunningMinutes = aggregate.RunningMinutes,
+                        StoppedMinutes = aggregate.StoppedMinutes,
+                        InactiveMinutes = aggregate.InactiveMinutes,
+                        ErrorMinutes = aggregate.ErrorMinutes,
+                        TotalMinutes = aggregate.TotalMinutes,
+                        ProductionPercent = aggregate.ProductionPercent,
+                        LastUpdate = machineList
+                            .Where(item => item.LastUpdate.HasValue)
+                            .Select(item => item.LastUpdate)
+                            .OrderByDescending(item => item)
+                            .FirstOrDefault()
+                    };
 
-                dashboard.Timeline.Add(timelineRow);
-            }
+                    if (first.LocalId.HasValue && operatorsByLocal.TryGetValue(first.LocalId.Value, out var localOperators))
+                    {
+                        area.ScheduledOperatorsPt.AddRange(
+                            localOperators
+                                .Select(item => item.OperatorNamePt)
+                                .Where(name => !string.IsNullOrWhiteSpace(name))
+                                .Distinct(StringComparer.OrdinalIgnoreCase));
 
-            return dashboard;
+                        area.ScheduledOperatorsJp.AddRange(
+                            localOperators
+                                .Select(item => item.OperatorNameJp)
+                                .Where(name => !string.IsNullOrWhiteSpace(name))
+                                .Distinct(StringComparer.OrdinalIgnoreCase));
+                    }
+
+                    return area;
+                })
+                .OrderBy(item => item.LocalNamePt, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private static SummaryAggregate Summarize(IEnumerable<ProductionMachineSummaryDto> machines)
+        {
+            var machineList = machines.ToList();
+            var totalMinutes = machineList.Sum(machine => machine.TotalMinutes);
+            var runningMinutes = machineList.Sum(machine => machine.RunningMinutes);
+
+            return new SummaryAggregate(
+                RunningMinutes: Math.Round(runningMinutes, 1),
+                StoppedMinutes: Math.Round(machineList.Sum(machine => machine.StoppedMinutes), 1),
+                InactiveMinutes: Math.Round(machineList.Sum(machine => machine.InactiveMinutes), 1),
+                ErrorMinutes: Math.Round(machineList.Sum(machine => machine.ErrorMinutes), 1),
+                TotalMinutes: Math.Round(totalMinutes, 1),
+                ProductionPercent: totalMinutes <= 0
+                    ? 0
+                    : Math.Round((runningMinutes / totalMinutes) * 100d, 1),
+                MachinesRunning: machineList.Count(machine => machine.StatusCode == 0),
+                MachinesStopped: machineList.Count(machine => machine.StatusCode == 1));
         }
 
         private static List<DateTime> BuildTimelineMoments(ProductionShiftPeriod period)
@@ -361,12 +699,24 @@ namespace TeamOps.Services
 
         public static string GetStatusLabel(int statusCode, string locale)
         {
+            if (string.Equals(locale, "ja-JP", StringComparison.OrdinalIgnoreCase))
+            {
+                return statusCode switch
+                {
+                    0 => "稼動中",
+                    1 => "停止",
+                    2 => "非稼動",
+                    3 => "異常",
+                    _ => "-"
+                };
+            }
+
             return (statusCode, locale) switch
             {
-                (0, "ja-JP") => "稼動中",
-                (1, "ja-JP") => "停止",
-                (2, "ja-JP") => "非稼動",
-                (3, "ja-JP") => "異常",
+                (0, "ja-JP") => "ç¨¼å‹•ä¸­",
+                (1, "ja-JP") => "åœæ­¢",
+                (2, "ja-JP") => "éžç¨¼å‹•",
+                (3, "ja-JP") => "ç•°å¸¸",
                 (0, _) => "Rodando",
                 (1, _) => "Parado",
                 (2, _) => "Inativo",
@@ -424,10 +774,32 @@ namespace TeamOps.Services
 
         private sealed class ScheduleRow
         {
+            public DateTime ScheduleDate { get; set; }
             public int LocalId { get; set; }
+            public string OperatorCodigoFJ { get; set; } = string.Empty;
             public string OperatorNamePt { get; set; } = string.Empty;
             public string OperatorNameJp { get; set; } = string.Empty;
         }
+
+        private sealed class ProductionOperatorAccumulator
+        {
+            public string OperatorCodigoFJ { get; set; } = string.Empty;
+            public string OperatorNamePt { get; set; } = string.Empty;
+            public string OperatorNameJp { get; set; } = string.Empty;
+            public double EstimatedRunningMinutes { get; set; }
+            public HashSet<string> LocalNamesPt { get; } = new(StringComparer.OrdinalIgnoreCase);
+            public HashSet<string> LocalNamesJp { get; } = new(StringComparer.OrdinalIgnoreCase);
+        }
+
+        private readonly record struct SummaryAggregate(
+            double RunningMinutes,
+            double StoppedMinutes,
+            double InactiveMinutes,
+            double ErrorMinutes,
+            double TotalMinutes,
+            double ProductionPercent,
+            int MachinesRunning,
+            int MachinesStopped);
 
         private readonly record struct ProductionMetrics(
             double RunningMinutes,

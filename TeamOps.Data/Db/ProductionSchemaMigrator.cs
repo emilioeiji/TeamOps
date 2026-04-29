@@ -49,6 +49,36 @@ namespace TeamOps.Data.Db
                         FOREIGN KEY (SectorId) REFERENCES Sectors(Id)
                     );
 
+                    CREATE TABLE IF NOT EXISTS ProductionPlanSnapshots (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        SourceFile TEXT NOT NULL,
+                        ExportedAt TEXT,
+                        LastUpdatedAt TEXT,
+                        ImportedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+
+                    CREATE TABLE IF NOT EXISTS ProductionPlanRows (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        SnapshotId INTEGER NOT NULL,
+                        AreaLabel TEXT NOT NULL,
+                        MachineCode TEXT NOT NULL,
+                        AssignmentText TEXT,
+                        PlannedProcessMinutes REAL,
+                        MachineStatusText TEXT,
+                        CapabilityFrame TEXT,
+                        WorkType TEXT,
+                        TargetKadouritsu REAL,
+                        CurrentDifference REAL,
+                        LotNo TEXT,
+                        CycleEndAt TEXT,
+                        DailyPlannedQuantity REAL,
+                        DailyEstimatedQuantity REAL,
+                        EstimatedKadouritsu REAL,
+                        RawColumnsJson TEXT,
+                        ImportedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (SnapshotId) REFERENCES ProductionPlanSnapshots(Id)
+                    );
+
                     CREATE UNIQUE INDEX IF NOT EXISTS IX_MachineEvents_UniqueEvent
                     ON MachineEvents(MachineCode, EventDateTime, StatusCode);
 
@@ -68,8 +98,19 @@ namespace TeamOps.Data.Db
                     ON Machines(LocalId);
 
                     CREATE INDEX IF NOT EXISTS IX_Machines_SectorId
-                    ON Machines(SectorId);"
+                    ON Machines(SectorId);
+
+                    CREATE UNIQUE INDEX IF NOT EXISTS IX_ProductionPlanSnapshots_SourceFile_ExportedAt
+                    ON ProductionPlanSnapshots(SourceFile, ExportedAt);
+
+                    CREATE UNIQUE INDEX IF NOT EXISTS IX_ProductionPlanRows_Snapshot_Area_Machine
+                    ON ProductionPlanRows(SnapshotId, AreaLabel, MachineCode);
+
+                    CREATE INDEX IF NOT EXISTS IX_ProductionPlanRows_MachineCode
+                    ON ProductionPlanRows(MachineCode);"
             );
+
+            NormalizeProductionStatuses(conn);
         }
 
         private static void EnsureMachineColumns(IDbConnection conn)
@@ -98,6 +139,58 @@ namespace TeamOps.Data.Db
             {
                 conn.Execute($"ALTER TABLE {tableName} ADD COLUMN {columnName} {definition};");
             }
+        }
+
+        private static void NormalizeProductionStatuses(IDbConnection conn)
+        {
+            conn.Execute(
+                @"
+                    UPDATE MachineEvents
+                    SET StatusCode =
+                        CASE
+                            WHEN trim(COALESCE(StatusText, '')) LIKE '%稼動中%' THEN 0
+                            WHEN trim(COALESCE(StatusText, '')) LIKE '%運転%' THEN 0
+                            WHEN upper(trim(COALESCE(StatusText, ''))) LIKE '%RUN%' THEN 0
+                            WHEN trim(COALESCE(StatusText, '')) LIKE '%停止中%' THEN 1
+                            WHEN trim(COALESCE(StatusText, '')) LIKE '%停止%' THEN 1
+                            WHEN upper(trim(COALESCE(StatusText, ''))) LIKE '%STOP%' THEN 1
+                            WHEN trim(COALESCE(StatusText, '')) LIKE '%トラブル%' THEN 3
+                            WHEN trim(COALESCE(StatusText, '')) LIKE '%異常%' THEN 3
+                            WHEN upper(trim(COALESCE(StatusText, ''))) LIKE '%ERROR%' THEN 3
+                            WHEN upper(trim(COALESCE(StatusText, ''))) LIKE '%ALARM%' THEN 3
+                            WHEN trim(COALESCE(StatusText, '')) LIKE '%サンプル%' THEN 2
+                            WHEN trim(COALESCE(StatusText, '')) LIKE '%レス処理%' THEN 2
+                            WHEN trim(COALESCE(StatusText, '')) LIKE '%吸引時間%' THEN 2
+                            WHEN trim(COALESCE(InternalState, '')) = '0' THEN 0
+                            WHEN trim(COALESCE(InternalState, '')) = '1' THEN 1
+                            WHEN trim(COALESCE(InternalState, '')) = '2' THEN 2
+                            WHEN trim(COALESCE(InternalState, '')) = '3' THEN 3
+                            ELSE StatusCode
+                        END;
+
+                    UPDATE MachineCurrentStatus
+                    SET StatusCode =
+                        CASE
+                            WHEN trim(COALESCE(StatusText, '')) LIKE '%稼動中%' THEN 0
+                            WHEN trim(COALESCE(StatusText, '')) LIKE '%運転%' THEN 0
+                            WHEN upper(trim(COALESCE(StatusText, ''))) LIKE '%RUN%' THEN 0
+                            WHEN trim(COALESCE(StatusText, '')) LIKE '%停止中%' THEN 1
+                            WHEN trim(COALESCE(StatusText, '')) LIKE '%停止%' THEN 1
+                            WHEN upper(trim(COALESCE(StatusText, ''))) LIKE '%STOP%' THEN 1
+                            WHEN trim(COALESCE(StatusText, '')) LIKE '%トラブル%' THEN 3
+                            WHEN trim(COALESCE(StatusText, '')) LIKE '%異常%' THEN 3
+                            WHEN upper(trim(COALESCE(StatusText, ''))) LIKE '%ERROR%' THEN 3
+                            WHEN upper(trim(COALESCE(StatusText, ''))) LIKE '%ALARM%' THEN 3
+                            WHEN trim(COALESCE(StatusText, '')) LIKE '%サンプル%' THEN 2
+                            WHEN trim(COALESCE(StatusText, '')) LIKE '%レス処理%' THEN 2
+                            WHEN trim(COALESCE(StatusText, '')) LIKE '%吸引時間%' THEN 2
+                            WHEN trim(COALESCE(InternalState, '')) = '0' THEN 0
+                            WHEN trim(COALESCE(InternalState, '')) = '1' THEN 1
+                            WHEN trim(COALESCE(InternalState, '')) = '2' THEN 2
+                            WHEN trim(COALESCE(InternalState, '')) = '3' THEN 3
+                            ELSE StatusCode
+                        END;"
+            );
         }
     }
 }

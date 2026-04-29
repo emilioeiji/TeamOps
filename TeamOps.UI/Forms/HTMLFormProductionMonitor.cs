@@ -226,6 +226,9 @@ namespace TeamOps.UI.Forms
                     }),
                     ranking = dashboard.Ranking.Select(item => new
                     {
+                        localId = item.LocalId,
+                        localNamePt = item.LocalNamePt,
+                        localNameJp = item.LocalNameJp,
                         machineCode = item.MachineCode,
                         machineNamePt = item.MachineNamePt,
                         machineNameJp = item.MachineNameJp,
@@ -235,6 +238,9 @@ namespace TeamOps.UI.Forms
                     }),
                     timeline = dashboard.Timeline.Select(row => new
                     {
+                        localId = row.LocalId,
+                        localNamePt = row.LocalNamePt,
+                        localNameJp = row.LocalNameJp,
                         machineCode = row.MachineCode,
                         machineNamePt = row.MachineNamePt,
                         machineNameJp = row.MachineNameJp,
@@ -245,6 +251,77 @@ namespace TeamOps.UI.Forms
                             statusCode = cell.StatusCode,
                             cssClass = cell.CssClass
                         })
+                    }),
+                    areas = dashboard.Areas.Select(area => new
+                    {
+                        localId = area.LocalId,
+                        sectorId = area.SectorId,
+                        localNamePt = area.LocalNamePt,
+                        localNameJp = area.LocalNameJp,
+                        sectorNamePt = area.SectorNamePt,
+                        sectorNameJp = area.SectorNameJp,
+                        machineCount = area.MachineCount,
+                        machinesRunning = area.MachinesRunning,
+                        machinesStopped = area.MachinesStopped,
+                        runningMinutes = area.RunningMinutes,
+                        stoppedMinutes = area.StoppedMinutes,
+                        inactiveMinutes = area.InactiveMinutes,
+                        errorMinutes = area.ErrorMinutes,
+                        totalMinutes = area.TotalMinutes,
+                        productionPercent = area.ProductionPercent,
+                        lastUpdate = area.LastUpdate?.ToString("yyyy-MM-dd HH:mm:ss"),
+                        scheduledOperatorsPt = area.ScheduledOperatorsPt,
+                        scheduledOperatorsJp = area.ScheduledOperatorsJp
+                    }),
+                    shiftComparisons = dashboard.ShiftComparisons.Select(item => new
+                    {
+                        shiftId = item.ShiftId,
+                        shiftNamePt = item.ShiftNamePt,
+                        shiftNameJp = item.ShiftNameJp,
+                        start = item.Start.ToString("yyyy-MM-dd HH:mm:ss"),
+                        end = item.End.ToString("yyyy-MM-dd HH:mm:ss"),
+                        productionPercent = item.ProductionPercent,
+                        runningMinutes = item.RunningMinutes,
+                        stoppedMinutes = item.StoppedMinutes,
+                        inactiveMinutes = item.InactiveMinutes,
+                        errorMinutes = item.ErrorMinutes,
+                        machineCount = item.MachineCount
+                    }),
+                    dailyTrend = dashboard.DailyTrend.Select(item => new
+                    {
+                        date = item.Date.ToString("yyyy-MM-dd"),
+                        label = item.Label,
+                        productionPercent = item.ProductionPercent,
+                        runningMinutes = item.RunningMinutes,
+                        stoppedMinutes = item.StoppedMinutes,
+                        inactiveMinutes = item.InactiveMinutes,
+                        errorMinutes = item.ErrorMinutes
+                    }),
+                    areaHistory = dashboard.AreaHistory.Select(item => new
+                    {
+                        localId = item.LocalId,
+                        localNamePt = item.LocalNamePt,
+                        localNameJp = item.LocalNameJp,
+                        days = item.Days.Select(day => new
+                        {
+                            date = day.Date.ToString("yyyy-MM-dd"),
+                            label = day.Label,
+                            productionPercent = day.ProductionPercent,
+                            runningMinutes = day.RunningMinutes,
+                            stoppedMinutes = day.StoppedMinutes,
+                            inactiveMinutes = day.InactiveMinutes,
+                            errorMinutes = day.ErrorMinutes
+                        })
+                    }),
+                    operatorRanking = dashboard.OperatorRanking.Select(item => new
+                    {
+                        operatorCodigoFJ = item.OperatorCodigoFJ,
+                        operatorNamePt = item.OperatorNamePt,
+                        operatorNameJp = item.OperatorNameJp,
+                        estimatedRunningMinutes = item.EstimatedRunningMinutes,
+                        estimatedKadouritsuPercent = item.EstimatedKadouritsuPercent,
+                        localNamesPt = item.LocalNamesPt,
+                        localNamesJp = item.LocalNamesJp
                     })
                 }
             });
@@ -344,6 +421,15 @@ namespace TeamOps.UI.Forms
             if (result.MachinesCreated > 0)
             {
                 message += $" | Maquinas novas: {result.MachinesCreated}";
+            }
+
+            if (result.PlanFilesRead > 0)
+            {
+                message += $" | DAT: {result.PlanFilesRead} arquivo(s), {result.PlanRowsImported} linha(s) de plano";
+                if (result.PlanRowsIgnored > 0)
+                {
+                    message += $", {result.PlanRowsIgnored} ignorada(s)";
+                }
             }
 
             if (result.BatchExecuted && !string.IsNullOrWhiteSpace(result.BatchMessage))

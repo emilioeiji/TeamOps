@@ -2,14 +2,14 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Producao / Machine Monitor</title>
+    <title>Kadouritsu / Machine Monitor</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header class="header-bar">
         <div class="header-copy">
-            <h1 id="txtHeaderTitle">Producao / Machine Monitor</h1>
-            <p id="txtHeaderSubtitle">Monitor de maquinas, producao por turno e linha do tempo operacional.</p>
+            <h1 id="txtHeaderTitle">Kadouritsu / Machine Monitor</h1>
+            <p id="txtHeaderSubtitle">Painel de tempo de maquina rodando, com visao por area, maquinas, operadores previstos e historico comparativo.</p>
         </div>
         <div class="header-meta">
             <div class="meta-pill">
@@ -32,7 +32,7 @@
             <div class="toolbar-copy">
                 <span id="txtBadge" class="access-badge">Monitor industrial</span>
                 <h2 id="txtToolbarTitle">Filtros do turno</h2>
-                <p id="txtToolbarSubtitle">Importe os arquivos da rede, filtre setor/area/maquina e acompanhe a saude da producao no mesmo painel.</p>
+                <p id="txtToolbarSubtitle">Importe os arquivos, escolha o recorte e acompanhe o kadouritsu primeiro por area, depois por maquina.</p>
             </div>
 
             <div class="toolbar-grid">
@@ -72,7 +72,7 @@
 
         <section class="summary-grid">
             <article class="metric-card metric-card-highlight">
-                <span id="txtMetricProduction" class="metric-label">% Producao</span>
+                <span id="txtMetricProduction" class="metric-label">% Kadouritsu</span>
                 <strong id="lblProductionPercent">0%</strong>
             </article>
             <article class="metric-card">
@@ -93,20 +93,75 @@
             </article>
         </section>
 
-        <section class="content-grid">
+        <section class="area-board-card">
+            <div class="section-head">
+                <div>
+                    <h3 id="txtAreaBoardTitle">Painel por area</h3>
+                    <p id="txtAreaBoardSubtitle">A lista principal fica resumida por area para nao crescer demais com todas as maquinas.</p>
+                </div>
+            </div>
+            <div id="areaBoard" class="area-board"></div>
+        </section>
+
+        <section class="drilldown-grid">
             <article class="table-card">
                 <div class="section-head">
                     <div>
-                        <h3 id="txtTableTitle">Resumo por maquina</h3>
-                        <p id="txtTableSubtitle">Clique na linha para ver os eventos recentes da maquina selecionada.</p>
+                        <h3 id="txtAreaDetailTitle">Detalhe da area</h3>
+                        <p id="txtAreaDetailSubtitle">Clique em uma area para listar as maquinas e os operadores previstos naquele local.</p>
+                    </div>
+                    <div class="area-selection-head">
+                        <strong id="lblSelectedArea">-</strong>
+                        <small id="lblSelectedAreaMeta">-</small>
                     </div>
                 </div>
+
+                <div class="area-hero-card">
+                    <div class="area-hero-copy">
+                        <span id="lblAreaPill" class="area-hero-pill">-</span>
+                        <h4 id="lblAreaHeadline">-</h4>
+                        <p id="lblAreaSummaryLead">-</p>
+                    </div>
+                    <div class="area-hero-gauge">
+                        <div class="area-hero-gauge-ring">
+                            <strong id="lblAreaHeroPercent">0.0%</strong>
+                            <span id="txtAreaKadouritsuHero">Kadouritsu</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="area-meta-grid">
+                    <div class="area-meta-card">
+                        <span id="txtAreaMachineCount">Maquinas</span>
+                        <strong id="lblAreaMachineCount">0</strong>
+                    </div>
+                    <div class="area-meta-card">
+                        <span id="txtAreaKadouritsu">Kadouritsu</span>
+                        <strong id="lblAreaKadouritsu">0%</strong>
+                    </div>
+                    <div class="area-meta-card">
+                        <span id="txtAreaRunningMinutes">Min. rodando</span>
+                        <strong id="lblAreaRunningMinutes">0</strong>
+                    </div>
+                    <div class="area-meta-card">
+                        <span id="txtAreaLastUpdate">Ultima atualizacao</span>
+                        <strong id="lblAreaLastUpdate">-</strong>
+                    </div>
+                </div>
+
+                <div class="operators-card">
+                    <div class="operators-head">
+                        <h4 id="txtAreaOperatorsTitle">Operadores previstos</h4>
+                        <span id="lblAreaOperatorCount" class="operator-count">0</span>
+                    </div>
+                    <div id="areaOperators" class="operator-pills"></div>
+                </div>
+
                 <div class="table-wrap">
                     <table>
                         <thead>
                             <tr>
                                 <th id="txtColMachine">Maquina</th>
-                                <th id="txtColArea">Area</th>
                                 <th id="txtColStatus">Status</th>
                                 <th id="txtColRecipe">Receita</th>
                                 <th id="txtColLot">Lote</th>
@@ -117,21 +172,65 @@
                         </thead>
                         <tbody id="machineTableBody">
                             <tr>
-                                <td colspan="8" class="empty-cell">Carregando...</td>
+                                <td colspan="7" class="empty-cell">Carregando...</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </article>
 
-            <article class="ranking-card">
+            <div class="insights-stack">
+                <article class="ranking-card">
+                    <div class="section-head">
+                        <div>
+                            <h3 id="txtRankingTitle">Ranking de paradas</h3>
+                            <p id="txtRankingSubtitle">Impacto acumulado de parada e erro dentro da area selecionada.</p>
+                        </div>
+                    </div>
+                    <div id="rankingList" class="ranking-list"></div>
+                </article>
+
+                <article class="compare-card">
+                    <div class="section-head">
+                        <div>
+                            <h3 id="txtShiftCompareTitle">Hirukin vs Yakin</h3>
+                            <p id="txtShiftCompareSubtitle">Comparativo de tempo rodando por turno para o mesmo dia e filtro.</p>
+                        </div>
+                    </div>
+                    <div id="shiftCompareGrid" class="compare-grid"></div>
+                </article>
+
+                <article class="operator-card">
+                    <div class="section-head">
+                        <div>
+                            <h3 id="txtOperatorRankingTitle">Ranking estimado por operador</h3>
+                            <p id="txtOperatorRankingSubtitle">Historico estimado por area/turno. Em areas com dupla, os dois operadores recebem o mesmo resultado da area no dia.</p>
+                        </div>
+                    </div>
+                    <div id="operatorRankingList" class="operator-ranking-list"></div>
+                </article>
+            </div>
+        </section>
+
+        <section class="history-grid">
+            <article class="trend-card">
                 <div class="section-head">
                     <div>
-                        <h3 id="txtRankingTitle">Ranking de paradas</h3>
-                        <p id="txtRankingSubtitle">Impacto acumulado de parada e erro no periodo selecionado.</p>
+                        <h3 id="txtDailyTrendTitle">Historico dia a dia</h3>
+                        <p id="txtDailyTrendSubtitle">Evolucao do kadouritsu no turno selecionado ao longo dos ultimos dias.</p>
                     </div>
                 </div>
-                <div id="rankingList" class="ranking-list"></div>
+                <div id="dailyTrend" class="trend-list"></div>
+            </article>
+
+            <article class="history-card">
+                <div class="section-head">
+                    <div>
+                        <h3 id="txtAreaHistoryTitle">Historico por area</h3>
+                        <p id="txtAreaHistorySubtitle">Comparativo rapido das areas nos ultimos dias para o mesmo turno.</p>
+                    </div>
+                </div>
+                <div id="areaHistory" class="area-history-list"></div>
             </article>
         </section>
 
@@ -139,7 +238,7 @@
             <div class="section-head">
                 <div>
                     <h3 id="txtDetailTitle">Historico recente da maquina</h3>
-                    <p id="txtDetailSubtitle">Ultimos eventos importados para a maquina selecionada.</p>
+                    <p id="txtDetailSubtitle">Ultimos eventos importados para a maquina selecionada na area.</p>
                 </div>
                 <strong id="lblDetailMachine">-</strong>
             </div>
@@ -166,8 +265,8 @@
         <section class="timeline-card">
             <div class="section-head">
                 <div>
-                    <h3 id="txtTimelineTitle">Timeline de 5 em 5 minutos</h3>
-                    <p id="txtTimelineSubtitle">Leitura visual do status das maquinas ao longo do turno.</p>
+                    <h3 id="txtTimelineTitle">Timeline da area</h3>
+                    <p id="txtTimelineSubtitle">Leitura visual de 5 em 5 minutos das maquinas da area selecionada.</p>
                 </div>
             </div>
             <div id="timelineWrap" class="timeline-wrap"></div>

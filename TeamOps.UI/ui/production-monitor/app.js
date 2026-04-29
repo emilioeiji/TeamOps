@@ -1,13 +1,13 @@
 const I18N = {
     "pt-BR": {
-        title: "Producao / Machine Monitor",
-        subtitle: "Monitor de maquinas, producao por turno e linha do tempo operacional.",
+        title: "Kadouritsu / Machine Monitor",
+        subtitle: "Painel de tempo de maquina rodando, com visao por area, maquinas, operadores previstos e historico comparativo.",
         metaUser: "Usuario",
         metaOperator: "Operador",
         metaPeriod: "Periodo",
         badge: "Monitor industrial",
         toolbarTitle: "Filtros do turno",
-        toolbarSubtitle: "Importe os arquivos da rede, filtre setor/area/maquina e acompanhe a saude da producao no mesmo painel.",
+        toolbarSubtitle: "Importe os arquivos, escolha o recorte e acompanhe o kadouritsu primeiro por area, depois por maquina.",
         date: "Data",
         shift: "Turno",
         sector: "Setor",
@@ -18,15 +18,25 @@ const I18N = {
         allMachines: "Todas as maquinas",
         refresh: "Atualizar",
         import: "Importar",
-        metricProduction: "% Producao",
+        metricProduction: "% Kadouritsu",
         metricRunning: "Rodando",
         metricStopped: "Paradas",
         metricError: "Min. erro",
         metricInactive: "Min. inativo",
+        areaBoardTitle: "Painel por area",
+        areaBoardSubtitle: "A lista principal fica resumida por area para nao crescer demais com todas as maquinas.",
+        areaDetailTitle: "Detalhe da area",
+        areaDetailSubtitle: "Clique em uma area para listar as maquinas e os operadores previstos naquele local.",
+        areaFocusLabel: "Area em foco",
+        areaSummaryTemplate: "{machines} maquinas, {running} rodando, {stopped} paradas, {operators} operadores previstos.",
+        areaMachineCount: "Maquinas",
+        areaKadouritsu: "Kadouritsu",
+        areaRunningMinutes: "Min. rodando",
+        areaLastUpdate: "Ultima atualizacao",
+        areaOperatorsTitle: "Operadores previstos",
         tableTitle: "Resumo por maquina",
-        tableSubtitle: "Clique na linha para ver os eventos recentes da maquina selecionada.",
+        tableSubtitle: "Lista de maquinas da area selecionada. Clique na linha para ver o historico.",
         colMachine: "Maquina",
-        colArea: "Area",
         colStatus: "Status",
         colRecipe: "Receita",
         colLot: "Lote",
@@ -34,86 +44,59 @@ const I18N = {
         colPercent: "%",
         colUpdated: "Atualizado",
         rankingTitle: "Ranking de paradas",
-        rankingSubtitle: "Impacto acumulado de parada e erro no periodo selecionado.",
+        rankingSubtitle: "Impacto acumulado de parada e erro dentro da area selecionada.",
+        shiftCompareTitle: "Hirukin vs Yakin",
+        shiftCompareSubtitle: "Comparativo de tempo rodando por turno para o mesmo dia e filtro.",
+        operatorRankingTitle: "Ranking estimado por operador",
+        operatorRankingSubtitle: "Historico estimado por area/turno. Em areas com dupla, os dois operadores recebem o mesmo resultado da area no dia.",
+        dailyTrendTitle: "Historico dia a dia",
+        dailyTrendSubtitle: "Evolucao do kadouritsu no turno selecionado ao longo dos ultimos dias.",
+        areaHistoryTitle: "Historico por area",
+        areaHistorySubtitle: "Comparativo rapido das areas nos ultimos dias para o mesmo turno.",
         detailTitle: "Historico recente da maquina",
-        detailSubtitle: "Ultimos eventos importados para a maquina selecionada.",
+        detailSubtitle: "Ultimos eventos importados para a maquina selecionada na area.",
         detailDate: "Data/Hora",
         detailStatus: "Status",
         detailRecipe: "Receita",
         detailLot: "Lote",
         detailSource: "Arquivo",
-        timelineTitle: "Timeline de 5 em 5 minutos",
-        timelineSubtitle: "Leitura visual do status das maquinas ao longo do turno.",
+        timelineTitle: "Timeline da area",
+        timelineSubtitle: "Leitura visual de 5 em 5 minutos das maquinas da area selecionada.",
         loading: "Importando producao...",
-        noRows: "Nenhuma maquina encontrada para o filtro selecionado.",
-        noRanking: "Sem paradas registradas no periodo.",
-        noTimeline: "Sem dados para montar a timeline.",
+        noRows: "Nenhuma maquina encontrada para a area selecionada.",
+        noAreas: "Nenhuma area encontrada para o filtro selecionado.",
+        noRanking: "Sem paradas registradas para esta area.",
+        noTimeline: "Sem dados para montar a timeline da area.",
+        noTrend: "Sem dados para o historico.",
+        noOperators: "Sem operador previsto",
+        noOperatorRanking: "Sem schedule suficiente para estimar producao por operador.",
         selectMachine: "Selecione uma maquina.",
-        noOperators: "Sem operador",
         importingSuccess: "Importacao concluida.",
         running: "Rodando",
         stopped: "Parado",
         inactive: "Inativo",
-        error: "Erro"
+        error: "Erro",
+        machinesSuffix: "maquinas",
+        operatorsSuffix: "operadores",
+        avgLabel: "Media",
+        minutesLabel: "min",
+        compareRun: "Rodando",
+        compareStop: "Parado",
+        compareError: "Erro",
+        compareInactive: "Inativo",
+        compareMachines: "Maquinas",
+        estimatedLabel: "Estimado",
+        currentAreaFallback: "Todas as areas",
+        machineMinutesRunning: "rodando",
+        machineMinutesStopped: "parado",
+        machineMinutesError: "erro",
+        impactLabel: "Impacto",
+        rankingMinutesSuffix: "min de impacto"
     },
-    "ja-JP": {
-        title: "生産 / Machine Monitor",
-        subtitle: "設備状態、シフト別生産、時間軸の流れを一つの画面で確認できます。",
-        metaUser: "ユーザー",
-        metaOperator: "作業者",
-        metaPeriod: "期間",
-        badge: "生産モニター",
-        toolbarTitle: "シフトフィルター",
-        toolbarSubtitle: "ネットワークのファイルを取り込み、セクター・エリア・設備別に生産状況を確認します。",
-        date: "日付",
-        shift: "シフト",
-        sector: "セクター",
-        local: "エリア",
-        machine: "設備",
-        allSectors: "全セクター",
-        allLocals: "全エリア",
-        allMachines: "全設備",
-        refresh: "更新",
-        import: "取込",
-        metricProduction: "生産率",
-        metricRunning: "稼動中",
-        metricStopped: "停止台数",
-        metricError: "異常分",
-        metricInactive: "非稼動分",
-        tableTitle: "設備別サマリー",
-        tableSubtitle: "行をクリックすると、その設備の最新イベント履歴を確認できます。",
-        colMachine: "設備",
-        colArea: "エリア",
-        colStatus: "状態",
-        colRecipe: "レシピ",
-        colLot: "ロット",
-        colOperators: "作業者",
-        colPercent: "%",
-        colUpdated: "更新",
-        rankingTitle: "停止ランキング",
-        rankingSubtitle: "選択期間で停止・異常の影響が大きい設備です。",
-        detailTitle: "設備の最近履歴",
-        detailSubtitle: "選択した設備で最後に取り込まれたイベント一覧です。",
-        detailDate: "日時",
-        detailStatus: "状態",
-        detailRecipe: "レシピ",
-        detailLot: "ロット",
-        detailSource: "ファイル",
-        timelineTitle: "5分単位タイムライン",
-        timelineSubtitle: "シフト中の設備状態を時系列で確認できます。",
-        loading: "生産データを取り込み中...",
-        noRows: "選択した条件に該当する設備がありません。",
-        noRanking: "この期間に停止実績がありません。",
-        noTimeline: "タイムラインを表示できるデータがありません。",
-        selectMachine: "設備を選択してください。",
-        noOperators: "作業者なし",
-        importingSuccess: "取込が完了しました。",
-        running: "稼動中",
-        stopped: "停止",
-        inactive: "非稼動",
-        error: "異常"
-    }
+    "ja-JP": {}
 };
+
+I18N["ja-JP"] = { ...I18N["pt-BR"] };
 
 const state = {
     locale: "pt-BR",
@@ -122,6 +105,7 @@ const state = {
     locals: [],
     machines: [],
     dashboard: null,
+    selectedAreaId: 0,
     selectedMachineCode: "",
     pinnedNotice: false
 };
@@ -192,24 +176,24 @@ function hydrateInit(data) {
 
 function hydrateDashboard(data) {
     state.dashboard = data;
+    state.selectedAreaId = resolveSelectedAreaId(data);
 
     setText("lblPeriod", `${formatDateTime(data.periodStart)} - ${formatDateTime(data.periodEnd)}`);
-    setText("lblProductionPercent", `${Number(data.productionPercent || 0).toFixed(1)}%`);
+    setText("lblProductionPercent", `${toFixed(data.productionPercent)}%`);
     setText("lblMachinesRunning", data.machinesRunning ?? 0);
     setText("lblMachinesStopped", data.machinesStopped ?? 0);
-    setText("lblErrorMinutes", Number(data.errorMinutes || 0).toFixed(1));
-    setText("lblInactiveMinutes", Number(data.inactiveMinutes || 0).toFixed(1));
+    setText("lblErrorMinutes", toFixed(data.errorMinutes));
+    setText("lblInactiveMinutes", toFixed(data.inactiveMinutes));
 
-    renderMachineTable(data.machines || []);
-    renderRanking(data.ranking || []);
-    renderTimeline(data.timeline || []);
+    renderAreaBoard(data.areas || []);
+    renderSelectedArea();
+    renderShiftComparisons(data.shiftComparisons || []);
+    renderDailyTrend(data.dailyTrend || []);
+    renderAreaHistory(data.areaHistory || []);
+    renderOperatorRanking(data.operatorRanking || []);
 
     if (!state.pinnedNotice) {
         hideNotice();
-    }
-
-    if (state.selectedMachineCode) {
-        send("production_machine_detail", { machineCode: state.selectedMachineCode });
     }
 }
 
@@ -300,26 +284,149 @@ function fillMachineOptions() {
     }
 }
 
+function resolveSelectedAreaId(data) {
+    const localFilterId = Number(data.localId || document.getElementById("localPicker")?.value || 0);
+    const areas = data.areas || [];
+
+    if (localFilterId > 0 && areas.some(area => Number(area.localId || 0) === localFilterId)) {
+        return localFilterId;
+    }
+
+    if (state.selectedAreaId > 0 && areas.some(area => Number(area.localId || 0) === state.selectedAreaId)) {
+        return state.selectedAreaId;
+    }
+
+    return Number(areas[0]?.localId || 0);
+}
+
+function renderAreaBoard(areas) {
+    const wrap = document.getElementById("areaBoard");
+
+    if (!areas.length) {
+        wrap.innerHTML = `<div class="empty-card">${escapeHtml(t("noAreas"))}</div>`;
+        return;
+    }
+
+    wrap.innerHTML = areas.map(area => `
+        <article class="area-card ${Number(area.localId || 0) === Number(state.selectedAreaId) ? "is-active" : ""}" data-area="${area.localId || 0}">
+            <div class="area-card-top">
+                <div>
+                    <strong>${escapeHtml(getAreaLabel(area))}</strong>
+                    <small>${escapeHtml(getAreaSectorLabel(area))}</small>
+                </div>
+                <span class="area-percent">${toFixed(area.productionPercent)}%</span>
+            </div>
+            <div class="area-stats">
+                <div class="stat-chip">
+                    <span>${escapeHtml(t("areaMachineCount"))}</span>
+                    <strong>${area.machineCount || 0}</strong>
+                </div>
+                <div class="stat-chip">
+                    <span>${escapeHtml(t("metricRunning"))}</span>
+                    <strong>${area.machinesRunning || 0}</strong>
+                </div>
+                <div class="stat-chip">
+                    <span>${escapeHtml(t("metricStopped"))}</span>
+                    <strong>${area.machinesStopped || 0}</strong>
+                </div>
+                <div class="stat-chip">
+                    <span>${escapeHtml(t("metricError"))}</span>
+                    <strong>${toFixed(area.errorMinutes)}</strong>
+                </div>
+            </div>
+            <div class="area-operators-line">${escapeHtml(operatorCountLabel(area))}</div>
+        </article>
+    `).join("");
+
+    wrap.querySelectorAll("[data-area]").forEach(card => {
+        card.addEventListener("click", () => {
+            state.selectedAreaId = Number(card.dataset.area || 0);
+            renderSelectedArea();
+            renderAreaBoard(areas);
+        });
+    });
+}
+
+function renderSelectedArea() {
+    const area = getSelectedArea();
+    const areaMachines = getSelectedAreaMachines();
+
+    setText("lblSelectedArea", area ? getAreaLabel(area) : t("currentAreaFallback"));
+    setText("lblSelectedAreaMeta", area ? getAreaSectorLabel(area) : "-");
+    setText("lblAreaPill", t("areaFocusLabel"));
+    setText("lblAreaHeadline", area ? getAreaLabel(area) : t("currentAreaFallback"));
+    setText("lblAreaSummaryLead", buildAreaSummaryLine(area));
+    setText("lblAreaHeroPercent", `${toFixed(area?.productionPercent)}%`);
+    setText("lblAreaMachineCount", area?.machineCount ?? 0);
+    setText("lblAreaKadouritsu", `${toFixed(area?.productionPercent)}%`);
+    setText("lblAreaRunningMinutes", toFixed(area?.runningMinutes));
+    setText("lblAreaLastUpdate", formatDateTime(area?.lastUpdate));
+
+    const operators = getAreaOperators(area);
+    setText("lblAreaOperatorCount", operators.length);
+    renderOperatorPills(operators);
+    renderMachineTable(areaMachines);
+    renderRanking(getSelectedAreaRanking());
+    renderTimeline(getSelectedAreaTimeline());
+
+    if (!areaMachines.length) {
+        state.selectedMachineCode = "";
+        renderDetail({ machineCode: "", events: [] });
+        return;
+    }
+
+    if (!areaMachines.some(machine => machine.machineCode === state.selectedMachineCode)) {
+        state.selectedMachineCode = areaMachines[0].machineCode || "";
+        send("production_machine_detail", { machineCode: state.selectedMachineCode });
+    }
+}
+
+function renderOperatorPills(operators) {
+    const wrap = document.getElementById("areaOperators");
+
+    if (!operators.length) {
+        wrap.innerHTML = `<div class="empty-card">${escapeHtml(t("noOperators"))}</div>`;
+        return;
+    }
+
+    wrap.innerHTML = operators
+        .map(name => `<span class="operator-pill">${escapeHtml(name)}</span>`)
+        .join("");
+}
+
 function renderMachineTable(rows) {
     const body = document.getElementById("machineTableBody");
 
     if (!rows.length) {
-        body.innerHTML = `<tr><td colspan="8" class="empty-cell">${escapeHtml(t("noRows"))}</td></tr>`;
+        body.innerHTML = `<tr><td colspan="7" class="empty-cell">${escapeHtml(t("noRows"))}</td></tr>`;
         return;
     }
 
     body.innerHTML = rows.map(row => `
-        <tr class="machine-row" data-machine="${escapeHtmlAttr(row.machineCode)}">
+        <tr class="machine-row ${row.machineCode === state.selectedMachineCode ? "is-selected" : ""}" data-machine="${escapeHtmlAttr(row.machineCode)}">
             <td>
-                <strong>${escapeHtml(getMachineLabel(row))}</strong>
-                <small>${escapeHtml(row.machineCode || "-")}</small>
+                <div class="machine-main">
+                    <strong>${escapeHtml(getMachineLabel(row))}</strong>
+                    <small>${escapeHtml(row.machineCode || "-")}</small>
+                </div>
             </td>
-            <td>${escapeHtml(getLocalLabel(row))}</td>
-            <td><span class="status-badge ${getStatusClass(row.statusCode)}">${escapeHtml(getStatusLabel(row))}</span></td>
+            <td>
+                <div class="machine-status-stack">
+                    <span class="status-badge ${getStatusClass(row.statusCode)}">${escapeHtml(getStatusLabel(row))}</span>
+                    <small>${escapeHtml(formatMachineMinutesSummary(row))}</small>
+                </div>
+            </td>
             <td>${escapeHtml(row.recipeName || "-")}</td>
             <td>${escapeHtml(row.lotNo || "-")}</td>
             <td>${escapeHtml(getOperatorsLabel(row))}</td>
-            <td>${Number(row.productionPercent || 0).toFixed(1)}%</td>
+            <td>
+                <div class="machine-kadouritsu-cell">
+                    <strong>${toFixed(row.productionPercent)}%</strong>
+                    <div class="machine-progress-track">
+                        <div class="machine-progress-fill" style="width:${clampPercent(row.productionPercent)}%"></div>
+                    </div>
+                </div>
+            </td>
             <td>${escapeHtml(formatDateTime(row.lastUpdate))}</td>
         </tr>
     `).join("");
@@ -327,6 +434,7 @@ function renderMachineTable(rows) {
     body.querySelectorAll(".machine-row").forEach(row => {
         row.addEventListener("click", () => {
             state.selectedMachineCode = row.dataset.machine || "";
+            renderMachineTable(rows);
             send("production_machine_detail", { machineCode: state.selectedMachineCode });
         });
     });
@@ -340,16 +448,115 @@ function renderRanking(items) {
         return;
     }
 
+    const maxImpact = Math.max(...items.map(item => Number(item.totalImpactMinutes || 0)), 1);
     list.innerHTML = items.map((item, index) => `
         <article class="ranking-item">
             <span class="ranking-index">${index + 1}</span>
             <div class="ranking-copy">
                 <strong>${escapeHtml(getLocalizedMachineName(item))}</strong>
                 <small>${escapeHtml(item.machineCode || "-")}</small>
+                <div class="ranking-progress-track">
+                    <div class="ranking-progress-fill" style="width:${Math.max(6, (Number(item.totalImpactMinutes || 0) / maxImpact) * 100)}%"></div>
+                </div>
             </div>
             <div class="ranking-metrics">
-                <span>${Number(item.stopMinutes || 0).toFixed(1)}</span>
-                <small>${Number(item.errorMinutes || 0).toFixed(1)} err</small>
+                <span>${toFixed(item.totalImpactMinutes)}</span>
+                <small>${toFixed(item.stopMinutes)} stop / ${toFixed(item.errorMinutes)} err</small>
+            </div>
+        </article>
+    `).join("");
+}
+
+function renderShiftComparisons(items) {
+    const wrap = document.getElementById("shiftCompareGrid");
+
+    if (!items.length) {
+        wrap.innerHTML = `<div class="empty-card">${escapeHtml(t("noTrend"))}</div>`;
+        return;
+    }
+
+    wrap.innerHTML = items.map(item => `
+        <article class="compare-item">
+            <span class="access-badge">${escapeHtml(getShiftCompareName(item))}</span>
+            <strong>${toFixed(item.productionPercent)}%</strong>
+            <small>${escapeHtml(formatDateTime(item.start))} - ${escapeHtml(formatDateTime(item.end))}</small>
+            <div class="compare-meta">
+                <span>${escapeHtml(t("compareRun"))}: <strong>${toFixed(item.runningMinutes)}</strong></span>
+                <span>${escapeHtml(t("compareStop"))}: <strong>${toFixed(item.stoppedMinutes)}</strong></span>
+                <span>${escapeHtml(t("compareError"))}: <strong>${toFixed(item.errorMinutes)}</strong></span>
+                <span>${escapeHtml(t("compareInactive"))}: <strong>${toFixed(item.inactiveMinutes)}</strong></span>
+            </div>
+        </article>
+    `).join("");
+}
+
+function renderDailyTrend(items) {
+    const wrap = document.getElementById("dailyTrend");
+
+    if (!items.length) {
+        wrap.innerHTML = `<div class="empty-card">${escapeHtml(t("noTrend"))}</div>`;
+        return;
+    }
+
+    wrap.innerHTML = items.map(item => `
+        <article class="trend-item">
+            <strong>${escapeHtml(item.label || "-")}</strong>
+            <div class="trend-bar-track">
+                <div class="trend-bar-fill" style="width:${Math.max(0, Math.min(100, Number(item.productionPercent || 0)))}%"></div>
+            </div>
+            <div class="trend-value">${toFixed(item.productionPercent)}%</div>
+        </article>
+    `).join("");
+}
+
+function renderAreaHistory(items) {
+    const wrap = document.getElementById("areaHistory");
+
+    if (!items.length) {
+        wrap.innerHTML = `<div class="empty-card">${escapeHtml(t("noTrend"))}</div>`;
+        return;
+    }
+
+    wrap.innerHTML = items.map(item => `
+        <article class="area-history-item">
+            <strong>${escapeHtml(getAreaLabel(item))}</strong>
+            <div class="spark-grid">
+                ${(item.days || []).map(day => `
+                    <div class="spark-cell" title="${escapeHtml(day.label)} - ${escapeHtml(toFixed(day.productionPercent))}%">
+                        <div class="spark-cell-bar" style="height:${Math.max(8, Math.min(100, Number(day.productionPercent || 0)))}%"></div>
+                        <span class="spark-cell-label">${escapeHtml(day.label || "-")}</span>
+                    </div>
+                `).join("")}
+            </div>
+            <div class="spark-avg">${toFixed(averagePercent(item.days || []))}%</div>
+        </article>
+    `).join("");
+}
+
+function renderOperatorRanking(items) {
+    const wrap = document.getElementById("operatorRankingList");
+
+    if (!items.length) {
+        wrap.innerHTML = `<div class="empty-card">${escapeHtml(t("noOperatorRanking"))}</div>`;
+        return;
+    }
+
+    wrap.innerHTML = items.map((item, index) => `
+        <article class="operator-ranking-item">
+            <span class="operator-ranking-index">${index + 1}</span>
+            <div class="operator-ranking-copy">
+                <strong>${escapeHtml(getOperatorName(item))}</strong>
+                <small>${escapeHtml(item.operatorCodigoFJ || "-")}</small>
+                <div class="operator-ranking-locals">
+                    ${getOperatorLocalNames(item).map(name => `<span class="operator-ranking-local">${escapeHtml(name)}</span>`).join("")}
+                </div>
+                <div class="operator-ranking-progress-track">
+                    <div class="operator-ranking-progress-fill" style="width:${clampPercent(item.estimatedKadouritsuPercent)}%"></div>
+                </div>
+            </div>
+            <div class="operator-ranking-metrics">
+                <span>${toFixed(item.estimatedKadouritsuPercent)}%</span>
+                <small>${toFixed(item.estimatedRunningMinutes)} ${escapeHtml(t("minutesLabel"))}</small>
             </div>
         </article>
     `).join("");
@@ -432,10 +639,17 @@ function applyLocale() {
     setText("txtMetricStopped", t("metricStopped"));
     setText("txtMetricError", t("metricError"));
     setText("txtMetricInactive", t("metricInactive"));
-    setText("txtTableTitle", t("tableTitle"));
-    setText("txtTableSubtitle", t("tableSubtitle"));
+    setText("txtAreaBoardTitle", t("areaBoardTitle"));
+    setText("txtAreaBoardSubtitle", t("areaBoardSubtitle"));
+    setText("txtAreaDetailTitle", t("areaDetailTitle"));
+    setText("txtAreaDetailSubtitle", t("areaDetailSubtitle"));
+    setText("txtAreaKadouritsuHero", t("areaKadouritsu"));
+    setText("txtAreaMachineCount", t("areaMachineCount"));
+    setText("txtAreaKadouritsu", t("areaKadouritsu"));
+    setText("txtAreaRunningMinutes", t("areaRunningMinutes"));
+    setText("txtAreaLastUpdate", t("areaLastUpdate"));
+    setText("txtAreaOperatorsTitle", t("areaOperatorsTitle"));
     setText("txtColMachine", t("colMachine"));
-    setText("txtColArea", t("colArea"));
     setText("txtColStatus", t("colStatus"));
     setText("txtColRecipe", t("colRecipe"));
     setText("txtColLot", t("colLot"));
@@ -444,6 +658,14 @@ function applyLocale() {
     setText("txtColUpdated", t("colUpdated"));
     setText("txtRankingTitle", t("rankingTitle"));
     setText("txtRankingSubtitle", t("rankingSubtitle"));
+    setText("txtShiftCompareTitle", t("shiftCompareTitle"));
+    setText("txtShiftCompareSubtitle", t("shiftCompareSubtitle"));
+    setText("txtOperatorRankingTitle", t("operatorRankingTitle"));
+    setText("txtOperatorRankingSubtitle", t("operatorRankingSubtitle"));
+    setText("txtDailyTrendTitle", t("dailyTrendTitle"));
+    setText("txtDailyTrendSubtitle", t("dailyTrendSubtitle"));
+    setText("txtAreaHistoryTitle", t("areaHistoryTitle"));
+    setText("txtAreaHistorySubtitle", t("areaHistorySubtitle"));
     setText("txtDetailTitle", t("detailTitle"));
     setText("txtDetailSubtitle", t("detailSubtitle"));
     setText("txtDetailColDate", t("detailDate"));
@@ -463,6 +685,40 @@ function applyLocale() {
     if (state.dashboard) {
         hydrateDashboard(state.dashboard);
     }
+}
+
+function getSelectedArea() {
+    const areas = state.dashboard?.areas || [];
+    return areas.find(area => Number(area.localId || 0) === Number(state.selectedAreaId)) || areas[0] || null;
+}
+
+function getSelectedAreaMachines() {
+    const machines = state.dashboard?.machines || [];
+    const area = getSelectedArea();
+    if (!area) return machines;
+    return machines.filter(machine => Number(machine.localId || 0) === Number(area.localId || 0));
+}
+
+function getSelectedAreaRanking() {
+    const area = getSelectedArea();
+    const items = state.dashboard?.ranking || [];
+    if (!area) return items;
+    return items.filter(item => Number(item.localId || 0) === Number(area.localId || 0));
+}
+
+function getSelectedAreaTimeline() {
+    const area = getSelectedArea();
+    const rows = state.dashboard?.timeline || [];
+    if (!area) return rows;
+    return rows.filter(row => Number(row.localId || 0) === Number(area.localId || 0));
+}
+
+function getAreaOperators(area) {
+    if (!area) return [];
+    const values = state.locale === "ja-JP"
+        ? (area.scheduledOperatorsJp || [])
+        : (area.scheduledOperatorsPt || []);
+    return values.filter(Boolean);
 }
 
 function getLocalizedName(item) {
@@ -487,10 +743,22 @@ function getLocalizedMachineName(row) {
     return getMachineLabel(row);
 }
 
-function getLocalLabel(row) {
+function getAreaLabel(area) {
     return state.locale === "ja-JP"
-        ? (row.localNameJp || row.localNamePt || "-")
-        : (row.localNamePt || row.localNameJp || "-");
+        ? (area.localNameJp || area.localNamePt || t("currentAreaFallback"))
+        : (area.localNamePt || area.localNameJp || t("currentAreaFallback"));
+}
+
+function getAreaSectorLabel(area) {
+    return state.locale === "ja-JP"
+        ? (area.sectorNameJp || area.sectorNamePt || "-")
+        : (area.sectorNamePt || area.sectorNameJp || "-");
+}
+
+function getShiftCompareName(item) {
+    return state.locale === "ja-JP"
+        ? (item.shiftNameJp || item.shiftNamePt || "-")
+        : (item.shiftNamePt || item.shiftNameJp || "-");
 }
 
 function getOperatorsLabel(row) {
@@ -499,6 +767,46 @@ function getOperatorsLabel(row) {
         : (row.scheduledOperatorsPt || []);
 
     return values.length ? values.join(", ") : t("noOperators");
+}
+
+function getOperatorName(item) {
+    return state.locale === "ja-JP"
+        ? (item.operatorNameJp || item.operatorNamePt || item.operatorCodigoFJ || "-")
+        : (item.operatorNamePt || item.operatorNameJp || item.operatorCodigoFJ || "-");
+}
+
+function getOperatorLocalNames(item) {
+    const values = state.locale === "ja-JP"
+        ? (item.localNamesJp || [])
+        : (item.localNamesPt || []);
+
+    return values.length ? values : [t("currentAreaFallback")];
+}
+
+function operatorCountLabel(area) {
+    const count = getAreaOperators(area).length;
+    return `${count} ${t("operatorsSuffix")}`;
+}
+
+function buildAreaSummaryLine(area) {
+    if (!area) {
+        return t("currentAreaFallback");
+    }
+
+    return t("areaSummaryTemplate")
+        .replace("{machines}", String(area.machineCount || 0))
+        .replace("{running}", String(area.machinesRunning || 0))
+        .replace("{stopped}", String(area.machinesStopped || 0))
+        .replace("{operators}", String(getAreaOperators(area).length));
+}
+
+function formatMachineMinutesSummary(row) {
+    return `${toFixed(row.runningMinutes)} ${t("machineMinutesRunning")} · ${toFixed(row.stoppedMinutes)} ${t("machineMinutesStopped")} · ${toFixed(row.errorMinutes)} ${t("machineMinutesError")}`;
+}
+
+function averagePercent(days) {
+    if (!days.length) return 0;
+    return days.reduce((sum, item) => sum + Number(item.productionPercent || 0), 0) / days.length;
 }
 
 function getStatusLabel(row) {
@@ -577,6 +885,14 @@ function hideNotice() {
     const notice = document.getElementById("importNotice");
     notice.className = "notice-banner hidden";
     notice.textContent = "";
+}
+
+function toFixed(value) {
+    return Number(value || 0).toFixed(1);
+}
+
+function clampPercent(value) {
+    return Math.max(0, Math.min(100, Number(value || 0)));
 }
 
 function t(key) {

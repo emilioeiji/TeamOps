@@ -15,10 +15,12 @@ namespace TeamOps.Services
     public sealed class ProductionFileImporter
     {
         private static readonly string[] FileSuffixes = { "211D", "2400" };
+        private static readonly StringComparer TextComparer = StringComparer.OrdinalIgnoreCase;
 
         private readonly SqliteConnectionFactory _factory;
         private readonly ProductionMachineRepository _machineRepository;
         private readonly ProductionEventRepository _eventRepository;
+        private readonly ProductionPlanDatImporter _planImporter;
 
         public ProductionFileImporter(
             SqliteConnectionFactory factory,
@@ -28,6 +30,7 @@ namespace TeamOps.Services
             _factory = factory;
             _machineRepository = machineRepository;
             _eventRepository = eventRepository;
+            _planImporter = new ProductionPlanDatImporter();
         }
 
         public ProductionImportResult ImportLatest()
@@ -54,6 +57,13 @@ namespace TeamOps.Services
             ProductionSchemaMigrator.Ensure(conn);
             using var tx = conn.BeginTransaction();
 
+            _planImporter.ImportLatestPlanFiles(
+                conn,
+                tx,
+                settings.EventsDirectory,
+                settings.SourceDatDirectory,
+                result);
+
             foreach (var filePath in files)
             {
                 result.FilesRead++;
@@ -72,7 +82,7 @@ namespace TeamOps.Services
                     try
                     {
                         var existed = _machineRepository.GetByMachineCode(conn, parsed.MachineCode) != null;
-                        var machine = _machineRepository.EnsureMachine(conn, parsed.MachineCode, parsed.LineCode);
+                        var machine = _machineRepository.EnsureMachine(conn, parsed.MachineCode, parsed.LineCode, parsed.SectorId);
 
                         if (!existed)
                         {
@@ -85,7 +95,7 @@ namespace TeamOps.Services
                             MachineCode = parsed.MachineCode,
                             LineCode = parsed.LineCode,
                             LocalId = machine.LocalId,
-                            SectorId = machine.SectorId,
+                            SectorId = parsed.SectorId ?? machine.SectorId,
                             RecipeName = parsed.RecipeName,
                             LotNo = parsed.LotNo,
                             StatusCode = parsed.StatusCode,
@@ -190,6 +200,7 @@ namespace TeamOps.Services
             {
                 LineCode = lineCode,
                 MachineCode = machineCode,
+                SectorId = ResolveSectorId(lineCode),
                 InternalState = internalState,
                 StatusCode = MapStatusCode(internalState, statusText),
                 StatusText = statusText,
@@ -203,26 +214,62 @@ namespace TeamOps.Services
 
         private static int MapStatusCode(string internalState, string statusText)
         {
-            if (int.TryParse(internalState, out var parsed))
+            if (int.TryParse(internalState, out var parsed) && parsed >= 0 && parsed <= 3)
             {
-                return parsed switch
-                {
-                    0 => 0,
-                    1 => 1,
-                    2 => 2,
-                    3 => 3,
-                    _ => 2
-                };
+                return parsed;
             }
 
-            return statusText switch
+            var normalized = (statusText ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(normalized))
             {
-                "稼動中" => 0,
-                "運転" => 0,
-                "停止" => 1,
-                "トラブル" => 3,
-                _ => 2
-            };
+                return 2;
+            }
+
+            if (normalized.Contains("稼動中", StringComparison.Ordinal)
+                || normalized.Contains("運転", StringComparison.Ordinal)
+                || normalized.Contains("RUN", StringComparison.OrdinalIgnoreCase))
+            {
+                return 0;
+            }
+
+            if (normalized.Contains("停止中", StringComparison.Ordinal)
+                || normalized.Contains("停止", StringComparison.Ordinal)
+                || normalized.Contains("STOP", StringComparison.OrdinalIgnoreCase))
+            {
+                return 1;
+            }
+
+            if (normalized.Contains("トラブル", StringComparison.Ordinal)
+                || normalized.Contains("異常", StringComparison.Ordinal)
+                || normalized.Contains("ERROR", StringComparison.OrdinalIgnoreCase)
+                || normalized.Contains("ALARM", StringComparison.OrdinalIgnoreCase))
+            {
+                return 3;
+            }
+
+            if (normalized.Contains("サンプル", StringComparison.Ordinal)
+                || normalized.Contains("レス処理", StringComparison.Ordinal)
+                || normalized.Contains("吸引時間", StringComparison.Ordinal))
+            {
+                return 2;
+            }
+
+            return 2;
+        }
+
+        private static int? ResolveSectorId(string lineCode)
+        {
+            if (TextComparer.Equals(lineCode, "211D"))
+            {
+                return 2;
+            }
+
+            if (TextComparer.Equals(lineCode, "2400"))
+            {
+                return 1;
+            }
+
+            return null;
         }
 
         private static string Safe(string[] parts, int index)
@@ -366,6 +413,7 @@ namespace TeamOps.Services
         {
             public string LineCode { get; set; }
             public string MachineCode { get; set; }
+            public int? SectorId { get; set; }
             public string InternalState { get; set; }
             public int StatusCode { get; set; }
             public string StatusText { get; set; }
