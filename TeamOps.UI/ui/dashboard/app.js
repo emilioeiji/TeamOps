@@ -18,6 +18,7 @@ const ACCESS_LABELS = {
 const PERMISSION_RULES = {
     btnRelatorios: 3,
     btnPresenca: 3,
+    btnHaidai: 3,
     btnFollowUp: 2,
     btnTasks: 3,
     btnProduction: 3,
@@ -76,6 +77,8 @@ const I18N = {
         tileTodokeSubtitle: "Solicitacoes e folhas",
         tilePresenceTitle: "Presenca",
         tilePresenceSubtitle: "Painel dos setores",
+        tileHaidaiTitle: "Haidai",
+        tileHaidaiSubtitle: "Escala diaria por grupo",
         tileAdminTitle: "Admin",
         tileAdminSubtitle: "Configuracoes do sistema",
         tileAccessTitle: "Acesso",
@@ -128,6 +131,8 @@ const I18N = {
         tileTodokeSubtitle: "\u7533\u8acb\u3068\u66f8\u985e",
         tilePresenceTitle: "\u51fa\u52e4",
         tilePresenceSubtitle: "\u30bb\u30af\u30bf\u30fc\u30d1\u30cd\u30eb",
+        tileHaidaiTitle: "Haidai",
+        tileHaidaiSubtitle: "\u65e5\u6b21\u5ec3\u53f0\u30b0\u30eb\u30fc\u30d7\u914d\u7f6e",
         tileAdminTitle: "\u7ba1\u7406",
         tileAdminSubtitle: "\u30b7\u30b9\u30c6\u30e0\u8a2d\u5b9a",
         tileAccessTitle: "\u30a2\u30af\u30bb\u30b9",
@@ -288,6 +293,8 @@ function setLocale(locale) {
     setText("txtTileTodokeSubtitle", strings.tileTodokeSubtitle);
     setText("txtTilePresenceTitle", strings.tilePresenceTitle);
     setText("txtTilePresenceSubtitle", strings.tilePresenceSubtitle);
+    setText("txtTileHaidaiTitle", strings.tileHaidaiTitle);
+    setText("txtTileHaidaiSubtitle", strings.tileHaidaiSubtitle);
     setText("txtTileAdminTitle", strings.tileAdminTitle);
     setText("txtTileAdminSubtitle", strings.tileAdminSubtitle);
     setText("txtTileAccessTitle", strings.tileAccessTitle);

@@ -117,6 +117,17 @@ namespace TeamOps.UI.Forms
                         ));
                     break;
 
+                case "open:haidai":
+                    if (!HasAccess(AccessLevel.GL))
+                        ShowAccessDeniedAsync();
+                    else
+                        OpenDialog(() => new HTMLFormHaidai(
+                            _factory,
+                            _user,
+                            _currentOperator
+                        ));
+                    break;
+
                 case "open:followup":
                     if (!HasAccess(AccessLevel.KL))
                         ShowAccessDeniedAsync();

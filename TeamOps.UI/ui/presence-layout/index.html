@@ -24,7 +24,7 @@
             </div>
 
             <div class="meta-pill">
-                <span id="txtMetaImport" class="meta-label">Schedule</span>
+                <span id="txtMetaImport" class="meta-label">Fonte</span>
                 <strong id="lblImportState">-</strong>
             </div>
         </div>
@@ -35,7 +35,7 @@
             <div class="toolbar-copy">
                 <span id="toolbarBadge" class="access-badge">Layout combinado</span>
                 <h2 id="txtToolbarTitle">Filtro unico para os dois setores</h2>
-                <p id="txtToolbarSubtitle">Importe o haidai uma vez e acompanhe G-Bareru e DAD lado a lado com o mesmo periodo e turno.</p>
+                <p id="txtToolbarSubtitle">O painel usa diretamente a escala ativa do Haidai e mostra os dois setores lado a lado no mesmo turno.</p>
             </div>
 
             <div class="toolbar-actions">
@@ -50,7 +50,6 @@
                 </label>
 
                 <button id="btnRefresh" type="button" class="btn-secondary">Atualizar</button>
-                <button id="btnImportSchedule" type="button" class="btn-primary">Importar haidai</button>
             </div>
         </section>
 
@@ -79,11 +78,6 @@
         <section id="importNotice" class="notice-banner hidden"></section>
         <section id="sectorsGrid" class="sectors-grid"></section>
     </main>
-
-    <div id="loadingOverlay" class="loading-overlay hidden">
-        <div class="spinner"></div>
-        <div id="txtLoading" class="loading-text">Importando schedule...</div>
-    </div>
 
     <script src="app.js"></script>
 </body>
