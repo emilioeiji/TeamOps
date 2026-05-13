@@ -5,6 +5,7 @@ using System.Linq;
 using Dapper;
 using TeamOps.Data.Db;
 using TeamOps.UI.Forms.Models;
+using TeamOps.UI.Services;
 
 namespace TeamOps.Services
 {
@@ -42,6 +43,8 @@ namespace TeamOps.Services
         {
             using var conn = _factory.CreateOpenConnection();
             ProductionSchemaMigrator.Ensure(conn);
+            var haidaiService = new HaidaiModuleService(_factory);
+            haidaiService.EnsureSchema();
 
             var shifts = conn.Query<ShiftLookupRow>(
                 @"
@@ -153,15 +156,17 @@ namespace TeamOps.Services
             var scheduleCurrentRows = conn.Query<ScheduleRow>(
                 @"
                     SELECT
-                        sc.ScheduleDate,
-                        sc.LocalId,
-                        COALESCE(sc.CodigoFJ, '') AS OperatorCodigoFJ,
-                        COALESCE(op.NameRomanji, sc.CodigoFJ) AS OperatorNamePt,
-                        COALESCE(NULLIF(op.NameNihongo, ''), op.NameRomanji, sc.CodigoFJ) AS OperatorNameJp
-                    FROM OperatorSchedule sc
-                    LEFT JOIN Operators op ON op.CodigoFJ = sc.CodigoFJ
-                    WHERE date(sc.ScheduleDate) = date(@scheduleDate)
-                      AND sc.ShiftId = @shiftId;",
+                        ha.ScheduleDate,
+                        ha.LocalId,
+                        COALESCE(ha.OperatorCodigoFJ, '') AS OperatorCodigoFJ,
+                        COALESCE(op.NameRomanji, ha.OperatorCodigoFJ) AS OperatorNamePt,
+                        COALESCE(NULLIF(op.NameNihongo, ''), op.NameRomanji, ha.OperatorCodigoFJ) AS OperatorNameJp
+                    FROM HaidaiAssignments ha
+                    LEFT JOIN Operators op ON op.CodigoFJ = ha.OperatorCodigoFJ
+                    WHERE date(ha.ScheduleDate) = date(@scheduleDate)
+                      AND ha.ShiftId = @shiftId
+                      AND COALESCE(ha.IsLineupActive, 1) = 1
+                      AND COALESCE(ha.LocalId, 0) > 0;",
                 new
                 {
                     scheduleDate = filter.Date.ToString("yyyy-MM-dd"),
@@ -172,15 +177,17 @@ namespace TeamOps.Services
             var scheduleHistoryRows = conn.Query<ScheduleRow>(
                 @"
                     SELECT
-                        sc.ScheduleDate,
-                        sc.LocalId,
-                        COALESCE(sc.CodigoFJ, '') AS OperatorCodigoFJ,
-                        COALESCE(op.NameRomanji, sc.CodigoFJ) AS OperatorNamePt,
-                        COALESCE(NULLIF(op.NameNihongo, ''), op.NameRomanji, sc.CodigoFJ) AS OperatorNameJp
-                    FROM OperatorSchedule sc
-                    LEFT JOIN Operators op ON op.CodigoFJ = sc.CodigoFJ
-                    WHERE date(sc.ScheduleDate) BETWEEN date(@startDate) AND date(@endDate)
-                      AND sc.ShiftId = @shiftId;",
+                        ha.ScheduleDate,
+                        ha.LocalId,
+                        COALESCE(ha.OperatorCodigoFJ, '') AS OperatorCodigoFJ,
+                        COALESCE(op.NameRomanji, ha.OperatorCodigoFJ) AS OperatorNamePt,
+                        COALESCE(NULLIF(op.NameNihongo, ''), op.NameRomanji, ha.OperatorCodigoFJ) AS OperatorNameJp
+                    FROM HaidaiAssignments ha
+                    LEFT JOIN Operators op ON op.CodigoFJ = ha.OperatorCodigoFJ
+                    WHERE date(ha.ScheduleDate) BETWEEN date(@startDate) AND date(@endDate)
+                      AND ha.ShiftId = @shiftId
+                      AND COALESCE(ha.IsLineupActive, 1) = 1
+                      AND COALESCE(ha.LocalId, 0) > 0;",
                 new
                 {
                     startDate = historyStartDate.ToString("yyyy-MM-dd"),

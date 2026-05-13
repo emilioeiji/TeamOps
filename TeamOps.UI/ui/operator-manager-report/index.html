@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operadores - TeamOps</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="hero">
+        <div>
+            <span id="txtBadge" class="badge">Visao gerencial</span>
+            <h1 id="txtTitle">Operadores</h1>
+            <p id="txtSubtitle">Consolidado de presenca, producao, follow-up e ocorrencias do Haidai.</p>
+        </div>
+
+        <div class="hero-period">
+            <span id="txtWindowLabel">Janela analisada</span>
+            <strong id="lblWindow">-</strong>
+        </div>
+    </header>
+
+    <main class="page-shell">
+        <section class="toolbar-card">
+            <div class="filters-grid">
+                <label class="field">
+                    <span id="txtPeriod">Periodo</span>
+                    <select id="periodDays">
+                        <option value="30">30 dias</option>
+                        <option value="60">60 dias</option>
+                        <option value="90">90 dias</option>
+                        <option value="180">180 dias</option>
+                    </select>
+                </label>
+
+                <label class="field">
+                    <span id="txtShift">Turno</span>
+                    <select id="shiftId"></select>
+                </label>
+
+                <label class="field">
+                    <span id="txtSector">Setor</span>
+                    <select id="sectorId"></select>
+                </label>
+
+                <label class="field">
+                    <span id="txtGroup">Grupo</span>
+                    <select id="groupId"></select>
+                </label>
+
+                <label class="field field-search">
+                    <span id="txtSearch">Buscar operador</span>
+                    <input id="searchInput" type="search" placeholder="FJ, nome romanji ou nihongo">
+                </label>
+
+                <button id="btnRefresh" class="primary-button" type="button">Atualizar</button>
+            </div>
+        </section>
+
+        <section class="workspace">
+            <aside class="directory-card">
+                <div class="section-head">
+                    <div>
+                        <h2 id="txtDirectoryTitle">Quadro de operadores</h2>
+                        <p id="txtDirectorySubtitle">Clique em um operador para abrir a visao gerencial detalhada.</p>
+                    </div>
+
+                    <div class="directory-meta">
+                        <strong id="lblDirectoryCount">0</strong>
+                        <span id="txtDirectoryCountLabel">operadores</span>
+                    </div>
+                </div>
+
+                <div id="directoryList" class="directory-list"></div>
+            </aside>
+
+            <section class="report-card">
+                <div id="reportHost" class="report-host">
+                    <div class="empty-state">
+                        <h3 id="txtEmptyTitle">Selecione um operador</h3>
+                        <p id="txtEmptySubtitle">A lista lateral mostra o desempenho consolidado no periodo filtrado.</p>
+                    </div>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <div id="toast" class="toast hidden" role="status" aria-live="polite">
+        <strong id="toastTitle">-</strong>
+        <span id="toastMessage">-</span>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

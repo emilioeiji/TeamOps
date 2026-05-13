@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Haidai - TeamOps</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="header-bar">
+        <div class="header-copy">
+            <span class="eyebrow">Haidai</span>
+            <h1 id="txtTitle">Planejamento mensal do Haidai</h1>
+            <p id="txtSubtitle">Monte o mes inteiro em grade, cole blocos direto do Excel e use o detalhe diario so para atrasos, faltas e ajustes finos.</p>
+        </div>
+
+        <div class="header-meta">
+            <div class="meta-pill">
+                <span class="meta-label">Usuario</span>
+                <strong id="lblUser">-</strong>
+            </div>
+            <div class="meta-pill">
+                <span class="meta-label">Executor</span>
+                <strong id="lblOperator">-</strong>
+            </div>
+        </div>
+    </header>
+
+    <main class="page-shell">
+        <section class="toolbar-card">
+            <div class="toolbar-grid">
+                <label class="field">
+                    <span>Mes</span>
+                    <input id="monthPicker" type="month">
+                </label>
+
+                <label class="field">
+                    <span>Dia selecionado</span>
+                    <select id="dayPicker"></select>
+                </label>
+
+                <label class="field">
+                    <span>Turno</span>
+                    <select id="shiftPicker"></select>
+                </label>
+
+                <label class="field">
+                    <span>Setor</span>
+                    <select id="sectorPicker"></select>
+                </label>
+            </div>
+
+            <div class="toolbar-actions">
+                <button id="btnRefresh" class="btn btn-secondary" type="button">Atualizar</button>
+                <button id="btnSaveMonth" class="btn btn-primary" type="button">Salvar mes</button>
+                <button id="btnExport" class="btn btn-secondary" type="button">Exportar HTML TV</button>
+            </div>
+        </section>
+
+        <section class="hint-card">
+            <div>
+                <strong>Fluxo rapido</strong>
+                <p>Clique em uma celula, cole um bloco com <code>Ctrl+V</code> e depois salve o mes inteiro. Use <code>休</code> para folga e <code>A1#</code> para aprendiz junto do treinador.</p>
+            </div>
+            <div class="hint-pills">
+                <span class="hint-pill">Cola em bloco</span>
+                <span class="hint-pill">Grade mensal</span>
+                <span class="hint-pill">Ajuste diario</span>
+            </div>
+        </section>
+
+        <section class="summary-grid" id="summaryGrid">
+            <article class="summary-card">
+                <span>Operadores</span>
+                <strong id="sumOperators">0</strong>
+            </article>
+            <article class="summary-card">
+                <span>Escalados</span>
+                <strong id="sumAssigned">0</strong>
+            </article>
+            <article class="summary-card">
+                <span>Yukyu</span>
+                <strong id="sumYukyu">0</strong>
+            </article>
+            <article class="summary-card">
+                <span>Falta</span>
+                <strong id="sumFalta">0</strong>
+            </article>
+            <article class="summary-card">
+                <span>Atrasos</span>
+                <strong id="sumLate">0</strong>
+            </article>
+            <article class="summary-card">
+                <span>Saida cedo</span>
+                <strong id="sumEarlyLeave">0</strong>
+            </article>
+            <article class="summary-card">
+                <span>Aprendizes</span>
+                <strong id="sumTrainee">0</strong>
+            </article>
+            <article class="summary-card">
+                <span>Duplas</span>
+                <strong id="sumPairs">0</strong>
+            </article>
+        </section>
+
+        <section id="notice" class="notice hidden"></section>
+
+        <section class="planner-card">
+            <div class="planner-head">
+                <div>
+                    <h2>Grade mensal</h2>
+                    <p id="plannerMeta">Preencha o mes inteiro e clique em uma celula para abrir o ajuste diario abaixo.</p>
+                </div>
+                <div class="planner-legend">
+                    <span class="legend-chip">Branco: escala normal</span>
+                    <span class="legend-chip legend-off">休: folga</span>
+                    <span class="legend-chip legend-trainee">#: aprendiz</span>
+                </div>
+            </div>
+            <div class="planner-wrap">
+                <table id="plannerTable" class="planner-table"></table>
+            </div>
+        </section>
+
+        <section class="workspace-grid">
+            <article class="detail-card" id="selectedDetailHost"></article>
+            <article class="day-card">
+                <div class="day-card-head">
+                    <div>
+                        <h2>Visao do dia</h2>
+                        <p id="dayMeta">Resumo do dia selecionado por grupo.</p>
+                    </div>
+                </div>
+                <div id="dayOverviewHost" class="day-overview"></div>
+            </article>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -9,7 +9,7 @@ using System.Windows.Forms;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Db;
 using TeamOps.Data.Repositories;
-using TeamOps.Services;
+using TeamOps.UI.Services;
 
 namespace TeamOps.UI.Forms
 {
@@ -23,10 +23,10 @@ namespace TeamOps.UI.Forms
 
         private readonly SqliteConnectionFactory _factory;
         private readonly OperatorPresenceRepository _presenceRepo;
-        private readonly OperatorScheduleRepository _scheduleRepo;
         private readonly OperatorRepository _operatorRepo;
         private readonly ShiftRepository _shiftRepo;
         private readonly LocalRepository _localRepo;
+        private readonly HaidaiModuleService _haidaiService;
         private readonly int _defaultShiftId;
 
         public HTMLFormPresenceLayout(SqliteConnectionFactory factory, int defaultShiftId)
@@ -38,10 +38,10 @@ namespace TeamOps.UI.Forms
             _factory = factory;
             _defaultShiftId = defaultShiftId;
             _presenceRepo = new OperatorPresenceRepository(factory);
-            _scheduleRepo = new OperatorScheduleRepository(factory);
             _operatorRepo = new OperatorRepository(factory);
             _shiftRepo = new ShiftRepository(factory);
             _localRepo = new LocalRepository(factory);
+            _haidaiService = new HaidaiModuleService(factory);
 
             InitializeWebView();
         }
@@ -83,10 +83,6 @@ namespace TeamOps.UI.Forms
 
                     case "refresh":
                         SendBoard(ReadDate(root, "date"), ReadInt(root, "shiftId"));
-                        break;
-
-                    case "import_schedule":
-                        ImportSchedule(ReadDate(root, "date"), ReadInt(root, "shiftId"));
                         break;
                 }
             }
@@ -155,7 +151,17 @@ namespace TeamOps.UI.Forms
             var locals = _localRepo.GetAll()
                 .ToDictionary(local => local.Id);
 
-            var schedules = _scheduleRepo.GetByDateShift(date, shiftId);
+            var schedules = _haidaiService.GetActiveAssignments(date, shiftId)
+                .Where(item => item.LocalId.HasValue && item.LocalId.Value > 0)
+                .Select(item => new OperatorSchedule
+                {
+                    CodigoFJ = item.OperatorCodigoFJ,
+                    ShiftId = item.ShiftId,
+                    SectorId = item.SectorId,
+                    LocalId = item.LocalId ?? 0,
+                    ScheduleDate = date
+                })
+                .ToList();
 
             var sectorStates = SectorDefinitions
                 .Select(sector =>
@@ -193,65 +199,6 @@ namespace TeamOps.UI.Forms
                     })
                 }
             });
-        }
-
-        private void ImportSchedule(DateTime date, int shiftId)
-        {
-            if (shiftId <= 0)
-                throw new InvalidOperationException(L("Selecione um turno valido antes de importar.", "インポート前に有効なシフトを選択してください。"));
-
-            var repo = new OperatorScheduleRepository(_factory);
-            var service = new OperatorScheduleImportService(repo);
-            var successes = new List<string>();
-            var errors = new List<string>();
-
-            foreach (var sector in SectorDefinitions)
-            {
-                try
-                {
-                    service.Import(sector.Id, shiftId, date);
-                    successes.Add(sector.Name);
-                }
-                catch (Exception ex)
-                {
-                    errors.Add($"{sector.Name}: {ex.Message}");
-                }
-            }
-
-            var message = BuildImportMessage(successes, errors);
-
-            SendBoard(date, shiftId);
-
-            PostJson(new
-            {
-                type = "import_result",
-                data = new
-                {
-                    success = errors.Count == 0,
-                    message
-                }
-            });
-        }
-
-        private static string BuildImportMessage(IReadOnlyCollection<string> successes, IReadOnlyCollection<string> errors)
-        {
-            if (successes.Count > 0 && errors.Count == 0)
-            {
-                return $"{L("Schedule importado com sucesso para", "スケジュールを正常に取り込みました")}: {string.Join(", ", successes)}.";
-            }
-
-            if (successes.Count == 0 && errors.Count > 0)
-            {
-                return L("Falha ao importar schedule", "スケジュールの取込に失敗しました")
-                    + Environment.NewLine
-                    + string.Join(Environment.NewLine, errors);
-            }
-
-            return L("Importacao parcial concluida.", "一部の取込が完了しました。")
-                + Environment.NewLine
-                + string.Join(Environment.NewLine, successes.Select(name => $"+ {name}"))
-                + Environment.NewLine
-                + string.Join(Environment.NewLine, errors.Select(error => $"- {error}"));
         }
 
         private static object BuildSummary(IEnumerable<SectorRuntimeState> sectorStates)

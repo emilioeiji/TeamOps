@@ -1,0 +1,850 @@
+const state = {
+    locale: "pt-BR",
+    currentUser: "",
+    currentOperatorName: "",
+    shifts: [],
+    sectors: [],
+    locals: [],
+    operators: [],
+    monthPlan: null,
+    board: null,
+    selectedOperatorCodigoFJ: "",
+    selectedDay: 1
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+    bindEvents();
+    post({ action: "load" });
+});
+
+window.chrome?.webview?.addEventListener("message", event => {
+    const payload = event.data;
+    if (!payload?.type) {
+        return;
+    }
+
+    switch (payload.type) {
+        case "init":
+            hydrateInit(payload.data || {});
+            refreshContext(false);
+            break;
+        case "month_plan":
+            hydrateMonthPlan(payload.data || {});
+            break;
+        case "board":
+            hydrateBoard(payload.data || {});
+            break;
+        case "notify":
+            showNotice(payload.data?.message || "", "success");
+            break;
+        case "export_result":
+            showNotice(`${payload.data?.message || "Exportado."} ${payload.data?.directory || ""}`.trim(), "success");
+            break;
+        case "error":
+            showNotice(payload.message || "Erro inesperado.", "error");
+            break;
+    }
+});
+
+function bindEvents() {
+    document.getElementById("btnRefresh").addEventListener("click", () => refreshContext(true));
+    document.getElementById("btnSaveMonth").addEventListener("click", saveMonthPlan);
+    document.getElementById("btnExport").addEventListener("click", exportHtml);
+    document.getElementById("monthPicker").addEventListener("change", () => refreshContext(false));
+    document.getElementById("dayPicker").addEventListener("change", onDayChanged);
+    document.getElementById("shiftPicker").addEventListener("change", () => refreshContext(false));
+    document.getElementById("sectorPicker").addEventListener("change", () => refreshContext(false));
+
+    document.getElementById("plannerTable").addEventListener("focusin", event => {
+        const input = event.target.closest(".plan-cell");
+        if (!input) {
+            return;
+        }
+
+        selectPlannerCell(input.dataset.op, Number(input.dataset.day || 1), true);
+    });
+
+    document.getElementById("plannerTable").addEventListener("click", event => {
+        const input = event.target.closest(".plan-cell");
+        if (!input) {
+            return;
+        }
+
+        selectPlannerCell(input.dataset.op, Number(input.dataset.day || 1), true);
+    });
+
+    document.getElementById("plannerTable").addEventListener("input", event => {
+        const input = event.target.closest(".plan-cell");
+        if (!input) {
+            return;
+        }
+
+        normalizeCellValue(input);
+    });
+
+    document.getElementById("plannerTable").addEventListener("paste", handlePlannerPaste);
+
+    document.getElementById("selectedDetailHost").addEventListener("click", event => {
+        const button = event.target.closest("[data-row-action]");
+        if (!button) {
+            return;
+        }
+
+        const container = event.currentTarget;
+        const action = button.dataset.rowAction;
+
+        if (action === "save") {
+            saveDetail(container);
+            return;
+        }
+
+        if (action === "yukyu") {
+            markException(container, 1);
+            return;
+        }
+
+        if (action === "falta") {
+            markException(container, 2);
+            return;
+        }
+
+        if (action === "clear") {
+            clearException(container);
+            return;
+        }
+
+        if (action === "late") {
+            registerMovement(container, "late");
+            return;
+        }
+
+        if (action === "early_leave") {
+            registerMovement(container, "early_leave");
+            return;
+        }
+
+        if (action === "restore") {
+            restoreLineup(container);
+        }
+    });
+
+    document.getElementById("dayOverviewHost").addEventListener("click", event => {
+        const row = event.target.closest("[data-select-op]");
+        if (!row) {
+            return;
+        }
+
+        state.selectedOperatorCodigoFJ = row.dataset.selectOp || "";
+        renderDetail();
+        highlightPlannerSelection();
+    });
+}
+
+function hydrateInit(data) {
+    state.locale = data.locale === "ja-JP" ? "ja-JP" : "pt-BR";
+    state.currentUser = data.currentUser || "-";
+    state.currentOperatorName = data.currentOperatorName || "-";
+    state.shifts = data.shifts || [];
+    state.sectors = data.sectors || [];
+    state.locals = data.locals || [];
+    state.operators = data.operators || [];
+
+    document.getElementById("lblUser").textContent = state.currentUser;
+    document.getElementById("lblOperator").textContent = state.currentOperatorName;
+
+    fillSelect("shiftPicker", state.shifts, data.defaults?.shiftId);
+    fillSelect("sectorPicker", state.sectors, data.defaults?.sectorId);
+    document.getElementById("monthPicker").value = data.defaults?.monthIso || "";
+    state.selectedDay = parseDateIso(data.defaults?.dateIso).day;
+}
+
+function hydrateMonthPlan(data) {
+    state.monthPlan = data;
+    syncDayPicker(data.days || []);
+    renderPlanner(data);
+}
+
+function hydrateBoard(data) {
+    state.board = data;
+
+    setText("sumOperators", data.summary?.operatorCount ?? 0);
+    setText("sumAssigned", data.summary?.assignedCount ?? 0);
+    setText("sumYukyu", data.summary?.yukyuCount ?? 0);
+    setText("sumFalta", data.summary?.faltaCount ?? 0);
+    setText("sumLate", data.summary?.lateCount ?? 0);
+    setText("sumEarlyLeave", data.summary?.earlyLeaveCount ?? 0);
+    setText("sumTrainee", data.summary?.traineeCount ?? 0);
+    setText("sumPairs", data.summary?.pairCount ?? 0);
+
+    const rows = flattenBoardRows(data);
+    if (!rows.length) {
+        document.getElementById("selectedDetailHost").innerHTML = `<div class="detail-empty">Nenhum operador encontrado para este dia.</div>`;
+        document.getElementById("dayOverviewHost").innerHTML = "";
+        showNotice("Nenhum operador ativo encontrado para este setor e turno.", "warning");
+        return;
+    }
+
+    if (!state.selectedOperatorCodigoFJ || !rows.some(row => row.codigoFJ === state.selectedOperatorCodigoFJ)) {
+        state.selectedOperatorCodigoFJ = rows[0].codigoFJ;
+    }
+
+    renderDetail();
+    renderDayOverview();
+    highlightPlannerSelection();
+    hideNotice();
+}
+
+function refreshContext(forceBoardRefresh) {
+    const month = getSelectedMonth();
+    const shiftId = Number(document.getElementById("shiftPicker").value || 0);
+    const sectorId = Number(document.getElementById("sectorPicker").value || 0);
+    const selectedDate = buildSelectedDateIso(month.year, month.month, state.selectedDay);
+
+    post({
+        action: "load_month_plan",
+        year: month.year,
+        month: month.month,
+        shiftId,
+        sectorId
+    });
+
+    if (forceBoardRefresh || shiftId > 0 || sectorId > 0) {
+        post({
+            action: "refresh",
+            date: selectedDate,
+            shiftId,
+            sectorId
+        });
+    }
+}
+
+function onDayChanged() {
+    state.selectedDay = Number(document.getElementById("dayPicker").value || 1);
+    refreshBoard();
+}
+
+function refreshBoard() {
+    const month = getSelectedMonth();
+    post({
+        action: "refresh",
+        date: buildSelectedDateIso(month.year, month.month, state.selectedDay),
+        shiftId: Number(document.getElementById("shiftPicker").value || 0),
+        sectorId: Number(document.getElementById("sectorPicker").value || 0)
+    });
+}
+
+function saveMonthPlan() {
+    const month = getSelectedMonth();
+    const cells = Array.from(document.querySelectorAll(".plan-cell")).map(input => ({
+        operatorCodigoFJ: input.dataset.op,
+        day: Number(input.dataset.day || 0),
+        assignmentCode: String(input.value || "").trim().toUpperCase()
+    }));
+
+    post({
+        action: "save_month_plan",
+        year: month.year,
+        month: month.month,
+        shiftId: Number(document.getElementById("shiftPicker").value || 0),
+        sectorId: Number(document.getElementById("sectorPicker").value || 0),
+        selectedDate: buildSelectedDateIso(month.year, month.month, state.selectedDay),
+        cells
+    });
+}
+
+function exportHtml() {
+    const month = getSelectedMonth();
+    post({
+        action: "export_html",
+        date: buildSelectedDateIso(month.year, month.month, state.selectedDay),
+        sectorId: Number(document.getElementById("sectorPicker").value || 0)
+    });
+}
+
+function renderPlanner(plan) {
+    const table = document.getElementById("plannerTable");
+    const days = plan.days || [];
+    const groups = plan.groups || [];
+
+    document.getElementById("plannerMeta").textContent = `${groups.length} grupo(s), ${days.length} dia(s) no mes. Clique em uma celula para editar o detalhe diario.`;
+
+    const headDays = days.map(day => `<th>${day}</th>`).join("");
+    const body = groups.map(group => {
+        const rows = (group.operators || []).map(operator => {
+            const cells = (operator.cells || []).map(cell => {
+                const value = escapeAttr(cell.assignmentCode || "");
+                const classes = buildPlanCellClasses(cell.assignmentCode || "", cell.status || "");
+                return `<td class="day-cell"><input class="plan-cell ${classes}" data-op="${escapeAttr(operator.codigoFJ)}" data-day="${cell.day}" data-status="${escapeAttr(cell.status || "")}" value="${value}" spellcheck="false"></td>`;
+            }).join("");
+
+            return `
+                <tr>
+                    <td class="sticky-col group-sticky">${escapeHtml(group.groupName)}</td>
+                    <td class="sticky-col name-col operator-cell">
+                        <div class="operator-name">${escapeHtml(operator.name)}</div>
+                        <div class="operator-meta">${escapeHtml(operator.codigoFJ)}${operator.nameJp ? ` | ${escapeHtml(operator.nameJp)}` : ""}</div>
+                    </td>
+                    ${cells}
+                </tr>
+            `;
+        }).join("");
+
+        return `
+            <tr class="group-row">
+                <td colspan="${days.length + 2}">Grupo ${escapeHtml(group.groupName)} · ${group.operatorCount || (group.operators || []).length} operador(es)</td>
+            </tr>
+            ${rows}
+        `;
+    }).join("");
+
+    table.innerHTML = `
+        <thead>
+            <tr>
+                <th class="sticky-col group-sticky">Grupo</th>
+                <th class="sticky-col name-col">Nome</th>
+                ${headDays}
+            </tr>
+        </thead>
+        <tbody>${body}</tbody>
+    `;
+
+    highlightPlannerSelection();
+}
+
+function renderDetail() {
+    const host = document.getElementById("selectedDetailHost");
+    const row = getSelectedBoardRow();
+
+    if (!row) {
+        host.innerHTML = `<div class="detail-empty">Selecione uma celula para editar o detalhe diario.</div>`;
+        return;
+    }
+
+    const sectorId = Number(document.getElementById("sectorPicker").value || 0);
+    const shiftId = Number(document.getElementById("shiftPicker").value || 0);
+    const localOptions = buildLocalOptions(sectorId, row.localId);
+    const trainerOptions = buildTrainerOptions(sectorId, shiftId, row.trainerCodigoFJ, row.codigoFJ);
+    const roleTags = [];
+
+    if (row.trainer) {
+        roleTags.push(`<span class="tag">Trainer</span>`);
+    }
+
+    if (row.isLeader) {
+        roleTags.push(`<span class="tag">Lider</span>`);
+    }
+
+    if (row.isTrainee) {
+        roleTags.push(`<span class="tag">Aprendiz</span>`);
+    }
+
+    if (row.pairKey) {
+        roleTags.push(`<span class="tag">Par ${escapeHtml(row.pairKey)}</span>`);
+    }
+
+    const detailNotes = [];
+    if (row.exceptionNotes) {
+        detailNotes.push(`Todoke: ${row.exceptionNotes}`);
+    }
+    if (row.movementSummary) {
+        detailNotes.push(`Historico: ${row.movementSummary}`);
+    }
+    if (row.notes) {
+        detailNotes.push(`Obs.: ${row.notes}`);
+    }
+
+    host.dataset.op = row.codigoFJ;
+    host.innerHTML = `
+        <div class="detail-header">
+            <h2>${escapeHtml(row.name)}</h2>
+            <p>${escapeHtml(buildSelectedDateLabel())} · ${escapeHtml(row.codigoFJ)}${row.nameJp ? ` | ${escapeHtml(row.nameJp)}` : ""}</p>
+        </div>
+
+        <div class="status-row">
+            <span class="status-chip ${statusClass(row.status)}">${escapeHtml(row.status || "Pendente")}</span>
+            ${roleTags.join("")}
+        </div>
+
+        ${detailNotes.length ? `<div class="detail-note">${escapeHtml(detailNotes.join(" | "))}</div>` : ""}
+
+        <div class="detail-grid">
+            <label class="detail-field">
+                <span>Area base</span>
+                <select data-field="localId">${localOptions}</select>
+            </label>
+
+            <label class="detail-field">
+                <span>Codigo exibido</span>
+                <input data-field="assignmentCode" type="text" value="${escapeAttr(row.storedAssignmentCode || row.assignmentCode || "")}" placeholder="A1, A1#, Maisena">
+            </label>
+
+            <label class="detail-field">
+                <span>Dupla</span>
+                <input data-field="pairKey" type="text" value="${escapeAttr(row.pairKey || "")}" placeholder="Par 01">
+            </label>
+
+            <label class="detail-field">
+                <span>Treinador</span>
+                <select data-field="trainerCodigoFJ">${trainerOptions}</select>
+            </label>
+
+            <label class="detail-field">
+                <span>Observacao</span>
+                <textarea data-field="notes" placeholder="Observacoes da escala">${escapeHtml(row.notes || "")}</textarea>
+            </label>
+        </div>
+
+        <div class="check-row">
+            <label><input data-field="isTrainee" type="checkbox" ${row.isTrainee ? "checked" : ""}> Aprendiz</label>
+            <label><input data-field="countsTowardKousu" type="checkbox" ${row.countsTowardKousu !== false ? "checked" : ""}> Conta no kousu</label>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-inline btn-save" type="button" data-row-action="save">Salvar dia</button>
+            <button class="btn btn-inline btn-yukyu" type="button" data-row-action="yukyu">Yukyu</button>
+            <button class="btn btn-inline btn-falta" type="button" data-row-action="falta">Falta</button>
+            <button class="btn btn-inline btn-secondary" type="button" data-row-action="late">Atraso</button>
+            <button class="btn btn-inline btn-secondary" type="button" data-row-action="early_leave">Sair cedo</button>
+            ${row.isLineupActive === false ? `<button class="btn btn-inline btn-clear" type="button" data-row-action="restore">Voltar para linha</button>` : ""}
+            ${row.exceptionMotiveId ? `<button class="btn btn-inline btn-clear" type="button" data-row-action="clear">Voltar normal</button>` : ""}
+        </div>
+    `;
+}
+
+function renderDayOverview() {
+    const host = document.getElementById("dayOverviewHost");
+    const groups = state.board?.groups || [];
+    document.getElementById("dayMeta").textContent = `${buildSelectedDateLabel()} · clique em uma linha para trocar o operador do detalhe.`;
+
+    host.innerHTML = groups.map(group => {
+        const rows = (group.rows || []).map(row => `
+            <tr class="overview-row ${row.codigoFJ === state.selectedOperatorCodigoFJ ? "is-selected" : ""}" data-select-op="${escapeAttr(row.codigoFJ)}">
+                <td>${escapeHtml(row.name)}</td>
+                <td>${escapeHtml(row.assignmentCode || "-")}</td>
+                <td><span class="status-chip ${statusClass(row.status)}">${escapeHtml(row.status || "Pendente")}</span></td>
+            </tr>
+        `).join("");
+
+        return `
+            <section class="group-overview">
+                <div class="group-overview-head">
+                    <strong>Grupo ${escapeHtml(group.groupName)}</strong>
+                    <span>${group.operatorCount} operador(es)</span>
+                </div>
+                <table class="overview-table">
+                    <thead>
+                        <tr>
+                            <th>Operador</th>
+                            <th>Area</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </section>
+        `;
+    }).join("");
+}
+
+function selectPlannerCell(operatorCodigoFJ, day, refresh) {
+    state.selectedOperatorCodigoFJ = operatorCodigoFJ || state.selectedOperatorCodigoFJ;
+    state.selectedDay = Number.isFinite(day) && day > 0 ? day : state.selectedDay;
+    document.getElementById("dayPicker").value = String(state.selectedDay);
+    highlightPlannerSelection();
+
+    if (refresh) {
+        refreshBoard();
+    }
+}
+
+function highlightPlannerSelection() {
+    document.querySelectorAll(".plan-cell.cell-selected").forEach(input => input.classList.remove("cell-selected"));
+    if (!state.selectedOperatorCodigoFJ) {
+        return;
+    }
+
+    const input = document.querySelector(`.plan-cell[data-op="${cssEscape(state.selectedOperatorCodigoFJ)}"][data-day="${state.selectedDay}"]`);
+    if (input) {
+        input.classList.add("cell-selected");
+    }
+}
+
+function handlePlannerPaste(event) {
+    const input = event.target.closest(".plan-cell");
+    if (!input || !state.monthPlan) {
+        return;
+    }
+
+    const text = event.clipboardData?.getData("text/plain") || "";
+    if (!text.trim()) {
+        return;
+    }
+
+    event.preventDefault();
+
+    const operatorRows = flattenMonthOperators(state.monthPlan);
+    const rowIndex = operatorRows.findIndex(item => item.codigoFJ === input.dataset.op);
+    const startDay = Number(input.dataset.day || 1);
+    if (rowIndex < 0 || startDay <= 0) {
+        return;
+    }
+
+    const lines = text.replaceAll("\r", "").split("\n").filter((line, index, all) => {
+        return line.length > 0 || index < all.length - 1;
+    });
+
+    lines.forEach((line, lineOffset) => {
+        const values = line.split("\t");
+        values.forEach((value, colOffset) => {
+            const targetRow = operatorRows[rowIndex + lineOffset];
+            const targetDay = startDay + colOffset;
+            if (!targetRow || !targetDay) {
+                return;
+            }
+
+            const targetInput = document.querySelector(`.plan-cell[data-op="${cssEscape(targetRow.codigoFJ)}"][data-day="${targetDay}"]`);
+            if (!targetInput) {
+                return;
+            }
+
+            targetInput.value = String(value || "").trim().toUpperCase();
+            normalizeCellValue(targetInput);
+        });
+    });
+}
+
+function saveDetail(container) {
+    post({
+        action: "save_assignment",
+        date: getSelectedDateIso(),
+        shiftId: Number(document.getElementById("shiftPicker").value || 0),
+        sectorId: Number(document.getElementById("sectorPicker").value || 0),
+        operatorCodigoFJ: container.dataset.op,
+        localId: nullableNumber(readField(container, "localId")),
+        assignmentCode: readField(container, "assignmentCode"),
+        pairKey: readField(container, "pairKey"),
+        trainerCodigoFJ: readField(container, "trainerCodigoFJ"),
+        notes: readField(container, "notes"),
+        isTrainee: readCheckbox(container, "isTrainee"),
+        countsTowardKousu: readCheckbox(container, "countsTowardKousu")
+    });
+}
+
+function markException(container, motiveId) {
+    const label = motiveId === 1 ? "Yukyu" : "Falta";
+    let notes = "";
+
+    if (motiveId === 2) {
+        notes = window.prompt("Informe o motivo da falta:", "") || "";
+        if (!notes.trim()) {
+            showNotice("O motivo da falta e obrigatorio.", "warning");
+            return;
+        }
+    } else {
+        notes = window.prompt("Observacao opcional para o Yukyu:", "") || "";
+    }
+
+    post({
+        action: "mark_exception",
+        date: getSelectedDateIso(),
+        shiftId: Number(document.getElementById("shiftPicker").value || 0),
+        sectorId: Number(document.getElementById("sectorPicker").value || 0),
+        operatorCodigoFJ: container.dataset.op,
+        motiveId,
+        notes
+    });
+
+    showNotice(`${label} enviado para o controle de Todoke.`, "success");
+}
+
+function clearException(container) {
+    const confirmed = window.confirm("Remover Yukyu/Falta deste operador para a data selecionada?");
+    if (!confirmed) {
+        return;
+    }
+
+    post({
+        action: "clear_exception",
+        date: getSelectedDateIso(),
+        shiftId: Number(document.getElementById("shiftPicker").value || 0),
+        sectorId: Number(document.getElementById("sectorPicker").value || 0),
+        operatorCodigoFJ: container.dataset.op
+    });
+}
+
+function registerMovement(container, movementType) {
+    const timeLabel = movementType === "late" ? "Horario do atraso (HH:mm)" : "Horario da saida (HH:mm)";
+    const reasonLabel = movementType === "late" ? "Motivo do atraso" : "Motivo da saida antecipada";
+    const replacementHint = buildReplacementHint(container.dataset.op);
+
+    const eventTime = window.prompt(timeLabel, "") || "";
+    if (!eventTime.trim()) {
+        showNotice("Informe o horario do movimento.", "warning");
+        return;
+    }
+
+    const reason = window.prompt(reasonLabel, "") || "";
+    if (!reason.trim()) {
+        showNotice("Informe o motivo do movimento.", "warning");
+        return;
+    }
+
+    const replacementOperatorCodigoFJ = window.prompt(
+        `Codigo FJ do substituto${replacementHint ? `\nSugestoes: ${replacementHint}` : ""}`,
+        ""
+    ) || "";
+
+    post({
+        action: "register_movement",
+        date: getSelectedDateIso(),
+        shiftId: Number(document.getElementById("shiftPicker").value || 0),
+        sectorId: Number(document.getElementById("sectorPicker").value || 0),
+        operatorCodigoFJ: container.dataset.op,
+        movementType,
+        eventTime,
+        reason,
+        replacementOperatorCodigoFJ,
+        localId: nullableNumber(readField(container, "localId")),
+        assignmentCode: readField(container, "assignmentCode"),
+        pairKey: readField(container, "pairKey")
+    });
+}
+
+function restoreLineup(container) {
+    const confirmed = window.confirm("Reativar este operador na linha atual?");
+    if (!confirmed) {
+        return;
+    }
+
+    post({
+        action: "restore_lineup",
+        date: getSelectedDateIso(),
+        shiftId: Number(document.getElementById("shiftPicker").value || 0),
+        sectorId: Number(document.getElementById("sectorPicker").value || 0),
+        operatorCodigoFJ: container.dataset.op
+    });
+}
+
+function syncDayPicker(days) {
+    const picker = document.getElementById("dayPicker");
+    const current = Number(picker.value || state.selectedDay || 1);
+    const maxDay = (days || []).length ? Math.max(...days) : 31;
+    state.selectedDay = Math.min(Math.max(current, 1), maxDay);
+
+    picker.innerHTML = (days || []).map(day => `<option value="${day}">Dia ${day}</option>`).join("");
+    picker.value = String(state.selectedDay);
+}
+
+function getSelectedMonth() {
+    const raw = document.getElementById("monthPicker").value || new Date().toISOString().slice(0, 7);
+    const [yearText, monthText] = raw.split("-");
+    return {
+        year: Number(yearText || new Date().getFullYear()),
+        month: Number(monthText || (new Date().getMonth() + 1))
+    };
+}
+
+function getSelectedDateIso() {
+    const month = getSelectedMonth();
+    return buildSelectedDateIso(month.year, month.month, state.selectedDay);
+}
+
+function buildSelectedDateIso(year, month, day) {
+    const lastDay = new Date(year, month, 0).getDate();
+    const clampedDay = Math.min(Math.max(Number(day || 1), 1), lastDay);
+    state.selectedDay = clampedDay;
+    return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(clampedDay).padStart(2, "0")}`;
+}
+
+function buildSelectedDateLabel() {
+    const [year, month, day] = getSelectedDateIso().split("-");
+    return `${day}/${month}/${year}`;
+}
+
+function parseDateIso(value) {
+    const parts = String(value || "").split("-");
+    return {
+        year: Number(parts[0] || new Date().getFullYear()),
+        month: Number(parts[1] || (new Date().getMonth() + 1)),
+        day: Number(parts[2] || new Date().getDate())
+    };
+}
+
+function getSelectedBoardRow() {
+    const rows = flattenBoardRows(state.board);
+    return rows.find(row => row.codigoFJ === state.selectedOperatorCodigoFJ) || rows[0] || null;
+}
+
+function flattenBoardRows(board) {
+    return (board?.groups || []).flatMap(group => group.rows || []);
+}
+
+function flattenMonthOperators(plan) {
+    return (plan?.groups || []).flatMap(group => group.operators || []);
+}
+
+function buildLocalOptions(sectorId, selectedId) {
+    const options = [`<option value="">Sem area definida</option>`];
+    const locals = state.locals.filter(item => Number(item.sectorId) === Number(sectorId));
+
+    locals.forEach(local => {
+        options.push(
+            `<option value="${local.id}" ${Number(selectedId) === Number(local.id) ? "selected" : ""}>${escapeHtml(local.shortCode || local.name)}</option>`
+        );
+    });
+
+    return options.join("");
+}
+
+function buildTrainerOptions(sectorId, shiftId, selectedCodigoFJ, currentOperatorCodigoFJ) {
+    const options = [`<option value="">Sem treinador</option>`];
+    const trainers = state.operators.filter(item => {
+        return Number(item.sectorId) === Number(sectorId)
+            && Number(item.shiftId) === Number(shiftId)
+            && item.codigoFJ !== currentOperatorCodigoFJ;
+    });
+
+    trainers.forEach(operator => {
+        const tags = [];
+        if (operator.trainer) {
+            tags.push("Trainer");
+        }
+        if (operator.isLeader) {
+            tags.push("Lider");
+        }
+
+        const suffix = tags.length ? ` - ${tags.join("/")}` : "";
+        options.push(
+            `<option value="${escapeAttr(operator.codigoFJ)}" ${operator.codigoFJ === selectedCodigoFJ ? "selected" : ""}>${escapeHtml(operator.name)}${escapeHtml(suffix)}</option>`
+        );
+    });
+
+    return options.join("");
+}
+
+function buildReplacementHint(currentOperatorCodigoFJ) {
+    const sectorId = Number(document.getElementById("sectorPicker").value || 0);
+    const shiftId = Number(document.getElementById("shiftPicker").value || 0);
+    return state.operators
+        .filter(item =>
+            Number(item.sectorId) === sectorId &&
+            Number(item.shiftId) === shiftId &&
+            item.codigoFJ !== currentOperatorCodigoFJ)
+        .slice(0, 5)
+        .map(item => `${item.codigoFJ} ${item.name}`)
+        .join(", ");
+}
+
+function buildPlanCellClasses(value, status) {
+    const normalizedStatus = String(status || "").trim().toLowerCase();
+    if (normalizedStatus === "falta") {
+        return "cell-absence";
+    }
+
+    if (normalizedStatus === "yukyu") {
+        return "cell-yukyu";
+    }
+
+    const raw = String(value || "").trim().toUpperCase();
+    if (raw === "休" || raw === "FOLGA" || raw === "OFF" || raw === "-") {
+        return "cell-off";
+    }
+
+    if (raw.endsWith("#")) {
+        return "cell-trainee";
+    }
+
+    return "";
+}
+
+function normalizeCellValue(input) {
+    input.value = String(input.value || "").trim().toUpperCase();
+    input.dataset.status = "";
+    input.classList.remove("cell-off", "cell-trainee", "cell-absence", "cell-yukyu");
+
+    const classes = buildPlanCellClasses(input.value, "");
+    if (classes) {
+        input.classList.add(...classes.split(" "));
+    }
+}
+
+function fillSelect(id, items, selectedId) {
+    const element = document.getElementById(id);
+    element.innerHTML = (items || [])
+        .map(item => `<option value="${item.id}">${escapeHtml(item.name)}</option>`)
+        .join("");
+    element.value = String(selectedId ?? "");
+}
+
+function readField(container, fieldName) {
+    const element = container.querySelector(`[data-field="${fieldName}"]`);
+    return element ? String(element.value || "").trim() : "";
+}
+
+function readCheckbox(container, fieldName) {
+    const element = container.querySelector(`[data-field="${fieldName}"]`);
+    return Boolean(element?.checked);
+}
+
+function nullableNumber(value) {
+    const parsed = Number(value || 0);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function statusClass(status) {
+    switch ((status || "").toLowerCase()) {
+        case "escalado":
+            return "status-escalado";
+        case "yukyu":
+            return "status-yukyu";
+        case "falta":
+            return "status-falta";
+        case "atraso":
+            return "status-atraso";
+        case "saiu cedo":
+            return "status-saiu-cedo";
+        case "folga":
+            return "status-folga";
+        default:
+            return "status-pendente";
+    }
+}
+
+function showNotice(message, kind) {
+    const notice = document.getElementById("notice");
+    notice.textContent = message;
+    notice.className = `notice notice-${kind || "warning"}`;
+}
+
+function hideNotice() {
+    const notice = document.getElementById("notice");
+    notice.className = "notice hidden";
+    notice.textContent = "";
+}
+
+function post(payload) {
+    window.chrome?.webview?.postMessage(payload);
+}
+
+function setText(id, value) {
+    const element = document.getElementById(id);
+    if (element) {
+        element.textContent = value ?? "-";
+    }
+}
+
+function cssEscape(value) {
+    return String(value || "").replaceAll("\\", "\\\\").replaceAll("\"", "\\\"");
+}
+
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;");
+}
+
+function escapeAttr(value) {
+    return escapeHtml(value).replaceAll("'", "&#39;");
+}

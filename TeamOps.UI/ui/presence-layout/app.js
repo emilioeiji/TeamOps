@@ -4,26 +4,24 @@ const I18N = {
         subtitle: "Previsto do haidai, confirmacao do operador e leitura visual dos dois setores em uma unica tela.",
         metaDate: "Data",
         metaShift: "Turno",
-        metaImport: "Schedule",
+        metaImport: "Fonte",
         badge: "Layout combinado",
         toolbarTitle: "Filtro unico para os dois setores",
-        toolbarSubtitle: "Importe o haidai uma vez e acompanhe G-Bareru e DAD lado a lado com o mesmo periodo e turno.",
+        toolbarSubtitle: "O painel usa diretamente a escala ativa do Haidai e mostra G-Bareru e DAD lado a lado no mesmo turno.",
         date: "Data",
         shift: "Turno",
         refresh: "Atualizar",
-        import: "Importar haidai",
         planned: "Previstos",
         confirmed: "Confirmados",
         missing: "Faltantes",
         extra: "Extras",
-        imported: "Importado",
-        pending: "Pendente",
+        imported: "Haidai ativo",
+        pending: "Sem Haidai",
         sectorPlanned: "Previsto",
         sectorConfirmed: "Confirmado",
         sectorMissing: "Faltando",
         sectorExtra: "Extra",
-        noSchedule: "Sem schedule importado para esta data e turno.",
-        importLoading: "Importando schedule...",
+        noSchedule: "Sem escala ativa de Haidai para esta data e turno.",
         local: "Local",
         emptyLocal: "Sem operadores neste local.",
         corridor: "Corredor",
@@ -95,13 +93,7 @@ window.chrome?.webview?.addEventListener("message", event => {
         case "board":
             hydrateBoard(payload.data);
             break;
-        case "import_result":
-            hideLoading();
-            state.pinnedNotice = true;
-            showNotice(payload.data.message, payload.data.success ? "success" : "error");
-            break;
         case "error":
-            hideLoading();
             state.pinnedNotice = true;
             showNotice(payload.message || "Erro inesperado.", "error");
             break;
@@ -110,7 +102,6 @@ window.chrome?.webview?.addEventListener("message", event => {
 
 function bindEvents() {
     document.getElementById("btnRefresh").addEventListener("click", refreshBoard);
-    document.getElementById("btnImportSchedule").addEventListener("click", importSchedule);
     document.getElementById("datePicker").addEventListener("change", refreshBoard);
     document.getElementById("shiftPicker").addEventListener("change", refreshBoard);
 }
@@ -181,16 +172,6 @@ function refreshBoard() {
     state.pinnedNotice = false;
     window.chrome?.webview?.postMessage({
         action: "refresh",
-        date: document.getElementById("datePicker").value,
-        shiftId: Number(document.getElementById("shiftPicker").value || 0)
-    });
-}
-
-function importSchedule() {
-    showLoading();
-
-    window.chrome?.webview?.postMessage({
-        action: "import_schedule",
         date: document.getElementById("datePicker").value,
         shiftId: Number(document.getElementById("shiftPicker").value || 0)
     });
@@ -395,12 +376,10 @@ function applyLocale() {
     setText("txtDateLabel", t("date"));
     setText("txtShiftLabel", t("shift"));
     setText("btnRefresh", t("refresh"));
-    setText("btnImportSchedule", t("import"));
     setText("txtSummaryPlanned", t("planned"));
     setText("txtSummaryConfirmed", t("confirmed"));
     setText("txtSummaryMissing", t("missing"));
     setText("txtSummaryExtra", t("extra"));
-    setText("txtLoading", t("importLoading"));
 
     const shiftPicker = document.getElementById("shiftPicker");
     const selected = shiftPicker.value;
@@ -439,16 +418,6 @@ function formatDateLabel(dateIso) {
         month: "2-digit",
         day: "2-digit"
     }).format(date);
-}
-
-function showLoading() {
-    document.getElementById("loadingOverlay").classList.remove("hidden");
-    document.getElementById("btnImportSchedule").disabled = true;
-}
-
-function hideLoading() {
-    document.getElementById("loadingOverlay").classList.add("hidden");
-    document.getElementById("btnImportSchedule").disabled = false;
 }
 
 function showNotice(message, kind) {

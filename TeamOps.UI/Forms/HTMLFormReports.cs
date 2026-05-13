@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Db;
 using TeamOps.Data.Repositories;
+using TeamOps.UI.Services;
 
 namespace TeamOps.UI.Forms
 {
@@ -72,7 +73,7 @@ namespace TeamOps.UI.Forms
                             ? _currentShift.NamePt
                             : _currentShift.NameJp,
                         dateIso = DateTime.Now.ToString("O"),
-                        availableCount = 4,
+                        availableCount = 5,
                         totalCount = 8
                     }
                 });
@@ -142,13 +143,8 @@ namespace TeamOps.UI.Forms
                     OpenDialog(() => new HTMLFormTasksReport(_factory));
                     break;
 
-                case "todo:operadores":
-                    SendNotify(
-                        L("Em desenvolvimento", "\u958b\u767a\u4e2d"),
-                        L(
-                            "O relatorio de Operadores ainda nao foi migrado.",
-                            "\u30aa\u30da\u30ec\u30fc\u30bf\u30fc\u306e\u30ec\u30dd\u30fc\u30c8\u306f\u307e\u3060\u79fb\u884c\u3055\u308c\u3066\u3044\u307e\u305b\u3093\u3002")
-                    );
+                case "open:operators":
+                    OpenDialog(() => new HTMLFormOperatorManagerReport(_factory, _currentOperator));
                     break;
 
                 case "todo:pr":
