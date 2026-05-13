@@ -28,6 +28,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Migrations\ProductionMonitor_Upgrade.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Sql\Hikitsugui\delete_attachments_by_hikitsugui.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

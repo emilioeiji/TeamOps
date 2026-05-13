@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Windows.Forms;
@@ -55,25 +56,32 @@ namespace TeamOps.UI.Forms
 
         private void WebMessageReceived(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs e)
         {
-            var msg = JsonSerializer.Deserialize<Dictionary<string, object>>(e.WebMessageAsJson);
+            var msg = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(e.WebMessageAsJson);
             if (msg == null) return;
 
-            string type = msg["type"].ToString();
+            if (!msg.TryGetValue("type", out var typeElement))
+                return;
+
+            var type = typeElement.GetString();
+            if (string.IsNullOrWhiteSpace(type))
+                return;
 
             switch (type)
             {
                 case "filtersChanged":
                     {
-                        DateTime date = DateTime.Parse(msg["date"].ToString());
-                        int shift = int.Parse(msg["shift"].ToString());
+                        if (!TryGetDate(msg, "date", out var date) || !TryGetInt(msg, "shift", out var shift))
+                            return;
+
                         LoadPresence(date, shift);
                         break;
                     }
 
                 case "import_schedule":
                     {
-                        DateTime date = DateTime.Parse(msg["date"].ToString());
-                        int shift = int.Parse(msg["shift"].ToString());
+                        if (!TryGetDate(msg, "date", out var date) || !TryGetInt(msg, "shift", out var shift))
+                            return;
+
                         ImportSchedule(date, shift);
                         break;
                     }
@@ -160,6 +168,28 @@ namespace TeamOps.UI.Forms
 
                 webViewPresence.CoreWebView2.PostWebMessageAsJson(json);
             }
+        }
+
+        private static bool TryGetDate(Dictionary<string, JsonElement> msg, string key, out DateTime value)
+        {
+            value = default;
+            return msg.TryGetValue(key, out var element)
+                && element.ValueKind == JsonValueKind.String
+                && DateTime.TryParse(element.GetString(), out value);
+        }
+
+        private static bool TryGetInt(Dictionary<string, JsonElement> msg, string key, out int value)
+        {
+            value = default;
+
+            if (!msg.TryGetValue(key, out var element))
+                return false;
+
+            if (element.ValueKind == JsonValueKind.Number)
+                return element.TryGetInt32(out value);
+
+            return element.ValueKind == JsonValueKind.String
+                && int.TryParse(element.GetString(), out value);
         }
     }
 }

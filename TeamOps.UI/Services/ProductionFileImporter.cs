@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using Dapper;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Db;
 using TeamOps.Data.Repositories;
@@ -57,6 +58,11 @@ namespace TeamOps.Services
             ProductionSchemaMigrator.Ensure(conn);
             using var tx = conn.BeginTransaction();
 
+            var machineCache = new Dictionary<string, Machine>(StringComparer.OrdinalIgnoreCase);
+            var knownStatusCodes = conn.Query<int>("SELECT StatusCode FROM MachineStatuses;", transaction: tx)
+                .ToHashSet();
+            var touchedMachineIds = new HashSet<int>();
+
             _planImporter.ImportLatestPlanFiles(
                 conn,
                 tx,
@@ -81,12 +87,23 @@ namespace TeamOps.Services
 
                     try
                     {
-                        var existed = _machineRepository.GetByMachineCode(conn, parsed.MachineCode) != null;
-                        var machine = _machineRepository.EnsureMachine(conn, parsed.MachineCode, parsed.LineCode, parsed.SectorId);
-
-                        if (!existed)
+                        var machineKey = ProductionMachineRepository.BuildMachineKey(parsed.MachineCode, parsed.LineCode);
+                        if (!machineCache.TryGetValue(machineKey, out var machine))
                         {
-                            result.MachinesCreated++;
+                            var existing = _machineRepository.GetByMachineKey(conn, parsed.MachineCode, parsed.LineCode);
+                            machine = _machineRepository.EnsureMachine(conn, parsed.MachineCode, parsed.LineCode, parsed.SectorId);
+                            machineCache[machineKey] = machine;
+
+                            if (existing == null)
+                            {
+                                result.MachinesCreated++;
+                            }
+                        }
+
+                        if (!knownStatusCodes.Contains(parsed.StatusCode))
+                        {
+                            EnsureMachineStatus(conn, parsed.StatusCode, parsed.StatusText);
+                            knownStatusCodes.Add(parsed.StatusCode);
                         }
 
                         var machineEvent = new MachineEvent
@@ -109,13 +126,12 @@ namespace TeamOps.Services
                         if (_eventRepository.InsertOrIgnore(conn, tx, machineEvent))
                         {
                             result.Imported++;
+                            touchedMachineIds.Add(machine.Id);
                         }
                         else
                         {
                             result.Ignored++;
                         }
-
-                        _eventRepository.RefreshCurrentStatus(conn, tx, machine.Id);
                     }
                     catch (Exception ex)
                     {
@@ -124,6 +140,8 @@ namespace TeamOps.Services
                     }
                 }
             }
+
+            _eventRepository.RefreshCurrentStatuses(conn, tx, touchedMachineIds);
 
             tx.Commit();
             return result;
@@ -177,6 +195,7 @@ namespace TeamOps.Services
             var eventTime = Safe(parts, 8);
             var statusText = Safe(parts, 9);
             var recipeName = Safe(parts, 10);
+            var numericStatusCode = Safe(parts, 11);
             var lotNo = Safe(parts, 12);
 
             if (string.IsNullOrWhiteSpace(lineCode) || string.IsNullOrWhiteSpace(machineCode))
@@ -202,7 +221,7 @@ namespace TeamOps.Services
                 MachineCode = machineCode,
                 SectorId = ResolveSectorId(lineCode),
                 InternalState = internalState,
-                StatusCode = MapStatusCode(internalState, statusText),
+                StatusCode = ParseRawStatusCode(numericStatusCode, internalState, statusText),
                 StatusText = statusText,
                 RecipeName = recipeName,
                 LotNo = lotNo,
@@ -212,17 +231,22 @@ namespace TeamOps.Services
             return true;
         }
 
-        private static int MapStatusCode(string internalState, string statusText)
+        private static int ParseRawStatusCode(string numericStatusCode, string internalState, string statusText)
         {
-            if (int.TryParse(internalState, out var parsed) && parsed >= 0 && parsed <= 3)
+            if (int.TryParse(internalState, out var parsedInternal))
             {
-                return parsed;
+                return parsedInternal;
+            }
+
+            if (int.TryParse(numericStatusCode, out var parsedNumeric))
+            {
+                return parsedNumeric;
             }
 
             var normalized = (statusText ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(normalized))
             {
-                return 2;
+                return 1;
             }
 
             if (normalized.Contains("稼動中", StringComparison.Ordinal)
@@ -236,7 +260,7 @@ namespace TeamOps.Services
                 || normalized.Contains("停止", StringComparison.Ordinal)
                 || normalized.Contains("STOP", StringComparison.OrdinalIgnoreCase))
             {
-                return 1;
+                return 3;
             }
 
             if (normalized.Contains("トラブル", StringComparison.Ordinal)
@@ -244,17 +268,17 @@ namespace TeamOps.Services
                 || normalized.Contains("ERROR", StringComparison.OrdinalIgnoreCase)
                 || normalized.Contains("ALARM", StringComparison.OrdinalIgnoreCase))
             {
-                return 3;
+                return 4;
             }
 
             if (normalized.Contains("サンプル", StringComparison.Ordinal)
                 || normalized.Contains("レス処理", StringComparison.Ordinal)
                 || normalized.Contains("吸引時間", StringComparison.Ordinal))
             {
-                return 2;
+                return 1;
             }
 
-            return 2;
+            return 1;
         }
 
         private static int? ResolveSectorId(string lineCode)
@@ -285,6 +309,107 @@ namespace TeamOps.Services
             {
                 result.Errors.Add(message);
             }
+        }
+
+        private static void EnsureMachineStatus(System.Data.IDbConnection conn, int statusCode, string statusText)
+        {
+            var existing = conn.ExecuteScalar<int>(
+                @"SELECT COUNT(1)
+                  FROM MachineStatuses
+                  WHERE StatusCode = @statusCode;",
+                new { statusCode });
+
+            if (existing > 0)
+            {
+                return;
+            }
+
+            var displayCode = ResolveDisplayCode(statusCode, statusText);
+
+            var (namePt, colorHex, textColorHex) = displayCode switch
+            {
+                0 => ("Rodando", "#5B88E8", "#FFFFFF"),
+                3 => ("Parado", "#F2CB58", "#4A3200"),
+                4 => ("Erro", "#FFFFFF", "#516174"),
+                _ => ("Inativo", "#EF6F63", "#FFFFFF")
+            };
+
+            conn.Execute(
+                @"
+                    INSERT OR IGNORE INTO MachineStatuses
+                    (
+                        StatusCode,
+                        DisplayCode,
+                        NamePt,
+                        NameJp,
+                        ColorHex,
+                        TextColorHex,
+                        SortOrder,
+                        IsActive
+                    )
+                    VALUES
+                    (
+                        @statusCode,
+                        @displayCode,
+                        @namePt,
+                        @nameJp,
+                        @colorHex,
+                        @textColorHex,
+                        @sortOrder,
+                        1
+                    );",
+                new
+                {
+                    statusCode,
+                    displayCode,
+                    namePt,
+                    nameJp = string.IsNullOrWhiteSpace(statusText) ? namePt : statusText.Trim(),
+                    colorHex,
+                    textColorHex,
+                    sortOrder = statusCode
+                });
+        }
+
+        private static int ResolveDisplayCode(int statusCode, string statusText)
+        {
+            if (statusCode == 0)
+            {
+                return 0;
+            }
+
+            if (statusCode == 3)
+            {
+                return 3;
+            }
+
+            if (statusCode == 4)
+            {
+                return 4;
+            }
+
+            var normalized = (statusText ?? string.Empty).Trim();
+            if (normalized.Contains("稼働中", StringComparison.Ordinal)
+                || normalized.Contains("運転", StringComparison.Ordinal)
+                || normalized.Contains("RUN", StringComparison.OrdinalIgnoreCase))
+            {
+                return 0;
+            }
+
+            if (normalized.Contains("停止", StringComparison.Ordinal)
+                || normalized.Contains("STOP", StringComparison.OrdinalIgnoreCase))
+            {
+                return 3;
+            }
+
+            if (normalized.Contains("トラブル", StringComparison.Ordinal)
+                || normalized.Contains("エラー", StringComparison.Ordinal)
+                || normalized.Contains("ERROR", StringComparison.OrdinalIgnoreCase)
+                || normalized.Contains("ALARM", StringComparison.OrdinalIgnoreCase))
+            {
+                return 4;
+            }
+
+            return 1;
         }
 
         private static ProductionImportSettings LoadSettings()

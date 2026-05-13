@@ -280,6 +280,61 @@
         </div>
     </div>
 
+    <div id="operatorModal" class="modal-overlay hidden">
+        <div class="modal-card operator-modal-card">
+            <div class="modal-head">
+                <div>
+                    <h3 id="txtOperatorModalTitle">Historico do operador</h3>
+                    <p id="txtOperatorModalSubtitle">Leitura gerencial por dia e area do operador selecionado.</p>
+                </div>
+                <button id="btnCloseOperatorModal" class="modal-close" type="button">×</button>
+            </div>
+
+            <div class="operator-modal-meta">
+                <div class="operator-modal-identity">
+                    <strong id="lblOperatorModalName">-</strong>
+                    <small id="lblOperatorModalCode">-</small>
+                </div>
+                <div class="operator-modal-chips" id="operatorModalAreas"></div>
+            </div>
+
+            <div class="operator-modal-summary">
+                <div class="operator-modal-stat">
+                    <span id="txtOperatorModalAvg">Media</span>
+                    <strong id="lblOperatorModalAvg">0%</strong>
+                </div>
+                <div class="operator-modal-stat">
+                    <span id="txtOperatorModalRunning">Min. rodando</span>
+                    <strong id="lblOperatorModalRunning">0</strong>
+                </div>
+                <div class="operator-modal-stat">
+                    <span id="txtOperatorModalAreas">Areas</span>
+                    <strong id="lblOperatorModalAreas">0</strong>
+                </div>
+            </div>
+
+            <div class="table-wrap operator-modal-table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th id="txtOperatorModalDate">Data</th>
+                            <th id="txtOperatorModalArea">Area</th>
+                            <th id="txtOperatorModalPercent">% Kadouritsu</th>
+                            <th id="txtOperatorModalRunMinutes">Min. rodando</th>
+                            <th id="txtOperatorModalStopMinutes">Parado</th>
+                            <th id="txtOperatorModalErrorMinutes">Erro</th>
+                        </tr>
+                    </thead>
+                    <tbody id="operatorModalTableBody">
+                        <tr>
+                            <td colspan="6" class="empty-cell">Selecione um operador.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>

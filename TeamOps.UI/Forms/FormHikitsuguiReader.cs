@@ -73,7 +73,7 @@ namespace TeamOps.UI.Forms
             cmbSector.SelectedIndex = 0;
         }
 
-        private void FormHikitsuguiReader_Shown(object sender, EventArgs e)
+        private void FormHikitsuguiReader_Shown(object? sender, EventArgs e)
         {
             LoadTurnos();
             LoadSetores();
@@ -94,7 +94,7 @@ namespace TeamOps.UI.Forms
 
             bool isLeader = rbLideres.Checked || rbMaSv.Checked;
 
-            int setorSelecionado = (int)cmbSector.SelectedValue;
+            int setorSelecionado = GetSelectedId(cmbSector);
 
             // ---------------------------------------------------------
             // 1) Buscar operadores ou líderes (para montar colunas)
@@ -106,7 +106,7 @@ namespace TeamOps.UI.Forms
             // ---------------------------------------------------------
             // 1.1) Aplicar filtro de turno AQUI (somente nos operadores)
             // ---------------------------------------------------------
-            int turnoSelecionado = (int)cmbTurno.SelectedValue;
+            int turnoSelecionado = GetSelectedId(cmbTurno);
 
             if (turnoSelecionado != 0)
             {
@@ -222,15 +222,18 @@ namespace TeamOps.UI.Forms
             // 4) Criar colunas dinâmicas
             // ---------------------------------------------------------
             dgvLeituras.Columns.Add("HikitsuguiInfo", "Hikitsugui");
-            dgvLeituras.Columns["HikitsuguiInfo"].Width = 300;
+            if (dgvLeituras.Columns["HikitsuguiInfo"] is DataGridViewColumn infoColumn)
+                infoColumn.Width = 300;
 
             dgvLeituras.Columns.Add("HikitsuguiId", "Id");
-            dgvLeituras.Columns["HikitsuguiId"].Visible = false;
+            if (dgvLeituras.Columns["HikitsuguiId"] is DataGridViewColumn idColumn)
+                idColumn.Visible = false;
 
             foreach (var op in operadores)
             {
                 dgvLeituras.Columns.Add(op.CodigoFJ, op.NameRomanji);
-                dgvLeituras.Columns[op.CodigoFJ].Width = 30;
+                if (dgvLeituras.Columns[op.CodigoFJ] is DataGridViewColumn operatorColumn)
+                    operatorColumn.Width = 30;
             }
             
             dgvLeituras.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.EnableResizing;
@@ -273,7 +276,9 @@ namespace TeamOps.UI.Forms
             if (e.ColumnIndex != 0)
                 return;
 
-            int hikId = (int)dgvLeituras.Rows[e.RowIndex].Cells["HikitsuguiId"].Value;
+            var hikIdValue = dgvLeituras.Rows[e.RowIndex].Cells["HikitsuguiId"].Value;
+            if (hikIdValue == null || !int.TryParse(hikIdValue.ToString(), out var hikId))
+                return;
 
             var hik = _hikRepo.GetById(hikId);
             if (hik == null)
@@ -311,6 +316,13 @@ namespace TeamOps.UI.Forms
 
                 using (var format = new StringFormat())
                 {
+                    var cellStyle = e.CellStyle;
+                    if (e.Graphics == null || cellStyle?.Font == null)
+                    {
+                        e.Handled = true;
+                        return;
+                    }
+
                     format.Alignment = StringAlignment.Center;
                     format.LineAlignment = StringAlignment.Center;
 
@@ -320,8 +332,8 @@ namespace TeamOps.UI.Forms
 
                     e.Graphics.DrawString(
                         texto,
-                        e.CellStyle.Font,
-                        new SolidBrush(e.CellStyle.ForeColor),
+                        cellStyle.Font,
+                        new SolidBrush(cellStyle.ForeColor),
                         new Rectangle(0, 0, e.CellBounds.Height, e.CellBounds.Width),
                         format
                     );
@@ -331,6 +343,11 @@ namespace TeamOps.UI.Forms
 
                 e.Handled = true;
             }
+        }
+
+        private static int GetSelectedId(ComboBox comboBox)
+        {
+            return comboBox.SelectedValue is int value ? value : 0;
         }
     }
 }

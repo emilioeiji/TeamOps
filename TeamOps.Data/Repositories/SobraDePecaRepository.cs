@@ -72,7 +72,7 @@ namespace TeamOps.Data.Repositories
                     Quantidade = reader.GetDecimal(7),
                     MachineId = reader.GetInt32(8),
                     ShainId = reader.GetInt32(9),
-                    Observacao = reader.IsDBNull(10) ? null : reader.GetString(10),
+                    Observacao = reader.IsDBNull(10) ? string.Empty : reader.GetString(10),
                     Lider = reader.GetString(11),
                     CreatedAt = reader.GetDateTime(12),
                     Item = reader.GetString(13)

@@ -19,10 +19,10 @@ namespace TeamOps.Services
         public void Import(int sectorId, int shiftId, DateTime date)
         {
             // Diretório configurado no app.config
-            string baseDir = ConfigurationManager.AppSettings["OperatorScheduleDirectory"];
+            var baseDir = ConfigurationManager.AppSettings["OperatorScheduleDirectory"];
 
             if (string.IsNullOrWhiteSpace(baseDir))
-                throw new Exception("OperatorScheduleDirectory não está configurado no app.config.");
+                throw new InvalidOperationException("OperatorScheduleDirectory não está configurado no app.config.");
 
             // Nome do arquivo: ex: 12-20260406.csv
             string fileName = $"{sectorId}{shiftId}-{date:yyyyMMdd}.csv";

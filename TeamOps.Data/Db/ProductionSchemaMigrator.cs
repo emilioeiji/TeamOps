@@ -5,12 +5,32 @@ namespace TeamOps.Data.Db
 {
     public static class ProductionSchemaMigrator
     {
+        private static readonly object SyncRoot = new();
+        private static bool _ensured;
+
         public static void Ensure(IDbConnection conn)
         {
-            EnsureMachineColumns(conn);
+            if (_ensured)
+            {
+                return;
+            }
 
-            conn.Execute(
-                @"
+            lock (SyncRoot)
+            {
+                if (_ensured)
+                {
+                    return;
+                }
+
+                EnsureMachineColumns(conn);
+
+                conn.Execute(
+                    @"
+                    DROP INDEX IF EXISTS IX_MachineEvents_UniqueEvent;
+                    DROP INDEX IF EXISTS IX_MachineEvents_UniqueRawEvent;
+                    DROP INDEX IF EXISTS IX_MachineCurrentStatus_MachineCode;
+                    DROP INDEX IF EXISTS IX_Machines_MachineKey_Unique;
+
                     CREATE TABLE IF NOT EXISTS MachineEvents (
                         Id INTEGER PRIMARY KEY AUTOINCREMENT,
                         MachineId INTEGER NOT NULL,
@@ -49,6 +69,18 @@ namespace TeamOps.Data.Db
                         FOREIGN KEY (SectorId) REFERENCES Sectors(Id)
                     );
 
+                    CREATE TABLE IF NOT EXISTS MachineStatuses (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        StatusCode INTEGER NOT NULL UNIQUE,
+                        DisplayCode INTEGER NOT NULL,
+                        NamePt TEXT NOT NULL,
+                        NameJp TEXT NOT NULL,
+                        ColorHex TEXT NOT NULL DEFAULT '#5B88E8',
+                        TextColorHex TEXT NOT NULL DEFAULT '#FFFFFF',
+                        SortOrder INTEGER NOT NULL DEFAULT 0,
+                        IsActive INTEGER NOT NULL DEFAULT 1
+                    );
+
                     CREATE TABLE IF NOT EXISTS ProductionPlanSnapshots (
                         Id INTEGER PRIMARY KEY AUTOINCREMENT,
                         SourceFile TEXT NOT NULL,
@@ -79,8 +111,21 @@ namespace TeamOps.Data.Db
                         FOREIGN KEY (SnapshotId) REFERENCES ProductionPlanSnapshots(Id)
                     );
 
+                    UPDATE Machines
+                    SET
+                        MachineCode = upper(trim(COALESCE(MachineCode, ''))),
+                        LineCode = upper(trim(COALESCE(LineCode, ''))),
+                        MachineKey = CASE
+                            WHEN trim(COALESCE(MachineCode, '')) = '' THEN NULL
+                            ELSE upper(trim(COALESCE(LineCode, ''))) || ':' || upper(trim(COALESCE(MachineCode, '')))
+                        END
+                    WHERE trim(COALESCE(MachineCode, '')) <> '';
+
                     CREATE UNIQUE INDEX IF NOT EXISTS IX_MachineEvents_UniqueEvent
-                    ON MachineEvents(MachineCode, EventDateTime, StatusCode);
+                    ON MachineEvents(MachineId, EventDateTime, StatusCode);
+
+                    CREATE UNIQUE INDEX IF NOT EXISTS IX_MachineEvents_UniqueRawEvent
+                    ON MachineEvents(MachineId, EventDateTime, InternalState);
 
                     CREATE INDEX IF NOT EXISTS IX_MachineEvents_EventDateTime
                     ON MachineEvents(EventDateTime);
@@ -88,17 +133,20 @@ namespace TeamOps.Data.Db
                     CREATE INDEX IF NOT EXISTS IX_MachineEvents_Machine_EventTime
                     ON MachineEvents(MachineId, EventDateTime);
 
-                    CREATE UNIQUE INDEX IF NOT EXISTS IX_MachineCurrentStatus_MachineCode
-                    ON MachineCurrentStatus(MachineCode);
-
                     CREATE INDEX IF NOT EXISTS IX_Machines_MachineCode
                     ON Machines(MachineCode);
+
+                    CREATE UNIQUE INDEX IF NOT EXISTS IX_Machines_MachineKey_Unique
+                    ON Machines(MachineKey);
 
                     CREATE INDEX IF NOT EXISTS IX_Machines_LocalId
                     ON Machines(LocalId);
 
                     CREATE INDEX IF NOT EXISTS IX_Machines_SectorId
                     ON Machines(SectorId);
+
+                    CREATE UNIQUE INDEX IF NOT EXISTS IX_MachineStatuses_StatusCode
+                    ON MachineStatuses(StatusCode);
 
                     CREATE UNIQUE INDEX IF NOT EXISTS IX_ProductionPlanSnapshots_SourceFile_ExportedAt
                     ON ProductionPlanSnapshots(SourceFile, ExportedAt);
@@ -110,12 +158,16 @@ namespace TeamOps.Data.Db
                     ON ProductionPlanRows(MachineCode);"
             );
 
-            NormalizeProductionStatuses(conn);
+                SeedMachineStatuses(conn);
+                NormalizeProductionStatuses(conn);
+                _ensured = true;
+            }
         }
 
         private static void EnsureMachineColumns(IDbConnection conn)
         {
             EnsureColumn(conn, "Machines", "MachineCode", "TEXT");
+            EnsureColumn(conn, "Machines", "MachineKey", "TEXT");
             EnsureColumn(conn, "Machines", "LineCode", "TEXT");
             EnsureColumn(conn, "Machines", "LocalId", "INTEGER");
             EnsureColumn(conn, "Machines", "SectorId", "INTEGER");
@@ -146,50 +198,62 @@ namespace TeamOps.Data.Db
             conn.Execute(
                 @"
                     UPDATE MachineEvents
-                    SET StatusCode =
-                        CASE
-                            WHEN trim(COALESCE(StatusText, '')) LIKE '%稼動中%' THEN 0
-                            WHEN trim(COALESCE(StatusText, '')) LIKE '%運転%' THEN 0
-                            WHEN upper(trim(COALESCE(StatusText, ''))) LIKE '%RUN%' THEN 0
-                            WHEN trim(COALESCE(StatusText, '')) LIKE '%停止中%' THEN 1
-                            WHEN trim(COALESCE(StatusText, '')) LIKE '%停止%' THEN 1
-                            WHEN upper(trim(COALESCE(StatusText, ''))) LIKE '%STOP%' THEN 1
-                            WHEN trim(COALESCE(StatusText, '')) LIKE '%トラブル%' THEN 3
-                            WHEN trim(COALESCE(StatusText, '')) LIKE '%異常%' THEN 3
-                            WHEN upper(trim(COALESCE(StatusText, ''))) LIKE '%ERROR%' THEN 3
-                            WHEN upper(trim(COALESCE(StatusText, ''))) LIKE '%ALARM%' THEN 3
-                            WHEN trim(COALESCE(StatusText, '')) LIKE '%サンプル%' THEN 2
-                            WHEN trim(COALESCE(StatusText, '')) LIKE '%レス処理%' THEN 2
-                            WHEN trim(COALESCE(StatusText, '')) LIKE '%吸引時間%' THEN 2
-                            WHEN trim(COALESCE(InternalState, '')) = '0' THEN 0
-                            WHEN trim(COALESCE(InternalState, '')) = '1' THEN 1
-                            WHEN trim(COALESCE(InternalState, '')) = '2' THEN 2
-                            WHEN trim(COALESCE(InternalState, '')) = '3' THEN 3
-                            ELSE StatusCode
-                        END;
+                    SET StatusCode = CAST(trim(InternalState) AS INTEGER)
+                    WHERE trim(COALESCE(InternalState, '')) GLOB '[0-9]*';
 
                     UPDATE MachineCurrentStatus
-                    SET StatusCode =
-                        CASE
-                            WHEN trim(COALESCE(StatusText, '')) LIKE '%稼動中%' THEN 0
-                            WHEN trim(COALESCE(StatusText, '')) LIKE '%運転%' THEN 0
-                            WHEN upper(trim(COALESCE(StatusText, ''))) LIKE '%RUN%' THEN 0
-                            WHEN trim(COALESCE(StatusText, '')) LIKE '%停止中%' THEN 1
-                            WHEN trim(COALESCE(StatusText, '')) LIKE '%停止%' THEN 1
-                            WHEN upper(trim(COALESCE(StatusText, ''))) LIKE '%STOP%' THEN 1
-                            WHEN trim(COALESCE(StatusText, '')) LIKE '%トラブル%' THEN 3
-                            WHEN trim(COALESCE(StatusText, '')) LIKE '%異常%' THEN 3
-                            WHEN upper(trim(COALESCE(StatusText, ''))) LIKE '%ERROR%' THEN 3
-                            WHEN upper(trim(COALESCE(StatusText, ''))) LIKE '%ALARM%' THEN 3
-                            WHEN trim(COALESCE(StatusText, '')) LIKE '%サンプル%' THEN 2
-                            WHEN trim(COALESCE(StatusText, '')) LIKE '%レス処理%' THEN 2
-                            WHEN trim(COALESCE(StatusText, '')) LIKE '%吸引時間%' THEN 2
-                            WHEN trim(COALESCE(InternalState, '')) = '0' THEN 0
-                            WHEN trim(COALESCE(InternalState, '')) = '1' THEN 1
-                            WHEN trim(COALESCE(InternalState, '')) = '2' THEN 2
-                            WHEN trim(COALESCE(InternalState, '')) = '3' THEN 3
-                            ELSE StatusCode
-                        END;"
+                    SET StatusCode = CAST(trim(InternalState) AS INTEGER)
+                    WHERE trim(COALESCE(InternalState, '')) GLOB '[0-9]*';
+
+                    UPDATE MachineStatuses
+                    SET
+                        DisplayCode = 0,
+                        NamePt = CASE WHEN trim(COALESCE(NamePt, '')) = '' THEN 'Rodando' ELSE NamePt END,
+                        NameJp = CASE WHEN trim(COALESCE(NameJp, '')) = '' THEN '稼働中' ELSE NameJp END,
+                        ColorHex = CASE WHEN trim(COALESCE(ColorHex, '')) = '' THEN '#5B88E8' ELSE ColorHex END,
+                        TextColorHex = CASE WHEN trim(COALESCE(TextColorHex, '')) = '' THEN '#FFFFFF' ELSE TextColorHex END
+                    WHERE StatusCode = 0;
+
+                    UPDATE MachineStatuses
+                    SET
+                        DisplayCode = 1,
+                        NamePt = CASE WHEN trim(COALESCE(NamePt, '')) = '' THEN 'Inativo' ELSE NamePt END,
+                        NameJp = CASE WHEN trim(COALESCE(NameJp, '')) = '' THEN '非稼働' ELSE NameJp END,
+                        ColorHex = CASE WHEN trim(COALESCE(ColorHex, '')) = '' THEN '#EF6F63' ELSE ColorHex END,
+                        TextColorHex = CASE WHEN trim(COALESCE(TextColorHex, '')) = '' THEN '#FFFFFF' ELSE TextColorHex END
+                    WHERE StatusCode = 1;
+
+                    UPDATE MachineStatuses
+                    SET
+                        DisplayCode = 3,
+                        NamePt = CASE WHEN trim(COALESCE(NamePt, '')) = '' THEN 'Parado' ELSE NamePt END,
+                        NameJp = CASE WHEN trim(COALESCE(NameJp, '')) = '' THEN '停止' ELSE NameJp END,
+                        ColorHex = CASE WHEN trim(COALESCE(ColorHex, '')) = '' THEN '#F2CB58' ELSE ColorHex END,
+                        TextColorHex = CASE WHEN trim(COALESCE(TextColorHex, '')) = '' THEN '#4A3200' ELSE TextColorHex END
+                    WHERE StatusCode = 3;
+
+                    UPDATE MachineStatuses
+                    SET
+                        DisplayCode = 4,
+                        NamePt = CASE WHEN trim(COALESCE(NamePt, '')) = '' THEN 'Erro' ELSE NamePt END,
+                        NameJp = CASE WHEN trim(COALESCE(NameJp, '')) = '' THEN 'エラー' ELSE NameJp END,
+                        ColorHex = CASE WHEN trim(COALESCE(ColorHex, '')) = '' THEN '#FFFFFF' ELSE ColorHex END,
+                        TextColorHex = CASE WHEN trim(COALESCE(TextColorHex, '')) = '' THEN '#516174' ELSE TextColorHex END
+                    WHERE StatusCode = 4;"
+            );
+        }
+
+        private static void SeedMachineStatuses(IDbConnection conn)
+        {
+            conn.Execute(
+                @"
+                    INSERT OR IGNORE INTO MachineStatuses
+                    (StatusCode, DisplayCode, NamePt, NameJp, ColorHex, TextColorHex, SortOrder, IsActive)
+                    VALUES
+                    (0, 0, 'Rodando', '稼働中', '#5B88E8', '#FFFFFF', 0, 1),
+                    (1, 1, 'Inativo', '非稼働', '#EF6F63', '#FFFFFF', 1, 1),
+                    (3, 3, 'Parado', '停止', '#F2CB58', '#4A3200', 3, 1),
+                    (4, 4, 'Erro', 'エラー', '#FFFFFF', '#516174', 4, 1);"
             );
         }
     }

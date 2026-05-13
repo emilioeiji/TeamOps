@@ -84,11 +84,15 @@ namespace TeamOps.UI.Forms
             if (!ValidateForm())
                 return;
 
+            var setorId = GetSelectedId(cmbSetor);
+            var categoriaId = GetSelectedId(cmbCategoria);
+            var prioridadeId = GetSelectedId(cmbPrioridade);
+
             var cl = new CL
             {
-                SetorId = (int)cmbSetor.SelectedValue,
-                CategoriaId = (int)cmbCategoria.SelectedValue,
-                PrioridadeId = (int)cmbPrioridade.SelectedValue,
+                SetorId = setorId,
+                CategoriaId = categoriaId,
+                PrioridadeId = prioridadeId,
                 Titulo = txtTitulo.Text.Trim(),
                 NomeArquivo = txtNomeArquivo.Text.Trim(),
                 DataEmissao = DateTime.Now,
@@ -197,16 +201,16 @@ namespace TeamOps.UI.Forms
 
             using var wb = new XLWorkbook(caminhoFinal);
             var ws = wb.Worksheet("PR文書");
+            var prioridade = cmbPrioridade.SelectedItem as LookupItem;
+            var categoriaId = GetSelectedId(cmbCategoria);
 
             ws.Cell("D4").Value = clId;
             ws.Cell("F5").Value = txtTitulo.Text.Trim();
-            ws.Cell("D1").Value = ((LookupItem)cmbPrioridade.SelectedItem).NamePt;
+            ws.Cell("D1").Value = prioridade?.NamePt ?? string.Empty;
             ws.Cell("T2").Value = DateTime.Now.ToString("yyyy-MM-dd");
             ws.Cell("T4").Value = _currentUser.NameNihongo;
 
             // Marca a categoria com ✔
-            int categoriaId = (int)cmbCategoria.SelectedValue;
-
             switch (categoriaId)
             {
                 case 1:
@@ -234,7 +238,7 @@ namespace TeamOps.UI.Forms
         {
             var ws = wb.Worksheet("Operadores");
 
-            int setorSelecionado = (int)cmbSetor.SelectedValue;
+            int setorSelecionado = GetSelectedId(cmbSetor);
 
             // Carrega operadores ativos do setor selecionado + setor 3
             var operadores = _operatorRepo.GetAll()
@@ -259,6 +263,11 @@ namespace TeamOps.UI.Forms
                     rowNoite++;
                 }
             }
+        }
+
+        private static int GetSelectedId(ComboBox comboBox)
+        {
+            return comboBox.SelectedValue is int value ? value : 0;
         }
     }
 }

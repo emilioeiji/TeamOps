@@ -87,7 +87,11 @@ namespace TeamOps.UI.Forms
                         break;
 
                     case "production_machine_detail":
-                        SendMachineDetail(ReadString(root, "machineCode"));
+                        SendMachineDetail(ReadInt(root, "machineId", 0));
+                        break;
+
+                    case "production_operator_detail":
+                        SendOperatorDetail(ReadFilter(root), ReadString(root, "operatorCodigoFJ"));
                         break;
                 }
             }
@@ -153,19 +157,21 @@ namespace TeamOps.UI.Forms
                             FROM Locals l
                             ORDER BY l.SectorId, l.Id;"
                     ),
-                    machines = conn.Query(
+                     machines = conn.Query(
                         @"
                             SELECT
                                 m.Id AS id,
                                 COALESCE(m.MachineCode, '') AS machineCode,
+                                COALESCE(m.LineCode, '') AS lineCode,
                                 COALESCE(m.NamePt, '') AS namePt,
                                 COALESCE(NULLIF(m.NameJp, ''), m.NamePt, '') AS nameJp,
                                 m.SectorId AS sectorId,
                                 m.LocalId AS localId
                             FROM Machines m
                             WHERE COALESCE(m.IsActive, 1) = 1
-                            ORDER BY COALESCE(m.MachineCode, ''), COALESCE(m.NamePt, ''), m.Id;"
-                    )
+                            ORDER BY COALESCE(m.SectorId, 0), COALESCE(m.LocalId, 0), COALESCE(m.LineCode, ''), COALESCE(m.MachineCode, ''), COALESCE(m.NamePt, ''), m.Id;"
+                    ),
+                    statuses = LoadStatuses(conn)
                 }
             });
 
@@ -178,6 +184,9 @@ namespace TeamOps.UI.Forms
 
         private void SendDashboard(ProductionDashboardFilter filter)
         {
+            using var conn = _factory.CreateOpenConnection();
+            ProductionSchemaMigrator.Ensure(conn);
+
             var dashboard = _analyticsService.BuildDashboard(filter);
 
             PostJson(new
@@ -190,6 +199,7 @@ namespace TeamOps.UI.Forms
                     shiftId = filter.ShiftId,
                     sectorId = filter.SectorId,
                     localId = filter.LocalId,
+                    machineId = filter.MachineId,
                     machineCode = filter.MachineCode,
                     periodStart = dashboard.Period.Start.ToString("yyyy-MM-dd HH:mm:ss"),
                     periodEnd = dashboard.Period.End.ToString("yyyy-MM-dd HH:mm:ss"),
@@ -202,6 +212,7 @@ namespace TeamOps.UI.Forms
                     {
                         machineId = machine.MachineId,
                         machineCode = machine.MachineCode,
+                        lineCode = machine.LineCode,
                         machineNamePt = machine.MachineNamePt,
                         machineNameJp = machine.MachineNameJp,
                         sectorId = machine.SectorId,
@@ -211,6 +222,7 @@ namespace TeamOps.UI.Forms
                         localNamePt = machine.LocalNamePt,
                         localNameJp = machine.LocalNameJp,
                         statusCode = machine.StatusCode,
+                        displayCode = machine.DisplayCode,
                         statusText = machine.StatusText,
                         recipeName = machine.RecipeName,
                         lotNo = machine.LotNo,
@@ -242,6 +254,7 @@ namespace TeamOps.UI.Forms
                         localNamePt = row.LocalNamePt,
                         localNameJp = row.LocalNameJp,
                         machineCode = row.MachineCode,
+                        lineCode = row.LineCode,
                         machineNamePt = row.MachineNamePt,
                         machineNameJp = row.MachineNameJp,
                         cells = row.Cells.Select(cell => new
@@ -249,6 +262,7 @@ namespace TeamOps.UI.Forms
                             timeLabel = cell.TimeLabel,
                             dateTime = cell.DateTime.ToString("yyyy-MM-dd HH:mm:ss"),
                             statusCode = cell.StatusCode,
+                            displayCode = cell.DisplayCode,
                             cssClass = cell.CssClass
                         })
                     }),
@@ -291,6 +305,9 @@ namespace TeamOps.UI.Forms
                     {
                         date = item.Date.ToString("yyyy-MM-dd"),
                         label = item.Label,
+                        shiftId = item.ShiftId,
+                        shiftNamePt = item.ShiftNamePt,
+                        shiftNameJp = item.ShiftNameJp,
                         productionPercent = item.ProductionPercent,
                         runningMinutes = item.RunningMinutes,
                         stoppedMinutes = item.StoppedMinutes,
@@ -313,18 +330,19 @@ namespace TeamOps.UI.Forms
                             errorMinutes = day.ErrorMinutes
                         })
                     }),
-                    operatorRanking = dashboard.OperatorRanking.Select(item => new
-                    {
-                        operatorCodigoFJ = item.OperatorCodigoFJ,
+                     operatorRanking = dashboard.OperatorRanking.Select(item => new
+                     {
+                         operatorCodigoFJ = item.OperatorCodigoFJ,
                         operatorNamePt = item.OperatorNamePt,
                         operatorNameJp = item.OperatorNameJp,
                         estimatedRunningMinutes = item.EstimatedRunningMinutes,
                         estimatedKadouritsuPercent = item.EstimatedKadouritsuPercent,
                         localNamesPt = item.LocalNamesPt,
-                        localNamesJp = item.LocalNamesJp
-                    })
-                }
-            });
+                         localNamesJp = item.LocalNamesJp
+                     }),
+                     statuses = LoadStatuses(conn)
+                 }
+             });
         }
 
         private async Task ImportAndRefreshAsync(ProductionDashboardFilter filter)
@@ -361,16 +379,18 @@ namespace TeamOps.UI.Forms
             }
         }
 
-        private void SendMachineDetail(string machineCode)
+        private void SendMachineDetail(int machineId)
         {
-            if (string.IsNullOrWhiteSpace(machineCode))
+            if (machineId <= 0)
             {
                 PostJson(new
                 {
                     type = "machine_detail",
                     data = new
                     {
+                        machineId = 0,
                         machineCode = string.Empty,
+                        lineCode = string.Empty,
                         events = Array.Empty<object>()
                     }
                 });
@@ -383,7 +403,9 @@ namespace TeamOps.UI.Forms
             var rows = conn.Query(
                 @"
                     SELECT
+                        e.MachineId AS machineId,
                         e.MachineCode AS machineCode,
+                        COALESCE(e.LineCode, '') AS lineCode,
                         COALESCE(m.NamePt, e.MachineCode) AS machineNamePt,
                         COALESCE(NULLIF(m.NameJp, ''), m.NamePt, e.MachineCode) AS machineNameJp,
                         substr(e.EventDateTime, 1, 16) AS eventDateTime,
@@ -394,12 +416,12 @@ namespace TeamOps.UI.Forms
                         COALESCE(e.SourceFile, '') AS sourceFile
                     FROM MachineEvents e
                     LEFT JOIN Machines m ON m.Id = e.MachineId
-                    WHERE e.MachineCode = @machineCode
+                    WHERE e.MachineId = @machineId
                     ORDER BY datetime(e.EventDateTime) DESC, e.Id DESC
                     LIMIT 80;",
-                new
-                {
-                    machineCode = machineCode.Trim()
+                    new
+                    {
+                    machineId
                 }
             );
 
@@ -408,8 +430,47 @@ namespace TeamOps.UI.Forms
                 type = "machine_detail",
                 data = new
                 {
-                    machineCode = machineCode.Trim(),
+                    machineId,
+                    machineCode = rows.FirstOrDefault()?.machineCode ?? string.Empty,
+                    lineCode = rows.FirstOrDefault()?.lineCode ?? string.Empty,
                     events = rows
+                }
+            });
+        }
+
+        private void SendOperatorDetail(ProductionDashboardFilter filter, string operatorCodigoFJ)
+        {
+            var detail = _analyticsService.GetOperatorDetail(filter, operatorCodigoFJ);
+
+            PostJson(new
+            {
+                type = "operator_detail",
+                data = new
+                {
+                    operatorCodigoFJ = detail.OperatorCodigoFJ,
+                    operatorNamePt = detail.OperatorNamePt,
+                    operatorNameJp = detail.OperatorNameJp,
+                    shiftNamePt = detail.ShiftNamePt,
+                    shiftNameJp = detail.ShiftNameJp,
+                    averageKadouritsuPercent = detail.AverageKadouritsuPercent,
+                    totalRunningMinutes = detail.TotalRunningMinutes,
+                    assignedAreaCount = detail.AssignedAreaCount,
+                    localNamesPt = detail.LocalNamesPt,
+                    localNamesJp = detail.LocalNamesJp,
+                    entries = detail.Entries.Select(entry => new
+                    {
+                        date = entry.Date.ToString("yyyy-MM-dd"),
+                        label = entry.Label,
+                        localId = entry.LocalId,
+                        localNamePt = entry.LocalNamePt,
+                        localNameJp = entry.LocalNameJp,
+                        runningMinutes = entry.RunningMinutes,
+                        stoppedMinutes = entry.StoppedMinutes,
+                        inactiveMinutes = entry.InactiveMinutes,
+                        errorMinutes = entry.ErrorMinutes,
+                        eligibleMinutes = entry.EligibleMinutes,
+                        kadouritsuPercent = entry.KadouritsuPercent
+                    })
                 }
             });
         }
@@ -440,6 +501,23 @@ namespace TeamOps.UI.Forms
             return message;
         }
 
+        private static object LoadStatuses(System.Data.IDbConnection conn)
+        {
+            return conn.Query(
+                @"
+                    SELECT
+                        StatusCode AS statusCode,
+                        DisplayCode AS displayCode,
+                        COALESCE(NamePt, '') AS namePt,
+                        COALESCE(NULLIF(NameJp, ''), NamePt, '') AS nameJp,
+                        COALESCE(ColorHex, '#5B88E8') AS colorHex,
+                        COALESCE(TextColorHex, '#FFFFFF') AS textColorHex
+                    FROM MachineStatuses
+                    WHERE COALESCE(IsActive, 1) = 1
+                    ORDER BY SortOrder, StatusCode;"
+            ).ToList();
+        }
+
         private ProductionDashboardFilter ReadFilter(JsonElement root)
         {
             return new ProductionDashboardFilter
@@ -448,6 +526,7 @@ namespace TeamOps.UI.Forms
                 ShiftId = ReadInt(root, "shiftId", _currentOperator.ShiftId),
                 SectorId = ReadInt(root, "sectorId", 0),
                 LocalId = ReadInt(root, "localId", 0),
+                MachineId = ReadInt(root, "machineId", 0),
                 MachineCode = ReadString(root, "machineCode").Trim()
             };
         }

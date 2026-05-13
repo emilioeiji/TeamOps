@@ -177,7 +177,7 @@ namespace TeamOps.UI.Forms
                 );
 
                 string baseFolder = Path.Combine(
-                    ConfigurationManager.AppSettings["HikitsuguiAttachmentPath"],
+                    GetAttachmentRoot(),
                     newId.ToString()
                 );
 
@@ -203,6 +203,15 @@ namespace TeamOps.UI.Forms
             webViewCreate.CoreWebView2.PostWebMessageAsJson(
                 JsonSerializer.Serialize(new { type = "saved", id = newId })
             );
+        }
+
+        private static string GetAttachmentRoot()
+        {
+            var path = ConfigurationManager.AppSettings["HikitsuguiAttachmentPath"];
+            if (string.IsNullOrWhiteSpace(path))
+                throw new InvalidOperationException("HikitsuguiAttachmentPath não está configurado no app.config.");
+
+            return path;
         }
     }
 }

@@ -70,6 +70,17 @@ const I18N = {
         noTrend: "Sem dados para o historico.",
         noOperators: "Sem operador previsto",
         noOperatorRanking: "Sem schedule suficiente para estimar producao por operador.",
+        operatorHistoryTitle: "Historico do operador",
+        operatorHistorySubtitle: "Leitura gerencial por dia e area do operador selecionado.",
+        operatorHistoryDate: "Data",
+        operatorHistoryArea: "Area",
+        operatorHistoryPercent: "% Kadouritsu",
+        operatorHistoryRun: "Min. rodando",
+        operatorHistoryStop: "Parado",
+        operatorHistoryError: "Erro",
+        operatorHistoryAvg: "Media",
+        operatorHistoryAreas: "Areas",
+        operatorHistoryEmpty: "Sem historico para este operador no recorte atual.",
         selectMachine: "Selecione uma maquina.",
         importingSuccess: "Importacao concluida.",
         running: "Rodando",
@@ -104,9 +115,10 @@ const state = {
     sectors: [],
     locals: [],
     machines: [],
+    statuses: {},
     dashboard: null,
     selectedAreaId: 0,
-    selectedMachineCode: "",
+    selectedMachineId: 0,
     pinnedNotice: false
 };
 
@@ -129,6 +141,10 @@ window.chrome?.webview?.addEventListener("message", event => {
         case "machine_detail":
             renderDetail(msg.data || {});
             break;
+        case "operator_detail":
+            hideLoading();
+            renderOperatorDetail(msg.data || {});
+            break;
         case "import_result":
             hideLoading();
             state.pinnedNotice = true;
@@ -147,6 +163,12 @@ function bindEvents() {
     document.getElementById("btnImport").addEventListener("click", importProduction);
     document.getElementById("sectorPicker").addEventListener("change", onSectorChanged);
     document.getElementById("localPicker").addEventListener("change", onLocalChanged);
+    document.getElementById("btnCloseOperatorModal").addEventListener("click", closeOperatorModal);
+    document.getElementById("operatorModal").addEventListener("click", event => {
+        if (event.target.id === "operatorModal") {
+            closeOperatorModal();
+        }
+    });
 }
 
 function send(action, extra = {}) {
@@ -162,6 +184,7 @@ function hydrateInit(data) {
     state.sectors = data.sectors || [];
     state.locals = data.locals || [];
     state.machines = data.machines || [];
+    state.statuses = normalizeStatuses(data.statuses || []);
 
     document.getElementById("datePicker").value = data.defaults?.dateIso || "";
     fillShiftOptions(data.defaults?.shiftId || "");
@@ -176,6 +199,9 @@ function hydrateInit(data) {
 
 function hydrateDashboard(data) {
     state.dashboard = data;
+    if (data.statuses) {
+        state.statuses = normalizeStatuses(data.statuses);
+    }
     state.selectedAreaId = resolveSelectedAreaId(data);
 
     setText("lblPeriod", `${formatDateTime(data.periodStart)} - ${formatDateTime(data.periodEnd)}`);
@@ -209,12 +235,15 @@ function importProduction() {
 }
 
 function buildFilterPayload() {
+    const machineId = Number(document.getElementById("machinePicker").value || 0);
+    const selectedMachine = state.machines.find(machine => Number(machine.id || 0) === machineId);
     return {
         date: document.getElementById("datePicker").value,
         shiftId: Number(document.getElementById("shiftPicker").value || 0),
         sectorId: Number(document.getElementById("sectorPicker").value || 0),
         localId: Number(document.getElementById("localPicker").value || 0),
-        machineCode: document.getElementById("machinePicker").value || ""
+        machineId,
+        machineCode: selectedMachine?.machineCode || ""
     };
 }
 
@@ -274,13 +303,13 @@ function fillMachineOptions() {
         return true;
     });
 
-    const options = [`<option value="">${escapeHtml(t("allMachines"))}</option>`]
-        .concat(machines.map(machine => `<option value="${escapeHtmlAttr(machine.machineCode)}">${escapeHtml(machine.machineCode || getLocalizedName(machine))}</option>`));
+    const options = [`<option value="0">${escapeHtml(t("allMachines"))}</option>`]
+        .concat(machines.map(machine => `<option value="${machine.id}">${escapeHtml(getMachinePickerLabel(machine))}</option>`));
 
     picker.innerHTML = options.join("");
     picker.value = currentValue;
     if (picker.value !== currentValue) {
-        picker.value = "";
+        picker.value = "0";
     }
 }
 
@@ -307,35 +336,46 @@ function renderAreaBoard(areas) {
         return;
     }
 
-    wrap.innerHTML = areas.map(area => `
-        <article class="area-card ${Number(area.localId || 0) === Number(state.selectedAreaId) ? "is-active" : ""}" data-area="${area.localId || 0}">
-            <div class="area-card-top">
-                <div>
-                    <strong>${escapeHtml(getAreaLabel(area))}</strong>
-                    <small>${escapeHtml(getAreaSectorLabel(area))}</small>
-                </div>
-                <span class="area-percent">${toFixed(area.productionPercent)}%</span>
+    const grouped = groupAreasBySector(areas);
+    wrap.innerHTML = grouped.map(group => `
+        <section class="area-group">
+            <header class="area-group-head">
+                <strong>${escapeHtml(group.label)}</strong>
+                <span>${group.areas.length}</span>
+            </header>
+            <div class="area-group-grid">
+                ${group.areas.map(area => `
+                    <article class="area-card ${Number(area.localId || 0) === Number(state.selectedAreaId) ? "is-active" : ""}" data-area="${area.localId || 0}">
+                        <div class="area-card-top">
+                            <div>
+                                <strong>${escapeHtml(getAreaLabel(area))}</strong>
+                                <small>${escapeHtml(getAreaSectorLabel(area))}</small>
+                            </div>
+                            <span class="area-percent">${toFixed(area.productionPercent)}%</span>
+                        </div>
+                        <div class="area-stats">
+                            <div class="stat-chip">
+                                <span>${escapeHtml(t("areaMachineCount"))}</span>
+                                <strong>${area.machineCount || 0}</strong>
+                            </div>
+                            <div class="stat-chip">
+                                <span>${escapeHtml(t("metricRunning"))}</span>
+                                <strong>${area.machinesRunning || 0}</strong>
+                            </div>
+                            <div class="stat-chip">
+                                <span>${escapeHtml(t("metricStopped"))}</span>
+                                <strong>${area.machinesStopped || 0}</strong>
+                            </div>
+                            <div class="stat-chip">
+                                <span>${escapeHtml(t("metricError"))}</span>
+                                <strong>${toFixed(area.errorMinutes)}</strong>
+                            </div>
+                        </div>
+                        <div class="area-operators-line">${escapeHtml(operatorCountLabel(area))}</div>
+                    </article>
+                `).join("")}
             </div>
-            <div class="area-stats">
-                <div class="stat-chip">
-                    <span>${escapeHtml(t("areaMachineCount"))}</span>
-                    <strong>${area.machineCount || 0}</strong>
-                </div>
-                <div class="stat-chip">
-                    <span>${escapeHtml(t("metricRunning"))}</span>
-                    <strong>${area.machinesRunning || 0}</strong>
-                </div>
-                <div class="stat-chip">
-                    <span>${escapeHtml(t("metricStopped"))}</span>
-                    <strong>${area.machinesStopped || 0}</strong>
-                </div>
-                <div class="stat-chip">
-                    <span>${escapeHtml(t("metricError"))}</span>
-                    <strong>${toFixed(area.errorMinutes)}</strong>
-                </div>
-            </div>
-            <div class="area-operators-line">${escapeHtml(operatorCountLabel(area))}</div>
-        </article>
+        </section>
     `).join("");
 
     wrap.querySelectorAll("[data-area]").forEach(card => {
@@ -370,14 +410,14 @@ function renderSelectedArea() {
     renderTimeline(getSelectedAreaTimeline());
 
     if (!areaMachines.length) {
-        state.selectedMachineCode = "";
-        renderDetail({ machineCode: "", events: [] });
+        state.selectedMachineId = 0;
+        renderDetail({ machineId: 0, machineCode: "", lineCode: "", events: [] });
         return;
     }
 
-    if (!areaMachines.some(machine => machine.machineCode === state.selectedMachineCode)) {
-        state.selectedMachineCode = areaMachines[0].machineCode || "";
-        send("production_machine_detail", { machineCode: state.selectedMachineCode });
+    if (!areaMachines.some(machine => Number(machine.machineId || 0) === Number(state.selectedMachineId))) {
+        state.selectedMachineId = Number(areaMachines[0].machineId || 0);
+        send("production_machine_detail", { machineId: state.selectedMachineId });
     }
 }
 
@@ -403,16 +443,16 @@ function renderMachineTable(rows) {
     }
 
     body.innerHTML = rows.map(row => `
-        <tr class="machine-row ${row.machineCode === state.selectedMachineCode ? "is-selected" : ""}" data-machine="${escapeHtmlAttr(row.machineCode)}">
+        <tr class="machine-row ${Number(row.machineId || 0) === Number(state.selectedMachineId) ? "is-selected" : ""}" data-machine-id="${row.machineId || 0}">
             <td>
                 <div class="machine-main">
                     <strong>${escapeHtml(getMachineLabel(row))}</strong>
-                    <small>${escapeHtml(row.machineCode || "-")}</small>
+                    <small>${escapeHtml(getMachineCodeLineLabel(row))}</small>
                 </div>
             </td>
             <td>
                 <div class="machine-status-stack">
-                    <span class="status-badge ${getStatusClass(row.statusCode)}">${escapeHtml(getStatusLabel(row))}</span>
+                    <span class="status-badge" style="${escapeHtmlAttr(getStatusBadgeStyle(row.statusCode, row.displayCode))}">${escapeHtml(getStatusLabel(row))}</span>
                     <small>${escapeHtml(formatMachineMinutesSummary(row))}</small>
                 </div>
             </td>
@@ -433,9 +473,9 @@ function renderMachineTable(rows) {
 
     body.querySelectorAll(".machine-row").forEach(row => {
         row.addEventListener("click", () => {
-            state.selectedMachineCode = row.dataset.machine || "";
+            state.selectedMachineId = Number(row.dataset.machineId || 0);
             renderMachineTable(rows);
-            send("production_machine_detail", { machineCode: state.selectedMachineCode });
+            send("production_machine_detail", { machineId: state.selectedMachineId });
         });
     });
 }
@@ -498,15 +538,7 @@ function renderDailyTrend(items) {
         return;
     }
 
-    wrap.innerHTML = items.map(item => `
-        <article class="trend-item">
-            <strong>${escapeHtml(item.label || "-")}</strong>
-            <div class="trend-bar-track">
-                <div class="trend-bar-fill" style="width:${Math.max(0, Math.min(100, Number(item.productionPercent || 0)))}%"></div>
-            </div>
-            <div class="trend-value">${toFixed(item.productionPercent)}%</div>
-        </article>
-    `).join("");
+    wrap.innerHTML = buildDailyTrendLineChart(items);
 }
 
 function renderAreaHistory(items) {
@@ -542,7 +574,7 @@ function renderOperatorRanking(items) {
     }
 
     wrap.innerHTML = items.map((item, index) => `
-        <article class="operator-ranking-item">
+        <article class="operator-ranking-item" data-operator="${escapeHtmlAttr(item.operatorCodigoFJ || "")}">
             <span class="operator-ranking-index">${index + 1}</span>
             <div class="operator-ranking-copy">
                 <strong>${escapeHtml(getOperatorName(item))}</strong>
@@ -560,6 +592,21 @@ function renderOperatorRanking(items) {
             </div>
         </article>
     `).join("");
+
+    wrap.querySelectorAll(".operator-ranking-item").forEach(card => {
+        card.addEventListener("click", () => {
+            const operatorCodigoFJ = card.dataset.operator || "";
+            if (!operatorCodigoFJ) {
+                return;
+            }
+
+            showLoading();
+            send("production_operator_detail", {
+                ...buildFilterPayload(),
+                operatorCodigoFJ
+            });
+        });
+    });
 }
 
 function renderTimeline(rows) {
@@ -573,8 +620,8 @@ function renderTimeline(rows) {
     const headerCells = rows[0].cells.map(cell => `<th>${escapeHtml(cell.timeLabel)}</th>`).join("");
     const bodyRows = rows.map(row => `
         <tr>
-            <td class="timeline-machine-cell">${escapeHtml(getLocalizedMachineName(row))}</td>
-            ${row.cells.map(cell => `<td class="timeline-status-cell ${escapeHtmlAttr(cell.cssClass)}" title="${escapeHtml(cell.timeLabel)}"></td>`).join("")}
+            <td class="timeline-machine-cell">${escapeHtml(getMachineCodeLineLabel(row))}</td>
+            ${row.cells.map(cell => `<td class="timeline-status-cell" style="${escapeHtmlAttr(getTimelineCellStyle(cell.statusCode, cell.displayCode))}" title="${escapeHtml(cell.timeLabel)}"></td>`).join("")}
         </tr>
     `).join("");
 
@@ -594,7 +641,7 @@ function renderTimeline(rows) {
 }
 
 function renderDetail(data) {
-    setText("lblDetailMachine", data.machineCode || "-");
+    setText("lblDetailMachine", buildMachineDetailLabel(data));
 
     const body = document.getElementById("detailTableBody");
     const rows = data.events || [];
@@ -607,12 +654,60 @@ function renderDetail(data) {
     body.innerHTML = rows.map(row => `
         <tr>
             <td>${escapeHtml(row.eventDateTime || "-")}</td>
-            <td><span class="status-badge ${getStatusClass(row.statusCode)}">${escapeHtml(row.statusText || getStatusLabel({ statusCode: row.statusCode }))}</span></td>
+            <td><span class="status-badge" style="${escapeHtmlAttr(getStatusBadgeStyle(row.statusCode))}">${escapeHtml(getStatusLabel({ statusCode: row.statusCode }))}</span></td>
             <td>${escapeHtml(row.recipeName || "-")}</td>
             <td>${escapeHtml(row.lotNo || "-")}</td>
             <td>${escapeHtml(row.sourceFile || "-")}</td>
         </tr>
     `).join("");
+}
+
+function openOperatorDetail(operatorCodigoFJ) {
+    if (!operatorCodigoFJ) {
+        return;
+    }
+
+    showLoading();
+    send("production_operator_detail", {
+        ...buildFilterPayload(),
+        operatorCodigoFJ
+    });
+}
+
+function renderOperatorDetail(data) {
+    setText("lblOperatorModalName", getOperatorModalName(data));
+    setText("lblOperatorModalCode", data.operatorCodigoFJ || "-");
+    setText("lblOperatorModalAvg", `${toFixed(data.averageKadouritsuPercent)}%`);
+    setText("lblOperatorModalRunning", toFixed(data.totalRunningMinutes));
+    setText("lblOperatorModalAreas", data.assignedAreaCount ?? 0);
+
+    const areaWrap = document.getElementById("operatorModalAreas");
+    const localNames = state.locale === "ja-JP"
+        ? (data.localNamesJp || [])
+        : (data.localNamesPt || []);
+    areaWrap.innerHTML = localNames.length
+        ? localNames.map(name => `<span class="operator-ranking-local">${escapeHtml(name)}</span>`).join("")
+        : `<span class="operator-ranking-local">${escapeHtml(t("currentAreaFallback"))}</span>`;
+
+    const body = document.getElementById("operatorModalTableBody");
+    const rows = data.entries || [];
+
+    if (!rows.length) {
+        body.innerHTML = `<tr><td colspan="6" class="empty-cell">${escapeHtml(t("operatorHistoryEmpty"))}</td></tr>`;
+    } else {
+        body.innerHTML = rows.map(row => `
+            <tr>
+                <td>${escapeHtml(formatDateOnly(row.date) || row.label || "-")}</td>
+                <td>${escapeHtml(getOperatorEntryAreaName(row))}</td>
+                <td>${toFixed(row.kadouritsuPercent)}%</td>
+                <td>${toFixed(row.runningMinutes)}</td>
+                <td>${toFixed(row.stoppedMinutes)}</td>
+                <td>${toFixed(row.errorMinutes)}</td>
+            </tr>
+        `).join("");
+    }
+
+    document.getElementById("operatorModal").classList.remove("hidden");
 }
 
 function applyLocale() {
@@ -662,6 +757,17 @@ function applyLocale() {
     setText("txtShiftCompareSubtitle", t("shiftCompareSubtitle"));
     setText("txtOperatorRankingTitle", t("operatorRankingTitle"));
     setText("txtOperatorRankingSubtitle", t("operatorRankingSubtitle"));
+    setText("txtOperatorModalTitle", t("operatorHistoryTitle"));
+    setText("txtOperatorModalSubtitle", t("operatorHistorySubtitle"));
+    setText("txtOperatorModalDate", t("operatorHistoryDate"));
+    setText("txtOperatorModalArea", t("operatorHistoryArea"));
+    setText("txtOperatorModalPercent", t("operatorHistoryPercent"));
+    setText("txtOperatorModalRunMinutes", t("operatorHistoryRun"));
+    setText("txtOperatorModalStopMinutes", t("operatorHistoryStop"));
+    setText("txtOperatorModalErrorMinutes", t("operatorHistoryError"));
+    setText("txtOperatorModalAvg", t("operatorHistoryAvg"));
+    setText("txtOperatorModalRunning", t("areaRunningMinutes"));
+    setText("txtOperatorModalAreas", t("operatorHistoryAreas"));
     setText("txtDailyTrendTitle", t("dailyTrendTitle"));
     setText("txtDailyTrendSubtitle", t("dailyTrendSubtitle"));
     setText("txtAreaHistoryTitle", t("areaHistoryTitle"));
@@ -739,6 +845,20 @@ function getMachineLabel(row) {
         : (row.machineNamePt || row.machineNameJp || row.machineCode || "-");
 }
 
+function getMachineCodeLineLabel(row) {
+    const lineCode = row.lineCode || "";
+    const machineCode = row.machineCode || "-";
+    return lineCode ? `${lineCode} / ${machineCode}` : machineCode;
+}
+
+function getMachinePickerLabel(machine) {
+    const name = getLocalizedName(machine);
+    const codeLabel = getMachineCodeLineLabel(machine);
+    return name && name !== machine.machineCode
+        ? `${codeLabel} - ${name}`
+        : codeLabel;
+}
+
 function getLocalizedMachineName(row) {
     return getMachineLabel(row);
 }
@@ -770,6 +890,12 @@ function getOperatorsLabel(row) {
 }
 
 function getOperatorName(item) {
+    return state.locale === "ja-JP"
+        ? (item.operatorNameJp || item.operatorNamePt || item.operatorCodigoFJ || "-")
+        : (item.operatorNamePt || item.operatorNameJp || item.operatorCodigoFJ || "-");
+}
+
+function getOperatorModalName(item) {
     return state.locale === "ja-JP"
         ? (item.operatorNameJp || item.operatorNamePt || item.operatorCodigoFJ || "-")
         : (item.operatorNamePt || item.operatorNameJp || item.operatorCodigoFJ || "-");
@@ -809,19 +935,44 @@ function averagePercent(days) {
     return days.reduce((sum, item) => sum + Number(item.productionPercent || 0), 0) / days.length;
 }
 
+function groupAreasBySector(areas) {
+    const groups = new Map();
+    areas.forEach(area => {
+        const key = String(area.sectorId || 0);
+        if (!groups.has(key)) {
+            groups.set(key, {
+                key,
+                label: getAreaSectorLabel(area),
+                areas: []
+            });
+        }
+        groups.get(key).areas.push(area);
+    });
+
+    return [...groups.values()];
+}
+
 function getStatusLabel(row) {
     const statusCode = Number(row.statusCode || 0);
+    const displayCode = Number(row.displayCode || statusCode || 0);
+    const configured = state.statuses[String(statusCode)] || state.statuses[String(displayCode)];
+    if (configured) {
+        return state.locale === "ja-JP"
+            ? (configured.nameJp || configured.namePt || String(statusCode))
+            : (configured.namePt || configured.nameJp || String(statusCode));
+    }
+
     switch (statusCode) {
         case 0:
             return t("running");
         case 1:
-            return t("stopped");
-        case 2:
             return t("inactive");
         case 3:
+            return t("stopped");
+        case 4:
             return t("error");
         default:
-            return "-";
+            return t("inactive");
     }
 }
 
@@ -831,14 +982,169 @@ function getStatusClass(statusCode) {
         case 0:
             return "status-running";
         case 1:
-            return "status-stopped";
-        case 2:
             return "status-inactive";
         case 3:
+            return "status-stopped";
+        case 4:
             return "status-error";
         default:
             return "status-inactive";
     }
+}
+
+function getStatusBadgeStyle(statusCode, fallbackCode = null) {
+    const configured = state.statuses[String(Number(statusCode || 0))]
+        || state.statuses[String(Number(fallbackCode || 0))];
+    if (!configured) {
+        return "";
+    }
+
+    const background = configured.colorHex || "#5B88E8";
+    const color = configured.textColorHex || "#FFFFFF";
+    const border = background.toUpperCase() === "#FFFFFF"
+        ? "border:1px solid #D8E0EA;"
+        : "";
+
+    return `background:${background};color:${color};${border}`;
+}
+
+function getTimelineCellStyle(statusCode, fallbackCode = null) {
+    const configured = state.statuses[String(Number(statusCode || 0))]
+        || state.statuses[String(Number(fallbackCode || 0))];
+    if (!configured) {
+        return "";
+    }
+
+    const background = configured.colorHex || "#5B88E8";
+    const border = background.toUpperCase() === "#FFFFFF"
+        ? "box-shadow:inset 0 0 0 1px #D8E0EA;"
+        : "";
+
+    return `background:${background};${border}`;
+}
+
+function normalizeStatuses(statuses) {
+    const map = {};
+    (statuses || []).forEach(item => {
+        const code = Number(item.statusCode ?? item.code ?? -999);
+        if (!Number.isFinite(code)) return;
+
+        map[String(code)] = {
+            statusCode: code,
+            displayCode: Number(item.displayCode || 0),
+            namePt: item.namePt || "",
+            nameJp: item.nameJp || item.namePt || "",
+            colorHex: item.colorHex || "#5B88E8",
+            textColorHex: item.textColorHex || "#FFFFFF"
+        };
+    });
+    return map;
+}
+
+function buildMachineDetailLabel(data) {
+    const machineCode = data.machineCode || "-";
+    const lineCode = data.lineCode || "";
+    return lineCode ? `${lineCode} / ${machineCode}` : machineCode;
+}
+
+function getOperatorEntryAreaName(item) {
+    return state.locale === "ja-JP"
+        ? (item.localNameJp || item.localNamePt || "-")
+        : (item.localNamePt || item.localNameJp || "-");
+}
+
+function buildDailyTrendLineChart(items) {
+    const orderedDays = [...items]
+        .sort((left, right) => String(left.date || "").localeCompare(String(right.date || "")))
+        .reduce((acc, item) => {
+            if (!acc.includes(item.label)) {
+                acc.push(item.label);
+            }
+            return acc;
+        }, []);
+
+    const hirukinItems = items.filter(item => getShiftSeriesKey(item) === "hirukin");
+    const yakinItems = items.filter(item => getShiftSeriesKey(item) === "yakin");
+
+    const width = 760;
+    const height = 240;
+    const padding = { top: 24, right: 20, bottom: 42, left: 44 };
+    const innerWidth = width - padding.left - padding.right;
+    const innerHeight = height - padding.top - padding.bottom;
+    const maxValue = Math.max(
+        100,
+        ...hirukinItems.map(item => Number(item.productionPercent || 0)),
+        ...yakinItems.map(item => Number(item.productionPercent || 0)),
+        1
+    );
+
+    const toPoint = (value, index, count) => {
+        const x = padding.left + (count <= 1 ? innerWidth / 2 : (innerWidth * index) / (count - 1));
+        const y = padding.top + innerHeight - ((value / maxValue) * innerHeight);
+        return `${x},${y}`;
+    };
+
+    const toSeriesPoints = seriesItems => seriesItems
+        .map(item => {
+            const index = orderedDays.indexOf(item.label);
+            if (index < 0) {
+                return null;
+            }
+
+            const [x, y] = toPoint(Number(item.productionPercent || 0), index, orderedDays.length).split(",");
+            return {
+                x: Number(x),
+                y: Number(y)
+            };
+        })
+        .filter(Boolean);
+
+    const hirukinPoints = toSeriesPoints(hirukinItems);
+    const yakinPoints = toSeriesPoints(yakinItems);
+    const buildPath = points => points
+        .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+        .join(" ");
+    const dayLabels = orderedDays.map((label, index) => {
+        const x = padding.left + (orderedDays.length <= 1 ? innerWidth / 2 : (innerWidth * index) / (orderedDays.length - 1));
+        return `<text x="${x}" y="${height - 12}" text-anchor="middle">${escapeHtml(label)}</text>`;
+    }).join("");
+    const gridLines = [0, 25, 50, 75, 100].map(percent => {
+        const y = padding.top + innerHeight - ((percent / maxValue) * innerHeight);
+        return `
+            <line x1="${padding.left}" x2="${width - padding.right}" y1="${y}" y2="${y}"></line>
+            <text x="${padding.left - 10}" y="${y + 4}" text-anchor="end">${percent}%</text>
+        `;
+    }).join("");
+
+    return `
+        <div class="trend-legend">
+            <span class="trend-legend-item"><i class="trend-dot trend-dot-hirukin"></i>Hirukin</span>
+            <span class="trend-legend-item"><i class="trend-dot trend-dot-yakin"></i>Yakin</span>
+        </div>
+        <div class="trend-chart-shell">
+            <svg class="trend-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Historico diario de kadouritsu por turno">
+                <g class="trend-grid">${gridLines}</g>
+                ${hirukinPoints.length >= 2 ? `<path class="trend-line trend-line-hirukin" d="${buildPath(hirukinPoints)}" fill="none"></path>` : ""}
+                ${yakinPoints.length >= 2 ? `<path class="trend-line trend-line-yakin" d="${buildPath(yakinPoints)}" fill="none"></path>` : ""}
+                ${hirukinPoints.map(point => {
+                    return `<circle class="trend-point trend-point-hirukin" cx="${point.x}" cy="${point.y}" r="4"></circle>`;
+                }).join("")}
+                ${yakinPoints.map(point => {
+                    return `<circle class="trend-point trend-point-yakin" cx="${point.x}" cy="${point.y}" r="4"></circle>`;
+                }).join("")}
+                <g class="trend-axis-labels">${dayLabels}</g>
+            </svg>
+        </div>
+    `;
+}
+
+function getShiftSeriesKey(item) {
+    const name = `${item.shiftNamePt || ""} ${item.shiftNameJp || ""}`.toLowerCase();
+    if (name.includes("yakin") || name.includes("夜")) {
+        return "yakin";
+    }
+
+    return "hirukin";
 }
 
 function resolveOperatorName(data) {
@@ -865,6 +1171,22 @@ function formatDateTime(value) {
     }).format(date);
 }
 
+function formatDateOnly(value) {
+    if (!value) {
+        return "-";
+    }
+
+    const date = new Date(String(value).replace(" ", "T"));
+    if (Number.isNaN(date.getTime())) {
+        return value;
+    }
+
+    return new Intl.DateTimeFormat(state.locale, {
+        month: "2-digit",
+        day: "2-digit"
+    }).format(date);
+}
+
 function showLoading() {
     document.getElementById("loadingOverlay").classList.remove("hidden");
     document.getElementById("btnImport").disabled = true;
@@ -873,6 +1195,10 @@ function showLoading() {
 function hideLoading() {
     document.getElementById("loadingOverlay").classList.add("hidden");
     document.getElementById("btnImport").disabled = false;
+}
+
+function closeOperatorModal() {
+    document.getElementById("operatorModal").classList.add("hidden");
 }
 
 function showNotice(message, kind) {

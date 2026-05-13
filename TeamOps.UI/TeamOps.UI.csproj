@@ -73,6 +73,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="scripts\cpdata.bat">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="scripts\import-production.sample.bat">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="ui\dashboard\app.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

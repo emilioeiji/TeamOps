@@ -9,6 +9,7 @@ namespace TeamOps.UI.Forms.Models
         public int ShiftId { get; set; }
         public int SectorId { get; set; }
         public int LocalId { get; set; }
+        public int MachineId { get; set; }
         public string MachineCode { get; set; } = string.Empty;
     }
 
@@ -36,10 +37,26 @@ namespace TeamOps.UI.Forms.Models
         public List<ProductionOperatorRankingDto> OperatorRanking { get; } = new();
     }
 
+    public sealed class ProductionOperatorDetailDto
+    {
+        public string OperatorCodigoFJ { get; set; } = string.Empty;
+        public string OperatorNamePt { get; set; } = string.Empty;
+        public string OperatorNameJp { get; set; } = string.Empty;
+        public string ShiftNamePt { get; set; } = string.Empty;
+        public string ShiftNameJp { get; set; } = string.Empty;
+        public double AverageKadouritsuPercent { get; set; }
+        public double TotalRunningMinutes { get; set; }
+        public int AssignedAreaCount { get; set; }
+        public List<string> LocalNamesPt { get; set; } = new();
+        public List<string> LocalNamesJp { get; set; } = new();
+        public List<ProductionOperatorHistoryEntryDto> Entries { get; } = new();
+    }
+
     public sealed class ProductionMachineSummaryDto
     {
         public int MachineId { get; set; }
         public string MachineCode { get; set; } = string.Empty;
+        public string LineCode { get; set; } = string.Empty;
         public string MachineNamePt { get; set; } = string.Empty;
         public string MachineNameJp { get; set; } = string.Empty;
         public int? SectorId { get; set; }
@@ -49,6 +66,7 @@ namespace TeamOps.UI.Forms.Models
         public string LocalNamePt { get; set; } = string.Empty;
         public string LocalNameJp { get; set; } = string.Empty;
         public int StatusCode { get; set; }
+        public int DisplayCode { get; set; }
         public string StatusText { get; set; } = string.Empty;
         public string RecipeName { get; set; } = string.Empty;
         public string LotNo { get; set; } = string.Empty;
@@ -82,6 +100,7 @@ namespace TeamOps.UI.Forms.Models
         public string LocalNamePt { get; set; } = string.Empty;
         public string LocalNameJp { get; set; } = string.Empty;
         public string MachineCode { get; set; } = string.Empty;
+        public string LineCode { get; set; } = string.Empty;
         public string MachineNamePt { get; set; } = string.Empty;
         public string MachineNameJp { get; set; } = string.Empty;
         public List<ProductionTimelineCellDto> Cells { get; } = new();
@@ -92,6 +111,7 @@ namespace TeamOps.UI.Forms.Models
         public string TimeLabel { get; set; } = string.Empty;
         public DateTime DateTime { get; set; }
         public int StatusCode { get; set; }
+        public int DisplayCode { get; set; }
         public string CssClass { get; set; } = string.Empty;
     }
 
@@ -136,6 +156,9 @@ namespace TeamOps.UI.Forms.Models
     {
         public DateTime Date { get; set; }
         public string Label { get; set; } = string.Empty;
+        public int ShiftId { get; set; }
+        public string ShiftNamePt { get; set; } = string.Empty;
+        public string ShiftNameJp { get; set; } = string.Empty;
         public double ProductionPercent { get; set; }
         public double RunningMinutes { get; set; }
         public double StoppedMinutes { get; set; }
@@ -160,5 +183,20 @@ namespace TeamOps.UI.Forms.Models
         public double EstimatedKadouritsuPercent { get; set; }
         public List<string> LocalNamesPt { get; set; } = new();
         public List<string> LocalNamesJp { get; set; } = new();
+    }
+
+    public sealed class ProductionOperatorHistoryEntryDto
+    {
+        public DateTime Date { get; set; }
+        public string Label { get; set; } = string.Empty;
+        public int? LocalId { get; set; }
+        public string LocalNamePt { get; set; } = string.Empty;
+        public string LocalNameJp { get; set; } = string.Empty;
+        public double RunningMinutes { get; set; }
+        public double StoppedMinutes { get; set; }
+        public double InactiveMinutes { get; set; }
+        public double ErrorMinutes { get; set; }
+        public double EligibleMinutes { get; set; }
+        public double KadouritsuPercent { get; set; }
     }
 }

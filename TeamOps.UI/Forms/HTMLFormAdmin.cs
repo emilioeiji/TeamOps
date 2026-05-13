@@ -135,6 +135,7 @@ namespace TeamOps.UI.Forms
         private object BuildLookups()
         {
             using var conn = _factory.CreateOpenConnection();
+            ProductionSchemaMigrator.Ensure(conn);
 
             return new
             {
@@ -155,7 +156,14 @@ namespace TeamOps.UI.Forms
                             COALESCE(NULLIF(l.NameJp, ''), l.NamePt, '') AS nameJp
                         FROM Locals l
                         ORDER BY l.SectorId, l.NamePt, l.Id;"
-                ).ToList()
+                ).ToList(),
+                statusClasses = new[]
+                {
+                    new { id = 0, namePt = "Rodando", nameJp = "稼動中" },
+                    new { id = 1, namePt = "Inativo", nameJp = "非稼働" },
+                    new { id = 3, namePt = "Parado", nameJp = "停止" },
+                    new { id = 4, namePt = "Erro", nameJp = "エラー" }
+                }
             };
         }
 
@@ -165,6 +173,7 @@ namespace TeamOps.UI.Forms
                 throw new InvalidOperationException(L("Item administrativo invalido.", "\u7121\u52b9\u306a\u7ba1\u7406\u9805\u76ee\u3067\u3059\u3002"));
 
             using var conn = _factory.CreateOpenConnection();
+            ProductionSchemaMigrator.Ensure(conn);
             var rows = entity.QueryRows(conn).ToList();
 
             PostJson(new
@@ -191,6 +200,7 @@ namespace TeamOps.UI.Forms
             var parameters = entity.BuildParameters(values);
 
             using var conn = _factory.CreateOpenConnection();
+            ProductionSchemaMigrator.Ensure(conn);
             conn.Execute(entity.InsertSql, parameters);
 
             PostJson(new
@@ -218,6 +228,7 @@ namespace TeamOps.UI.Forms
             parameters.Add("@id", id);
 
             using var conn = _factory.CreateOpenConnection();
+            ProductionSchemaMigrator.Ensure(conn);
             conn.Execute(entity.UpdateSql, parameters);
 
             PostJson(new
@@ -241,6 +252,7 @@ namespace TeamOps.UI.Forms
                 throw new InvalidOperationException(L("Este item e somente leitura.", "\u3053\u306e\u9805\u76ee\u306f\u95b2\u89a7\u306e\u307f\u3067\u3059\u3002"));
 
             using var conn = _factory.CreateOpenConnection();
+            ProductionSchemaMigrator.Ensure(conn);
             conn.Execute(entity.DeleteSql, new { id });
 
             PostJson(new
@@ -282,6 +294,7 @@ namespace TeamOps.UI.Forms
                     "\u904b\u7528\u7cfb\u30d5\u30a9\u30fc\u30e0\u306b\u7d10\u4ed8\u304f\u8a2d\u5099\u30de\u30b9\u30bf\u3067\u3059\u3002",
                     "Equipments"),
                 CreateMachineEntity(),
+                CreateMachineStatusEntity(),
                 CreateNameEntity(
                     "category", "production",
                     "Categorias", "\u30ab\u30c6\u30b4\u30ea",
@@ -473,6 +486,7 @@ namespace TeamOps.UI.Forms
                         NamePt,
                         NameJp,
                         MachineCode,
+                        MachineKey,
                         LineCode,
                         SectorId,
                         LocalId,
@@ -483,6 +497,7 @@ namespace TeamOps.UI.Forms
                         @namePt,
                         @nameJp,
                         @machineCode,
+                        @machineKey,
                         @lineCode,
                         @sectorId,
                         @localId,
@@ -494,6 +509,7 @@ namespace TeamOps.UI.Forms
                         NamePt = @namePt,
                         NameJp = @nameJp,
                         MachineCode = @machineCode,
+                        MachineKey = @machineKey,
                         LineCode = @lineCode,
                         SectorId = @sectorId,
                         LocalId = @localId
@@ -521,9 +537,130 @@ namespace TeamOps.UI.Forms
                     parameters.Add("@namePt", namePt);
                     parameters.Add("@nameJp", nameJp);
                     parameters.Add("@machineCode", machineCode);
+                    parameters.Add("@machineKey", TeamOps.Data.Repositories.ProductionMachineRepository.BuildMachineKey(machineCode, lineCode));
                     parameters.Add("@lineCode", string.IsNullOrWhiteSpace(lineCode) ? null : lineCode);
                     parameters.Add("@sectorId", sectorId > 0 ? sectorId : null);
                     parameters.Add("@localId", localId > 0 ? localId : null);
+                    return parameters;
+                }
+            };
+        }
+
+        private static AdminEntityDefinition CreateMachineStatusEntity()
+        {
+            return new AdminEntityDefinition
+            {
+                Key = "machine_status",
+                Group = "production",
+                TitlePt = "Status de Maquina",
+                TitleJp = "設備ステータス",
+                DescriptionPt = "Status brutos importados dos arquivos de producao, com nome bilingue, classificacao base e cor parametrizada.",
+                DescriptionJp = "生産ファイルから取り込む生ステータスを、名称・分類・色で管理します。",
+                Fields =
+                {
+                    new AdminFieldDefinition("statusCode", "Codigo", "コード", "number", true),
+                    new AdminFieldDefinition("displayCode", "Classificacao", "分類", "select", true, "statusClasses"),
+                    new AdminFieldDefinition("namePt", "Nome PT", "名称 PT", "text", true),
+                    new AdminFieldDefinition("nameJp", "Nome JP", "名称 JP", "text", true),
+                    new AdminFieldDefinition("colorHex", "Cor", "色", "color", true),
+                    new AdminFieldDefinition("textColorHex", "Cor do Texto", "文字色", "color", true)
+                },
+                Columns =
+                {
+                    new AdminColumnDefinition("id", null, "ID", "ID"),
+                    new AdminColumnDefinition("statusCode", null, "Codigo", "コード"),
+                    new AdminColumnDefinition("displayNamePt", "displayNameJp", "Classificacao", "分類"),
+                    new AdminColumnDefinition("namePt", "nameJp", "Nome", "名称"),
+                    new AdminColumnDefinition("colorHex", null, "Cor", "色")
+                },
+                QueryRows = conn => conn.Query(
+                    @"
+                        SELECT
+                            ms.Id AS id,
+                            ms.StatusCode AS statusCode,
+                            ms.DisplayCode AS displayCode,
+                            COALESCE(ms.NamePt, '') AS namePt,
+                            COALESCE(ms.NameJp, '') AS nameJp,
+                            COALESCE(ms.ColorHex, '') AS colorHex,
+                            COALESCE(ms.TextColorHex, '') AS textColorHex,
+                            CASE ms.DisplayCode
+                                WHEN 0 THEN 'Rodando'
+                                WHEN 1 THEN 'Inativo'
+                                WHEN 3 THEN 'Parado'
+                                WHEN 4 THEN 'Erro'
+                                ELSE 'Inativo'
+                            END AS displayNamePt,
+                            CASE ms.DisplayCode
+                                WHEN 0 THEN '稼動中'
+                                WHEN 1 THEN '非稼働'
+                                WHEN 3 THEN '停止'
+                                WHEN 4 THEN 'エラー'
+                                ELSE '非稼働'
+                            END AS displayNameJp
+                        FROM MachineStatuses ms
+                        ORDER BY ms.SortOrder, ms.StatusCode, ms.Id;"
+                ),
+                InsertSql = @"
+                    INSERT INTO MachineStatuses
+                    (
+                        StatusCode,
+                        DisplayCode,
+                        NamePt,
+                        NameJp,
+                        ColorHex,
+                        TextColorHex,
+                        SortOrder,
+                        IsActive
+                    )
+                    VALUES
+                    (
+                        @statusCode,
+                        @displayCode,
+                        @namePt,
+                        @nameJp,
+                        @colorHex,
+                        @textColorHex,
+                        @sortOrder,
+                        1
+                    );",
+                UpdateSql = @"
+                    UPDATE MachineStatuses
+                    SET
+                        StatusCode = @statusCode,
+                        DisplayCode = @displayCode,
+                        NamePt = @namePt,
+                        NameJp = @nameJp,
+                        ColorHex = @colorHex,
+                        TextColorHex = @textColorHex,
+                        SortOrder = @sortOrder
+                    WHERE Id = @id;",
+                DeleteSql = "DELETE FROM MachineStatuses WHERE Id = @id;",
+                BuildParameters = values =>
+                {
+                    var statusCode = ReadInt(values, "statusCode");
+                    var displayCode = ReadInt(values, "displayCode");
+                    var namePt = ReadString(values, "namePt").Trim();
+                    var nameJp = ReadString(values, "nameJp").Trim();
+                    var colorHex = NormalizeHexColor(ReadString(values, "colorHex"));
+                    var textColorHex = NormalizeHexColor(ReadString(values, "textColorHex"));
+
+                    if (statusCode < 0)
+                        throw new InvalidOperationException(L("Informe um codigo de status valido.", "有効なステータスコードを入力してください。"));
+
+                    if (displayCode != 0 && displayCode != 1 && displayCode != 3 && displayCode != 4)
+                        throw new InvalidOperationException(L("Selecione uma classificacao valida.", "有効な分類を選択してください。"));
+
+                    if (string.IsNullOrWhiteSpace(namePt) || string.IsNullOrWhiteSpace(nameJp))
+                        throw new InvalidOperationException(L("Preencha os dois nomes do status.", "ステータス名を両方入力してください。"));
+
+                    var parameters = new DynamicParameters();
+                    parameters.Add("@statusCode", statusCode);
+                    parameters.Add("@displayCode", displayCode);
+                    parameters.Add("@namePt", namePt);
+                    parameters.Add("@nameJp", nameJp);
+                    parameters.Add("@colorHex", colorHex);
+                    parameters.Add("@textColorHex", textColorHex);
+                    parameters.Add("@sortOrder", statusCode);
                     return parameters;
                 }
             };
@@ -656,6 +793,18 @@ namespace TeamOps.UI.Forms
             return string.Equals(Program.CurrentLocale, "ja-JP", StringComparison.OrdinalIgnoreCase)
                 ? jp
                 : pt;
+        }
+
+        private static string NormalizeHexColor(string value)
+        {
+            var normalized = (value ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(normalized))
+                return "#FFFFFF";
+
+            if (!normalized.StartsWith("#", StringComparison.Ordinal))
+                normalized = "#" + normalized;
+
+            return normalized.Length == 7 ? normalized.ToUpperInvariant() : "#FFFFFF";
         }
 
         private sealed class AdminEntityDefinition

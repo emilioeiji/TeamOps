@@ -168,5 +168,13 @@ namespace TeamOps.Data.Repositories
                 tx
             );
         }
+
+        public void RefreshCurrentStatuses(IDbConnection conn, IDbTransaction? tx, IEnumerable<int> machineIds)
+        {
+            foreach (var machineId in machineIds.Distinct().OrderBy(id => id))
+            {
+                RefreshCurrentStatus(conn, tx, machineId);
+            }
+        }
     }
 }

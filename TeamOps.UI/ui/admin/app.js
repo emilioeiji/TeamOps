@@ -381,6 +381,25 @@ function renderField(entity, field, row) {
         `;
     }
 
+    if (field.type === "number") {
+        return `
+            <label class="form-field">
+                <span>${escapeHtml(label)}</span>
+                <input class="input" type="number" step="1" data-field="${field.key}" value="${escapeHtmlAttr(value)}">
+            </label>
+        `;
+    }
+
+    if (field.type === "color") {
+        const normalized = normalizeColorValue(value);
+        return `
+            <label class="form-field">
+                <span>${escapeHtml(label)}</span>
+                <input class="input" type="color" data-field="${field.key}" value="${escapeHtmlAttr(normalized)}">
+            </label>
+        `;
+    }
+
     return `
         <label class="form-field">
             <span>${escapeHtml(label)}</span>
@@ -507,4 +526,9 @@ function escapeHtml(value) {
 
 function escapeHtmlAttr(value) {
     return escapeHtml(value);
+}
+
+function normalizeColorValue(value) {
+    const text = String(value ?? "").trim();
+    return /^#[0-9a-fA-F]{6}$/.test(text) ? text : "#FFFFFF";
 }

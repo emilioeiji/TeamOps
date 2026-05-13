@@ -361,3 +361,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# TeamOps local production import scripts
+TeamOps.UI/scripts/cpdata.bat
+TeamOps.UI/scripts/import-production.sample.bat

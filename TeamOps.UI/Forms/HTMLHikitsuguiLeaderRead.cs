@@ -438,17 +438,17 @@ namespace TeamOps.UI.Forms
 
                             int id = Convert.ToInt32(msg.id);
 
-                            int? equipmentId = (msg.equipmentId == null || Convert.ToInt32(msg.equipmentId) == 0)
+                            int? equipmentId = msg.equipmentId == 0
                                 ? null
-                                : Convert.ToInt32(msg.equipmentId);
+                                : msg.equipmentId;
 
-                            int? localId = (msg.localId == null || Convert.ToInt32(msg.localId) == 0)
+                            int? localId = msg.localId == 0
                                 ? null
-                                : Convert.ToInt32(msg.localId);
+                                : msg.localId;
 
-                            int? sectorId = (msg.sectorId == null || Convert.ToInt32(msg.sectorId) == 0)
+                            int? sectorId = msg.sectorId == 0
                                 ? null
-                                : Convert.ToInt32(msg.sectorId);
+                                : msg.sectorId;
 
                             conn.Execute(sqlUpdate, new
                             {
@@ -822,6 +822,9 @@ namespace TeamOps.UI.Forms
         private string SaveAttachment(int hikitsuguiId, string fileName, string base64)
         {
             var root = ConfigurationManager.AppSettings["HikitsuguiAttachmentPath"];
+            if (string.IsNullOrWhiteSpace(root))
+                throw new InvalidOperationException("HikitsuguiAttachmentPath não está configurado no app.config.");
+
             var dir = Path.Combine(root, hikitsuguiId.ToString());
 
             if (!Directory.Exists(dir))
