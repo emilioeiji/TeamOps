@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TeamOps - Documentacao</title>
+  <style>
+    :root {
+      --ink: #17202a;
+      --muted: #5b6776;
+      --line: #d8dee8;
+      --soft: #f5f7fb;
+      --brand: #c51420;
+      --navy: #243b55;
+      --green: #227a5c;
+      --gold: #9a6b14;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #ffffff;
+      font: 15px/1.55 "Segoe UI", Arial, sans-serif;
+    }
+    header {
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    }
+    .wrap {
+      width: min(1120px, calc(100% - 40px));
+      margin: 0 auto;
+    }
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 28px 0;
+    }
+    .logo {
+      max-width: 220px;
+      max-height: 72px;
+      object-fit: contain;
+    }
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      letter-spacing: 0;
+    }
+    .subtitle {
+      margin: 6px 0 0;
+      color: var(--muted);
+      max-width: 720px;
+    }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 0 0 22px;
+    }
+    nav a {
+      color: var(--navy);
+      text-decoration: none;
+      border: 1px solid var(--line);
+      padding: 7px 10px;
+      border-radius: 6px;
+      background: #fff;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    main { padding: 26px 0 48px; }
+    section {
+      padding: 24px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 22px;
+    }
+    h3 {
+      margin: 22px 0 8px;
+      font-size: 17px;
+      color: var(--navy);
+    }
+    p { margin: 0 0 10px; }
+    ul {
+      margin: 8px 0 0;
+      padding-left: 22px;
+    }
+    li { margin: 4px 0; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fff;
+    }
+    .card strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--navy);
+    }
+    .tag {
+      display: inline-block;
+      margin: 4px 6px 4px 0;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--soft);
+      border: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .callout {
+      border-left: 4px solid var(--brand);
+      background: #fff7f7;
+      padding: 12px 14px;
+      margin-top: 12px;
+    }
+    .ok { color: var(--green); font-weight: 700; }
+    .warn { color: var(--gold); font-weight: 700; }
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      background: var(--soft);
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+    footer {
+      padding: 22px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    @media (max-width: 720px) {
+      .top { align-items: flex-start; flex-direction: column; }
+      .logo { max-width: 180px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="top">
+        <div>
+          <h1>TeamOps - Documentacao tecnica e operacional</h1>
+          <p class="subtitle">Sistema interno para gestao operacional de fabrica, com WinForms, WebView2, SQLite, modulos HTML e dependencias de pastas operacionais.</p>
+        </div>
+        <img class="logo" src="../TeamOps.UI/Logo.png" alt="Fujiarte">
+      </div>
+      <nav>
+        <a href="#overview">Overview</a>
+        <a href="#arquitetura">Arquitetura</a>
+        <a href="#usuario">Usuario</a>
+        <a href="#troubleshooting">Troubleshooting</a>
+        <a href="#deployment">Deployment</a>
+        <a href="#modulos">Modulos</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="overview">
+      <h2>Overview</h2>
+      <p>TeamOps centraliza rotinas de operadores, liderancas e administradores em ambiente industrial. O app principal abre com login, carrega um dashboard HTML dentro do WinForms e direciona para modulos operacionais.</p>
+      <div>
+        <span class="tag">C#</span>
+        <span class="tag">.NET 9</span>
+        <span class="tag">WinForms</span>
+        <span class="tag">WebView2</span>
+        <span class="tag">Dapper</span>
+        <span class="tag">SQLite</span>
+        <span class="tag">HTML/CSS/JS</span>
+      </div>
+      <div class="grid">
+        <div class="card"><strong>TeamOps.UI</strong>Aplicacao principal, dashboard, forms e modulos HTML.</div>
+        <div class="card"><strong>TeamOps.OperatorApp</strong>App separado para leitura de Hikitsugui por operador.</div>
+        <div class="card"><strong>TeamOps.Core</strong>Entidades, validadores e tipos comuns.</div>
+        <div class="card"><strong>TeamOps.Data</strong>Repositorios, Dapper, SQLite, SQL e migrations.</div>
+        <div class="card"><strong>TeamOps.Config</strong>Caminhos e configuracao do banco.</div>
+      </div>
+    </section>
+
+    <section id="arquitetura">
+      <h2>Arquitetura</h2>
+      <p>A UI chama Core/Data/Config. Os modulos HTML rodam em WebView2 e se comunicam com C# por <code>window.chrome.webview.postMessage</code> e <code>PostWebMessageAsJson</code>.</p>
+      <h3>Fluxo tecnico</h3>
+      <ul>
+        <li>O app resolve <code>DatabasePath</code> pelo <code>App.config</code>.</li>
+        <li><code>DbInitializer.EnsureCreated()</code> aplica schema e garante o banco.</li>
+        <li>O login identifica usuario, operador e turno.</li>
+        <li>O dashboard abre modulos conforme <code>AccessLevel</code>.</li>
+        <li>Repositorios acessam SQLite por <code>SqliteConnectionFactory</code>.</li>
+      </ul>
+      <div class="callout">Quando uma regra nao estava explicita no codigo, a documentacao Markdown marca o trecho como comportamento inferido.</div>
+    </section>
+
+    <section id="usuario">
+      <h2>Manual do usuario</h2>
+      <p>O uso normal comeca pelo login, passa pelo dashboard e segue para o modulo de trabalho. Os botoes disponiveis dependem da permissao do usuario.</p>
+      <div class="grid">
+        <div class="card"><strong>Operacao diaria</strong>Abrir sistema, conferir usuario/turno, acessar modulo e salvar registros.</div>
+        <div class="card"><strong>Relatorios</strong>Usar filtros antes de imprimir, exportar ou consultar grandes volumes.</div>
+        <div class="card"><strong>Boas praticas</strong>Nao mover templates, anexos, exportacoes ou banco sem suporte tecnico.</div>
+      </div>
+    </section>
+
+    <section id="troubleshooting">
+      <h2>Troubleshooting essencial</h2>
+      <div class="grid">
+        <div class="card"><strong>Sistema nao abre</strong>Verificar rede, banco, permissoes, antivirus e deploy completo.</div>
+        <div class="card"><strong>WebView branco</strong>Reparar WebView2 Runtime e conferir arquivos <code>ui</code> no output.</div>
+        <div class="card"><strong>Erro SQLite</strong>Checar locks, permissao, conectividade e integridade do DB.</div>
+        <div class="card"><strong>Monitor nao atualiza</strong>Validar exportacao, pasta, cache do browser e data/hora do HTML.</div>
+        <div class="card"><strong>Importacao falha</strong>Conferir BAT, TXT/DAT, encoding, nomes e arquivo <code>import.done</code>.</div>
+        <div class="card"><strong>PR/CL falha</strong>Validar templates, pastas de saida e arquivos Excel bloqueados.</div>
+      </div>
+    </section>
+
+    <section id="deployment">
+      <h2>Deployment</h2>
+      <p>O deploy esperado e self-contained, com WebView2 como pre-requisito de estacao. A pasta publicada deve manter DLLs, assets, <code>App.config</code> e todos os subdiretorios <code>ui</code>.</p>
+      <h3>Pastas padrao</h3>
+      <ul>
+        <li><code>C:\TeamOps\DB\teamops.db</code></li>
+        <li><code>C:\TeamOps\PR\</code> e <code>C:\TeamOps\CL\</code></li>
+        <li><code>C:\TeamOps\Modelos\</code></li>
+        <li><code>C:\TeamOps\Anexo\Hikitsugui\</code></li>
+        <li><code>C:\TeamOps\Schedule\</code></li>
+        <li><code>C:\TeamOps\Haidai\</code></li>
+        <li><code>C:\TeamOps\Production\</code></li>
+      </ul>
+    </section>
+
+    <section id="modulos">
+      <h2>Referencia de modulos</h2>
+      <div class="grid">
+        <div class="card"><strong>Hikitsugui</strong>Criacao, leitura por lider, leitura por operador, respostas, correcoes e anexos.</div>
+        <div class="card"><strong>Producao</strong>Importacao de eventos de maquinas, status atual e historico.</div>
+        <div class="card"><strong>Presenca</strong>Agenda CSV, presenca, posicoes e layout de operadores.</div>
+        <div class="card"><strong>Follow-up</strong>Ocorrencias, motivos, tipos, equipamentos e relatorios.</div>
+        <div class="card"><strong>Tarefas</strong>Status, vencimento, responsavel e historico.</div>
+        <div class="card"><strong>PR/CL</strong>Documentos com templates e pastas configuradas.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Arquivos Markdown</h2>
+      <ul>
+        <li><a href="README.md">README.md</a></li>
+        <li><a href="architecture.md">architecture.md</a></li>
+        <li><a href="user-manual.md">user-manual.md</a></li>
+        <li><a href="troubleshooting.md">troubleshooting.md</a></li>
+        <li><a href="deployment.md">deployment.md</a></li>
+        <li><a href="domain-observations.md">domain-observations.md</a></li>
+        <li><a href="module-reference.md">module-reference.md</a></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    Documentacao gerada por analise estatica da solution TeamOps. Validar regras operacionais com os responsaveis do processo antes de usar como procedimento oficial.
+  </footer>
+</body>
+</html>
