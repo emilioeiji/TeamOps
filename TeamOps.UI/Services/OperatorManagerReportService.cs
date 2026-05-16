@@ -70,59 +70,6 @@ namespace TeamOps.UI.Services
 
             var rows = conn.Query<OperatorManagerDirectoryRow>(
                 @"
-                    WITH scheduled AS (
-                        SELECT
-                            OperatorCodigoFJ,
-                            COUNT(DISTINCT date(ScheduleDate)) AS ScheduledDays
-                        FROM HaidaiAssignments
-                        WHERE date(ScheduleDate) BETWEEN date(@StartDate) AND date(@EndDate)
-                          AND COALESCE(AvailabilityStatus, '') <> 'Folga'
-                          AND (
-                                COALESCE(AssignmentCode, '') <> ''
-                             OR COALESCE(LocalId, 0) > 0
-                             OR COALESCE(AvailabilityStatus, '') IN ('Yukyu', 'Falta', 'Atraso', 'Saiu cedo')
-                          )
-                        GROUP BY OperatorCodigoFJ
-                    ),
-                    presence AS (
-                        SELECT
-                            CodigoFJ AS OperatorCodigoFJ,
-                            COUNT(DISTINCT date(Date)) AS PresentDays
-                        FROM OperatorPresence
-                        WHERE date(Date) BETWEEN date(@StartDate) AND date(@EndDate)
-                        GROUP BY CodigoFJ
-                    ),
-                    followup_stats AS (
-                        SELECT
-                            OperatorCodigoFJ,
-                            COUNT(1) AS FollowUpCount
-                        FROM FollowUps
-                        WHERE date(Date) BETWEEN date(@StartDate) AND date(@EndDate)
-                        GROUP BY OperatorCodigoFJ
-                    ),
-                    todoke AS (
-                        SELECT
-                            a.OperatorCodigoFJ,
-                            COUNT(DISTINCT CASE WHEN a.TodokeMotivoId = 1 THEN date(a.RequestDate) ELSE NULL END) AS YukyuDays,
-                            COUNT(DISTINCT CASE WHEN a.TodokeMotivoId = 2 THEN date(a.RequestDate) ELSE NULL END) AS FaltaDays,
-                            COUNT(DISTINCT CASE WHEN a.TodokeMotivoId = 3 THEN date(a.RequestDate) ELSE NULL END) AS LateDays,
-                            COUNT(DISTINCT CASE WHEN a.TodokeMotivoId = 5 THEN date(a.RequestDate) ELSE NULL END) AS EarlyLeaveDays,
-                            COUNT(DISTINCT CASE
-                                WHEN a.TodokeMotivoId IN (2, 3, 5) THEN date(a.RequestDate)
-                                ELSE NULL
-                            END) AS PresenceImpactDays,
-                            SUM(CASE
-                                    WHEN NOT EXISTS (
-                                        SELECT 1
-                                        FROM YukyuTodoke y
-                                        WHERE y.AcompYukyuId = a.Id
-                                    ) THEN 1
-                                    ELSE 0
-                                END) AS PendingTodokeCount
-                        FROM AcompYukyu a
-                        WHERE date(a.RequestDate) BETWEEN date(@StartDate) AND date(@EndDate)
-                        GROUP BY a.OperatorCodigoFJ
-                    )
                     SELECT
                         o.CodigoFJ,
                         COALESCE(NULLIF(o.NameRomanji, ''), o.CodigoFJ) AS Name,
@@ -134,24 +81,11 @@ namespace TeamOps.UI.Services
                         o.GroupId,
                         COALESCE(NULLIF(g.NamePt, ''), NULLIF(g.NameJp, ''), 'Grupo ' || o.GroupId) AS GroupName,
                         COALESCE(o.Trainer, 0) AS Trainer,
-                        COALESCE(o.IsLeader, 0) AS IsLeader,
-                        COALESCE(scheduled.ScheduledDays, 0) AS ScheduledDays,
-                        COALESCE(presence.PresentDays, 0) AS PresentDays,
-                        COALESCE(followup_stats.FollowUpCount, 0) AS FollowUpCount,
-                        COALESCE(todoke.YukyuDays, 0) AS YukyuDays,
-                        COALESCE(todoke.FaltaDays, 0) AS FaltaDays,
-                        COALESCE(todoke.LateDays, 0) AS LateDays,
-                        COALESCE(todoke.EarlyLeaveDays, 0) AS EarlyLeaveDays,
-                        COALESCE(todoke.PresenceImpactDays, 0) AS PresenceImpactDays,
-                        COALESCE(todoke.PendingTodokeCount, 0) AS PendingTodokeCount
+                        COALESCE(o.IsLeader, 0) AS IsLeader
                     FROM Operators o
                     LEFT JOIN Shifts s ON s.Id = o.ShiftId
                     LEFT JOIN Sectors sec ON sec.Id = o.SectorId
                     LEFT JOIN Groups g ON g.Id = o.GroupId
-                    LEFT JOIN scheduled ON scheduled.OperatorCodigoFJ = o.CodigoFJ
-                    LEFT JOIN presence ON presence.OperatorCodigoFJ = o.CodigoFJ
-                    LEFT JOIN followup_stats ON followup_stats.OperatorCodigoFJ = o.CodigoFJ
-                    LEFT JOIN todoke ON todoke.OperatorCodigoFJ = o.CodigoFJ
                     WHERE COALESCE(o.Status, 1) = 1
                       AND (@ShiftId <= 0 OR o.ShiftId = @ShiftId)
                       AND (@SectorId <= 0 OR o.SectorId = @SectorId)
@@ -174,18 +108,166 @@ namespace TeamOps.UI.Services
                 })
                 .ToList();
 
+            if (rows.Count == 0)
+            {
+                return new OperatorManagerDirectoryPayload(
+                    startDate.ToString("yyyy-MM-dd"),
+                    endDate.ToString("yyyy-MM-dd"),
+                    Array.Empty<OperatorManagerDirectoryItem>());
+            }
+
+            var operatorCodes = rows
+                .Select(item => item.CodigoFJ)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            var scheduleRows = conn.Query<OperatorManagerScheduleRow>(
+                @"
+                    SELECT
+                        ha.OperatorCodigoFJ,
+                        date(ha.ScheduleDate) AS Day,
+                        ha.ShiftId,
+                        ha.LocalId,
+                        COALESCE(NULLIF(l.NamePt, ''), NULLIF(l.NameJp, ''), '') AS LocalName,
+                        COALESCE(ha.AssignmentCode, '') AS AssignmentCode,
+                        COALESCE(ha.AvailabilityStatus, '') AS AvailabilityStatus,
+                        COALESCE(ha.IsLineupActive, 1) AS IsLineupActive,
+                        COALESCE(ha.IsTrainee, 0) AS IsTrainee
+                    FROM HaidaiAssignments ha
+                    LEFT JOIN Locals l ON l.Id = ha.LocalId
+                    WHERE ha.OperatorCodigoFJ IN @OperatorCodes
+                      AND date(ha.ScheduleDate) BETWEEN date(@StartDate) AND date(@EndDate)
+                    ORDER BY date(ha.ScheduleDate) DESC, ha.Id DESC;",
+                new
+                {
+                    OperatorCodes = operatorCodes,
+                    StartDate = startDate.ToString("yyyy-MM-dd"),
+                    EndDate = endDate.ToString("yyyy-MM-dd")
+                })
+                .ToList();
+
+            var latestSchedulesByOperator = scheduleRows
+                .GroupBy(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => (IReadOnlyDictionary<string, OperatorManagerScheduleRow>)group
+                        .GroupBy(item => item.Day, StringComparer.OrdinalIgnoreCase)
+                        .ToDictionary(dayGroup => dayGroup.Key, dayGroup => dayGroup.First(), StringComparer.OrdinalIgnoreCase),
+                    StringComparer.OrdinalIgnoreCase);
+
+            var todokeRows = conn.Query<OperatorManagerTodokeRow>(
+                @"
+                    SELECT
+                        a.OperatorCodigoFJ,
+                        date(a.RequestDate) AS Day,
+                        a.Id,
+                        a.TodokeMotivoId AS MotiveId,
+                        COALESCE(m.NomePt, '') AS MotiveName,
+                        COALESCE(a.Notes, '') AS Notes,
+                        CASE
+                            WHEN EXISTS (
+                                SELECT 1
+                                FROM YukyuTodoke y
+                                WHERE y.AcompYukyuId = a.Id
+                            ) THEN 1
+                            ELSE 0
+                        END AS Validated
+                    FROM AcompYukyu a
+                    LEFT JOIN TodokeMotivo m ON m.Id = a.TodokeMotivoId
+                    WHERE a.OperatorCodigoFJ IN @OperatorCodes
+                      AND date(a.RequestDate) BETWEEN date(@StartDate) AND date(@EndDate)
+                    ORDER BY date(a.RequestDate) DESC, a.Id DESC;",
+                new
+                {
+                    OperatorCodes = operatorCodes,
+                    StartDate = startDate.ToString("yyyy-MM-dd"),
+                    EndDate = endDate.ToString("yyyy-MM-dd")
+                })
+                .ToList();
+
+            var latestTodokesByOperator = todokeRows
+                .GroupBy(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => (IReadOnlyDictionary<string, OperatorManagerTodokeRow>)group
+                        .GroupBy(item => item.Day, StringComparer.OrdinalIgnoreCase)
+                        .ToDictionary(dayGroup => dayGroup.Key, dayGroup => dayGroup.First(), StringComparer.OrdinalIgnoreCase),
+                    StringComparer.OrdinalIgnoreCase);
+
+            var movementRows = conn.Query<OperatorManagerMovementRow>(
+                @"
+                    SELECT
+                        OperatorCodigoFJ,
+                        date(ScheduleDate) AS Day,
+                        COALESCE(MovementType, '') AS MovementType,
+                        COALESCE(EventTime, '') AS EventTime,
+                        COALESCE(AssignmentCode, '') AS AssignmentCode,
+                        COALESCE(Reason, '') AS Reason
+                    FROM HaidaiMovements
+                    WHERE OperatorCodigoFJ IN @OperatorCodes
+                      AND date(ScheduleDate) BETWEEN date(@StartDate) AND date(@EndDate)
+                    ORDER BY date(ScheduleDate) DESC, COALESCE(EventTime, '') DESC, Id DESC;",
+                new
+                {
+                    OperatorCodes = operatorCodes,
+                    StartDate = startDate.ToString("yyyy-MM-dd"),
+                    EndDate = endDate.ToString("yyyy-MM-dd")
+                })
+                .ToList();
+
+            var latestMovementsByOperator = movementRows
+                .GroupBy(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => (IReadOnlyDictionary<string, OperatorManagerMovementRow>)group
+                        .GroupBy(item => item.Day, StringComparer.OrdinalIgnoreCase)
+                        .ToDictionary(dayGroup => dayGroup.Key, dayGroup => dayGroup.First(), StringComparer.OrdinalIgnoreCase),
+                    StringComparer.OrdinalIgnoreCase);
+
+            var followUpCountByOperator = conn.Query<OperatorManagerFollowUpCountRow>(
+                @"
+                    SELECT
+                        OperatorCodigoFJ,
+                        COUNT(1) AS Count
+                    FROM FollowUps
+                    WHERE OperatorCodigoFJ IN @OperatorCodes
+                      AND date(Date) BETWEEN date(@StartDate) AND date(@EndDate)
+                    GROUP BY OperatorCodigoFJ;",
+                new
+                {
+                    OperatorCodes = operatorCodes,
+                    StartDate = startDate.ToString("yyyy-MM-dd"),
+                    EndDate = endDate.ToString("yyyy-MM-dd")
+                })
+                .ToDictionary(item => item.OperatorCodigoFJ, item => item.Count, StringComparer.OrdinalIgnoreCase);
+
+            var emptyPresenceMap = new Dictionary<string, OperatorManagerPresenceRow>(StringComparer.OrdinalIgnoreCase);
+            var emptyScheduleMap = new Dictionary<string, OperatorManagerScheduleRow>(StringComparer.OrdinalIgnoreCase);
+            var emptyTodokeMap = new Dictionary<string, OperatorManagerTodokeRow>(StringComparer.OrdinalIgnoreCase);
+            var emptyMovementMap = new Dictionary<string, OperatorManagerMovementRow>(StringComparer.OrdinalIgnoreCase);
             var items = rows
                 .Select(row =>
                 {
-                    var effectivePresenceDays = Math.Max(0, row.ScheduledDays - row.PresenceImpactDays);
-                    var presencePercent = row.ScheduledDays <= 0
-                        ? 0
-                        : Math.Round((effectivePresenceDays / (double)row.ScheduledDays) * 100d, 1);
+                    latestSchedulesByOperator.TryGetValue(row.CodigoFJ, out var schedulesByDay);
+                    latestTodokesByOperator.TryGetValue(row.CodigoFJ, out var todokesByDay);
+                    latestMovementsByOperator.TryGetValue(row.CodigoFJ, out var movementsByDay);
+                    followUpCountByOperator.TryGetValue(row.CodigoFJ, out var followUpCount);
 
-                    var coveredDays = Math.Max(0, row.ScheduledDays - row.FaltaDays);
-                    var coveragePercent = row.ScheduledDays <= 0
-                        ? 0
-                        : Math.Round((coveredDays / (double)row.ScheduledDays) * 100d, 1);
+                    schedulesByDay ??= emptyScheduleMap;
+                    todokesByDay ??= emptyTodokeMap;
+                    movementsByDay ??= emptyMovementMap;
+
+                    var attendanceByDay = BuildAttendanceDaySummaries(
+                        schedulesByDay,
+                        emptyPresenceMap,
+                        todokesByDay,
+                        movementsByDay);
+
+                    var metrics = BuildPresenceMetrics(
+                        attendanceByDay.Values,
+                        emptyPresenceMap,
+                        todokesByDay.Values,
+                        followUpCount);
 
                     return new OperatorManagerDirectoryItem(
                         row.CodigoFJ,
@@ -199,16 +281,16 @@ namespace TeamOps.UI.Services
                         row.GroupName,
                         row.Trainer,
                         row.IsLeader,
-                        row.ScheduledDays,
-                        effectivePresenceDays,
-                        row.YukyuDays,
-                        row.FaltaDays,
-                        row.LateDays,
-                        row.EarlyLeaveDays,
-                        row.FollowUpCount,
-                        row.PendingTodokeCount,
-                        presencePercent,
-                        coveragePercent);
+                        metrics.ScheduledDays,
+                        metrics.PresentDays,
+                        metrics.YukyuDays,
+                        metrics.FaltaDays,
+                        metrics.LateDays,
+                        metrics.EarlyLeaveDays,
+                        metrics.FollowUpCount,
+                        metrics.PendingTodokeCount,
+                        metrics.PresencePercent,
+                        metrics.CoveragePercent);
                 })
                 .ToList();
 
@@ -939,6 +1021,7 @@ namespace TeamOps.UI.Services
 
         private sealed class OperatorManagerScheduleRow
         {
+            public string OperatorCodigoFJ { get; set; } = string.Empty;
             public string Day { get; set; } = string.Empty;
             public int ShiftId { get; set; }
             public int LocalId { get; set; }
@@ -957,6 +1040,7 @@ namespace TeamOps.UI.Services
 
         private sealed class OperatorManagerTodokeRow
         {
+            public string OperatorCodigoFJ { get; set; } = string.Empty;
             public string Day { get; set; } = string.Empty;
             public long Id { get; set; }
             public int MotiveId { get; set; }
@@ -967,11 +1051,18 @@ namespace TeamOps.UI.Services
 
         private sealed class OperatorManagerMovementRow
         {
+            public string OperatorCodigoFJ { get; set; } = string.Empty;
             public string Day { get; set; } = string.Empty;
             public string MovementType { get; set; } = string.Empty;
             public string EventTime { get; set; } = string.Empty;
             public string AssignmentCode { get; set; } = string.Empty;
             public string Reason { get; set; } = string.Empty;
+        }
+
+        private sealed class OperatorManagerFollowUpCountRow
+        {
+            public string OperatorCodigoFJ { get; set; } = string.Empty;
+            public int Count { get; set; }
         }
 
         private sealed record OperatorManagerAttendanceDaySummary(
