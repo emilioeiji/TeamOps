@@ -13,6 +13,12 @@ namespace TeamOps.UI.Services
 {
     public sealed class HaidaiModuleService
     {
+        private const int GBareruSectorId = 1;
+        private const int DadSectorId = 2;
+        private const int GdadSectorId = 3;
+        private const int DadPlaceholderLocalId = 97;
+        private const int GBareruPlaceholderLocalId = 98;
+
         private readonly SqliteConnectionFactory _factory;
 
         public HaidaiModuleService(SqliteConnectionFactory factory)
@@ -174,6 +180,7 @@ namespace TeamOps.UI.Services
                         o.CodigoFJ,
                         COALESCE(NULLIF(o.NameRomanji, ''), o.CodigoFJ) AS Name,
                         COALESCE(NULLIF(o.NameNihongo, ''), COALESCE(NULLIF(o.NameRomanji, ''), o.CodigoFJ)) AS NameJp,
+                        o.SectorId AS HomeSectorId,
                         o.GroupId,
                         COALESCE(NULLIF(g.NamePt, ''), NULLIF(g.NameJp, ''), 'Grupo ' || o.GroupId) AS GroupName,
                         COALESCE(o.Trainer, 0) AS Trainer,
@@ -181,8 +188,11 @@ namespace TeamOps.UI.Services
                     FROM Operators o
                     LEFT JOIN Groups g ON g.Id = o.GroupId
                     WHERE COALESCE(o.Status, 1) = 1
-                      AND o.SectorId = @SectorId
                       AND o.ShiftId = @ShiftId
+                      AND (
+                            o.SectorId = @SectorId
+                         OR (@IncludeSharedGdad = 1 AND o.SectorId = @GdadSectorId)
+                      )
                     ORDER BY o.GroupId,
                              CASE WHEN COALESCE(o.IsLeader, 0) = 1 THEN 1 ELSE 0 END,
                              o.NameRomanji,
@@ -190,11 +200,25 @@ namespace TeamOps.UI.Services
                 new
                 {
                     SectorId = sectorId,
-                    ShiftId = shiftId
+                    ShiftId = shiftId,
+                    IncludeSharedGdad = SupportsSharedGdad(sectorId) ? 1 : 0,
+                    GdadSectorId
                 })
                 .ToList();
 
-            var assignments = conn.Query<HaidaiAssignmentRecord>(
+            var operatorCodes = operators
+                .Select(item => item.CodigoFJ)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            var assignmentSectorIds = operators
+                .Select(item => ResolveStorageSectorId(sectorId, item.HomeSectorId))
+                .Distinct()
+                .ToArray();
+
+            var assignments = operatorCodes.Length == 0
+                ? new Dictionary<string, Dictionary<int, HaidaiAssignmentRecord>>(StringComparer.OrdinalIgnoreCase)
+                : conn.Query<HaidaiAssignmentRecord>(
                 @"
                     SELECT
                         Id,
@@ -213,12 +237,14 @@ namespace TeamOps.UI.Services
                         COALESCE(Notes, '') AS Notes
                     FROM HaidaiAssignments
                     WHERE ShiftId = @ShiftId
-                      AND SectorId = @SectorId
+                      AND SectorId IN @SectorIds
+                      AND OperatorCodigoFJ IN @OperatorCodes
                       AND date(ScheduleDate) BETWEEN date(@StartDate) AND date(@EndDate);",
                 new
                 {
                     ShiftId = shiftId,
-                    SectorId = sectorId,
+                    SectorIds = assignmentSectorIds,
+                    OperatorCodes = operatorCodes,
                     StartDate = firstDay.ToString("yyyy-MM-dd"),
                     EndDate = lastDay.ToString("yyyy-MM-dd")
                 })
@@ -323,6 +349,32 @@ namespace TeamOps.UI.Services
             var firstDay = new DateTime(request.Year, request.Month, 1);
             var lastDay = firstDay.AddMonths(1).AddDays(-1);
 
+            var distinctOperatorCodes = request.Cells
+                .Select(item => item.OperatorCodigoFJ?.Trim())
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            var operatorSectorMap = distinctOperatorCodes.Length == 0
+                ? new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+                : conn.Query<HaidaiOperatorSectorRow>(
+                    @"
+                        SELECT
+                            CodigoFJ,
+                            SectorId
+                        FROM Operators
+                        WHERE CodigoFJ IN @OperatorCodes;",
+                    new
+                    {
+                        OperatorCodes = distinctOperatorCodes
+                    },
+                    transaction)
+                    .ToDictionary(item => item.CodigoFJ, item => item.SectorId, StringComparer.OrdinalIgnoreCase);
+
+            var localSectorIds = SupportsSharedGdad(request.SectorId) || request.SectorId == GdadSectorId
+                ? new[] { GBareruSectorId, DadSectorId }
+                : new[] { request.SectorId };
+
             var locals = conn.Query<HaidaiLocalLookup>(
                 @"
                     SELECT
@@ -331,16 +383,20 @@ namespace TeamOps.UI.Services
                         COALESCE(NULLIF(NamePt, ''), NULLIF(NameJp, ''), 'Local ' || Id) AS Name,
                         COALESCE(NULLIF(ShortCode, ''), NULLIF(NamePt, ''), NULLIF(NameJp, ''), 'L' || Id) AS ShortCode
                     FROM Locals
-                    WHERE SectorId = @SectorId;",
-                new { request.SectorId },
+                    WHERE SectorId IN @SectorIds
+                      AND Id NOT IN (@DadPlaceholderLocalId, @GBareruPlaceholderLocalId);",
+                new
+                {
+                    SectorIds = localSectorIds,
+                    DadPlaceholderLocalId,
+                    GBareruPlaceholderLocalId
+                },
                 transaction)
                 .ToList();
 
-            var localsByCode = locals
-                .GroupBy(item => item.ShortCode, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(group => group.Key.Trim(), group => group.First(), StringComparer.OrdinalIgnoreCase);
-
-            var existingAssignments = conn.Query<HaidaiAssignmentRecord>(
+            var existingAssignments = distinctOperatorCodes.Length == 0
+                ? new List<HaidaiAssignmentRecord>()
+                : conn.Query<HaidaiAssignmentRecord>(
                 @"
                     SELECT
                         Id,
@@ -359,12 +415,12 @@ namespace TeamOps.UI.Services
                         COALESCE(Notes, '') AS Notes
                     FROM HaidaiAssignments
                     WHERE ShiftId = @ShiftId
-                      AND SectorId = @SectorId
+                      AND OperatorCodigoFJ IN @OperatorCodes
                       AND date(ScheduleDate) BETWEEN date(@StartDate) AND date(@EndDate);",
                 new
                 {
                     request.ShiftId,
-                    request.SectorId,
+                    OperatorCodes = distinctOperatorCodes,
                     StartDate = firstDay.ToString("yyyy-MM-dd"),
                     EndDate = lastDay.ToString("yyyy-MM-dd")
                 },
@@ -417,6 +473,16 @@ namespace TeamOps.UI.Services
                 existingMap.TryGetValue(key, out var existing);
                 exceptionMap.TryGetValue(key, out var exception);
 
+                var homeSectorId = operatorSectorMap.TryGetValue(cell.OperatorCodigoFJ, out var foundSectorId)
+                    ? foundSectorId
+                    : request.SectorId;
+
+                var allowedLocalSectorIds = GetSelectableLocalSectorIds(request.SectorId, homeSectorId);
+                var localsByCode = locals
+                    .Where(item => allowedLocalSectorIds.Contains(item.SectorId))
+                    .GroupBy(item => item.ShortCode, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(group => group.Key.Trim(), group => group.First(), StringComparer.OrdinalIgnoreCase);
+
                 var resolved = ResolveMonthlyCell(cell.AssignmentCode, localsByCode, existing, exception);
 
                 UpsertMonthlyAssignmentInternal(
@@ -424,7 +490,7 @@ namespace TeamOps.UI.Services
                     transaction,
                     date,
                     request.ShiftId,
-                    request.SectorId,
+                    ResolveStorageSectorId(request.SectorId, homeSectorId),
                     cell.OperatorCodigoFJ,
                     resolved,
                     existing);
@@ -520,13 +586,79 @@ namespace TeamOps.UI.Services
                 || string.Equals(value, "-", StringComparison.OrdinalIgnoreCase);
         }
 
+        private static bool SupportsSharedGdad(int sectorId)
+        {
+            return sectorId == GBareruSectorId || sectorId == DadSectorId;
+        }
+
+        private static int ResolveStorageSectorId(int requestedSectorId, int operatorHomeSectorId)
+        {
+            return operatorHomeSectorId == GdadSectorId ? GdadSectorId : requestedSectorId;
+        }
+
+        private static int[] GetSelectableLocalSectorIds(int requestedSectorId, int operatorHomeSectorId)
+        {
+            if (operatorHomeSectorId == GdadSectorId || requestedSectorId == GdadSectorId)
+            {
+                return new[] { GBareruSectorId, DadSectorId };
+            }
+
+            return new[] { requestedSectorId };
+        }
+
+        private static HaidaiLocalLookup? ResolveDisplayLocal(
+            int viewingSectorId,
+            int operatorHomeSectorId,
+            HaidaiLocalLookup? actualLocal,
+            IReadOnlyDictionary<int, HaidaiLocalLookup> localsById)
+        {
+            if (actualLocal == null)
+            {
+                return null;
+            }
+
+            if (operatorHomeSectorId != GdadSectorId || !SupportsSharedGdad(viewingSectorId) || actualLocal.SectorId == viewingSectorId)
+            {
+                return actualLocal;
+            }
+
+            var placeholderLocalId = viewingSectorId == GBareruSectorId
+                ? DadPlaceholderLocalId
+                : viewingSectorId == DadSectorId
+                    ? GBareruPlaceholderLocalId
+                    : actualLocal.Id;
+
+            return localsById.TryGetValue(placeholderLocalId, out var placeholder)
+                ? placeholder
+                : actualLocal;
+        }
+
+        private static int ResolveOperatorHomeSectorId(
+            System.Data.IDbConnection conn,
+            string operatorCodigoFJ,
+            int fallbackSectorId,
+            System.Data.IDbTransaction? transaction = null)
+        {
+            return conn.ExecuteScalar<int?>(
+                @"
+                    SELECT SectorId
+                    FROM Operators
+                    WHERE CodigoFJ = @CodigoFJ
+                    LIMIT 1;",
+                new
+                {
+                    CodigoFJ = operatorCodigoFJ?.Trim()
+                },
+                transaction) ?? fallbackSectorId;
+        }
+
         public HaidaiBoardPayload GetBoard(DateTime date, int shiftId, int sectorId)
         {
             EnsureSchema();
 
             using var conn = _factory.CreateOpenConnection();
 
-            var locals = conn.Query<HaidaiLocalLookup>(
+            var allLocals = conn.Query<HaidaiLocalLookup>(
                 @"
                     SELECT
                         Id,
@@ -534,12 +666,11 @@ namespace TeamOps.UI.Services
                         COALESCE(NULLIF(NamePt, ''), NULLIF(NameJp, ''), 'Local ' || Id) AS Name,
                         COALESCE(NULLIF(ShortCode, ''), NULLIF(NamePt, ''), NULLIF(NameJp, ''), 'L' || Id) AS ShortCode
                     FROM Locals
-                    WHERE SectorId = @SectorId
                     ORDER BY Id;",
-                new { SectorId = sectorId })
+                new { })
                 .ToList();
 
-            var localsById = locals.ToDictionary(item => item.Id);
+            var localsById = allLocals.ToDictionary(item => item.Id);
 
             var operators = conn.Query<HaidaiOperatorRow>(
                 @"
@@ -547,6 +678,7 @@ namespace TeamOps.UI.Services
                         o.CodigoFJ,
                         COALESCE(NULLIF(o.NameRomanji, ''), o.CodigoFJ) AS Name,
                         COALESCE(NULLIF(o.NameNihongo, ''), COALESCE(NULLIF(o.NameRomanji, ''), o.CodigoFJ)) AS NameJp,
+                        o.SectorId AS HomeSectorId,
                         o.GroupId,
                         COALESCE(NULLIF(g.NamePt, ''), NULLIF(g.NameJp, ''), 'Grupo ' || o.GroupId) AS GroupName,
                         COALESCE(o.Trainer, 0) AS Trainer,
@@ -554,8 +686,11 @@ namespace TeamOps.UI.Services
                     FROM Operators o
                     LEFT JOIN Groups g ON g.Id = o.GroupId
                     WHERE COALESCE(o.Status, 1) = 1
-                      AND o.SectorId = @SectorId
                       AND o.ShiftId = @ShiftId
+                      AND (
+                            o.SectorId = @SectorId
+                         OR (@IncludeSharedGdad = 1 AND o.SectorId = @GdadSectorId)
+                      )
                     ORDER BY o.GroupId,
                              CASE WHEN COALESCE(o.IsLeader, 0) = 1 THEN 1 ELSE 0 END,
                              o.NameRomanji,
@@ -563,11 +698,20 @@ namespace TeamOps.UI.Services
                 new
                 {
                     SectorId = sectorId,
-                    ShiftId = shiftId
+                    ShiftId = shiftId,
+                    IncludeSharedGdad = SupportsSharedGdad(sectorId) ? 1 : 0,
+                    GdadSectorId
                 })
                 .ToList();
 
-            var assignments = conn.Query<HaidaiAssignmentRecord>(
+            var operatorCodes = operators
+                .Select(item => item.CodigoFJ)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            var assignments = operatorCodes.Length == 0
+                ? new Dictionary<string, HaidaiAssignmentRecord>(StringComparer.OrdinalIgnoreCase)
+                : conn.Query<HaidaiAssignmentRecord>(
                 @"
                     SELECT
                         Id,
@@ -587,16 +731,18 @@ namespace TeamOps.UI.Services
                     FROM HaidaiAssignments
                     WHERE date(ScheduleDate) = date(@ScheduleDate)
                       AND ShiftId = @ShiftId
-                      AND SectorId = @SectorId;",
+                      AND OperatorCodigoFJ IN @OperatorCodes;",
                 new
                 {
                     ScheduleDate = date.ToString("yyyy-MM-dd"),
                     ShiftId = shiftId,
-                    SectorId = sectorId
+                    OperatorCodes = operatorCodes
                 })
                 .ToDictionary(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase);
 
-            var movementMap = conn.Query<HaidaiMovementRecord>(
+            var movementMap = operatorCodes.Length == 0
+                ? new Dictionary<string, List<HaidaiMovementRecord>>(StringComparer.OrdinalIgnoreCase)
+                : conn.Query<HaidaiMovementRecord>(
                 @"
                     SELECT
                         Id,
@@ -611,13 +757,13 @@ namespace TeamOps.UI.Services
                     FROM HaidaiMovements
                     WHERE date(ScheduleDate) = date(@ScheduleDate)
                       AND ShiftId = @ShiftId
-                      AND SectorId = @SectorId
+                      AND OperatorCodigoFJ IN @OperatorCodes
                     ORDER BY COALESCE(EventTime, '') DESC, Id DESC;",
                 new
                 {
                     ScheduleDate = date.ToString("yyyy-MM-dd"),
                     ShiftId = shiftId,
-                    SectorId = sectorId
+                    OperatorCodes = operatorCodes
                 })
                 .GroupBy(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
@@ -659,9 +805,17 @@ namespace TeamOps.UI.Services
                         local = foundLocal;
                     }
 
+                    var displayLocal = ResolveDisplayLocal(sectorId, op.HomeSectorId, local, localsById);
                     var baseAssignmentCode = ResolveAssignmentCode(assignment, local);
                     var status = ResolveStatus(exception, assignment, baseAssignmentCode);
-                    var displayAssignmentCode = ResolveDisplayAssignmentCode(exception?.MotiveId ?? 0, baseAssignmentCode);
+                    var hasSharedDisplayLocal = displayLocal != null
+                        && !string.IsNullOrWhiteSpace(displayLocal.ShortCode)
+                        && displayLocal.Id != local?.Id;
+
+                    var presentedAssignmentCode = hasSharedDisplayLocal
+                        ? displayLocal!.ShortCode
+                        : baseAssignmentCode;
+                    var displayAssignmentCode = ResolveDisplayAssignmentCode(exception?.MotiveId ?? 0, presentedAssignmentCode);
                     var latestMovement = movements.FirstOrDefault();
 
                     return new HaidaiBoardRow(
@@ -675,6 +829,9 @@ namespace TeamOps.UI.Services
                         local?.Id,
                         local?.Name ?? string.Empty,
                         local?.ShortCode ?? string.Empty,
+                        displayLocal?.Id,
+                        displayLocal?.Name ?? string.Empty,
+                        displayLocal?.ShortCode ?? string.Empty,
                         displayAssignmentCode,
                         baseAssignmentCode,
                         assignment?.PairKey ?? string.Empty,
@@ -730,6 +887,10 @@ namespace TeamOps.UI.Services
             using var conn = _factory.CreateOpenConnection();
             using var transaction = conn.BeginTransaction();
 
+            var storageSectorId = ResolveStorageSectorId(
+                request.SectorId,
+                ResolveOperatorHomeSectorId(conn, request.OperatorCodigoFJ, request.SectorId, transaction));
+
             string assignmentCode = request.AssignmentCode;
             if (request.LocalId.HasValue && request.LocalId.Value > 0 && string.IsNullOrWhiteSpace(assignmentCode))
             {
@@ -747,6 +908,7 @@ namespace TeamOps.UI.Services
                 transaction,
                 request with
                 {
+                    SectorId = storageSectorId,
                     AssignmentCode = assignmentCode ?? string.Empty
                 });
 
@@ -879,6 +1041,9 @@ namespace TeamOps.UI.Services
             using var transaction = conn.BeginTransaction();
 
             var normalizedDate = request.Date.ToString("yyyy-MM-dd");
+            var storageSectorId = ResolveStorageSectorId(
+                request.SectorId,
+                ResolveOperatorHomeSectorId(conn, request.OperatorCodigoFJ, request.SectorId, transaction));
             var assignment = conn.QueryFirstOrDefault<HaidaiAssignmentRecord>(
                 @"
                     SELECT
@@ -906,7 +1071,7 @@ namespace TeamOps.UI.Services
                 {
                     request.OperatorCodigoFJ,
                     request.ShiftId,
-                    request.SectorId,
+                    SectorId = storageSectorId,
                     ScheduleDate = normalizedDate
                 },
                 transaction);
@@ -953,7 +1118,7 @@ namespace TeamOps.UI.Services
                 {
                     ScheduleDate = normalizedDate,
                     request.ShiftId,
-                    request.SectorId,
+                    SectorId = storageSectorId,
                     request.OperatorCodigoFJ,
                     request.MovementType,
                     EventTime = NullIfWhiteSpace(request.EventTime),
@@ -1007,7 +1172,9 @@ namespace TeamOps.UI.Services
                     new HaidaiSaveAssignmentRequest(
                         request.Date,
                         request.ShiftId,
-                        request.SectorId,
+                        ResolveStorageSectorId(
+                            request.SectorId,
+                            ResolveOperatorHomeSectorId(conn, request.ReplacementOperatorCodigoFJ.Trim(), request.SectorId, transaction)),
                         request.ReplacementOperatorCodigoFJ.Trim(),
                         localId,
                         assignmentCode ?? string.Empty,
@@ -1026,6 +1193,9 @@ namespace TeamOps.UI.Services
             EnsureSchema();
 
             using var conn = _factory.CreateOpenConnection();
+            var storageSectorId = ResolveStorageSectorId(
+                sectorId,
+                ResolveOperatorHomeSectorId(conn, operatorCodigoFJ, sectorId));
             conn.Execute(
                 @"
                     UPDATE HaidaiAssignments
@@ -1040,7 +1210,7 @@ namespace TeamOps.UI.Services
                 {
                     OperatorCodigoFJ = operatorCodigoFJ,
                     ShiftId = shiftId,
-                    SectorId = sectorId,
+                    SectorId = storageSectorId,
                     ScheduleDate = date.ToString("yyyy-MM-dd")
                 });
         }
@@ -1725,12 +1895,23 @@ namespace TeamOps.UI.Services
                 .ToList();
 
             var layout = LoadExportLayout(sectorId);
-            var layoutMarkup = layout == null
-                ? string.Empty
-                : BuildMappedLayoutMarkup(layout, activeRows);
+            var exportSlots = layout?.Locals
+                .Where(slot => slot.ShowInExport != false)
+                .ToList();
 
             var unmappedRows = activeRows
-                .Where(row => row.LocalId == null || layout == null || !layout.Locals.Any(item => item.LocalId == row.LocalId.Value))
+                .Where(row =>
+                {
+                    if ((row.DisplayLocalId ?? row.LocalId) is int placeholderLocalId
+                        && (placeholderLocalId == DadPlaceholderLocalId || placeholderLocalId == GBareruPlaceholderLocalId))
+                    {
+                        return false;
+                    }
+
+                    return layout == null
+                        || exportSlots == null
+                        || !exportSlots.Any(item => SlotMatchesRow(item, row));
+                })
                 .ToList();
 
             var summaryBadges = new List<(string Label, int Value)>
@@ -1746,23 +1927,18 @@ namespace TeamOps.UI.Services
                 summaryBadges.Add(("Sem posicao", unmappedRows.Count));
             }
 
-            var summaryMarkup = string.Join(
-                Environment.NewLine,
-                summaryBadges.Select(item => $@"
-                    <article class=""summary-card"">
-                        {EscapeHtml(item.Label)}
-                        <strong>{item.Value}</strong>
-                    </article>"));
+            var summaryMarkup = string.Empty;
+
+            var layoutMarkup = layout == null
+                ? string.Empty
+                : BuildMappedLayoutMarkup(layout, activeRows, summaryBadges);
 
             var unmappedMarkup = unmappedRows.Count == 0
-                ? "<p class=\"empty-copy\">Todas as areas ativas estao posicionadas no mapa.</p>"
+                ? string.Empty
                 : string.Join(
                     Environment.NewLine,
                     unmappedRows.Select(row => $@"
-                        <div class=""unmapped-item"">
-                            <strong>{EscapeHtml(row.AssignmentCode)}</strong>
-                            <span>{EscapeHtml(row.Name)}</span>
-                        </div>"));
+                        <span class=""unmapped-chip"">{EscapeHtml(row.AssignmentCode)} - {EscapeHtml(row.Name)}</span>"));
 
             var fallbackMarkup = string.Join(
                 Environment.NewLine,
@@ -1785,13 +1961,12 @@ namespace TeamOps.UI.Services
     <style>
         :root {{
             color-scheme: light;
-            --bg: #eef4f8;
+            --bg: #edf4fa;
             --surface: #ffffff;
-            --accent: #144c8a;
-            --accent-soft: #dbeafe;
-            --text: #142133;
-            --muted: #63748a;
-            --border: #d7e1ea;
+            --accent: #124a88;
+            --text: #132238;
+            --muted: #607185;
+            --border: #d6e1eb;
         }}
         * {{
             box-sizing: border-box;
@@ -1800,116 +1975,67 @@ namespace TeamOps.UI.Services
             margin: 0;
             font-family: ""Segoe UI"", Tahoma, sans-serif;
             background:
-                radial-gradient(circle at top right, rgba(20, 76, 138, 0.18), transparent 24%),
-                linear-gradient(180deg, #f6fbff 0%, var(--bg) 100%);
+                radial-gradient(circle at top right, rgba(18, 74, 136, 0.15), transparent 24%),
+                linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
             color: var(--text);
         }}
         .page {{
-            padding: 24px;
+            min-height: 100vh;
+            padding: 8px;
             display: grid;
-            gap: 18px;
+            gap: 6px;
+            grid-template-rows: auto 1fr auto;
         }}
-        .hero {{
+        .topbar {{
             display: flex;
-            justify-content: space-between;
-            gap: 18px;
-            padding: 22px;
-            border-radius: 22px;
-            background: linear-gradient(135deg, #0f4a86 0%, #2663b8 100%);
-            color: #fff;
+            justify-content: flex-end;
+            padding: 0;
+            background: transparent;
+            border-radius: 0;
         }}
-        .hero h1 {{
-            margin: 0 0 8px;
-            font-size: 36px;
+        .topbar > div {{
+            display: none;
         }}
-        .hero p {{
-            margin: 0;
-            color: rgba(255,255,255,0.86);
-        }}
-        .hero-meta {{
-            display: grid;
-            grid-template-columns: repeat(2, minmax(180px, 1fr));
-            gap: 12px;
-            min-width: 360px;
-        }}
-        .meta-card {{
-            padding: 14px 16px;
-            border-radius: 16px;
-            border: 1px solid rgba(255,255,255,0.18);
-            background: rgba(255,255,255,0.12);
-        }}
-        .meta-card strong {{
-            display: block;
-            margin-top: 6px;
-            font-size: 20px;
-        }}
-        .toolbar {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 18px;
-        }}
-        .toolbar a {{
+        .topbar a {{
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 44px;
-            padding: 0 18px;
+            min-height: 30px;
+            padding: 0 12px;
             border-radius: 999px;
-            background: var(--accent);
-            color: #fff;
+            background: rgba(18, 74, 136, 0.08);
+            border: 1px solid rgba(18, 74, 136, 0.14);
+            color: var(--accent);
             text-decoration: none;
             font-weight: 700;
+            font-size: 11px;
+            white-space: nowrap;
         }}
         .summary {{
-            display: grid;
-            grid-template-columns: repeat(5, minmax(120px, 1fr));
-            gap: 12px;
+            display: none;
         }}
-        .summary-card {{
-            padding: 16px;
+        .map-card,
+        .fallback-card {{
+            padding: 8px;
             border-radius: 18px;
             background: var(--surface);
             border: 1px solid var(--border);
-            box-shadow: 0 10px 25px rgba(20, 33, 51, 0.06);
+            box-shadow: 0 12px 28px rgba(19, 34, 56, 0.08);
         }}
-        .summary-card strong {{
-            display: block;
-            margin-top: 6px;
-            font-size: 24px;
-        }}
-        .group-head h2,
-        .section-head h3 {{
-            margin: 0;
-            font-size: 24px;
-        }}
-        .visual-grid {{
-            display: grid;
-            grid-template-columns: minmax(0, 2.1fr) minmax(280px, 0.9fr);
-            gap: 18px;
-            align-items: start;
-        }}
-        .layout-card, .side-card, .fallback-card {{
-            padding: 18px;
-            border-radius: 20px;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            box-shadow: 0 10px 25px rgba(20, 33, 51, 0.06);
-        }}
-        .section-head {{
+        .map-card {{
+            min-height: 0;
             display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            align-items: baseline;
-            margin-bottom: 12px;
+            align-items: center;
+            justify-content: center;
         }}
         .layout-stage {{
             position: relative;
+            width: min(100%, calc((100vh - 132px) * 2.02));
+            min-height: min(calc(100vh - 132px), 78vw);
             overflow: hidden;
             border-radius: 18px;
             border: 1px solid var(--border);
-            background:
-                linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+            background: linear-gradient(180deg, #ffffff 0%, #f6fbff 100%);
         }}
         .layout-canvas {{
             position: absolute;
@@ -1920,29 +2046,121 @@ namespace TeamOps.UI.Services
             border-radius: 999px;
             background: linear-gradient(180deg, #e2edf7 0%, #cddced 100%);
         }}
+        .map-widget {{
+            position: absolute;
+            padding: 8px;
+            border-radius: 18px;
+            border: 1px solid #c9d8e7;
+            background: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(237,245,255,0.94) 100%);
+            box-shadow: 0 8px 18px rgba(20, 33, 51, 0.06);
+            overflow: hidden;
+        }}
+        .summary-widget {{
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
+            align-content: center;
+            height: 100%;
+        }}
+        .summary-mini {{
+            display: grid;
+            gap: 2px;
+            padding: 6px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid #d8e5f2;
+        }}
+        .summary-mini strong {{
+            font-size: clamp(12px, 0.95vw, 16px);
+            color: var(--accent);
+            line-height: 1;
+        }}
+        .summary-mini span {{
+            font-size: clamp(8px, 0.62vw, 10px);
+            color: var(--muted);
+            font-weight: 700;
+        }}
         .local-box {{
             position: absolute;
             padding: 10px;
             border-radius: 18px;
             border: 2px solid #c9d8e7;
             background: linear-gradient(180deg, #ffffff 0%, #edf5ff 100%);
-            box-shadow: 0 12px 24px rgba(20, 33, 51, 0.08);
+            box-shadow: 0 10px 22px rgba(20, 33, 51, 0.08);
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }}
+        .local-box-compound {{
+            padding: 8px;
+        }}
+        .local-box-compound small {{
+            display: none;
         }}
         .local-box strong {{
             display: block;
-            font-size: 18px;
+            font-size: clamp(13px, 1.15vw, 18px);
             color: var(--accent);
         }}
         .local-box small {{
             display: block;
-            margin-top: 6px;
-            font-size: 12px;
+            margin-top: 4px;
+            font-size: clamp(9px, 0.75vw, 11px);
+            color: var(--muted);
         }}
         .operator-stack {{
             display: grid;
             gap: 6px;
             margin-top: 8px;
+            min-height: 0;
+        }}
+        .local-box-compound .operator-stack {{
+            margin-top: 4px;
+        }}
+        .operator-split {{
+            display: grid;
+            gap: 6px;
+            margin-top: 6px;
+            flex: 1;
+            min-height: 0;
+        }}
+        .split-horizontal {{
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }}
+        .split-vertical {{
+            grid-template-rows: repeat(2, minmax(0, 1fr));
+        }}
+        .split-cell {{
+            display: grid;
+            align-content: start;
+            gap: 4px;
+            padding: 3px 4px;
+            border-radius: 12px;
+            background: rgba(245, 249, 255, 0.78);
+            border: 1px solid #d8e5f2;
+            min-height: 0;
+            overflow: hidden;
+        }}
+        .split-label {{
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            min-height: 22px;
+            border-radius: 999px;
+            background: #124a88;
+            color: #fff;
+            font-size: clamp(9px, 0.72vw, 11px);
+            font-weight: 800;
+        }}
+        .operator-split .operator-pill {{
+            padding: 3px 6px;
+            font-size: clamp(9px, 0.8vw, 11px);
+            line-height: 1.1;
+        }}
+        .operator-split .operator-pill .subcode {{
+            margin-top: 2px;
+            font-size: clamp(7px, 0.58vw, 9px);
         }}
         .operator-pill {{
             display: block;
@@ -1950,9 +2168,9 @@ namespace TeamOps.UI.Services
             border-radius: 12px;
             background: #f5f9ff;
             border: 1px solid #d8e5f2;
-            font-size: 14px;
+            font-size: clamp(10px, 0.95vw, 14px);
             font-weight: 700;
-            line-height: 1.25;
+            line-height: 1.2;
         }}
         .operator-pill.trainee {{
             background: #fff3d6;
@@ -1961,17 +2179,37 @@ namespace TeamOps.UI.Services
         .operator-pill .subcode {{
             display: block;
             margin-top: 3px;
-            font-size: 11px;
+            font-size: clamp(8px, 0.7vw, 11px);
             color: var(--muted);
             font-weight: 600;
         }}
-        .side-stack,
-        .unmapped-list,
+        .footer-strip {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }}
+        .footer-copy {{
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 600;
+        }}
+        .unmapped-chip {{
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            padding: 0 8px;
+            border-radius: 999px;
+            background: #f8fbff;
+            border: 1px solid var(--border);
+            font-size: 10px;
+            color: var(--text);
+            font-weight: 700;
+        }}
         .fallback-list {{
             display: grid;
             gap: 10px;
         }}
-        .unmapped-item,
         .fallback-item {{
             display: grid;
             gap: 4px;
@@ -1980,58 +2218,21 @@ namespace TeamOps.UI.Services
             border: 1px solid var(--border);
             background: #f9fbfe;
         }}
-        .empty-copy {{
-            margin: 0;
-            color: var(--muted);
-        }}
-        small {{
-            color: var(--muted);
-        }}
-        @media (max-width: 1180px) {{
-            .hero {{
-                flex-direction: column;
-            }}
-            .hero-meta {{
-                min-width: 0;
-            }}
-            .summary {{
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }}
-            .visual-grid {{
-                grid-template-columns: 1fr;
+        @media (max-width: 1100px) {{
+            .layout-stage {{
+                width: 100%;
+                min-height: calc(100vh - 112px);
             }}
         }}
     </style>
 </head>
 <body>
     <main class=""page"">
-        <section class=""hero"">
+        <section class=""topbar"">
             <div>
                 <h1>{EscapeHtml(sectorName)} - {EscapeHtml(shiftName)}</h1>
-                <p>Haidai exportado em {EscapeHtml(board.DateIso)}.</p>
+                <p>{EscapeHtml(board.DateIso)} · atualizacao automatica a cada 2 minutos</p>
             </div>
-            <div class=""hero-meta"">
-                <div class=""meta-card"">
-                    Data
-                    <strong>{EscapeHtml(board.DateIso)}</strong>
-                </div>
-                <div class=""meta-card"">
-                    Turno
-                    <strong>{EscapeHtml(shiftName)}</strong>
-                </div>
-                <div class=""meta-card"">
-                    Operadores
-                    <strong>{board.Summary.OperatorCount}</strong>
-                </div>
-                <div class=""meta-card"">
-                    Escalados
-                    <strong>{board.Summary.AssignedCount}</strong>
-                </div>
-            </div>
-        </section>
-
-        <section class=""toolbar"">
-            <div>TV mode - atualizacao automatica a cada 2 minutos.</div>
             <a href=""{EscapeHtml(otherFileName)}"">Abrir outro turno</a>
         </section>
 
@@ -2041,36 +2242,17 @@ namespace TeamOps.UI.Services
 
         {(string.IsNullOrWhiteSpace(layoutMarkup)
             ? $@"<article class=""fallback-card"">
-                    <div class=""section-head"">
-                        <h3>Mapa resumido</h3>
-                        <span>Visual alternativo</span>
-                    </div>
                     <div class=""fallback-list"">{fallbackMarkup}</div>
                 </article>"
-            : $@"<section class=""visual-grid"">
-                    <article class=""layout-card"">
-                        <div class=""section-head"">
-                            <h3>Mapa do setor</h3>
-                            <span>Visual usado na TV do operador</span>
-                        </div>
-                        {layoutMarkup}
-                    </article>
-                    <div class=""side-stack"">
-                        <article class=""side-card"">
-                            <div class=""section-head"">
-                                <h3>Resumo do turno</h3>
-                                <span>Informacao publica</span>
-                            </div>
-                            <p class=""empty-copy"">Use este quadro para consultar rapidamente a area designada de cada operador.</p>
-                        </article>
-                        <article class=""side-card"">
-                            <div class=""section-head"">
-                                <h3>Sem posicao no mapa</h3>
-                                <span>{unmappedRows.Count} item(ns)</span>
-                            </div>
-                            <div class=""unmapped-list"">{unmappedMarkup}</div>
-                        </article>
-                    </div>
+            : $@"<article class=""map-card"">
+                    {layoutMarkup}
+                </article>")}
+
+        {(string.IsNullOrWhiteSpace(unmappedMarkup)
+            ? string.Empty
+            : $@"<section class=""footer-strip"">
+                    <span class=""footer-copy"">Sem posicao no mapa:</span>
+                    {unmappedMarkup}
                 </section>")}
     </main>
 </body>
@@ -2103,87 +2285,247 @@ namespace TeamOps.UI.Services
                 : null;
         }
 
-        private static string BuildMappedLayoutMarkup(HaidaiExportLayoutDefinition layout, IReadOnlyList<HaidaiBoardRow> activeRows)
+        private static string BuildMappedLayoutMarkup(
+            HaidaiExportLayoutDefinition layout,
+            IReadOnlyList<HaidaiBoardRow> activeRows,
+            IReadOnlyList<(string Label, int Value)> summaryBadges)
         {
             var localsById = activeRows
-                .Where(row => row.LocalId.HasValue)
-                .GroupBy(row => row.LocalId!.Value)
+                .Where(row => row.DisplayLocalId.HasValue || row.LocalId.HasValue)
+                .GroupBy(row => row.DisplayLocalId ?? row.LocalId!.Value)
                 .ToDictionary(group => group.Key, group => group.ToList());
 
             var corridors = string.Join(
                 Environment.NewLine,
                 layout.Corridors.Select(corridor => $@"
-                    <div class=""corridor"" style=""left:{corridor.X}px;top:{corridor.Y}px;width:{corridor.W}px;height:{corridor.H}px;""></div>"));
+                    <div class=""corridor"" style=""left:{ToPercent(corridor.X, layout.Width)}%;top:{ToPercent(corridor.Y, layout.Height)}%;width:{ToPercent(corridor.W, layout.Width)}%;height:{ToPercent(corridor.H, layout.Height)}%;""></div>"));
 
             var slots = string.Join(
                 Environment.NewLine,
-                layout.Locals.Select(slot =>
+                layout.Locals
+                    .Where(slot => slot.ShowInExport != false)
+                    .Select(slot =>
                 {
-                    localsById.TryGetValue(slot.LocalId, out var assigned);
-                    assigned ??= new List<HaidaiBoardRow>();
+                    var assigned = GetAssignedRowsForSlot(slot, localsById, activeRows);
 
-                    var headerCode = assigned.FirstOrDefault()?.LocalShortCode;
+                    var headerCode = slot.Header;
                     if (string.IsNullOrWhiteSpace(headerCode))
                     {
-                        headerCode = assigned.FirstOrDefault()?.AssignmentCode;
+                        headerCode = assigned.FirstOrDefault()?.DisplayLocalShortCode;
+                        if (string.IsNullOrWhiteSpace(headerCode))
+                        {
+                            headerCode = assigned.FirstOrDefault()?.LocalShortCode;
+                        }
+                        if (string.IsNullOrWhiteSpace(headerCode))
+                        {
+                            headerCode = assigned.FirstOrDefault()?.AssignmentCode;
+                        }
                     }
 
                     headerCode ??= $"Area {slot.LocalId}";
 
-                    var operators = assigned.Count == 0
-                        ? "<span class=\"operator-pill\"><span class=\"subcode\">Sem operador</span></span>"
-                        : string.Join(
-                            Environment.NewLine,
-                            assigned.Select(row =>
-                            {
-                                var detailCode = string.Equals(row.AssignmentCode, row.LocalShortCode, StringComparison.OrdinalIgnoreCase)
-                                    ? string.Empty
-                                    : row.AssignmentCode;
+                    var operators = slot.Members.Count > 0
+                        ? $@"<div class=""operator-split split-{EscapeHtml(slot.SplitDirection ?? "horizontal")}"">
+                                {string.Join(
+                                    Environment.NewLine,
+                                    slot.Members.Select(member =>
+                                    {
+                                        localsById.TryGetValue(member.LocalId, out var memberAssigned);
+                                        var memberMarkup = BuildOperatorStackMarkup(memberAssigned ?? new List<HaidaiBoardRow>(), compact: true);
+                                        var labelMarkup = string.IsNullOrWhiteSpace(member.Label)
+                                            ? string.Empty
+                                            : $@"<span class=""split-label"">{EscapeHtml(member.Label)}</span>";
 
-                                var tags = new List<string>();
-                                if (row.IsTrainee)
-                                {
-                                    tags.Add("Aprendiz");
-                                }
+                                        return $@"
+                                            <div class=""split-cell"">
+                                                {labelMarkup}
+                                                {memberMarkup}
+                                            </div>";
+                                    }))}
+                           </div>"
+                        : BuildOperatorStackMarkup(assigned);
 
-                                if (!row.CountsTowardKousu)
-                                {
-                                    tags.Add("Nao conta kousu");
-                                }
-
-                                if (!string.IsNullOrWhiteSpace(detailCode))
-                                {
-                                    tags.Insert(0, detailCode);
-                                }
-
-                                var suffix = tags.Count == 0
-                                    ? string.Empty
-                                    : $"<span class=\"subcode\">{EscapeHtml(string.Join(" | ", tags))}</span>";
-
-                                return $@"
-                                    <span class=""operator-pill {(row.IsTrainee ? "trainee" : string.Empty)}"">
-                                        {EscapeHtml(row.Name)}
-                                        {suffix}
-                                    </span>";
-                            }));
+                    var helperLabel = slot.Members.Count > 0
+                        ? string.Empty
+                        : EscapeHtml(slot.Label ?? string.Empty);
 
                     return $@"
-                        <article class=""local-box"" style=""left:{slot.X}px;top:{slot.Y}px;width:{slot.W}px;height:{slot.H}px;"">
+                        <article class=""local-box {(slot.Members.Count > 0 ? "local-box-compound" : string.Empty)}"" style=""left:{ToPercent(slot.X, layout.Width)}%;top:{ToPercent(slot.Y, layout.Height)}%;width:{ToPercent(slot.W, layout.Width)}%;height:{ToPercent(slot.H, layout.Height)}%;"">
                             <strong>{EscapeHtml(headerCode)}</strong>
-                            <small>{EscapeHtml(slot.Label ?? string.Empty)}</small>
+                            <small>{helperLabel}</small>
                             <div class=""operator-stack"">
                                 {operators}
                             </div>
                         </article>";
                 }));
 
+            var widgets = string.Join(
+                Environment.NewLine,
+                layout.Widgets.Select(widget => BuildWidgetMarkup(widget, layout, summaryBadges)));
+
             return $@"
-                <div class=""layout-stage"" style=""width:{layout.Width}px;height:{layout.Height}px;max-width:100%;"">
+                <div class=""layout-stage"" style=""aspect-ratio:{layout.Width} / {layout.Height};"">
                     <div class=""layout-canvas"">
                         {corridors}
+                        {widgets}
                         {slots}
                     </div>
                 </div>";
+        }
+
+        private static IReadOnlyList<HaidaiBoardRow> GetAssignedRowsForSlot(
+            HaidaiExportLocalSlot slot,
+            IReadOnlyDictionary<int, List<HaidaiBoardRow>> localsById,
+            IReadOnlyList<HaidaiBoardRow> activeRows)
+        {
+            var memberSlots = slot.Members.Count > 0
+                ? slot.Members
+                : new List<HaidaiExportLocalMemberSlot>
+                {
+                    new() { LocalId = slot.LocalId }
+                };
+
+            var rows = memberSlots
+                .SelectMany(member =>
+                {
+                    localsById.TryGetValue(member.LocalId, out var memberAssigned);
+                    return memberAssigned ?? Enumerable.Empty<HaidaiBoardRow>();
+                })
+                .ToList();
+
+            if (slot.MatchCodes.Count == 0)
+            {
+                return rows;
+            }
+
+            var matchCodes = slot.MatchCodes
+                .Where(code => !string.IsNullOrWhiteSpace(code))
+                .Select(code => code.Trim().ToUpperInvariant())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            if (matchCodes.Count == 0)
+            {
+                return rows;
+            }
+
+            foreach (var row in activeRows)
+            {
+                var assignmentCode = (row.AssignmentCode ?? string.Empty).Trim();
+                if (!matchCodes.Contains(assignmentCode))
+                {
+                    continue;
+                }
+
+                if (rows.Any(item => string.Equals(item.CodigoFJ, row.CodigoFJ, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                rows.Add(row);
+            }
+
+            return rows;
+        }
+
+        private static string BuildWidgetMarkup(
+            HaidaiExportWidgetSlot widget,
+            HaidaiExportLayoutDefinition layout,
+            IReadOnlyList<(string Label, int Value)> summaryBadges)
+        {
+            if (!string.Equals(widget.Kind, "summary", StringComparison.OrdinalIgnoreCase))
+            {
+                return string.Empty;
+            }
+
+            var summaryMarkup = string.Join(
+                Environment.NewLine,
+                summaryBadges.Take(4).Select(item => $@"
+                    <div class=""summary-mini"">
+                        <strong>{item.Value}</strong>
+                        <span>{EscapeHtml(item.Label)}</span>
+                    </div>"));
+
+            return $@"
+                <aside class=""map-widget summary-widget"" style=""left:{ToPercent(widget.X, layout.Width)}%;top:{ToPercent(widget.Y, layout.Height)}%;width:{ToPercent(widget.W, layout.Width)}%;height:{ToPercent(widget.H, layout.Height)}%;"">
+                    {summaryMarkup}
+                </aside>";
+        }
+
+        private static string BuildOperatorStackMarkup(IReadOnlyList<HaidaiBoardRow> assigned, bool compact = false)
+        {
+            if (assigned.Count == 0)
+            {
+                return compact
+                    ? "<span class=\"operator-pill\"><span class=\"subcode\">Sem op.</span></span>"
+                    : "<span class=\"operator-pill\"><span class=\"subcode\">Sem operador</span></span>";
+            }
+
+            if (compact)
+            {
+                return string.Join(
+                    Environment.NewLine,
+                    assigned.Select(row => $@"
+                        <span class=""operator-pill {(row.IsTrainee ? "trainee" : string.Empty)}"">
+                            {EscapeHtml(row.Name)}
+                        </span>"));
+            }
+
+            return string.Join(
+                Environment.NewLine,
+                assigned.Select(row =>
+                {
+                    var detailCode = string.Equals(row.AssignmentCode, row.LocalShortCode, StringComparison.OrdinalIgnoreCase)
+                        ? string.Empty
+                        : row.AssignmentCode;
+
+                    var tags = new List<string>();
+                    if (row.IsTrainee)
+                    {
+                        tags.Add("Aprendiz");
+                    }
+
+                    if (!row.CountsTowardKousu)
+                    {
+                        tags.Add("Nao conta kousu");
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(detailCode))
+                    {
+                        tags.Insert(0, detailCode);
+                    }
+
+                    var suffix = tags.Count == 0
+                        ? string.Empty
+                        : $"<span class=\"subcode\">{EscapeHtml(string.Join(" | ", tags))}</span>";
+
+                    return $@"
+                        <span class=""operator-pill {(row.IsTrainee ? "trainee" : string.Empty)}"">
+                            {EscapeHtml(row.Name)}
+                            {suffix}
+                        </span>";
+                }));
+        }
+
+        private static bool SlotMatchesLocalId(HaidaiExportLocalSlot slot, int localId)
+        {
+            return slot.LocalId == localId || slot.Members.Any(member => member.LocalId == localId);
+        }
+
+        private static bool SlotMatchesRow(HaidaiExportLocalSlot slot, HaidaiBoardRow row)
+        {
+            var mappedLocalId = row.DisplayLocalId ?? row.LocalId;
+            if (mappedLocalId.HasValue && SlotMatchesLocalId(slot, mappedLocalId.Value))
+            {
+                return true;
+            }
+
+            if (slot.MatchCodes.Count == 0)
+            {
+                return false;
+            }
+
+            var assignmentCode = (row.AssignmentCode ?? string.Empty).Trim();
+            return slot.MatchCodes.Any(code => string.Equals(code?.Trim(), assignmentCode, StringComparison.OrdinalIgnoreCase));
         }
 
         private static string EscapeHtml(string? value)
@@ -2193,6 +2535,16 @@ namespace TeamOps.UI.Services
                 .Replace("<", "&lt;", StringComparison.Ordinal)
                 .Replace(">", "&gt;", StringComparison.Ordinal)
                 .Replace("\"", "&quot;", StringComparison.Ordinal);
+        }
+
+        private static string ToPercent(int value, int max)
+        {
+            if (max <= 0)
+            {
+                return "0";
+            }
+
+            return ((value / (double)max) * 100d).ToString("0.###", CultureInfo.InvariantCulture);
         }
     }
 
@@ -2306,6 +2658,9 @@ namespace TeamOps.UI.Services
         int? LocalId,
         string LocalName,
         string LocalShortCode,
+        int? DisplayLocalId,
+        string DisplayLocalName,
+        string DisplayLocalShortCode,
         string AssignmentCode,
         string StoredAssignmentCode,
         string PairKey,
@@ -2349,26 +2704,35 @@ namespace TeamOps.UI.Services
         string CreatedByCodigoFJ);
 
     public sealed record HaidaiExportResult(string Directory, IReadOnlyList<string> Files);
-    public sealed record HaidaiPlannedAssignment(
-        string OperatorCodigoFJ,
-        int ShiftId,
-        int SectorId,
-        int? LocalId,
-        string AssignmentCode,
-        string PairKey,
-        bool IsTrainee,
-        string TrainerCodigoFJ,
-        bool CountsTowardKousu);
+    public sealed class HaidaiPlannedAssignment
+    {
+        public string OperatorCodigoFJ { get; set; } = string.Empty;
+        public int ShiftId { get; set; }
+        public int SectorId { get; set; }
+        public int? LocalId { get; set; }
+        public string AssignmentCode { get; set; } = string.Empty;
+        public string PairKey { get; set; } = string.Empty;
+        public bool IsTrainee { get; set; }
+        public string TrainerCodigoFJ { get; set; } = string.Empty;
+        public bool CountsTowardKousu { get; set; }
+    }
 
     internal sealed class HaidaiOperatorRow
     {
         public string CodigoFJ { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string NameJp { get; set; } = string.Empty;
+        public int HomeSectorId { get; set; }
         public int GroupId { get; set; }
         public string GroupName { get; set; } = string.Empty;
         public bool Trainer { get; set; }
         public bool IsLeader { get; set; }
+    }
+
+    internal sealed class HaidaiOperatorSectorRow
+    {
+        public string CodigoFJ { get; set; } = string.Empty;
+        public int SectorId { get; set; }
     }
 
     internal sealed class HaidaiAssignmentRecord
@@ -2429,6 +2793,7 @@ namespace TeamOps.UI.Services
         public int Width { get; set; }
         public int Height { get; set; }
         public List<HaidaiExportLocalSlot> Locals { get; set; } = new();
+        public List<HaidaiExportWidgetSlot> Widgets { get; set; } = new();
         public List<HaidaiExportCorridorSlot> Corridors { get; set; } = new();
     }
 
@@ -2439,6 +2804,26 @@ namespace TeamOps.UI.Services
         public int Y { get; set; }
         public int W { get; set; }
         public int H { get; set; }
+        public string? Header { get; set; }
+        public string? Label { get; set; }
+        public string? SplitDirection { get; set; }
+        public bool? ShowInExport { get; set; }
+        public List<string> MatchCodes { get; set; } = new();
+        public List<HaidaiExportLocalMemberSlot> Members { get; set; } = new();
+    }
+
+    internal sealed class HaidaiExportWidgetSlot
+    {
+        public string Kind { get; set; } = string.Empty;
+        public int X { get; set; }
+        public int Y { get; set; }
+        public int W { get; set; }
+        public int H { get; set; }
+    }
+
+    internal sealed class HaidaiExportLocalMemberSlot
+    {
+        public int LocalId { get; set; }
         public string? Label { get; set; }
     }
 

@@ -33,6 +33,7 @@ namespace TeamOps.UI.Forms
         {
             InitializeComponent();
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            Text = L("Relatorio Follow", "\u30d5\u30a9\u30ed\u30fc\u30ec\u30dd\u30fc\u30c8");
 
             _followRepo = followRepo;
             _opRepo = opRepo;
@@ -115,6 +116,7 @@ namespace TeamOps.UI.Forms
             PostJson(new
             {
                 type = "init",
+                locale = Program.CurrentLocale,
                 data = new
                 {
                     filters = BuildFilterOptions(),
@@ -172,22 +174,22 @@ namespace TeamOps.UI.Forms
             var shifts = _shiftRepo.GetAll()
                 .Select(x => new { id = x.Id, name = x.NamePt })
                 .ToList();
-            shifts.Insert(0, new { id = 0, name = "Todos" });
+            shifts.Insert(0, new { id = 0, name = L("Todos", "\u3059\u3079\u3066") });
 
             var types = _typeRepo.GetAll()
                 .Select(x => new { id = x.Id, name = x.NamePt })
                 .ToList();
-            types.Insert(0, new { id = 0, name = "Todos" });
+            types.Insert(0, new { id = 0, name = L("Todos", "\u3059\u3079\u3066") });
 
             var reasons = _reasonRepo.GetAll()
                 .Select(x => new { id = x.Id, name = x.NamePt })
                 .ToList();
-            reasons.Insert(0, new { id = 0, name = "Todos" });
+            reasons.Insert(0, new { id = 0, name = L("Todos", "\u3059\u3079\u3066") });
 
             var sectors = _sectorRepo.GetAll()
                 .Select(x => new { id = x.Id, name = x.NamePt })
                 .ToList();
-            sectors.Insert(0, new { id = 0, name = "Todos" });
+            sectors.Insert(0, new { id = 0, name = L("Todos", "\u3059\u3079\u3066") });
 
             return new
             {
@@ -228,7 +230,9 @@ namespace TeamOps.UI.Forms
             var rows = GetFilteredRows(filter);
             if (rows.Count == 0)
             {
-                SendNotify("Nada para exportar", "Nao ha registros para os filtros informados.");
+                SendNotify(
+                    L("Nada para exportar", "\u30a8\u30af\u30b9\u30dd\u30fc\u30c8\u5bfe\u8c61\u306a\u3057"),
+                    L("Nao ha registros para os filtros informados.", "\u9078\u629e\u4e2d\u306e\u30d5\u30a3\u30eb\u30bf\u306b\u8a72\u5f53\u3059\u308b\u30ec\u30b3\u30fc\u30c9\u304c\u3042\u308a\u307e\u305b\u3093\u3002"));
                 return;
             }
 
@@ -257,8 +261,8 @@ namespace TeamOps.UI.Forms
                 "Local",
                 "Equipamento",
                 "Setor",
-                "Descricao",
-                "Orientacao"
+                L("Descricao", "\u5185\u5bb9"),
+                L("Orientacao", "\u6307\u5c0e")
             };
 
             for (int i = 0; i < headers.Length; i++)
@@ -286,7 +290,9 @@ namespace TeamOps.UI.Forms
             ws.Columns().AdjustToContents();
             wb.SaveAs(sfd.FileName);
 
-            SendNotify("Exportacao concluida", "Arquivo XLSX gerado com sucesso.");
+            SendNotify(
+                L("Exportacao concluida", "\u30a8\u30af\u30b9\u30dd\u30fc\u30c8\u5b8c\u4e86"),
+                L("Arquivo XLSX gerado com sucesso.", "XLSX \u30d5\u30a1\u30a4\u30eb\u3092\u751f\u6210\u3057\u307e\u3057\u305f\u3002"));
         }
 
         private void OpenPrint(int id)
@@ -446,6 +452,13 @@ namespace TeamOps.UI.Forms
         private static string Safe(string? value)
         {
             return string.IsNullOrWhiteSpace(value) ? "-" : value;
+        }
+
+        private static string L(string pt, string jp)
+        {
+            return string.Equals(Program.CurrentLocale, "ja-JP", StringComparison.OrdinalIgnoreCase)
+                ? jp
+                : pt;
         }
 
         private sealed class FollowFilter

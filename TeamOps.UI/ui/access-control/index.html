@@ -6,31 +6,31 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="header-bar">
+    <div class="header-bar" data-i18n="headerBar">
         Controle de Acesso
     </div>
 
     <div class="page-shell">
         <section class="hero-card">
             <div class="hero-copy">
-                <p class="eyebrow">Administracao de Usuarios</p>
-                <h1>Permissoes e senhas em um fluxo mais simples</h1>
-                <p class="hero-text">
+                <p class="eyebrow" data-i18n="eyebrow">Administracao de Usuarios</p>
+                <h1 data-i18n="heroTitle">Permissoes e senhas em um fluxo mais simples</h1>
+                <p class="hero-text" data-i18n="heroText">
                     Busque rapidamente, ajuste nivel de acesso com seguranca e cadastre novos usuarios sem sair da tela.
                 </p>
             </div>
 
             <div class="metrics-strip">
                 <div class="metric-card">
-                    <span class="metric-label">Total</span>
+                    <span class="metric-label" data-i18n="metricTotal">Total</span>
                     <strong id="metricTotal">0</strong>
                 </div>
                 <div class="metric-card">
-                    <span class="metric-label">Admins</span>
+                    <span class="metric-label" data-i18n="metricAdmins">Admins</span>
                     <strong id="metricAdmins">0</strong>
                 </div>
                 <div class="metric-card">
-                    <span class="metric-label">Managers+</span>
+                    <span class="metric-label" data-i18n="metricManagers">Managers+</span>
                     <strong id="metricManagers">0</strong>
                 </div>
             </div>
@@ -39,22 +39,22 @@
         <section class="table-card">
             <div class="panel-top">
                 <div class="title-stack">
-                    <h2>Usuarios cadastrados</h2>
-                    <p>Pesquise por login, nome, FJ ou nivel de acesso.</p>
+                    <h2 data-i18n="usersTitle">Usuarios cadastrados</h2>
+                    <p data-i18n="usersSubtitle">Pesquise por login, nome, FJ ou nivel de acesso.</p>
                 </div>
 
                 <div class="header-actions">
                     <div class="search-group">
-                        <label for="searchInput">Buscar</label>
-                        <input id="searchInput" class="input" type="text" placeholder="Digite o login, nome, FJ ou nivel...">
+                        <label for="searchInput" data-i18n="searchLabel">Buscar</label>
+                        <input id="searchInput" class="input" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="Digite o login, nome, FJ ou nivel...">
                     </div>
 
-                    <button id="btnHeaderNovo" type="button" class="btn-primary">Novo Usuario</button>
+                    <button id="btnHeaderNovo" type="button" class="btn-primary" data-i18n="newUser">Novo Usuario</button>
                 </div>
             </div>
 
             <div id="tableContainer" class="table-container">
-                Carregando...
+                <span data-i18n="loading">Carregando...</span>
             </div>
         </section>
     </div>
@@ -68,45 +68,45 @@
                     <p id="userFormSubtitle">Cadastre um novo usuario com o nivel de acesso correto.</p>
                 </div>
 
-                <button id="btnCloseUserModal" type="button" class="icon-close" aria-label="Fechar modal">X</button>
+                <button id="btnCloseUserModal" type="button" class="icon-close" data-i18n-aria-label="closeModalAria" aria-label="Fechar modal">X</button>
             </div>
 
             <div class="form-grid form-grid-2">
                 <div class="form-group">
-                    <label for="txtLogin">Login</label>
+                    <label for="txtLogin" data-i18n="loginLabel">Login</label>
                     <input id="txtLogin" class="input" type="text" maxlength="40">
                 </div>
 
                 <div class="form-group">
-                    <label for="cmbAccessLevel">Nivel de Acesso</label>
+                    <label for="cmbAccessLevel" data-i18n="accessLevelLabel">Nivel de Acesso</label>
                     <select id="cmbAccessLevel" class="input">
-                        <option value="">Selecione...</option>
+                        <option value="" data-i18n="selectPlaceholder">Selecione...</option>
                     </select>
                 </div>
 
                 <div class="form-group form-group-span-2">
-                    <label for="txtName">Nome</label>
-                    <input id="txtName" class="input" type="text" maxlength="120" placeholder="Opcional, mas ajuda a localizar mais rapido">
+                    <label for="txtName" data-i18n="nameLabel">Nome</label>
+                    <input id="txtName" class="input" type="text" maxlength="120" data-i18n-placeholder="namePlaceholder" placeholder="Opcional, mas ajuda a localizar mais rapido">
                 </div>
             </div>
 
             <div id="createPasswordBlock" class="password-block">
-                <div class="section-label">Senha inicial</div>
+                <div class="section-label" data-i18n="initialPassword">Senha inicial</div>
                 <div class="form-grid form-grid-2">
                     <div class="form-group">
-                        <label for="txtPassword">Senha</label>
+                        <label for="txtPassword" data-i18n="passwordLabel">Senha</label>
                         <input id="txtPassword" class="input" type="password" maxlength="120">
                     </div>
 
                     <div class="form-group">
-                        <label for="txtConfirmPassword">Confirmar Senha</label>
+                        <label for="txtConfirmPassword" data-i18n="confirmPasswordLabel">Confirmar Senha</label>
                         <input id="txtConfirmPassword" class="input" type="password" maxlength="120">
                     </div>
                 </div>
             </div>
 
             <div class="modal-actions">
-                <button id="btnCancelUserModal" type="button" class="btn-secondary">Cancelar</button>
+                <button id="btnCancelUserModal" type="button" class="btn-secondary" data-i18n="cancel">Cancelar</button>
                 <button id="btnSaveUserModal" type="button" class="btn-primary">Cadastrar</button>
             </div>
         </section>
@@ -117,33 +117,33 @@
         <section class="modal-card modal-card-compact">
             <div class="modal-top">
                 <div class="title-stack">
-                    <h2>Redefinir Senha</h2>
+                    <h2 data-i18n="resetPasswordTitle">Redefinir Senha</h2>
                     <p id="passwordSubtitle">Defina uma nova senha para o usuario selecionado.</p>
                 </div>
 
-                <button id="btnClosePasswordModal" type="button" class="icon-close" aria-label="Fechar modal">X</button>
+                <button id="btnClosePasswordModal" type="button" class="icon-close" data-i18n-aria-label="closeModalAria" aria-label="Fechar modal">X</button>
             </div>
 
             <div class="form-grid">
                 <div class="form-group">
-                    <label for="txtPasswordLogin">Login</label>
+                    <label for="txtPasswordLogin" data-i18n="loginLabel">Login</label>
                     <input id="txtPasswordLogin" class="input" type="text" readonly>
                 </div>
 
                 <div class="form-group">
-                    <label for="txtNewPassword">Nova Senha</label>
+                    <label for="txtNewPassword" data-i18n="newPasswordLabel">Nova Senha</label>
                     <input id="txtNewPassword" class="input" type="password" maxlength="120">
                 </div>
 
                 <div class="form-group">
-                    <label for="txtConfirmNewPassword">Confirmar Nova Senha</label>
+                    <label for="txtConfirmNewPassword" data-i18n="confirmNewPasswordLabel">Confirmar Nova Senha</label>
                     <input id="txtConfirmNewPassword" class="input" type="password" maxlength="120">
                 </div>
             </div>
 
             <div class="modal-actions">
-                <button id="btnCancelPasswordModal" type="button" class="btn-secondary">Cancelar</button>
-                <button id="btnSavePasswordModal" type="button" class="btn-primary">Salvar Nova Senha</button>
+                <button id="btnCancelPasswordModal" type="button" class="btn-secondary" data-i18n="cancel">Cancelar</button>
+                <button id="btnSavePasswordModal" type="button" class="btn-primary" data-i18n="saveNewPassword">Salvar Nova Senha</button>
             </div>
         </section>
     </div>

@@ -1,8 +1,119 @@
+const state = {
+    locale: "pt-BR"
+};
+
 let rows = [];
 let accessLevels = [];
 let currentModalMode = "create";
 let editingLogin = "";
 let passwordTargetLogin = "";
+
+const I18N = {
+    "pt-BR": {
+        documentTitle: "Controle de Acesso",
+        headerBar: "Controle de Acesso",
+        eyebrow: "Administracao de Usuarios",
+        heroTitle: "Permissoes e senhas em um fluxo mais simples",
+        heroText: "Busque rapidamente, ajuste nivel de acesso com seguranca e cadastre novos usuarios sem sair da tela.",
+        metricTotal: "Total",
+        metricAdmins: "Admins",
+        metricManagers: "Managers+",
+        usersTitle: "Usuarios cadastrados",
+        usersSubtitle: "Pesquise por login, nome, FJ ou nivel de acesso.",
+        searchLabel: "Buscar",
+        searchPlaceholder: "Digite o login, nome, FJ ou nivel...",
+        newUser: "Novo Usuario",
+        loading: "Carregando...",
+        empty: "Nenhum usuario encontrado.",
+        thLogin: "Login",
+        thName: "Nome",
+        thCodigoFJ: "Codigo FJ",
+        thLevel: "Nivel",
+        thCreatedAt: "Criado em",
+        thActions: "Acoes",
+        edit: "Editar",
+        password: "Senha",
+        userCreateTitle: "Novo Usuario",
+        userEditTitle: "Editar Usuario",
+        userCreateSubtitle: "Cadastre um novo usuario com o nivel de acesso correto.",
+        userEditSubtitle: login => `Ajuste os dados e o nivel de acesso de ${login}.`,
+        saveChanges: "Salvar Alteracoes",
+        register: "Cadastrar",
+        closeModalAria: "Fechar modal",
+        loginLabel: "Login",
+        accessLevelLabel: "Nivel de Acesso",
+        selectPlaceholder: "Selecione...",
+        nameLabel: "Nome",
+        namePlaceholder: "Opcional, mas ajuda a localizar mais rapido",
+        initialPassword: "Senha inicial",
+        passwordLabel: "Senha",
+        confirmPasswordLabel: "Confirmar Senha",
+        cancel: "Cancelar",
+        resetPasswordTitle: "Redefinir Senha",
+        resetPasswordSubtitle: login => `Defina uma nova senha para ${login}.`,
+        resetPasswordDefaultSubtitle: "Defina uma nova senha para o usuario selecionado.",
+        newPasswordLabel: "Nova Senha",
+        confirmNewPasswordLabel: "Confirmar Nova Senha",
+        saveNewPassword: "Salvar Nova Senha",
+        createdFallback: "Usuario cadastrado com sucesso.",
+        updatedFallback: "Usuario atualizado com sucesso.",
+        passwordResetFallback: "Senha redefinida com sucesso.",
+        errorFallback: "Ocorreu um erro ao processar a solicitacao.",
+        selectPasswordUser: "Selecione um usuario para redefinir a senha."
+    },
+    "ja-JP": {
+        documentTitle: "\u30a2\u30af\u30bb\u30b9\u7ba1\u7406",
+        headerBar: "\u30a2\u30af\u30bb\u30b9\u7ba1\u7406",
+        eyebrow: "\u30e6\u30fc\u30b6\u30fc\u7ba1\u7406",
+        heroTitle: "\u6a29\u9650\u3068\u30d1\u30b9\u30ef\u30fc\u30c9\u3092\u5206\u304b\u308a\u3084\u3059\u304f\u7ba1\u7406",
+        heroText: "\u753b\u9762\u3092\u79fb\u52d5\u305b\u305a\u306b\u3001\u30e6\u30fc\u30b6\u30fc\u691c\u7d22\u3001\u6a29\u9650\u5909\u66f4\u3001\u65b0\u898f\u767b\u9332\u3092\u884c\u3048\u307e\u3059\u3002",
+        metricTotal: "\u5408\u8a08",
+        metricAdmins: "\u7ba1\u7406\u8005",
+        metricManagers: "Manager+",
+        usersTitle: "\u767b\u9332\u6e08\u307f\u30e6\u30fc\u30b6\u30fc",
+        usersSubtitle: "\u30ed\u30b0\u30a4\u30f3\u3001\u540d\u524d\u3001FJ\u3001\u6a29\u9650\u3067\u691c\u7d22\u3067\u304d\u307e\u3059\u3002",
+        searchLabel: "\u691c\u7d22",
+        searchPlaceholder: "\u30ed\u30b0\u30a4\u30f3\u3001\u540d\u524d\u3001FJ\u3001\u6a29\u9650\u3067\u691c\u7d22...",
+        newUser: "\u65b0\u898f\u30e6\u30fc\u30b6\u30fc",
+        loading: "\u8aad\u307f\u8fbc\u307f\u4e2d...",
+        empty: "\u30e6\u30fc\u30b6\u30fc\u304c\u3042\u308a\u307e\u305b\u3093\u3002",
+        thLogin: "\u30ed\u30b0\u30a4\u30f3",
+        thName: "\u540d\u524d",
+        thCodigoFJ: "FJ \u30b3\u30fc\u30c9",
+        thLevel: "\u6a29\u9650",
+        thCreatedAt: "\u767b\u9332\u65e5\u6642",
+        thActions: "\u64cd\u4f5c",
+        edit: "\u7de8\u96c6",
+        password: "\u30d1\u30b9\u30ef\u30fc\u30c9",
+        userCreateTitle: "\u65b0\u898f\u30e6\u30fc\u30b6\u30fc",
+        userEditTitle: "\u30e6\u30fc\u30b6\u30fc\u7de8\u96c6",
+        userCreateSubtitle: "\u9069\u5207\u306a\u6a29\u9650\u3067\u65b0\u3057\u3044\u30e6\u30fc\u30b6\u30fc\u3092\u767b\u9332\u3057\u307e\u3059\u3002",
+        userEditSubtitle: login => `${login} \u306e\u60c5\u5831\u3068\u6a29\u9650\u3092\u66f4\u65b0\u3057\u307e\u3059\u3002`,
+        saveChanges: "\u5909\u66f4\u3092\u4fdd\u5b58",
+        register: "\u767b\u9332",
+        closeModalAria: "\u30e2\u30fc\u30c0\u30eb\u3092\u9589\u3058\u308b",
+        loginLabel: "\u30ed\u30b0\u30a4\u30f3",
+        accessLevelLabel: "\u30a2\u30af\u30bb\u30b9\u6a29\u9650",
+        selectPlaceholder: "\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044",
+        nameLabel: "\u540d\u524d",
+        namePlaceholder: "\u4efb\u610f\u3067\u3059\u304c\u3001\u691c\u7d22\u3057\u3084\u3059\u304f\u306a\u308a\u307e\u3059",
+        initialPassword: "\u521d\u671f\u30d1\u30b9\u30ef\u30fc\u30c9",
+        passwordLabel: "\u30d1\u30b9\u30ef\u30fc\u30c9",
+        confirmPasswordLabel: "\u30d1\u30b9\u30ef\u30fc\u30c9\u78ba\u8a8d",
+        cancel: "\u30ad\u30e3\u30f3\u30bb\u30eb",
+        resetPasswordTitle: "\u30d1\u30b9\u30ef\u30fc\u30c9\u518d\u8a2d\u5b9a",
+        resetPasswordSubtitle: login => `${login} \u306e\u65b0\u3057\u3044\u30d1\u30b9\u30ef\u30fc\u30c9\u3092\u8a2d\u5b9a\u3057\u307e\u3059\u3002`,
+        resetPasswordDefaultSubtitle: "\u9078\u629e\u3057\u305f\u30e6\u30fc\u30b6\u30fc\u306e\u65b0\u3057\u3044\u30d1\u30b9\u30ef\u30fc\u30c9\u3092\u8a2d\u5b9a\u3057\u307e\u3059\u3002",
+        newPasswordLabel: "\u65b0\u3057\u3044\u30d1\u30b9\u30ef\u30fc\u30c9",
+        confirmNewPasswordLabel: "\u65b0\u3057\u3044\u30d1\u30b9\u30ef\u30fc\u30c9\u78ba\u8a8d",
+        saveNewPassword: "\u65b0\u3057\u3044\u30d1\u30b9\u30ef\u30fc\u30c9\u3092\u4fdd\u5b58",
+        createdFallback: "\u30e6\u30fc\u30b6\u30fc\u3092\u767b\u9332\u3057\u307e\u3057\u305f\u3002",
+        updatedFallback: "\u30e6\u30fc\u30b6\u30fc\u3092\u66f4\u65b0\u3057\u307e\u3057\u305f\u3002",
+        passwordResetFallback: "\u30d1\u30b9\u30ef\u30fc\u30c9\u3092\u518d\u8a2d\u5b9a\u3057\u307e\u3057\u305f\u3002",
+        errorFallback: "\u51e6\u7406\u4e2d\u306b\u30a8\u30e9\u30fc\u304c\u767a\u751f\u3057\u307e\u3057\u305f\u3002",
+        selectPasswordUser: "\u30d1\u30b9\u30ef\u30fc\u30c9\u518d\u8a2d\u5b9a\u5bfe\u8c61\u306e\u30e6\u30fc\u30b6\u30fc\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002"
+    }
+};
 
 window.addEventListener("DOMContentLoaded", () => {
     bindEvents();
@@ -36,33 +147,29 @@ window.chrome.webview.addEventListener("message", event => {
 
     switch (msg.type) {
         case "init":
+            setLocale(msg.locale);
             hydrateScreen(msg);
             break;
-
         case "rows":
             rows = normalizeRows(msg.data || []);
             renderMetrics(rows);
             applyFilters();
             syncEditingUser();
             break;
-
         case "created":
-            alert(msg.message || "Usuario cadastrado com sucesso.");
+            alert(msg.message || t("createdFallback"));
             closeUserModal();
             break;
-
         case "updated":
-            alert(msg.message || "Usuario atualizado com sucesso.");
+            alert(msg.message || t("updatedFallback"));
             closeUserModal();
             break;
-
         case "password_reset":
-            alert(msg.message || "Senha redefinida com sucesso.");
+            alert(msg.message || t("passwordResetFallback"));
             closePasswordModal();
             break;
-
         case "error":
-            alert(msg.message || "Ocorreu um erro ao processar a solicitacao.");
+            alert(msg.message || t("errorFallback"));
             break;
     }
 });
@@ -77,6 +184,24 @@ function hydrateScreen(payload) {
     applyFilters();
 }
 
+function setLocale(locale) {
+    state.locale = locale === "ja-JP" ? "ja-JP" : "pt-BR";
+    document.documentElement.lang = state.locale;
+    document.title = t("documentTitle");
+
+    document.querySelectorAll("[data-i18n]").forEach(element => {
+        element.textContent = t(element.dataset.i18n);
+    });
+
+    document.querySelectorAll("[data-i18n-placeholder]").forEach(element => {
+        element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
+    });
+
+    document.querySelectorAll("[data-i18n-aria-label]").forEach(element => {
+        element.setAttribute("aria-label", t(element.dataset.i18nAriaLabel));
+    });
+}
+
 function normalizeRows(items) {
     return items.map(item => ({
         ...item,
@@ -89,7 +214,7 @@ function normalizeRows(items) {
 
 function fillSelect(id, items, valueField, textField) {
     const select = document.getElementById(id);
-    select.innerHTML = `<option value="">Selecione...</option>`;
+    select.innerHTML = `<option value="">${escapeHtml(t("selectPlaceholder"))}</option>`;
 
     items.forEach(item => {
         select.innerHTML += `<option value="${item[valueField]}">${escapeHtml(item[textField])}</option>`;
@@ -128,7 +253,7 @@ function renderTable(items) {
     const container = document.getElementById("tableContainer");
 
     if (!items.length) {
-        container.innerHTML = `<div class="empty-state">Nenhum usuario encontrado.</div>`;
+        container.innerHTML = `<div class="empty-state">${escapeHtml(t("empty"))}</div>`;
         return;
     }
 
@@ -136,12 +261,12 @@ function renderTable(items) {
         <table class="users-table">
             <thead>
                 <tr>
-                    <th>Login</th>
-                    <th>Nome</th>
-                    <th>Codigo FJ</th>
-                    <th>Nivel</th>
-                    <th>Criado em</th>
-                    <th>Acoes</th>
+                    <th>${escapeHtml(t("thLogin"))}</th>
+                    <th>${escapeHtml(t("thName"))}</th>
+                    <th>${escapeHtml(t("thCodigoFJ"))}</th>
+                    <th>${escapeHtml(t("thLevel"))}</th>
+                    <th>${escapeHtml(t("thCreatedAt"))}</th>
+                    <th>${escapeHtml(t("thActions"))}</th>
                 </tr>
             </thead>
             <tbody>
@@ -151,7 +276,7 @@ function renderTable(items) {
         const selectedClass = item.login === editingLogin ? "is-selected" : "";
         const displayName = item.name || "-";
         const displayCodigoFJ = item.codigoFJ || "-";
-        const accessClass = `access-${String(item.accessLabel || "").toLowerCase()}`;
+        const accessClass = `access-${Number(item.accessLevel || 0)}`;
 
         html += `
             <tr class="${selectedClass}">
@@ -161,8 +286,8 @@ function renderTable(items) {
                 <td><span class="access-pill ${accessClass}">${escapeHtml(item.accessLabel)}</span></td>
                 <td>${escapeHtml(item.createdAt || "-")}</td>
                 <td class="actions-cell">
-                    <button class="row-btn row-btn-edit" type="button" data-edit="${escapeHtmlAttr(item.login)}">Editar</button>
-                    <button class="row-btn row-btn-password" type="button" data-password="${escapeHtmlAttr(item.login)}">Senha</button>
+                    <button class="row-btn row-btn-edit" type="button" data-edit="${escapeHtmlAttr(item.login)}">${escapeHtml(t("edit"))}</button>
+                    <button class="row-btn row-btn-password" type="button" data-password="${escapeHtmlAttr(item.login)}">${escapeHtml(t("password"))}</button>
                 </td>
             </tr>
         `;
@@ -248,11 +373,11 @@ function closeUserModal() {
 
 function syncUserModeState() {
     const isEdit = currentModalMode === "edit" && !!editingLogin;
-    document.getElementById("userFormTitle").textContent = isEdit ? "Editar Usuario" : "Novo Usuario";
+    document.getElementById("userFormTitle").textContent = isEdit ? t("userEditTitle") : t("userCreateTitle");
     document.getElementById("userFormSubtitle").textContent = isEdit
-        ? `Ajuste os dados e o nivel de acesso de ${editingLogin}.`
-        : "Cadastre um novo usuario com o nivel de acesso correto.";
-    document.getElementById("btnSaveUserModal").textContent = isEdit ? "Salvar Alteracoes" : "Cadastrar";
+        ? t("userEditSubtitle")(editingLogin)
+        : t("userCreateSubtitle");
+    document.getElementById("btnSaveUserModal").textContent = isEdit ? t("saveChanges") : t("register");
     document.getElementById("createPasswordBlock").classList.toggle("hidden", isEdit);
 }
 
@@ -283,7 +408,7 @@ function openPasswordModal(login) {
     document.getElementById("txtPasswordLogin").value = user.login;
     document.getElementById("txtNewPassword").value = "";
     document.getElementById("txtConfirmNewPassword").value = "";
-    document.getElementById("passwordSubtitle").textContent = `Defina uma nova senha para ${user.login}.`;
+    document.getElementById("passwordSubtitle").textContent = t("resetPasswordSubtitle")(user.login);
     document.getElementById("passwordModal").classList.remove("hidden");
 }
 
@@ -292,12 +417,13 @@ function closePasswordModal() {
     document.getElementById("txtPasswordLogin").value = "";
     document.getElementById("txtNewPassword").value = "";
     document.getElementById("txtConfirmNewPassword").value = "";
+    document.getElementById("passwordSubtitle").textContent = t("resetPasswordDefaultSubtitle");
     document.getElementById("passwordModal").classList.add("hidden");
 }
 
 function submitPasswordReset() {
     if (!passwordTargetLogin) {
-        alert("Selecione um usuario para redefinir a senha.");
+        alert(t("selectPasswordUser"));
         return;
     }
 
@@ -311,6 +437,10 @@ function submitPasswordReset() {
 function getAccessLabel(accessLevel) {
     const match = accessLevels.find(item => Number(item.value) === Number(accessLevel));
     return match ? match.label : "-";
+}
+
+function t(key) {
+    return I18N[state.locale]?.[key] ?? I18N["pt-BR"]?.[key] ?? key;
 }
 
 function escapeHtml(value) {

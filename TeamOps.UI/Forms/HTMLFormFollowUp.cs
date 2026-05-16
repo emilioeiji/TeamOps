@@ -33,6 +33,7 @@ namespace TeamOps.UI.Forms
         {
             InitializeComponent();
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            Text = L("Cadastro de acompanhamento", "\u30d5\u30a9\u30ed\u30fc\u767b\u9332");
 
             _factory = factory;
             _user = user;
@@ -113,27 +114,58 @@ namespace TeamOps.UI.Forms
         private void LoadInitial()
         {
             var shifts = _shiftRepo.GetAll()
-                .Select(x => new { id = x.Id, name = x.NamePt })
+                .Select(x => new
+                {
+                    id = x.Id,
+                    namePt = x.NamePt,
+                    nameJp = string.IsNullOrWhiteSpace(x.NameJp) ? x.NamePt : x.NameJp
+                })
                 .ToList();
 
             var sectors = _sectorRepo.GetAll()
-                .Select(x => new { id = x.Id, name = x.NamePt })
+                .Select(x => new
+                {
+                    id = x.Id,
+                    namePt = x.NamePt,
+                    nameJp = string.IsNullOrWhiteSpace(x.NameJp) ? x.NamePt : x.NameJp
+                })
                 .ToList();
 
             var reasons = _reasonRepo.GetAll()
-                .Select(x => new { id = x.Id, name = x.NamePt })
+                .Select(x => new
+                {
+                    id = x.Id,
+                    namePt = x.NamePt,
+                    nameJp = string.IsNullOrWhiteSpace(x.NameJp) ? x.NamePt : x.NameJp
+                })
                 .ToList();
 
             var types = _typeRepo.GetAll()
-                .Select(x => new { id = x.Id, name = x.NamePt })
+                .Select(x => new
+                {
+                    id = x.Id,
+                    namePt = x.NamePt,
+                    nameJp = string.IsNullOrWhiteSpace(x.NameJp) ? x.NamePt : x.NameJp
+                })
                 .ToList();
 
             var locals = _localRepo.GetAll()
-                .Select(x => new { id = x.Id, name = x.NamePt, sectorId = x.SectorId })
+                .Select(x => new
+                {
+                    id = x.Id,
+                    namePt = x.NamePt,
+                    nameJp = string.IsNullOrWhiteSpace(x.NameJp) ? x.NamePt : x.NameJp,
+                    sectorId = x.SectorId
+                })
                 .ToList();
 
             var equipments = _equipmentRepo.GetAll()
-                .Select(x => new { id = x.Id, name = x.NamePt })
+                .Select(x => new
+                {
+                    id = x.Id,
+                    namePt = x.NamePt,
+                    nameJp = string.IsNullOrWhiteSpace(x.NameJp) ? x.NamePt : x.NameJp
+                })
                 .ToList();
 
             var operators = _operatorRepo.GetAll()
@@ -141,22 +173,28 @@ namespace TeamOps.UI.Forms
                 .Select(x => new
                 {
                     codigoFJ = x.CodigoFJ,
-                    nameRomanji = x.NameRomanji,
-                    nameNihongo = x.NameNihongo,
+                    namePt = string.IsNullOrWhiteSpace(x.NameRomanji) ? x.CodigoFJ : x.NameRomanji,
+                    nameJp = string.IsNullOrWhiteSpace(x.NameNihongo)
+                        ? (string.IsNullOrWhiteSpace(x.NameRomanji) ? x.CodigoFJ : x.NameRomanji)
+                        : x.NameNihongo,
                     shiftId = x.ShiftId,
-                    sectorId = x.SectorId
+                    sectorId = x.SectorId,
+                    isLeader = x.IsLeader
                 })
                 .ToList();
 
             PostJson(new
             {
                 type = "init",
+                locale = Program.CurrentLocale,
                 data = new
                 {
                     header = new
                     {
-                        title = "Cadastro de acompanhamento",
-                        subtitle = "Registro rapido de erros, orientacoes e observacoes do operador."
+                        title = L("Cadastro de acompanhamento", "\u30d5\u30a9\u30ed\u30fc\u767b\u9332"),
+                        subtitle = L(
+                            "Registro rapido de erros, orientacoes e observacoes do operador.",
+                            "\u4f5c\u696d\u8005\u306e\u30a8\u30e9\u30fc\u3001\u6307\u5c0e\u3001\u6c17\u4ed8\u304d\u3092\u7c21\u5358\u306b\u8a18\u9332\u3057\u307e\u3059\u3002")
                     },
                     lookups = new
                     {
@@ -174,9 +212,24 @@ namespace TeamOps.UI.Forms
                         shiftId = _currentOperator.ShiftId,
                         sectorId = _currentOperator.SectorId,
                         executorCodigoFJ = _currentOperator.CodigoFJ,
-                        executorName = _currentOperator.NameRomanji,
-                        creatorName = _user.Name,
-                        currentOperatorName = _currentOperator.NameRomanji,
+                        executorNamePt = string.IsNullOrWhiteSpace(_currentOperator.NameRomanji)
+                            ? _currentOperator.CodigoFJ
+                            : _currentOperator.NameRomanji,
+                        executorNameJp = string.IsNullOrWhiteSpace(_currentOperator.NameNihongo)
+                            ? (string.IsNullOrWhiteSpace(_currentOperator.NameRomanji)
+                                ? _currentOperator.CodigoFJ
+                                : _currentOperator.NameRomanji)
+                            : _currentOperator.NameNihongo,
+                        creatorNamePt = _user.Name,
+                        creatorNameJp = _user.Name,
+                        currentOperatorNamePt = string.IsNullOrWhiteSpace(_currentOperator.NameRomanji)
+                            ? _currentOperator.CodigoFJ
+                            : _currentOperator.NameRomanji,
+                        currentOperatorNameJp = string.IsNullOrWhiteSpace(_currentOperator.NameNihongo)
+                            ? (string.IsNullOrWhiteSpace(_currentOperator.NameRomanji)
+                                ? _currentOperator.CodigoFJ
+                                : _currentOperator.NameRomanji)
+                            : _currentOperator.NameNihongo,
                         currentOperatorCodigo = _currentOperator.CodigoFJ
                     },
                     logoUrl = "https://assets/logo_rodape.png"
@@ -231,7 +284,9 @@ namespace TeamOps.UI.Forms
                 data = new
                 {
                     id = newId,
-                    message = "Acompanhamento salvo com sucesso."
+                    message = L(
+                        "Acompanhamento salvo com sucesso.",
+                        "\u30d5\u30a9\u30ed\u30fc\u3092\u4fdd\u5b58\u3057\u307e\u3057\u305f\u3002")
                 }
             });
         }
@@ -239,36 +294,47 @@ namespace TeamOps.UI.Forms
         private static string ValidatePayload(JsRequest msg)
         {
             if (msg.shiftId <= 0)
-                return "Selecione o turno.";
+                return L("Selecione o turno.", "\u30b7\u30d5\u30c8\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002");
 
             if (msg.sectorId <= 0)
-                return "Selecione o setor.";
+                return L("Selecione o setor.", "\u30bb\u30af\u30bf\u30fc\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002");
 
             if (string.IsNullOrWhiteSpace(msg.operatorCodigoFJ))
-                return "Selecione o operador.";
+                return L("Selecione o operador.", "\u4f5c\u696d\u8005\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002");
 
             if (string.IsNullOrWhiteSpace(msg.executorCodigoFJ))
-                return "Selecione o executor.";
+                return L("Selecione o executor.", "\u5b9f\u65bd\u8005\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002");
 
             if (msg.reasonId <= 0)
-                return "Selecione o motivo.";
+                return L("Selecione o motivo.", "\u7406\u7531\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002");
 
             if (msg.typeId <= 0)
-                return "Selecione o tipo.";
+                return L("Selecione o tipo.", "\u7a2e\u5225\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002");
 
             if (msg.localId <= 0)
-                return "Selecione o local.";
+                return L("Selecione o local.", "\u5834\u6240\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002");
 
             if (msg.equipmentId <= 0)
-                return "Selecione o equipamento.";
+                return L("Selecione o equipamento.", "\u8a2d\u5099\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002");
 
             if (string.IsNullOrWhiteSpace(msg.description))
-                return "Digite a descricao.";
+                return L(
+                    "Digite a descricao.",
+                    "\u5185\u5bb9\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002");
 
             if (string.IsNullOrWhiteSpace(msg.guidance))
-                return "Digite a orientacao.";
+                return L(
+                    "Digite a orientacao.",
+                    "\u6307\u5c0e\u5185\u5bb9\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002");
 
             return "";
+        }
+
+        private static string L(string pt, string jp)
+        {
+            return string.Equals(Program.CurrentLocale, "ja-JP", StringComparison.OrdinalIgnoreCase)
+                ? jp
+                : pt;
         }
 
         private void PostJson(object payload)

@@ -97,6 +97,8 @@
         public string dueDate { get; set; } = string.Empty;
         public string leaderCodigoFJ { get; set; } = string.Empty;
         public string taskStatus { get; set; } = string.Empty;
+        public string trainerCodigoFJ { get; set; } = string.Empty;
+        public string masterCardStatus { get; set; } = string.Empty;
 
         // ============================
         // ANEXOS DO EDITAR

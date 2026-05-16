@@ -28,7 +28,7 @@ const I18N = {
         title: "Operadores - TeamOps",
         badge: "Visao gerencial",
         heading: "Operadores",
-        subtitle: "Consolidado de presenca, producao, follow-up e ocorrencias do Haidai.",
+        subtitle: "Consolidado de presenca, producao, follow-up, MasterCard e ocorrencias do Haidai.",
         windowLabel: "Janela analisada",
         period: "Periodo",
         shift: "Turno",
@@ -47,26 +47,47 @@ const I18N = {
         noHistory: "Nenhum historico encontrado no periodo.",
         noFollowUps: "Nenhum follow-up registrado no periodo.",
         btnFollowHistory: "Abrir historico detalhado",
+        masterCards: "MasterCards",
         presence: "Presenca",
         production: "Producao",
         dailyHistory: "Historico diario",
         recentFollowUps: "Follow-ups recentes",
+        noMasterCards: "Nenhum MasterCard registrado no periodo.",
         started: "Admissao",
         roleTrainer: "Treinador",
         roleLeader: "Lider",
         metricPresence: "% presenca",
-        metricCoverage: "% cobertura",
+        metricCoverage: "% cobertura escala",
         metricScheduled: "Dias escalados",
-        metricPresent: "Dias presentes",
+        metricPresent: "Dias conformes",
         metricYukyu: "Yukyu",
         metricFalta: "Faltas",
         metricLate: "Atrasos",
         metricEarly: "Saida antecipada",
         metricPending: "Todoke pendente",
         metricFollow: "Follow-ups",
+        metricMasterTotal: "MasterCards",
+        metricMasterFollow: "MC em follow",
+        metricMasterOverdue: "Follow vencido",
+        metricMasterSoon: "Follow 7 dias",
         productionMinutes: "Minutos estimados rodando",
         productionKadouritsu: "Kadouritsu estimado",
         productionAreas: "Areas recentes",
+        masterEquipment: "Equipamento",
+        masterSector: "Setor",
+        masterStart: "Inicio",
+        masterConcluded: "Concluido",
+        masterFollowDate: "Follow",
+        masterFinalized: "Finalizado",
+        masterNotes: "Observacoes",
+        masterStatusInProgress: "Andamento",
+        masterStatusFollow: "Follow",
+        masterStatusCompleted: "Finalizado",
+        masterStateOverdue: "Vencido",
+        masterStateDueSoon: "Proximo",
+        masterStateScheduled: "Agendado",
+        masterStateInProgress: "Em andamento",
+        masterStateCompleted: "Fechado",
         historyDate: "Data",
         historyStatus: "Status",
         historyArea: "Area",
@@ -81,7 +102,7 @@ const I18N = {
         title: "Operators - TeamOps",
         badge: "Management view",
         heading: "Operators",
-        subtitle: "Attendance, production, follow-up, and Haidai events in one view.",
+        subtitle: "Attendance, production, follow-up, MasterCard, and Haidai events in one view.",
         windowLabel: "Analysis window",
         period: "Period",
         shift: "Shift",
@@ -100,26 +121,47 @@ const I18N = {
         noHistory: "No history found in this period.",
         noFollowUps: "No follow-up records in this period.",
         btnFollowHistory: "Open detailed history",
+        masterCards: "MasterCards",
         presence: "Attendance",
         production: "Production",
         dailyHistory: "Daily history",
         recentFollowUps: "Recent follow-ups",
+        noMasterCards: "No MasterCards found in this period.",
         started: "Start date",
         roleTrainer: "Trainer",
         roleLeader: "Leader",
         metricPresence: "% attendance",
-        metricCoverage: "% coverage",
+        metricCoverage: "% lineup coverage",
         metricScheduled: "Scheduled days",
-        metricPresent: "Present days",
+        metricPresent: "Compliant days",
         metricYukyu: "Yukyu",
         metricFalta: "Absences",
         metricLate: "Late",
         metricEarly: "Early leave",
         metricPending: "Pending todoke",
         metricFollow: "Follow-ups",
+        metricMasterTotal: "MasterCards",
+        metricMasterFollow: "MC follow",
+        metricMasterOverdue: "Follow overdue",
+        metricMasterSoon: "Follow 7 days",
         productionMinutes: "Estimated running minutes",
         productionKadouritsu: "Estimated kadouritsu",
         productionAreas: "Recent areas",
+        masterEquipment: "Equipment",
+        masterSector: "Sector",
+        masterStart: "Start",
+        masterConcluded: "Concluded",
+        masterFollowDate: "Follow",
+        masterFinalized: "Completed",
+        masterNotes: "Notes",
+        masterStatusInProgress: "In progress",
+        masterStatusFollow: "Follow",
+        masterStatusCompleted: "Completed",
+        masterStateOverdue: "Overdue",
+        masterStateDueSoon: "Due soon",
+        masterStateScheduled: "Scheduled",
+        masterStateInProgress: "In progress",
+        masterStateCompleted: "Closed",
         historyDate: "Date",
         historyStatus: "Status",
         historyArea: "Area",
@@ -315,6 +357,7 @@ function renderReport(data) {
     state.selectedCodigoFJ = data.codigoFJ || "";
 
     const presence = data.presence || {};
+    const masterCards = data.masterCards || {};
     const production = data.production || {};
     const followUps = data.followUps || [];
     const dailyHistory = data.dailyHistory || [];
@@ -346,6 +389,7 @@ function renderReport(data) {
             ${metricCard(t("metricEarly"), presence.earlyLeaveDays ?? 0)}
             ${metricCard(t("metricPending"), presence.pendingTodokeCount ?? 0, "warn")}
             ${metricCard(t("metricFollow"), presence.followUpCount ?? 0)}
+            ${renderMasterCardMetricCards(masterCards)}
         </section>
 
         <section class="content-grid">
@@ -386,13 +430,22 @@ function renderReport(data) {
 
             <article class="panel-card">
                 <div class="panel-head">
-                    <h3>${escapeHtml(t("recentFollowUps"))}</h3>
+                    <h3>${escapeHtml(t("masterCards"))}</h3>
                 </div>
                 <div class="follow-list">
-                    ${renderFollowUps(followUps)}
+                    ${renderMasterCards(masterCards.items || [])}
                 </div>
             </article>
         </section>
+
+        <article class="panel-card panel-card-full">
+            <div class="panel-head">
+                <h3>${escapeHtml(t("recentFollowUps"))}</h3>
+            </div>
+            <div class="follow-list">
+                ${renderFollowUps(followUps)}
+            </div>
+        </article>
 
         <article class="panel-card panel-card-full">
             <div class="panel-head">
@@ -463,6 +516,28 @@ function renderFollowUps(items) {
     `).join("");
 }
 
+function renderMasterCards(items) {
+    if (!items.length) {
+        return `<div class="panel-empty">${escapeHtml(t("noMasterCards"))}</div>`;
+    }
+
+    return items.map(item => `
+        <article class="follow-card master-card">
+            <div class="follow-head">
+                <strong>${escapeHtml(item.equipmentName || t("na"))}</strong>
+                <span class="master-state master-state-${escapeHtmlAttr(item.followState || "none")}">${escapeHtml(masterStateLabel(item.followState, item.status))}</span>
+            </div>
+            <div class="follow-badges">
+                <span>${escapeHtml(statusLabel(item.status))}</span>
+                <span>${escapeHtml(item.sectorName || t("na"))}</span>
+            </div>
+            <p>${escapeHtml(t("masterStart"))}: ${escapeHtml(formatDateOnly(item.startDateIso))}</p>
+            <p>${escapeHtml(t("masterFollowDate"))}: ${escapeHtml(formatDateOnly(item.followDateIso))}</p>
+            <small>${escapeHtml(t("masterNotes"))}: ${escapeHtml(item.notes || t("na"))}</small>
+        </article>
+    `).join("");
+}
+
 function renderDailyHistory(items) {
     if (!items.length) {
         return `<tr><td colspan="5" class="table-empty">${escapeHtml(t("noHistory"))}</td></tr>`;
@@ -495,6 +570,56 @@ function metricCard(label, value, tone = "") {
             <strong>${escapeHtml(String(value))}</strong>
         </div>
     `;
+}
+
+function renderMasterCardMetricCards(masterCards) {
+    const cards = [
+        metricCard(t("metricMasterTotal"), masterCards.totalCount ?? 0)
+    ];
+
+    if ((masterCards.followCount ?? 0) > 0) {
+        cards.push(metricCard(t("metricMasterFollow"), masterCards.followCount, "accent-soft"));
+    }
+
+    if ((masterCards.overdueFollowCount ?? 0) > 0) {
+        cards.push(metricCard(t("metricMasterOverdue"), masterCards.overdueFollowCount, "danger"));
+    }
+
+    if ((masterCards.dueSoonFollowCount ?? 0) > 0) {
+        cards.push(metricCard(t("metricMasterSoon"), masterCards.dueSoonFollowCount, "warn"));
+    }
+
+    return cards.join("");
+}
+
+function statusLabel(status) {
+    switch (status) {
+        case "in_progress":
+            return t("masterStatusInProgress");
+        case "follow":
+            return t("masterStatusFollow");
+        case "completed":
+            return t("masterStatusCompleted");
+        default:
+            return status || t("na");
+    }
+}
+
+function masterStateLabel(followState, status) {
+    switch (followState) {
+        case "overdue":
+            return t("masterStateOverdue");
+        case "due_soon":
+            return t("masterStateDueSoon");
+        case "scheduled":
+            return t("masterStateScheduled");
+        case "in_progress":
+            return t("masterStateInProgress");
+        case "completed":
+            return t("masterStateCompleted");
+        default:
+            return statusLabel(status);
+    }
 }
 
 function localizedName(name, nameJp) {

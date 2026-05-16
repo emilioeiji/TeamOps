@@ -7,8 +7,8 @@
 </head>
 <body>
     <div class="toolbar no-print">
-        <button id="btnPrint" class="btn-primary" type="button">Imprimir</button>
-        <button id="btnPdf" class="btn-secondary" type="button">Salvar PDF</button>
+        <button id="btnPrint" class="btn-primary" type="button" data-i18n="print">Imprimir</button>
+        <button id="btnPdf" class="btn-secondary" type="button" data-i18n="savePdf">Salvar PDF</button>
     </div>
 
     <main id="sheet" class="sheet">
@@ -16,47 +16,47 @@
             <div>
                 <p class="eyebrow" id="reportSubtitle">Formulario individual para impressao</p>
                 <h1 id="reportTitle">FOLLOW-UP REPORT</h1>
-                <p class="generated">Gerado em <span id="generatedAt">-</span></p>
+                <p class="generated"><span data-i18n="generatedAtPrefix">Gerado em</span> <span id="generatedAt">-</span></p>
             </div>
             <img id="logo" class="brand-logo" alt="TeamOps">
         </header>
 
         <section class="hero-card">
             <div>
-                <span class="section-label">Operador</span>
+                <span class="section-label" data-i18n="operatorLabel">Operador</span>
                 <h2 id="operatorName">-</h2>
                 <p id="operatorCode">-</p>
             </div>
             <div class="hero-meta">
                 <div class="meta-item">
-                    <span>Admissao</span>
+                    <span data-i18n="startDate">Admissao</span>
                     <strong id="startDate">-</strong>
                 </div>
                 <div class="meta-item">
-                    <span>Data</span>
+                    <span data-i18n="followDate">Data</span>
                     <strong id="followDate">-</strong>
                 </div>
             </div>
         </section>
 
         <section class="detail-grid">
-            <article class="detail-card"><span class="section-label">Turno</span><strong id="shift">-</strong></article>
-            <article class="detail-card"><span class="section-label">Executor</span><strong id="executor">-</strong></article>
-            <article class="detail-card"><span class="section-label">Testemunha</span><strong id="witness">-</strong></article>
-            <article class="detail-card"><span class="section-label">Motivo</span><strong id="reason">-</strong></article>
-            <article class="detail-card"><span class="section-label">Tipo</span><strong id="type">-</strong></article>
-            <article class="detail-card"><span class="section-label">Local</span><strong id="local">-</strong></article>
-            <article class="detail-card"><span class="section-label">Equipamento</span><strong id="equipment">-</strong></article>
-            <article class="detail-card"><span class="section-label">Setor</span><strong id="sector">-</strong></article>
+            <article class="detail-card"><span class="section-label" data-i18n="shift">Turno</span><strong id="shift">-</strong></article>
+            <article class="detail-card"><span class="section-label" data-i18n="executor">Executor</span><strong id="executor">-</strong></article>
+            <article class="detail-card"><span class="section-label" data-i18n="witness">Testemunha</span><strong id="witness">-</strong></article>
+            <article class="detail-card"><span class="section-label" data-i18n="reason">Motivo</span><strong id="reason">-</strong></article>
+            <article class="detail-card"><span class="section-label" data-i18n="type">Tipo</span><strong id="type">-</strong></article>
+            <article class="detail-card"><span class="section-label" data-i18n="local">Local</span><strong id="local">-</strong></article>
+            <article class="detail-card"><span class="section-label" data-i18n="equipment">Equipamento</span><strong id="equipment">-</strong></article>
+            <article class="detail-card"><span class="section-label" data-i18n="sector">Setor</span><strong id="sector">-</strong></article>
         </section>
 
         <section class="content-card">
-            <span class="section-label">Descricao</span>
+            <span class="section-label" data-i18n="description">Descricao</span>
             <div id="description" class="content-box">-</div>
         </section>
 
         <section class="content-card">
-            <span class="section-label">Orientacao</span>
+            <span class="section-label" data-i18n="guidance">Orientacao</span>
             <div id="guidance" class="content-box">-</div>
         </section>
     </main>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>MasterCard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="header-bar">
+        <span id="txtHeaderTitle">Controle de MasterCard</span>
+    </div>
+
+    <div class="page-shell">
+        <section class="hero-card">
+            <div class="hero-copy">
+                <p id="txtEyebrow" class="eyebrow">Treinamento Operacional</p>
+                <h1 id="txtHeroTitle">Controle do que foi ensinado, quem treinou e quando deve acontecer o follow</h1>
+                <p id="txtHeroText" class="hero-text">
+                    Use este fluxo para registrar o treinamento, concluir o MasterCard e acompanhar o follow de 30 dias ate a finalizacao.
+                </p>
+            </div>
+
+            <div class="metrics-strip">
+                <div class="metric-card">
+                    <span id="txtMetricInProgress" class="metric-label">Andamento</span>
+                    <strong id="metricInProgress">0</strong>
+                </div>
+                <div class="metric-card">
+                    <span id="txtMetricFollow" class="metric-label">Follow</span>
+                    <strong id="metricFollow">0</strong>
+                </div>
+                <div class="metric-card">
+                    <span id="txtMetricCompleted" class="metric-label">Finalizados</span>
+                    <strong id="metricCompleted">0</strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="table-card">
+            <div class="panel-top">
+                <div class="title-stack">
+                    <h2 id="txtTableTitle">MasterCards cadastrados</h2>
+                    <p id="screenSubtitle">Cadastro por lideranca, com foco em treinamento, follow e historico.</p>
+                </div>
+
+                <div class="header-actions">
+                    <label class="header-toggle" for="toggleShowCompleted">
+                        <input id="toggleShowCompleted" type="checkbox">
+                        <span id="txtShowCompleted">Mostrar finalizados</span>
+                    </label>
+
+                    <div class="filter-group">
+                        <label id="txtStatusLabel" for="statusFilter">Status</label>
+                        <select id="statusFilter" class="input">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+
+                    <div class="search-group">
+                        <label id="txtSearchLabel" for="searchInput">Buscar</label>
+                        <input id="searchInput" class="input" type="text" placeholder="Operador, treinador, setor ou equipamento...">
+                    </div>
+
+                    <button id="btnHeaderNovo" type="button" class="btn-primary">Novo MasterCard</button>
+                </div>
+            </div>
+
+            <div id="tableContainer" class="table-container">
+                Carregando...
+            </div>
+        </section>
+    </div>
+
+    <div id="masterCardModal" class="modal-shell hidden">
+        <div id="modalBackdrop" class="modal-backdrop"></div>
+        <section class="modal-card">
+            <div class="modal-top">
+                <div class="title-stack">
+                    <h2 id="formTitle">Novo MasterCard</h2>
+                    <p id="formSubtitle">Registre o operador treinado, treinador e os dados base do acompanhamento.</p>
+                </div>
+
+                <button id="btnCloseModal" type="button" class="icon-close" aria-label="Fechar modal">X</button>
+            </div>
+
+            <div id="metaSummary" class="meta-summary hidden">
+                <div class="meta-item">
+                    <span id="txtMetaCreatedBy" class="meta-label">Criado por</span>
+                    <strong id="metaCreatedBy">-</strong>
+                </div>
+                <div class="meta-item">
+                    <span id="txtMetaCreatedAt" class="meta-label">Criado em</span>
+                    <strong id="metaCreatedAt">-</strong>
+                </div>
+                <div class="meta-item">
+                    <span id="txtMetaUpdatedAt" class="meta-label">Atualizado em</span>
+                    <strong id="metaUpdatedAt">-</strong>
+                </div>
+                <div class="meta-item">
+                    <span id="txtMetaConcludedAt" class="meta-label">Concluido em</span>
+                    <strong id="metaConcludedAt">-</strong>
+                </div>
+                <div class="meta-item">
+                    <span id="txtMetaFollowDate" class="meta-label">Data do Follow</span>
+                    <strong id="metaFollowDate">-</strong>
+                </div>
+                <div class="meta-item">
+                    <span id="txtMetaFinalizedAt" class="meta-label">Finalizado em</span>
+                    <strong id="metaFinalizedAt">-</strong>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label id="txtOperatorLabel" for="cmbOperator">Operador</label>
+                    <select id="cmbOperator" class="input">
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label id="txtTrainerLabel" for="cmbTrainer">Treinador</label>
+                    <select id="cmbTrainer" class="input">
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label id="txtStartDateLabel" for="dtStartDate">Data de inicio</label>
+                    <input id="dtStartDate" class="input" type="date">
+                </div>
+
+                <div class="form-group">
+                    <label id="txtSectorLabel" for="cmbSector">Setor</label>
+                    <select id="cmbSector" class="input">
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label id="txtEquipmentLabel" for="cmbEquipment">Equipamento</label>
+                    <select id="cmbEquipment" class="input">
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label id="txtStatusValueLabel" for="txtStatusValue">Status</label>
+                    <input id="txtStatusValue" class="input" type="text" readonly>
+                </div>
+
+                <div class="form-group form-group-span-2">
+                    <label id="txtNotesLabel" for="txtNotes">Observacoes</label>
+                    <textarea id="txtNotes" class="input input-textarea" rows="3" placeholder="Anote pontos importantes do treinamento, ressalvas ou combinados."></textarea>
+                </div>
+            </div>
+
+            <section id="historySection" class="history-section hidden">
+                <div class="history-top">
+                    <h3 id="txtHistoryTitle">Historico de Status</h3>
+                    <p id="txtHistorySubtitle">Ultimas alteracoes registradas para este MasterCard.</p>
+                </div>
+                <div id="historyList" class="history-list"></div>
+            </section>
+
+            <div class="modal-actions">
+                <button id="btnCancelModal" type="button" class="btn-secondary">Cancelar</button>
+                <button id="btnAdvanceStatus" type="button" class="btn-ghost hidden">Concluir</button>
+                <button id="btnSaveModal" type="button" class="btn-primary">Salvar</button>
+            </div>
+        </section>
+    </div>
+
+    <div id="viewModal" class="modal-shell hidden">
+        <div id="viewModalBackdrop" class="modal-backdrop"></div>
+        <section class="modal-card modal-card-view">
+            <div class="modal-top">
+                <div class="title-stack">
+                    <h2 id="viewTitle">Visualizar MasterCard</h2>
+                    <p id="viewSubtitle">Leitura completa do treinamento, follow e historico.</p>
+                </div>
+
+                <button id="btnCloseViewModal" type="button" class="icon-close" aria-label="Fechar modal">X</button>
+            </div>
+
+            <div class="meta-summary">
+                <div class="meta-item">
+                    <span id="txtViewStatus" class="meta-label">Status</span>
+                    <strong id="viewStatus">-</strong>
+                </div>
+                <div class="meta-item">
+                    <span id="txtViewOperator" class="meta-label">Operador</span>
+                    <strong id="viewOperator">-</strong>
+                </div>
+                <div class="meta-item">
+                    <span id="txtViewTrainer" class="meta-label">Treinador</span>
+                    <strong id="viewTrainer">-</strong>
+                </div>
+                <div class="meta-item">
+                    <span id="txtViewStartDate" class="meta-label">Inicio</span>
+                    <strong id="viewStartDate">-</strong>
+                </div>
+            </div>
+
+            <div class="meta-summary meta-summary-secondary">
+                <div class="meta-item">
+                    <span id="txtViewSector" class="meta-label">Setor</span>
+                    <strong id="viewSector">-</strong>
+                </div>
+                <div class="meta-item">
+                    <span id="txtViewEquipment" class="meta-label">Equipamento</span>
+                    <strong id="viewEquipment">-</strong>
+                </div>
+                <div class="meta-item">
+                    <span id="txtViewFollowDate" class="meta-label">Data do Follow</span>
+                    <strong id="viewFollowDate">-</strong>
+                </div>
+                <div class="meta-item">
+                    <span id="txtViewFinalizedAt" class="meta-label">Finalizado em</span>
+                    <strong id="viewFinalizedAt">-</strong>
+                </div>
+            </div>
+
+            <section class="description-panel">
+                <div class="history-top">
+                    <h3 id="txtViewDescriptionTitle">Resumo do treinamento</h3>
+                    <p id="txtViewDescriptionSubtitle">Referencia do equipamento e observacoes registradas.</p>
+                </div>
+                <div id="viewDescription" class="description-content">-</div>
+                <div id="viewNotes" class="description-content description-content-muted">-</div>
+            </section>
+
+            <section class="history-section">
+                <div class="history-top">
+                    <h3 id="txtViewHistoryTitle">Historico de Status</h3>
+                    <p id="txtViewHistorySubtitle">Acompanhe a evolucao do MasterCard ate o follow final.</p>
+                </div>
+                <div id="viewHistoryList" class="history-list"></div>
+            </section>
+
+            <div class="modal-actions">
+                <button id="btnCloseView" type="button" class="btn-secondary">Fechar</button>
+                <button id="btnEditFromView" type="button" class="btn-primary">Editar MasterCard</button>
+            </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

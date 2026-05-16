@@ -1,34 +1,65 @@
 {
   "1": {
-    "width": 780,
+    "width": 930,
     "height": 460,
     "locals": [
-      { "localId": 19, "x": 23, "y": 16, "w": 121, "h": 96 },
-      { "localId": 17, "x": 191, "y": 16, "w": 121, "h": 96 },
-      { "localId": 13, "x": 364, "y": 16, "w": 121, "h": 96 },
-      { "localId": 9, "x": 485, "y": 16, "w": 121, "h": 96 },
-      { "localId": 5, "x": 656, "y": 16, "w": 121, "h": 96 },
-      { "localId": 12, "x": 364, "y": 126, "w": 121, "h": 96 },
-      { "localId": 8, "x": 485, "y": 126, "w": 121, "h": 96 },
-      { "localId": 4, "x": 656, "y": 126, "w": 121, "h": 96 },
-      { "localId": 15, "x": 191, "y": 236, "w": 121, "h": 96 },
-      { "localId": 11, "x": 364, "y": 236, "w": 121, "h": 96 },
-      { "localId": 7, "x": 485, "y": 236, "w": 121, "h": 96 },
-      { "localId": 3, "x": 656, "y": 236, "w": 121, "h": 96 },
-      { "localId": 14, "x": 191, "y": 346, "w": 121, "h": 96 },
-      { "localId": 10, "x": 364, "y": 346, "w": 121, "h": 96 },
-      { "localId": 6, "x": 485, "y": 346, "w": 121, "h": 96 },
-      { "localId": 1, "x": 656, "y": 346, "w": 121, "h": 96 },
-      { "localId": 18, "x": 23, "y": 346, "w": 121, "h": 96 }
+      {
+        "localId": 19,
+        "x": 23,
+        "y": 16,
+        "w": 121,
+        "h": 96,
+        "header": "Area18",
+        "label": "2 cima | 1 baixo",
+        "splitDirection": "vertical",
+        "members": [
+          { "localId": 42, "label": "2" },
+          { "localId": 19, "label": "1" }
+        ]
+      },
+      { "localId": 0, "x": 23, "y": 236, "w": 121, "h": 96, "header": "Maisena", "matchCodes": ["MAISENA"] },
+      { "localId": 18, "x": 23, "y": 346, "w": 121, "h": 96, "header": "Area17" },
+      {
+        "localId": 17,
+        "x": 191,
+        "y": 16,
+        "w": 121,
+        "h": 96,
+        "header": "Area16",
+        "label": "2 esquerda | 1 direita",
+        "splitDirection": "horizontal",
+        "members": [
+          { "localId": 41, "label": "2" },
+          { "localId": 17, "label": "1" }
+        ]
+      },
+      { "localId": 16, "x": 191, "y": 236, "w": 121, "h": 96, "header": "Area14" },
+      { "localId": 14, "x": 191, "y": 346, "w": 121, "h": 96, "header": "Area13" },
+      { "localId": 97, "x": 798, "y": 16, "w": 109, "h": 206, "label": "GDAD -> DAD", "showInPresence": false, "showInExport": false },
+      { "localId": 13, "x": 364, "y": 16, "w": 121, "h": 96, "header": "Area12" },
+      { "localId": 12, "x": 364, "y": 126, "w": 121, "h": 96, "header": "Area11" },
+      { "localId": 11, "x": 364, "y": 236, "w": 121, "h": 96, "header": "Area10" },
+      { "localId": 10, "x": 364, "y": 346, "w": 121, "h": 96, "header": "Area9" },
+      { "localId": 9, "x": 485, "y": 16, "w": 121, "h": 96, "header": "Area8" },
+      { "localId": 8, "x": 485, "y": 126, "w": 121, "h": 96, "header": "Area7" },
+      { "localId": 7, "x": 485, "y": 236, "w": 121, "h": 96, "header": "Area6" },
+      { "localId": 6, "x": 485, "y": 346, "w": 121, "h": 96, "header": "Area5" },
+      { "localId": 5, "x": 656, "y": 16, "w": 121, "h": 96, "header": "Area4" },
+      { "localId": 4, "x": 656, "y": 126, "w": 121, "h": 96, "header": "Area3" },
+      { "localId": 3, "x": 656, "y": 236, "w": 121, "h": 96, "header": "Area2" },
+      { "localId": 1, "x": 656, "y": 346, "w": 121, "h": 96, "header": "Area1" }
+    ],
+    "widgets": [
+      { "kind": "summary", "x": 191, "y": 126, "w": 121, "h": 96 }
     ],
     "corridors": [
-      { "x": 155, "y": 136, "w": 25, "h": 306, "rotate": true },
+      { "x": 155, "y": 126, "w": 25, "h": 316, "rotate": true },
       { "x": 321, "y": 106, "w": 25, "h": 336, "rotate": true },
       { "x": 615, "y": 120, "w": 31, "h": 322, "rotate": true }
     ]
   },
   "2": {
-    "width": 820,
+    "width": 930,
     "height": 390,
     "locals": [
       { "localId": 26, "x": 10, "y": 14, "w": 102, "h": 96 },
@@ -38,6 +69,7 @@
       { "localId": 22, "x": 454, "y": 14, "w": 102, "h": 96 },
       { "localId": 21, "x": 592, "y": 14, "w": 102, "h": 96 },
       { "localId": 20, "x": 694, "y": 14, "w": 102, "h": 96 },
+      { "localId": 98, "x": 806, "y": 14, "w": 110, "h": 362, "label": "GDAD -> G-Bareru", "showInPresence": false, "showInExport": false },
       { "localId": 33, "x": 10, "y": 147, "w": 102, "h": 96 },
       { "localId": 32, "x": 112, "y": 147, "w": 102, "h": 96 },
       { "localId": 31, "x": 214, "y": 147, "w": 102, "h": 96 },

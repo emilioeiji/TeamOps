@@ -6,106 +6,106 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-gray-100">
-    <div class="header-bar">
+    <div class="header-bar" data-i18n="headerBar">
         Sobra de Peca
     </div>
 
     <div class="page-shell">
         <section class="panel-card">
             <div class="title-stack">
-                <h2>Novo Registro</h2>
-                <p>Preencha os dados abaixo para registrar a sobra de peca.</p>
+                <h2 data-i18n="newRecordTitle">Novo Registro</h2>
+                <p data-i18n="newRecordSubtitle">Preencha os dados abaixo para registrar a sobra de peca.</p>
             </div>
 
             <div class="form-grid">
                 <div class="form-group">
-                    <label for="txtDate">Data</label>
+                    <label for="txtDate" data-i18n="labelDate">Data</label>
                     <input id="txtDate" class="input" type="date">
                 </div>
 
                 <div class="form-group">
-                    <label for="txtTurno">Turno</label>
+                    <label for="txtTurno" data-i18n="labelShift">Turno</label>
                     <input id="txtTurno" class="input" type="text" readonly>
                 </div>
 
                 <div class="form-group">
-                    <label for="txtLote">Lote</label>
+                    <label for="txtLote" data-i18n="labelLot">Lote</label>
                     <input id="txtLote" class="input" type="text" maxlength="120">
                 </div>
 
                 <div class="form-group">
-                    <label for="cmbOperador">Operador</label>
+                    <label for="cmbOperador" data-i18n="labelOperator">Operador</label>
                     <select id="cmbOperador" class="input">
-                        <option value="">Selecione...</option>
+                        <option value="" data-i18n="selectPlaceholder">Selecione...</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="txtTanjuu">Tanjuu</label>
+                    <label for="txtTanjuu" data-i18n="labelTanjuu">Tanjuu</label>
                     <input id="txtTanjuu" class="input" type="text" inputmode="decimal" placeholder="0,00">
                 </div>
 
                 <div class="form-group">
-                    <label for="txtPeso">Peso (g)</label>
+                    <label for="txtPeso" data-i18n="labelWeight">Peso (g)</label>
                     <input id="txtPeso" class="input" type="text" inputmode="decimal" placeholder="0,00">
                 </div>
 
                 <div class="form-group">
-                    <label for="txtQuantidade">Quantidade</label>
+                    <label for="txtQuantidade" data-i18n="labelQuantity">Quantidade</label>
                     <input id="txtQuantidade" class="input" type="text" readonly>
                 </div>
 
                 <div class="form-group">
-                    <label for="cmbMaquina">Maquina</label>
+                    <label for="cmbMaquina" data-i18n="labelMachine">Maquina</label>
                     <select id="cmbMaquina" class="input">
-                        <option value="">Selecione...</option>
+                        <option value="" data-i18n="selectPlaceholder">Selecione...</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="cmbShain">Shain</label>
+                    <label for="cmbShain" data-i18n="labelShain">Shain</label>
                     <select id="cmbShain" class="input">
-                        <option value="">Selecione...</option>
+                        <option value="" data-i18n="selectPlaceholder">Selecione...</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="txtItem">Item</label>
+                    <label for="txtItem" data-i18n="labelItem">Item</label>
                     <input id="txtItem" class="input" type="text" maxlength="120">
                 </div>
 
                 <div class="form-group">
-                    <label for="txtLider">Lider</label>
+                    <label for="txtLider" data-i18n="labelLeader">Lider</label>
                     <input id="txtLider" class="input" type="text" readonly>
                 </div>
             </div>
 
             <div class="form-group form-group-full">
-                <label for="txtObservacao">Observacao</label>
-                <textarea id="txtObservacao" class="input textarea" rows="4" placeholder="Detalhes complementares..."></textarea>
+                <label for="txtObservacao" data-i18n="labelObservation">Observacao</label>
+                <textarea id="txtObservacao" class="input textarea" rows="4" data-i18n-placeholder="observationPlaceholder" placeholder="Detalhes complementares..."></textarea>
             </div>
 
             <div class="modal-actions">
-                <button id="btnCancelar" type="button" class="btn-secondary">Cancelar</button>
-                <button id="btnSalvar" type="button" class="btn-primary">Salvar</button>
+                <button id="btnCancelar" type="button" class="btn-secondary" data-i18n="cancel">Cancelar</button>
+                <button id="btnSalvar" type="button" class="btn-primary" data-i18n="save">Salvar</button>
             </div>
         </section>
 
         <section class="table-card">
             <div class="panel-top">
                 <div class="title-stack">
-                    <h1>Sobra de Peca</h1>
-                    <p>Cadastro rapido com historico dos ultimos 100 registros</p>
+                    <h1 data-i18n="listTitle">Sobra de Peca</h1>
+                    <p data-i18n="listSubtitle">Cadastro rapido com historico dos ultimos 100 registros</p>
                 </div>
 
                 <div class="search-group">
-                    <label for="searchInput">Buscar</label>
-                    <input id="searchInput" class="input" type="text" placeholder="Buscar lote, operador, maquina, item ou observacao...">
+                    <label for="searchInput" data-i18n="searchLabel">Buscar</label>
+                    <input id="searchInput" class="input" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="Buscar lote, operador, maquina, item ou observacao...">
                 </div>
             </div>
 
             <div id="tableContainer" class="table-container">
-                Carregando...
+                <span data-i18n="loading">Carregando...</span>
             </div>
         </section>
     </div>

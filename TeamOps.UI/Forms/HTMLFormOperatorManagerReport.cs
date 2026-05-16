@@ -204,6 +204,28 @@ namespace TeamOps.UI.Forms
                         presencePercent = report.Presence.PresencePercent,
                         coveragePercent = report.Presence.CoveragePercent
                     },
+                    masterCards = new
+                    {
+                        totalCount = report.MasterCards.TotalCount,
+                        inProgressCount = report.MasterCards.InProgressCount,
+                        followCount = report.MasterCards.FollowCount,
+                        completedCount = report.MasterCards.CompletedCount,
+                        overdueFollowCount = report.MasterCards.OverdueFollowCount,
+                        dueSoonFollowCount = report.MasterCards.DueSoonFollowCount,
+                        items = report.MasterCards.Items.Select(item => new
+                        {
+                            id = item.Id,
+                            equipmentName = item.EquipmentName,
+                            sectorName = item.SectorName,
+                            status = item.Status,
+                            startDateIso = item.StartDateIso,
+                            concludedAt = item.ConcludedAt,
+                            followDateIso = item.FollowDateIso,
+                            finalizedAt = item.FinalizedAt,
+                            notes = item.Notes,
+                            followState = item.FollowState
+                        })
+                    },
                     production = new
                     {
                         estimatedRunningMinutes = report.Production.EstimatedRunningMinutes,

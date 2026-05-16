@@ -31,6 +31,7 @@ namespace TeamOps.UI.Forms
         {
             InitializeComponent();
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            Text = L("Grafico Follow", "\u30d5\u30a9\u30ed\u30fc\u30b0\u30e9\u30d5");
 
             _followRepo = followRepo;
             _shiftRepo = shiftRepo;
@@ -103,6 +104,7 @@ namespace TeamOps.UI.Forms
             PostJson(new
             {
                 type = "init",
+                locale = Program.CurrentLocale,
                 data = new
                 {
                     filters = BuildFilterOptions(),
@@ -163,22 +165,22 @@ namespace TeamOps.UI.Forms
             var shifts = _shiftRepo.GetAll()
                 .Select(x => new { id = x.Id, name = x.NamePt })
                 .ToList();
-            shifts.Insert(0, new { id = 0, name = "Todos" });
+            shifts.Insert(0, new { id = 0, name = L("Todos", "\u3059\u3079\u3066") });
 
             var reasons = _reasonRepo.GetAll()
                 .Select(x => new { id = x.Id, name = x.NamePt })
                 .ToList();
-            reasons.Insert(0, new { id = 0, name = "Todos" });
+            reasons.Insert(0, new { id = 0, name = L("Todos", "\u3059\u3079\u3066") });
 
             var types = _typeRepo.GetAll()
                 .Select(x => new { id = x.Id, name = x.NamePt })
                 .ToList();
-            types.Insert(0, new { id = 0, name = "Todos" });
+            types.Insert(0, new { id = 0, name = L("Todos", "\u3059\u3079\u3066") });
 
             var sectors = _sectorRepo.GetAll()
                 .Select(x => new { id = x.Id, name = x.NamePt })
                 .ToList();
-            sectors.Insert(0, new { id = 0, name = "Todos" });
+            sectors.Insert(0, new { id = 0, name = L("Todos", "\u3059\u3079\u3066") });
 
             return new
             {
@@ -218,7 +220,7 @@ namespace TeamOps.UI.Forms
                 .GroupBy(x =>
                 {
                     var value = selector(x);
-                    return string.IsNullOrWhiteSpace(value) ? "Nao informado" : value.Trim();
+                    return string.IsNullOrWhiteSpace(value) ? L("Nao informado", "\u672a\u8a2d\u5b9a") : value.Trim();
                 })
                 .Select(g => new
                 {
@@ -312,6 +314,13 @@ namespace TeamOps.UI.Forms
             public int ReasonId { get; set; }
             public int TypeId { get; set; }
             public int SectorId { get; set; }
+        }
+
+        private static string L(string pt, string jp)
+        {
+            return string.Equals(Program.CurrentLocale, "ja-JP", StringComparison.OrdinalIgnoreCase)
+                ? jp
+                : pt;
         }
     }
 }

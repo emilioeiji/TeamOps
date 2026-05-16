@@ -21,6 +21,7 @@ const PERMISSION_RULES = {
     btnHaidai: 3,
     btnFollowUp: 2,
     btnTasks: 3,
+    btnMasterCard: 2,
     btnProduction: 3,
     btnHikitsugui: 2,
     btnHikitsuguiLeaderRead: 2,
@@ -41,10 +42,12 @@ const I18N = {
         metaOperator: "Operador",
         metaShift: "Turno",
         heroTitle: "Atalhos principais do time",
-        heroSubtitle: "Mesmo fluxo do dashboard atual, agora em HTML com layout mais leve e organizado.",
+        heroSubtitle: "",
         statDate: "Data e Hora",
         statProfile: "Perfil Atual",
         statTasks: "Tasks em Aberto",
+        statMasterInProgress: "MasterCard em Andamento",
+        statMasterFollow: "MasterCard em Follow",
         groupOpsTitle: "Operacao",
         groupOpsSubtitle: "Cadastros, acompanhamento e consulta de registros.",
         groupDocsTitle: "Hikitsugui e Documentos",
@@ -61,6 +64,8 @@ const I18N = {
         tileTasksSubtitle: "Planejamento do turno",
         tileProductionTitle: "Producao",
         tileProductionSubtitle: "Monitor de maquinas",
+        tileMasterCardTitle: "MasterCard",
+        tileMasterCardSubtitle: "Treinamento, follow e fechamento",
         tileScrapTitle: "Sobra de Peca",
         tileScrapSubtitle: "Lancamento de perdas",
         tileReportsTitle: "Relatorios",
@@ -95,10 +100,12 @@ const I18N = {
         metaOperator: "\u4f5c\u696d\u8005",
         metaShift: "\u30b7\u30d5\u30c8",
         heroTitle: "\u4e3b\u8981\u30b7\u30e7\u30fc\u30c8\u30ab\u30c3\u30c8",
-        heroSubtitle: "\u73fe\u5728\u306e\u30c0\u30c3\u30b7\u30e5\u30dc\u30fc\u30c9\u306e\u6d41\u308c\u306f\u305d\u306e\u307e\u307e\u306b\u3001HTML\u3067\u3088\u308a\u8efd\u304f\u6574\u7406\u3057\u305f\u69cb\u6210\u3067\u3059\u3002",
+        heroSubtitle: "",
         statDate: "\u65e5\u6642",
         statProfile: "\u73fe\u5728\u306e\u6a29\u9650",
         statTasks: "\u672a\u5b8c\u4e86\u30bf\u30b9\u30af",
+        statMasterInProgress: "MasterCard \u9032\u884c\u4e2d",
+        statMasterFollow: "MasterCard Follow",
         groupOpsTitle: "\u904b\u7528",
         groupOpsSubtitle: "\u767b\u9332\u3001\u30d5\u30a9\u30ed\u30fc\u3001\u8a18\u9332\u78ba\u8a8d\u3002",
         groupDocsTitle: "\u5f15\u7d99\u304e\u3068\u6587\u66f8",
@@ -115,6 +122,8 @@ const I18N = {
         tileTasksSubtitle: "\u30b7\u30d5\u30c8\u8a08\u753b",
         tileProductionTitle: "\u751f\u7523",
         tileProductionSubtitle: "\u8a2d\u5099\u30e2\u30cb\u30bf\u30fc",
+        tileMasterCardTitle: "MasterCard",
+        tileMasterCardSubtitle: "\u6559\u80b2\u30d5\u30ed\u30fc\u3068 Follow \u7ba1\u7406",
         tileScrapTitle: "\u88fd\u54c1\u6b8b\u308a",
         tileScrapSubtitle: "\u30ed\u30b9\u5165\u529b",
         tileReportsTitle: "\u30ec\u30dd\u30fc\u30c8",
@@ -195,6 +204,8 @@ function hydrateDashboard(payload) {
     refreshNames();
     setText("lblDate", formatDashboardDate(payload.dateIso, state.locale));
     setText("lblOpenTasks", payload.openTasksForShift ?? 0);
+    setText("lblMasterInProgress", payload.masterCardsInProgress ?? 0);
+    setText("lblMasterFollow", payload.masterCardsFollow ?? 0);
 
     const level = Number(payload.accessLevel ?? 0);
     const label = ACCESS_LABELS[state.locale]?.[level] || `Nivel ${level}`;
@@ -258,9 +269,12 @@ function setLocale(locale) {
     setText("txtMetaShift", strings.metaShift);
     setText("txtHeroTitle", strings.heroTitle);
     setText("txtHeroSubtitle", strings.heroSubtitle);
+    document.getElementById("txtHeroSubtitle").classList.toggle("hidden", !strings.heroSubtitle);
     setText("txtStatDate", strings.statDate);
     setText("txtStatProfile", strings.statProfile);
     setText("txtStatTasks", strings.statTasks);
+    setText("txtStatMasterInProgress", strings.statMasterInProgress);
+    setText("txtStatMasterFollow", strings.statMasterFollow);
     setText("txtGroupOpsTitle", strings.groupOpsTitle);
     setText("txtGroupOpsSubtitle", strings.groupOpsSubtitle);
     setText("txtGroupDocsTitle", strings.groupDocsTitle);
@@ -275,6 +289,8 @@ function setLocale(locale) {
     setText("txtTileFollowSubtitle", strings.tileFollowSubtitle);
     setText("txtTileTasksTitle", strings.tileTasksTitle);
     setText("txtTileTasksSubtitle", strings.tileTasksSubtitle);
+    setText("txtTileMasterCardTitle", strings.tileMasterCardTitle);
+    setText("txtTileMasterCardSubtitle", strings.tileMasterCardSubtitle);
     setText("txtTileProductionTitle", strings.tileProductionTitle);
     setText("txtTileProductionSubtitle", strings.tileProductionSubtitle);
     setText("txtTileScrapTitle", strings.tileScrapTitle);

@@ -24,6 +24,7 @@ namespace TeamOps.UI.Forms
         public HTMLFormOperators()
         {
             InitializeComponent();
+            Text = L("Cadastro de operadores", "\u4f5c\u696d\u8005\u767b\u9332");
 
             _factory = Program.ConnectionFactory;
             _opRepo = new OperatorRepository(_factory);
@@ -88,6 +89,7 @@ namespace TeamOps.UI.Forms
             PostJson(new
             {
                 type = "init",
+                locale = Program.CurrentLocale,
                 shifts = _shiftRepo.GetAll(),
                 groups = _groupRepo.GetAll(),
                 sectors = _sectorRepo.GetAll(),
@@ -103,14 +105,14 @@ namespace TeamOps.UI.Forms
                 ValidatePayload(msg, codigoFJ, false);
 
                 if (_opRepo.GetByCodigoFJ(codigoFJ) != null)
-                    throw new InvalidOperationException("Ja existe um operador com este Codigo FJ.");
+                    throw new InvalidOperationException(L("Ja existe um operador com este Codigo FJ.", "\u3053\u306e FJ \u30b3\u30fc\u30c9\u306e\u4f5c\u696d\u8005\u306f\u65e2\u306b\u5b58\u5728\u3057\u307e\u3059\u3002"));
 
                 _opRepo.Add(BuildOperator(msg, codigoFJ));
 
                 PostJson(new
                 {
                     type = "saved",
-                    message = "Operador cadastrado com sucesso."
+                    message = L("Operador cadastrado com sucesso.", "\u4f5c\u696d\u8005\u3092\u767b\u9332\u3057\u307e\u3057\u305f\u3002")
                 });
 
                 SendRows();
@@ -133,14 +135,14 @@ namespace TeamOps.UI.Forms
                 ValidatePayload(msg, codigoFJ, true);
 
                 if (_opRepo.GetByCodigoFJ(codigoFJ) == null)
-                    throw new InvalidOperationException("Operador nao encontrado para atualizacao.");
+                    throw new InvalidOperationException(L("Operador nao encontrado para atualizacao.", "\u66f4\u65b0\u5bfe\u8c61\u306e\u4f5c\u696d\u8005\u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093\u3002"));
 
                 _opRepo.Update(BuildOperator(msg, codigoFJ));
 
                 PostJson(new
                 {
                     type = "updated",
-                    message = "Operador atualizado com sucesso."
+                    message = L("Operador atualizado com sucesso.", "\u4f5c\u696d\u8005\u3092\u66f4\u65b0\u3057\u307e\u3057\u305f\u3002")
                 });
 
                 SendRows();
@@ -161,16 +163,18 @@ namespace TeamOps.UI.Forms
             {
                 var codigoFJ = NormalizeCodigoFJ(msg.codigoFJ);
                 if (string.IsNullOrWhiteSpace(codigoFJ))
-                    throw new InvalidOperationException("Selecione um operador para excluir.");
+                    throw new InvalidOperationException(L("Selecione um operador para excluir.", "\u524a\u9664\u3059\u308b\u4f5c\u696d\u8005\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
 
                 using var conn = _factory.CreateOpenConnection();
 
                 if (_opRepo.GetByCodigoFJ(codigoFJ) == null)
-                    throw new InvalidOperationException("Operador nao encontrado para exclusao.");
+                    throw new InvalidOperationException(L("Operador nao encontrado para exclusao.", "\u524a\u9664\u5bfe\u8c61\u306e\u4f5c\u696d\u8005\u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093\u3002"));
 
                 if (HasOperatorDependencies(conn, codigoFJ, out var dependencyTable))
                     throw new InvalidOperationException(
-                        $"Nao e possivel excluir este operador porque o Codigo FJ ja esta vinculado a registros em {dependencyTable}."
+                        L(
+                            $"Nao e possivel excluir este operador porque o Codigo FJ ja esta vinculado a registros em {dependencyTable}.",
+                            $"\u3053\u306e\u4f5c\u696d\u8005\u306f FJ \u30b3\u30fc\u30c9\u304c {dependencyTable} \u306e\u30ec\u30b3\u30fc\u30c9\u3068\u7d10\u4ed8\u3051\u3089\u308c\u3066\u3044\u308b\u305f\u3081\u524a\u9664\u3067\u304d\u307e\u305b\u3093\u3002")
                     );
 
                 _opRepo.Delete(codigoFJ);
@@ -178,7 +182,7 @@ namespace TeamOps.UI.Forms
                 PostJson(new
                 {
                     type = "deleted",
-                    message = "Operador excluido com sucesso."
+                    message = L("Operador excluido com sucesso.", "\u4f5c\u696d\u8005\u3092\u524a\u9664\u3057\u307e\u3057\u305f\u3002")
                 });
 
                 SendRows();
@@ -212,40 +216,40 @@ namespace TeamOps.UI.Forms
         private void ValidatePayload(JsRequest msg, string codigoFJ, bool isUpdate)
         {
             if (string.IsNullOrWhiteSpace(codigoFJ))
-                throw new InvalidOperationException("Informe o Codigo FJ.");
+                throw new InvalidOperationException(L("Informe o Codigo FJ.", "FJ \u30b3\u30fc\u30c9\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
 
             if (string.IsNullOrWhiteSpace(msg.nameRomanji))
-                throw new InvalidOperationException("Informe o nome Romanji.");
+                throw new InvalidOperationException(L("Informe o nome Romanji.", "\u30ed\u30fc\u30de\u5b57\u540d\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
 
             if (string.IsNullOrWhiteSpace(msg.nameNihongo))
-                throw new InvalidOperationException("Informe o nome Nihongo.");
+                throw new InvalidOperationException(L("Informe o nome Nihongo.", "\u65e5\u672c\u8a9e\u540d\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
 
             if (msg.shiftId <= 0)
-                throw new InvalidOperationException("Selecione o turno.");
+                throw new InvalidOperationException(L("Selecione o turno.", "\u30b7\u30d5\u30c8\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
 
             if (msg.groupId <= 0)
-                throw new InvalidOperationException("Selecione o grupo.");
+                throw new InvalidOperationException(L("Selecione o grupo.", "\u30b0\u30eb\u30fc\u30d7\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
 
             if (msg.sectorId <= 0)
-                throw new InvalidOperationException("Selecione o setor.");
+                throw new InvalidOperationException(L("Selecione o setor.", "\u30bb\u30af\u30bf\u30fc\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
 
             if (!DateTime.TryParse(msg.startDate, out var startDate))
-                throw new InvalidOperationException("Informe uma data de inicio valida.");
+                throw new InvalidOperationException(L("Informe uma data de inicio valida.", "\u6709\u52b9\u306a\u958b\u59cb\u65e5\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
 
             if (msg.hasEndDate)
             {
                 if (!DateTime.TryParse(msg.endDate, out var endDate))
-                    throw new InvalidOperationException("Informe uma data de termino valida.");
+                    throw new InvalidOperationException(L("Informe uma data de termino valida.", "\u6709\u52b9\u306a\u7d42\u4e86\u65e5\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
 
                 if (endDate < startDate)
-                    throw new InvalidOperationException("A data de termino nao pode ser anterior a data de inicio.");
+                    throw new InvalidOperationException(L("A data de termino nao pode ser anterior a data de inicio.", "\u7d42\u4e86\u65e5\u306f\u958b\u59cb\u65e5\u3088\u308a\u524d\u306b\u3067\u304d\u307e\u305b\u3093\u3002"));
             }
 
             if (!string.IsNullOrWhiteSpace(msg.birthDate) && !DateTime.TryParse(msg.birthDate, out _))
-                throw new InvalidOperationException("Informe uma data de nascimento valida.");
+                throw new InvalidOperationException(L("Informe uma data de nascimento valida.", "\u6709\u52b9\u306a\u751f\u5e74\u6708\u65e5\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
 
             if (isUpdate && string.IsNullOrWhiteSpace(codigoFJ))
-                throw new InvalidOperationException("Codigo FJ invalido para atualizacao.");
+                throw new InvalidOperationException(L("Codigo FJ invalido para atualizacao.", "\u66f4\u65b0\u7528\u306e FJ \u30b3\u30fc\u30c9\u304c\u7121\u52b9\u3067\u3059\u3002"));
         }
 
         private static Operator BuildOperator(JsRequest msg, string codigoFJ)
@@ -301,9 +305,12 @@ namespace TeamOps.UI.Forms
                     o.IsLeader AS isLeader,
                     COALESCE(o.Telefone, '') AS phone,
                     COALESCE(o.Endereco, '') AS address,
-                    sh.NamePt AS shiftName,
-                    g.NamePt AS groupName,
-                    sc.NamePt AS sectorName
+                    COALESCE(sh.NamePt, '') AS shiftNamePt,
+                    COALESCE(NULLIF(sh.NameJp, ''), sh.NamePt, '') AS shiftNameJp,
+                    COALESCE(g.NamePt, '') AS groupNamePt,
+                    COALESCE(NULLIF(g.NameJp, ''), g.NamePt, '') AS groupNameJp,
+                    COALESCE(sc.NamePt, '') AS sectorNamePt,
+                    COALESCE(NULLIF(sc.NameJp, ''), sc.NamePt, '') AS sectorNameJp
                 FROM Operators o
                 LEFT JOIN Shifts sh ON sh.Id = o.ShiftId
                 LEFT JOIN Groups g ON g.Id = o.GroupId
@@ -311,6 +318,13 @@ namespace TeamOps.UI.Forms
                 ORDER BY o.Status DESC, o.NameRomanji;";
 
             return conn.Query(sql);
+        }
+
+        private static string L(string pt, string jp)
+        {
+            return string.Equals(Program.CurrentLocale, "ja-JP", StringComparison.OrdinalIgnoreCase)
+                ? jp
+                : pt;
         }
 
         private static bool HasOperatorDependencies(System.Data.IDbConnection conn, string codigoFJ, out string dependencyTable)

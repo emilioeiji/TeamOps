@@ -191,12 +191,17 @@ function renderSectorCard(sector) {
 
     const localsMap = new Map((sector.locals || []).map(local => [Number(local.localId), local]));
 
-    const blueprint = (layout.locals || []).map(slot => {
-        const localId = Number(slot.localId || 0);
-        const localState = localsMap.get(localId) || createEmptyLocal(localId, resolveLocalName(localId, slot.label));
+    const blueprint = (layout.locals || [])
+        .filter(slot => slot.showInPresence !== false)
+        .map(slot => {
+        const memberIds = Array.isArray(slot.members) && slot.members.length
+            ? slot.members.map(member => Number(member.localId || 0)).filter(Boolean)
+            : [Number(slot.localId || 0)].filter(Boolean);
+
+        const localState = buildPresenceLocalState(localsMap, memberIds, slot);
         const statusClass = getLocalStatusClass(localState);
         const style = toBlueprintStyle(slot, layout);
-        const localTitle = localState.localName || resolveLocalName(localId, slot.label);
+        const localTitle = localState.localName || slot.header || resolveLocalName(memberIds[0] || 0, slot.label);
 
         return `
             <div class="local-slot ${statusClass}" style="${style}" title="${escapeHtml(localState.tooltip || localTitle)}">
@@ -244,6 +249,54 @@ function renderSectorCard(sector) {
             </div>
         </article>
     `;
+}
+
+function buildPresenceLocalState(localsMap, memberIds, slot) {
+    const memberStates = memberIds
+        .map(localId => localsMap.get(Number(localId)))
+        .filter(Boolean);
+
+    if (memberStates.length === 0) {
+        const fallbackId = memberIds[0] || Number(slot.localId || 0);
+        const fallbackName = slot.header || resolveLocalName(fallbackId, slot.label);
+        return createEmptyLocal(fallbackId, fallbackName);
+    }
+
+    const peopleByCode = new Map();
+    let plannedCount = 0;
+    let confirmedCount = 0;
+    let missingCount = 0;
+    let extraCount = 0;
+
+    memberStates.forEach(stateItem => {
+        plannedCount += Number(stateItem.plannedCount || 0);
+        confirmedCount += Number(stateItem.confirmedCount || 0);
+        missingCount += Number(stateItem.missingCount || 0);
+        extraCount += Number(stateItem.extraCount || 0);
+
+        (stateItem.people || []).forEach(person => {
+            const key = `${person.codigoFJ || ""}|${person.status || ""}|${person.display || ""}`;
+            if (!peopleByCode.has(key)) {
+                peopleByCode.set(key, person);
+            }
+        });
+    });
+
+    const people = Array.from(peopleByCode.values());
+    const localName = slot.header
+        || memberStates[0]?.localName
+        || resolveLocalName(memberIds[0] || 0, slot.label);
+
+    return {
+        localId: Number(slot.localId || memberIds[0] || 0),
+        localName,
+        plannedCount,
+        confirmedCount,
+        missingCount,
+        extraCount,
+        people,
+        tooltip: localName
+    };
 }
 
 function renderFallbackSectorCard(sector) {

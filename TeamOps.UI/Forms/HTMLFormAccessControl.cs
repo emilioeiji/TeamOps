@@ -22,6 +22,7 @@ namespace TeamOps.UI.Forms
         {
             InitializeComponent();
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            Text = L("Controle de acesso", "\u30a2\u30af\u30bb\u30b9\u7ba1\u7406");
 
             _factory = Program.ConnectionFactory;
             _userRepo = new UserRepository(_factory);
@@ -84,6 +85,7 @@ namespace TeamOps.UI.Forms
             PostJson(new
             {
                 type = "init",
+                locale = Program.CurrentLocale,
                 accessLevels = Enum.GetValues(typeof(AccessLevel))
                     .Cast<AccessLevel>()
                     .Select(level => new
@@ -106,7 +108,7 @@ namespace TeamOps.UI.Forms
                 ValidateCreatePayload(msg, login, password, confirmPassword);
 
                 if (_userRepo.GetByLogin(login) != null)
-                    throw new InvalidOperationException("Ja existe um usuario com este login.");
+                    throw new InvalidOperationException(L("Ja existe um usuario com este login.", "\u3053\u306e\u30ed\u30b0\u30a4\u30f3\u306e\u30e6\u30fc\u30b6\u30fc\u306f\u65e2\u306b\u5b58\u5728\u3057\u307e\u3059\u3002"));
 
                 var level = ParseAccessLevel(msg.accessLevel);
 
@@ -123,7 +125,7 @@ namespace TeamOps.UI.Forms
                 PostJson(new
                 {
                     type = "created",
-                    message = "Usuario cadastrado com sucesso."
+                    message = L("Usuario cadastrado com sucesso.", "\u30e6\u30fc\u30b6\u30fc\u3092\u767b\u9332\u3057\u307e\u3057\u305f\u3002")
                 });
 
                 SendRows();
@@ -146,7 +148,7 @@ namespace TeamOps.UI.Forms
                 ValidateUpdatePayload(msg, login);
 
                 var existing = _userRepo.GetByLogin(login)
-                    ?? throw new InvalidOperationException("Usuario nao encontrado para atualizacao.");
+                    ?? throw new InvalidOperationException(L("Usuario nao encontrado para atualizacao.", "\u66f4\u65b0\u5bfe\u8c61\u306e\u30e6\u30fc\u30b6\u30fc\u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093\u3002"));
 
                 existing.Name = (msg.name ?? string.Empty).Trim();
                 existing.AccessLevel = ParseAccessLevel(msg.accessLevel);
@@ -156,7 +158,7 @@ namespace TeamOps.UI.Forms
                 PostJson(new
                 {
                     type = "updated",
-                    message = "Usuario atualizado com sucesso."
+                    message = L("Usuario atualizado com sucesso.", "\u30e6\u30fc\u30b6\u30fc\u3092\u66f4\u65b0\u3057\u307e\u3057\u305f\u3002")
                 });
 
                 SendRows();
@@ -180,16 +182,16 @@ namespace TeamOps.UI.Forms
                 var confirmPassword = msg.confirmPassword?.Trim() ?? string.Empty;
 
                 if (string.IsNullOrWhiteSpace(login))
-                    throw new InvalidOperationException("Selecione um usuario para redefinir a senha.");
+                    throw new InvalidOperationException(L("Selecione um usuario para redefinir a senha.", "\u30d1\u30b9\u30ef\u30fc\u30c9\u3092\u518d\u8a2d\u5b9a\u3059\u308b\u30e6\u30fc\u30b6\u30fc\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
 
                 if (string.IsNullOrWhiteSpace(password))
-                    throw new InvalidOperationException("Informe a nova senha.");
+                    throw new InvalidOperationException(L("Informe a nova senha.", "\u65b0\u3057\u3044\u30d1\u30b9\u30ef\u30fc\u30c9\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
 
                 if (password != confirmPassword)
-                    throw new InvalidOperationException("A confirmacao da senha nao confere.");
+                    throw new InvalidOperationException(L("A confirmacao da senha nao confere.", "\u30d1\u30b9\u30ef\u30fc\u30c9\u78ba\u8a8d\u304c\u4e00\u81f4\u3057\u307e\u305b\u3093\u3002"));
 
                 var existing = _userRepo.GetByLogin(login)
-                    ?? throw new InvalidOperationException("Usuario nao encontrado para redefinicao de senha.");
+                    ?? throw new InvalidOperationException(L("Usuario nao encontrado para redefinicao de senha.", "\u30d1\u30b9\u30ef\u30fc\u30c9\u518d\u8a2d\u5b9a\u5bfe\u8c61\u306e\u30e6\u30fc\u30b6\u30fc\u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093\u3002"));
 
                 existing.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
                 _userRepo.Update(existing);
@@ -197,7 +199,7 @@ namespace TeamOps.UI.Forms
                 PostJson(new
                 {
                     type = "password_reset",
-                    message = "Senha redefinida com sucesso."
+                    message = L("Senha redefinida com sucesso.", "\u30d1\u30b9\u30ef\u30fc\u30c9\u3092\u518d\u8a2d\u5b9a\u3057\u307e\u3057\u305f\u3002")
                 });
             }
             catch (Exception ex)
@@ -233,13 +235,13 @@ namespace TeamOps.UI.Forms
             string confirmPassword)
         {
             if (string.IsNullOrWhiteSpace(login))
-                throw new InvalidOperationException("Informe o login.");
+                throw new InvalidOperationException(L("Informe o login.", "\u30ed\u30b0\u30a4\u30f3\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
 
             if (string.IsNullOrWhiteSpace(password))
-                throw new InvalidOperationException("Informe a senha.");
+                throw new InvalidOperationException(L("Informe a senha.", "\u30d1\u30b9\u30ef\u30fc\u30c9\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
 
             if (password != confirmPassword)
-                throw new InvalidOperationException("A confirmacao da senha nao confere.");
+                throw new InvalidOperationException(L("A confirmacao da senha nao confere.", "\u30d1\u30b9\u30ef\u30fc\u30c9\u78ba\u8a8d\u304c\u4e00\u81f4\u3057\u307e\u305b\u3093\u3002"));
 
             _ = ParseAccessLevel(msg.accessLevel);
         }
@@ -247,7 +249,7 @@ namespace TeamOps.UI.Forms
         private static void ValidateUpdatePayload(JsRequest msg, string login)
         {
             if (string.IsNullOrWhiteSpace(login))
-                throw new InvalidOperationException("Selecione um usuario para editar.");
+                throw new InvalidOperationException(L("Selecione um usuario para editar.", "\u7de8\u96c6\u3059\u308b\u30e6\u30fc\u30b6\u30fc\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
 
             _ = ParseAccessLevel(msg.accessLevel);
         }
@@ -255,7 +257,7 @@ namespace TeamOps.UI.Forms
         private static AccessLevel ParseAccessLevel(int rawValue)
         {
             if (!Enum.IsDefined(typeof(AccessLevel), rawValue))
-                throw new InvalidOperationException("Selecione um nivel de acesso valido.");
+                throw new InvalidOperationException(L("Selecione um nivel de acesso valido.", "\u6709\u52b9\u306a\u30a2\u30af\u30bb\u30b9\u30ec\u30d9\u30eb\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
 
             return (AccessLevel)rawValue;
         }
@@ -264,13 +266,20 @@ namespace TeamOps.UI.Forms
         {
             return level switch
             {
-                AccessLevel.Basic => "Basic",
+                AccessLevel.Basic => L("Basico", "\u57fa\u672c"),
                 AccessLevel.KL => "KL",
                 AccessLevel.GL => "GL",
-                AccessLevel.Manager => "Manager",
-                AccessLevel.Admin => "Admin",
+                AccessLevel.Manager => L("Gerente", "\u30de\u30cd\u30fc\u30b8\u30e3\u30fc"),
+                AccessLevel.Admin => L("Admin", "\u7ba1\u7406\u8005"),
                 _ => level.ToString()
             };
+        }
+
+        private static string L(string pt, string jp)
+        {
+            return string.Equals(Program.CurrentLocale, "ja-JP", StringComparison.OrdinalIgnoreCase)
+                ? jp
+                : pt;
         }
 
         private static System.Collections.Generic.IEnumerable<object> QueryUsers(System.Data.IDbConnection conn)

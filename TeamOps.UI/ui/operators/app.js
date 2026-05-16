@@ -1,9 +1,138 @@
+const state = {
+    locale: "pt-BR"
+};
+
 let rows = [];
 let shifts = [];
 let groups = [];
 let sectors = [];
 let editingCodigoFJ = "";
 let currentModalMode = "create";
+
+const I18N = {
+    "pt-BR": {
+        documentTitle: "Operadores",
+        headerBar: "Cadastro de Operadores",
+        pageTitle: "Operadores",
+        pageSubtitle: "Consulta rapida, busca e manutencao dos operadores.",
+        showInactive: "Mostrar inativos",
+        searchLabel: "Buscar",
+        searchPlaceholder: "Buscar por FJ, romanji, nihongo, turno, grupo, setor ou telefone...",
+        newOperator: "Novo Operador",
+        loading: "Carregando...",
+        empty: "Nenhum operador encontrado.",
+        thCodigoFJ: "Codigo FJ",
+        thRomanji: "Romanji",
+        thNihongo: "Nihongo",
+        thShift: "Turno",
+        thGroup: "Grupo",
+        thSector: "Setor",
+        thStart: "Inicio",
+        thEnd: "Termino",
+        thStatus: "Status",
+        thLeader: "Lider",
+        thPhone: "Telefone",
+        thActions: "Acoes",
+        active: "Ativo",
+        inactive: "Inativo",
+        yes: "Sim",
+        no: "Nao",
+        edit: "Editar",
+        delete: "Excluir",
+        deleteMissing: "Selecione um operador para excluir.",
+        deleteConfirm: codigo => `Deseja realmente excluir o operador ${codigo}?`,
+        modalCreateTitle: "Novo Operador",
+        modalEditTitle: "Editar Operador",
+        modalCreateSubtitle: "Preencha os dados para cadastrar um novo operador.",
+        modalEditSubtitle: codigo => `Ajuste os dados do operador ${codigo}.`,
+        saveChanges: "Salvar Alteracoes",
+        register: "Cadastrar",
+        closeModalAria: "Fechar modal",
+        labelCodigoFJ: "Codigo FJ",
+        labelRomanji: "Romanji",
+        labelNihongo: "Nihongo",
+        labelShift: "Turno",
+        labelGroup: "Grupo",
+        labelSector: "Setor",
+        labelStart: "Data de Inicio",
+        labelEnd: "Data de Termino",
+        labelBirth: "Nascimento",
+        labelPhone: "Telefone",
+        labelAddress: "Endereco",
+        hasEndDate: "Tem data de termino",
+        trainer: "Trainer",
+        status: "Ativo",
+        leader: "Lider",
+        cancel: "Cancelar",
+        save: "Salvar",
+        selectPlaceholder: "Selecione...",
+        savedFallback: "Operador cadastrado com sucesso.",
+        updatedFallback: "Operador atualizado com sucesso.",
+        deletedFallback: "Operador excluido com sucesso.",
+        errorFallback: "Ocorreu um erro ao processar a solicitacao."
+    },
+    "ja-JP": {
+        documentTitle: "\u4f5c\u696d\u8005",
+        headerBar: "\u4f5c\u696d\u8005\u767b\u9332",
+        pageTitle: "\u4f5c\u696d\u8005",
+        pageSubtitle: "\u4f5c\u696d\u8005\u306e\u691c\u7d22\u3001\u7167\u4f1a\u3001\u4fdd\u5b88\u3092\u7d20\u65e9\u304f\u884c\u3048\u307e\u3059\u3002",
+        showInactive: "\u975e\u7a3c\u50cd\u3082\u8868\u793a",
+        searchLabel: "\u691c\u7d22",
+        searchPlaceholder: "FJ\u3001\u30ed\u30fc\u30de\u5b57\u3001\u65e5\u672c\u8a9e\u3001\u30b7\u30d5\u30c8\u3001\u30b0\u30eb\u30fc\u30d7\u3001\u30bb\u30af\u30bf\u30fc\u3001\u96fb\u8a71\u3067\u691c\u7d22...",
+        newOperator: "\u65b0\u898f\u4f5c\u696d\u8005",
+        loading: "\u8aad\u307f\u8fbc\u307f\u4e2d...",
+        empty: "\u4f5c\u696d\u8005\u304c\u3042\u308a\u307e\u305b\u3093\u3002",
+        thCodigoFJ: "FJ \u30b3\u30fc\u30c9",
+        thRomanji: "\u30ed\u30fc\u30de\u5b57",
+        thNihongo: "\u65e5\u672c\u8a9e",
+        thShift: "\u30b7\u30d5\u30c8",
+        thGroup: "\u30b0\u30eb\u30fc\u30d7",
+        thSector: "\u30bb\u30af\u30bf\u30fc",
+        thStart: "\u958b\u59cb",
+        thEnd: "\u7d42\u4e86",
+        thStatus: "\u72b6\u614b",
+        thLeader: "\u30ea\u30fc\u30c0\u30fc",
+        thPhone: "\u96fb\u8a71",
+        thActions: "\u64cd\u4f5c",
+        active: "\u7a3c\u50cd",
+        inactive: "\u975e\u7a3c\u50cd",
+        yes: "\u306f\u3044",
+        no: "\u3044\u3044\u3048",
+        edit: "\u7de8\u96c6",
+        delete: "\u524a\u9664",
+        deleteMissing: "\u524a\u9664\u3059\u308b\u4f5c\u696d\u8005\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+        deleteConfirm: codigo => `\u4f5c\u696d\u8005 ${codigo} \u3092\u672c\u5f53\u306b\u524a\u9664\u3057\u307e\u3059\u304b\u3002`,
+        modalCreateTitle: "\u65b0\u898f\u4f5c\u696d\u8005",
+        modalEditTitle: "\u4f5c\u696d\u8005\u7de8\u96c6",
+        modalCreateSubtitle: "\u65b0\u3057\u3044\u4f5c\u696d\u8005\u306e\u60c5\u5831\u3092\u5165\u529b\u3057\u307e\u3059\u3002",
+        modalEditSubtitle: codigo => `\u4f5c\u696d\u8005 ${codigo} \u306e\u60c5\u5831\u3092\u66f4\u65b0\u3057\u307e\u3059\u3002`,
+        saveChanges: "\u5909\u66f4\u3092\u4fdd\u5b58",
+        register: "\u767b\u9332",
+        closeModalAria: "\u30e2\u30fc\u30c0\u30eb\u3092\u9589\u3058\u308b",
+        labelCodigoFJ: "FJ \u30b3\u30fc\u30c9",
+        labelRomanji: "\u30ed\u30fc\u30de\u5b57",
+        labelNihongo: "\u65e5\u672c\u8a9e",
+        labelShift: "\u30b7\u30d5\u30c8",
+        labelGroup: "\u30b0\u30eb\u30fc\u30d7",
+        labelSector: "\u30bb\u30af\u30bf\u30fc",
+        labelStart: "\u958b\u59cb\u65e5",
+        labelEnd: "\u7d42\u4e86\u65e5",
+        labelBirth: "\u751f\u5e74\u6708\u65e5",
+        labelPhone: "\u96fb\u8a71",
+        labelAddress: "\u4f4f\u6240",
+        hasEndDate: "\u7d42\u4e86\u65e5\u3092\u8a2d\u5b9a",
+        trainer: "\u30c8\u30ec\u30fc\u30ca\u30fc",
+        status: "\u7a3c\u50cd",
+        leader: "\u30ea\u30fc\u30c0\u30fc",
+        cancel: "\u30ad\u30e3\u30f3\u30bb\u30eb",
+        save: "\u4fdd\u5b58",
+        selectPlaceholder: "\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044",
+        savedFallback: "\u4f5c\u696d\u8005\u3092\u767b\u9332\u3057\u307e\u3057\u305f\u3002",
+        updatedFallback: "\u4f5c\u696d\u8005\u3092\u66f4\u65b0\u3057\u307e\u3057\u305f\u3002",
+        deletedFallback: "\u4f5c\u696d\u8005\u3092\u524a\u9664\u3057\u307e\u3057\u305f\u3002",
+        errorFallback: "\u51e6\u7406\u4e2d\u306b\u30a8\u30e9\u30fc\u304c\u767a\u751f\u3057\u307e\u3057\u305f\u3002"
+    }
+};
 
 window.addEventListener("DOMContentLoaded", () => {
     bindEvents();
@@ -36,35 +165,49 @@ window.chrome.webview.addEventListener("message", event => {
 
     switch (msg.type) {
         case "init":
+            setLocale(msg.locale);
             hydrateScreen(msg);
             break;
-
         case "rows":
             rows = normalizeRows(msg.data || []);
             applyFilters();
             syncEditingOperator();
             break;
-
         case "saved":
-            alert(msg.message || "Operador cadastrado com sucesso.");
+            alert(msg.message || t("savedFallback"));
             closeModal();
             break;
-
         case "updated":
-            alert(msg.message || "Operador atualizado com sucesso.");
+            alert(msg.message || t("updatedFallback"));
             closeModal();
             break;
-
         case "deleted":
-            alert(msg.message || "Operador excluido com sucesso.");
+            alert(msg.message || t("deletedFallback"));
             applyFilters();
             break;
-
         case "error":
-            alert(msg.message || "Ocorreu um erro ao processar a solicitacao.");
+            alert(msg.message || t("errorFallback"));
             break;
     }
 });
+
+function setLocale(locale) {
+    state.locale = locale === "ja-JP" ? "ja-JP" : "pt-BR";
+    document.documentElement.lang = state.locale;
+    document.title = t("documentTitle");
+
+    document.querySelectorAll("[data-i18n]").forEach(element => {
+        element.textContent = t(element.dataset.i18n);
+    });
+
+    document.querySelectorAll("[data-i18n-placeholder]").forEach(element => {
+        element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
+    });
+
+    document.querySelectorAll("[data-i18n-aria-label]").forEach(element => {
+        element.setAttribute("aria-label", t(element.dataset.i18nAriaLabel));
+    });
+}
 
 function hydrateScreen(payload) {
     shifts = payload.shifts || [];
@@ -72,9 +215,9 @@ function hydrateScreen(payload) {
     sectors = payload.sectors || [];
     rows = normalizeRows(payload.rows || []);
 
-    fillSelect("cmbShift", shifts, "Id", "NamePt");
-    fillSelect("cmbGroup", groups, "Id", "NamePt");
-    fillSelect("cmbSector", sectors, "Id", "NamePt");
+    fillSelect("cmbShift", shifts);
+    fillSelect("cmbGroup", groups);
+    fillSelect("cmbSector", sectors);
 
     resetModalForm();
     applyFilters();
@@ -93,12 +236,12 @@ function toBool(value) {
     return value === true || value === 1 || value === "1";
 }
 
-function fillSelect(id, items, valueField, textField) {
+function fillSelect(id, items) {
     const select = document.getElementById(id);
-    select.innerHTML = `<option value="">Selecione...</option>`;
+    select.innerHTML = `<option value="">${escapeHtml(t("selectPlaceholder"))}</option>`;
 
     items.forEach(item => {
-        select.innerHTML += `<option value="${item[valueField]}">${escapeHtml(item[textField])}</option>`;
+        select.innerHTML += `<option value="${item.Id}">${escapeHtml(localizedName(item.NamePt, item.NameJp))}</option>`;
     });
 }
 
@@ -114,9 +257,12 @@ function applyFilters() {
             item.codigoFJ,
             item.nameRomanji,
             item.nameNihongo,
-            item.shiftName,
-            item.groupName,
-            item.sectorName,
+            item.shiftNamePt,
+            item.shiftNameJp,
+            item.groupNamePt,
+            item.groupNameJp,
+            item.sectorNamePt,
+            item.sectorNameJp,
             item.phone,
             item.address
         ]
@@ -134,7 +280,7 @@ function renderTable(items) {
     const container = document.getElementById("tableContainer");
 
     if (!items || items.length === 0) {
-        container.innerHTML = `<div class="empty-state">Nenhum operador encontrado.</div>`;
+        container.innerHTML = `<div class="empty-state">${escapeHtml(t("empty"))}</div>`;
         return;
     }
 
@@ -142,18 +288,18 @@ function renderTable(items) {
         <table class="operators-table">
             <thead>
                 <tr>
-                    <th>Codigo FJ</th>
-                    <th>Romanji</th>
-                    <th>Nihongo</th>
-                    <th>Turno</th>
-                    <th>Grupo</th>
-                    <th>Setor</th>
-                    <th>Inicio</th>
-                    <th>Termino</th>
-                    <th>Status</th>
-                    <th>Lider</th>
-                    <th>Telefone</th>
-                    <th>Acoes</th>
+                    <th>${escapeHtml(t("thCodigoFJ"))}</th>
+                    <th>${escapeHtml(t("thRomanji"))}</th>
+                    <th>${escapeHtml(t("thNihongo"))}</th>
+                    <th>${escapeHtml(t("thShift"))}</th>
+                    <th>${escapeHtml(t("thGroup"))}</th>
+                    <th>${escapeHtml(t("thSector"))}</th>
+                    <th>${escapeHtml(t("thStart"))}</th>
+                    <th>${escapeHtml(t("thEnd"))}</th>
+                    <th>${escapeHtml(t("thStatus"))}</th>
+                    <th>${escapeHtml(t("thLeader"))}</th>
+                    <th>${escapeHtml(t("thPhone"))}</th>
+                    <th>${escapeHtml(t("thActions"))}</th>
                 </tr>
             </thead>
             <tbody>
@@ -161,25 +307,25 @@ function renderTable(items) {
 
     items.forEach(item => {
         const selectedClass = item.codigoFJ === editingCodigoFJ ? "is-selected" : "";
-        const statusLabel = item.status ? "Ativo" : "Inativo";
-        const leaderLabel = item.isLeader ? "Sim" : "Nao";
+        const statusLabel = item.status ? t("active") : t("inactive");
+        const leaderLabel = item.isLeader ? t("yes") : t("no");
 
         html += `
             <tr class="${selectedClass}">
                 <td>${escapeHtml(item.codigoFJ)}</td>
                 <td>${escapeHtml(item.nameRomanji)}</td>
                 <td>${escapeHtml(item.nameNihongo)}</td>
-                <td>${escapeHtml(item.shiftName || "")}</td>
-                <td>${escapeHtml(item.groupName || "")}</td>
-                <td>${escapeHtml(item.sectorName || "")}</td>
+                <td>${escapeHtml(localizedName(item.shiftNamePt, item.shiftNameJp))}</td>
+                <td>${escapeHtml(localizedName(item.groupNamePt, item.groupNameJp))}</td>
+                <td>${escapeHtml(localizedName(item.sectorNamePt, item.sectorNameJp))}</td>
                 <td>${escapeHtml(item.startDate || "")}</td>
                 <td>${escapeHtml(item.endDate || "-")}</td>
                 <td><span class="status-pill ${item.status ? "status-active" : "status-inactive"}">${statusLabel}</span></td>
                 <td>${leaderLabel}</td>
                 <td>${escapeHtml(item.phone || "-")}</td>
                 <td class="actions-cell">
-                    <button class="row-btn row-btn-edit" type="button" data-edit="${escapeHtmlAttr(item.codigoFJ)}">Editar</button>
-                    <button class="row-btn row-btn-delete" type="button" data-delete="${escapeHtmlAttr(item.codigoFJ)}">Excluir</button>
+                    <button class="row-btn row-btn-edit" type="button" data-edit="${escapeHtmlAttr(item.codigoFJ)}">${escapeHtml(t("edit"))}</button>
+                    <button class="row-btn row-btn-delete" type="button" data-delete="${escapeHtmlAttr(item.codigoFJ)}">${escapeHtml(t("delete"))}</button>
                 </td>
             </tr>
         `;
@@ -308,11 +454,11 @@ function submitModal() {
 function deleteOperator(codigoFJ) {
     const targetCodigoFJ = String(codigoFJ || "").trim();
     if (!targetCodigoFJ) {
-        alert("Selecione um operador para excluir.");
+        alert(t("deleteMissing"));
         return;
     }
 
-    if (!confirm(`Deseja realmente excluir o operador ${targetCodigoFJ}?`)) {
+    if (!confirm(t("deleteConfirm")(targetCodigoFJ))) {
         return;
     }
 
@@ -341,11 +487,21 @@ function buildPayload() {
 
 function syncModeState() {
     const isEdit = currentModalMode === "edit" && !!editingCodigoFJ;
-    document.getElementById("formTitle").textContent = isEdit ? "Editar Operador" : "Novo Operador";
+    document.getElementById("formTitle").textContent = isEdit ? t("modalEditTitle") : t("modalCreateTitle");
     document.getElementById("formSubtitle").textContent = isEdit
-        ? `Ajuste os dados do operador ${editingCodigoFJ}.`
-        : "Preencha os dados para cadastrar um novo operador.";
-    document.getElementById("btnSalvarModal").textContent = isEdit ? "Salvar Alteracoes" : "Cadastrar";
+        ? t("modalEditSubtitle")(editingCodigoFJ)
+        : t("modalCreateSubtitle");
+    document.getElementById("btnSalvarModal").textContent = isEdit ? t("saveChanges") : t("register");
+}
+
+function localizedName(pt, jp) {
+    return state.locale === "ja-JP"
+        ? (jp || pt || "")
+        : (pt || jp || "");
+}
+
+function t(key) {
+    return I18N[state.locale]?.[key] ?? I18N["pt-BR"]?.[key] ?? key;
 }
 
 function escapeHtml(value) {

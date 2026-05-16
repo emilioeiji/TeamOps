@@ -73,8 +73,8 @@ namespace TeamOps.UI.Forms
                             ? _currentShift.NamePt
                             : _currentShift.NameJp,
                         dateIso = DateTime.Now.ToString("O"),
-                        availableCount = 5,
-                        totalCount = 8
+                        availableCount = 6,
+                        totalCount = 9
                     }
                 });
             };
@@ -145,6 +145,10 @@ namespace TeamOps.UI.Forms
 
                 case "open:operators":
                     OpenDialog(() => new HTMLFormOperatorManagerReport(_factory, _currentOperator));
+                    break;
+
+                case "open:mastercard_report":
+                    OpenDialog(() => new HTMLFormMasterCardReport(_factory));
                     break;
 
                 case "todo:pr":

@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="header-bar">
+    <div class="header-bar" data-i18n="headerBar">
         Cadastro de Operadores
     </div>
 
@@ -14,27 +14,27 @@
         <section class="table-card">
             <div class="panel-top">
                 <div class="title-stack">
-                    <h1>Operadores</h1>
-                    <p>Consulta rapida, busca e manutencao dos operadores.</p>
+                    <h1 data-i18n="pageTitle">Operadores</h1>
+                    <p data-i18n="pageSubtitle">Consulta rapida, busca e manutencao dos operadores.</p>
                 </div>
 
                 <div class="header-actions">
                     <label class="header-toggle" for="toggleShowInactive">
                         <input id="toggleShowInactive" type="checkbox">
-                        <span>Mostrar inativos</span>
+                        <span data-i18n="showInactive">Mostrar inativos</span>
                     </label>
 
                     <div class="search-group">
-                        <label for="searchInput">Buscar</label>
-                        <input id="searchInput" class="input" type="text" placeholder="Buscar por FJ, romanji, nihongo, turno, grupo, setor ou telefone...">
+                        <label for="searchInput" data-i18n="searchLabel">Buscar</label>
+                        <input id="searchInput" class="input" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="Buscar por FJ, romanji, nihongo, turno, grupo, setor ou telefone...">
                     </div>
 
-                    <button id="btnHeaderNovo" type="button" class="btn-primary">Novo Operador</button>
+                    <button id="btnHeaderNovo" type="button" class="btn-primary" data-i18n="newOperator">Novo Operador</button>
                 </div>
             </div>
 
             <div id="tableContainer" class="table-container">
-                Carregando...
+                <span data-i18n="loading">Carregando...</span>
             </div>
         </section>
     </div>
@@ -53,63 +53,63 @@
 
             <div class="form-grid">
                 <div class="form-group">
-                    <label for="txtCodigoFJ">Codigo FJ</label>
+                    <label for="txtCodigoFJ" data-i18n="labelCodigoFJ">Codigo FJ</label>
                     <input id="txtCodigoFJ" class="input" type="text" maxlength="20">
                 </div>
 
                 <div class="form-group">
-                    <label for="txtRomanji">Romanji</label>
+                    <label for="txtRomanji" data-i18n="labelRomanji">Romanji</label>
                     <input id="txtRomanji" class="input" type="text" maxlength="120">
                 </div>
 
                 <div class="form-group">
-                    <label for="txtNihongo">Nihongo</label>
+                    <label for="txtNihongo" data-i18n="labelNihongo">Nihongo</label>
                     <input id="txtNihongo" class="input" type="text" maxlength="120">
                 </div>
 
                 <div class="form-group">
-                    <label for="cmbShift">Turno</label>
+                    <label for="cmbShift" data-i18n="labelShift">Turno</label>
                     <select id="cmbShift" class="input">
-                        <option value="">Selecione...</option>
+                        <option value="" data-i18n="selectPlaceholder">Selecione...</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="cmbGroup">Grupo</label>
+                    <label for="cmbGroup" data-i18n="labelGroup">Grupo</label>
                     <select id="cmbGroup" class="input">
-                        <option value="">Selecione...</option>
+                        <option value="" data-i18n="selectPlaceholder">Selecione...</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="cmbSector">Setor</label>
+                    <label for="cmbSector" data-i18n="labelSector">Setor</label>
                     <select id="cmbSector" class="input">
-                        <option value="">Selecione...</option>
+                        <option value="" data-i18n="selectPlaceholder">Selecione...</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="dtStart">Data de Inicio</label>
+                    <label for="dtStart" data-i18n="labelStart">Data de Inicio</label>
                     <input id="dtStart" class="input" type="date">
                 </div>
 
                 <div class="form-group">
-                    <label for="dtEnd">Data de Termino</label>
+                    <label for="dtEnd" data-i18n="labelEnd">Data de Termino</label>
                     <input id="dtEnd" class="input" type="date" disabled>
                 </div>
 
                 <div class="form-group">
-                    <label for="dtNascimento">Nascimento</label>
+                    <label for="dtNascimento" data-i18n="labelBirth">Nascimento</label>
                     <input id="dtNascimento" class="input" type="date">
                 </div>
 
                 <div class="form-group">
-                    <label for="txtTelefone">Telefone</label>
+                    <label for="txtTelefone" data-i18n="labelPhone">Telefone</label>
                     <input id="txtTelefone" class="input" type="text" maxlength="50">
                 </div>
 
                 <div class="form-group form-group-span-2">
-                    <label for="txtEndereco">Endereco</label>
+                    <label for="txtEndereco" data-i18n="labelAddress">Endereco</label>
                     <input id="txtEndereco" class="input" type="text" maxlength="250">
                 </div>
             </div>
@@ -117,28 +117,28 @@
             <div class="toggle-grid">
                 <label class="toggle-item">
                     <input id="chkHasEnd" type="checkbox">
-                    <span>Tem data de termino</span>
+                    <span data-i18n="hasEndDate">Tem data de termino</span>
                 </label>
 
                 <label class="toggle-item">
                     <input id="chkTrainer" type="checkbox">
-                    <span>Trainer</span>
+                    <span data-i18n="trainer">Trainer</span>
                 </label>
 
                 <label class="toggle-item">
                     <input id="chkStatus" type="checkbox" checked>
-                    <span>Ativo</span>
+                    <span data-i18n="status">Ativo</span>
                 </label>
 
                 <label class="toggle-item">
                     <input id="chkIsLeader" type="checkbox">
-                    <span>Lider</span>
+                    <span data-i18n="leader">Lider</span>
                 </label>
             </div>
 
             <div class="modal-actions">
-                <button id="btnCancelarModal" type="button" class="btn-secondary">Cancelar</button>
-                <button id="btnSalvarModal" type="button" class="btn-primary">Salvar</button>
+                <button id="btnCancelarModal" type="button" class="btn-secondary" data-i18n="cancel">Cancelar</button>
+                <button id="btnSalvarModal" type="button" class="btn-primary" data-i18n="save">Salvar</button>
             </div>
         </section>
     </div>

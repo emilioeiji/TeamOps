@@ -67,6 +67,16 @@
                     <span id="txtStatTasks" class="stat-label">Tasks em Aberto</span>
                     <strong id="lblOpenTasks">-</strong>
                 </div>
+
+                <div class="stat-card">
+                    <span id="txtStatMasterInProgress" class="stat-label">MasterCard em Andamento</span>
+                    <strong id="lblMasterInProgress">-</strong>
+                </div>
+
+                <div class="stat-card">
+                    <span id="txtStatMasterFollow" class="stat-label">MasterCard em Follow</span>
+                    <strong id="lblMasterFollow">-</strong>
+                </div>
             </div>
         </section>
 
@@ -115,6 +125,22 @@
                         <span class="tile-copy">
                             <strong id="txtTileTasksTitle">Tasks</strong>
                             <small id="txtTileTasksSubtitle">Planejamento do turno</small>
+                        </span>
+                    </button>
+
+                    <button id="btnMasterCard" class="action-tile" type="button" data-action="open:mastercard">
+                        <span class="tile-icon tile-icon-indigo">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M6 3.75h8.25L18 7.5v12.75H6z"></path>
+                                <path d="M14.25 3.75V7.5H18"></path>
+                                <path d="M8.25 11.25h7.5"></path>
+                                <path d="M8.25 15h5.25"></path>
+                                <path d="M8.25 18.75h3"></path>
+                            </svg>
+                        </span>
+                        <span class="tile-copy">
+                            <strong id="txtTileMasterCardTitle">MasterCard</strong>
+                            <small id="txtTileMasterCardSubtitle">Treinamento, follow e fechamento</small>
                         </span>
                     </button>
 

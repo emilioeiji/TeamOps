@@ -128,6 +128,23 @@ function bindEvents() {
         }
     });
 
+    document.getElementById("selectedDetailHost").addEventListener("change", event => {
+        const field = event.target.closest("[data-field]");
+        if (!field) {
+            return;
+        }
+
+        const container = event.currentTarget;
+        if (field.dataset.field === "localId") {
+            syncAssignmentCodeFromLocal(container);
+            return;
+        }
+
+        if (field.dataset.field === "isTrainee") {
+            syncAssignmentCodeFromLocal(container);
+        }
+    });
+
     document.getElementById("dayOverviewHost").addEventListener("click", event => {
         const row = event.target.closest("[data-select-op]");
         if (!row) {
@@ -322,7 +339,7 @@ function renderDetail() {
 
     const sectorId = Number(document.getElementById("sectorPicker").value || 0);
     const shiftId = Number(document.getElementById("shiftPicker").value || 0);
-    const localOptions = buildLocalOptions(sectorId, row.localId);
+    const localOptions = buildLocalOptions(row.codigoFJ, sectorId, row.localId);
     const trainerOptions = buildTrainerOptions(sectorId, shiftId, row.trainerCodigoFJ, row.codigoFJ);
     const roleTags = [];
 
@@ -683,9 +700,14 @@ function flattenMonthOperators(plan) {
     return (plan?.groups || []).flatMap(group => group.operators || []);
 }
 
-function buildLocalOptions(sectorId, selectedId) {
+function buildLocalOptions(operatorCodigoFJ, sectorId, selectedId) {
     const options = [`<option value="">Sem area definida</option>`];
-    const locals = state.locals.filter(item => Number(item.sectorId) === Number(sectorId));
+    const allowedSectorIds = getAllowedLocalSectorIdsForOperator(operatorCodigoFJ, sectorId);
+    const locals = state.locals.filter(item => {
+        return allowedSectorIds.includes(Number(item.sectorId))
+            && Number(item.id) !== 97
+            && Number(item.id) !== 98;
+    });
 
     locals.forEach(local => {
         options.push(
@@ -696,10 +718,41 @@ function buildLocalOptions(sectorId, selectedId) {
     return options.join("");
 }
 
+function findLocalMeta(localId) {
+    return state.locals.find(item => Number(item.id) === Number(localId)) || null;
+}
+
+function syncAssignmentCodeFromLocal(container) {
+    const localId = nullableNumber(readField(container, "localId"));
+    const assignmentInput = container.querySelector('[data-field="assignmentCode"]');
+    if (!assignmentInput) {
+        return;
+    }
+
+    if (!localId) {
+        assignmentInput.value = "";
+        return;
+    }
+
+    const local = findLocalMeta(localId);
+    if (!local) {
+        return;
+    }
+
+    const baseCode = String(local.shortCode || local.name || "").trim();
+    if (!baseCode) {
+        return;
+    }
+
+    const currentCode = String(assignmentInput.value || "").trim();
+    const shouldAppendTrainee = readCheckbox(container, "isTrainee") || currentCode.endsWith("#");
+    assignmentInput.value = `${baseCode}${shouldAppendTrainee ? "#" : ""}`;
+}
+
 function buildTrainerOptions(sectorId, shiftId, selectedCodigoFJ, currentOperatorCodigoFJ) {
     const options = [`<option value="">Sem treinador</option>`];
     const trainers = state.operators.filter(item => {
-        return Number(item.sectorId) === Number(sectorId)
+        return isOperatorVisibleInSector(item, sectorId)
             && Number(item.shiftId) === Number(shiftId)
             && item.codigoFJ !== currentOperatorCodigoFJ;
     });
@@ -727,12 +780,37 @@ function buildReplacementHint(currentOperatorCodigoFJ) {
     const shiftId = Number(document.getElementById("shiftPicker").value || 0);
     return state.operators
         .filter(item =>
-            Number(item.sectorId) === sectorId &&
+            isOperatorVisibleInSector(item, sectorId) &&
             Number(item.shiftId) === shiftId &&
             item.codigoFJ !== currentOperatorCodigoFJ)
         .slice(0, 5)
         .map(item => `${item.codigoFJ} ${item.name}`)
         .join(", ");
+}
+
+function findOperatorMeta(codigoFJ) {
+    return state.operators.find(item => item.codigoFJ === codigoFJ) || null;
+}
+
+function isSharedSupportSector(sectorId) {
+    return Number(sectorId) === 1 || Number(sectorId) === 2;
+}
+
+function isOperatorVisibleInSector(operator, sectorId) {
+    const normalizedSectorId = Number(sectorId);
+    const operatorSectorId = Number(operator?.sectorId || 0);
+    return operatorSectorId === normalizedSectorId
+        || (isSharedSupportSector(normalizedSectorId) && operatorSectorId === 3);
+}
+
+function getAllowedLocalSectorIdsForOperator(operatorCodigoFJ, sectorId) {
+    const normalizedSectorId = Number(sectorId);
+    const operatorMeta = findOperatorMeta(operatorCodigoFJ);
+    if (Number(operatorMeta?.sectorId || 0) === 3 || normalizedSectorId === 3) {
+        return [1, 2];
+    }
+
+    return [normalizedSectorId];
 }
 
 function buildPlanCellClasses(value, status) {

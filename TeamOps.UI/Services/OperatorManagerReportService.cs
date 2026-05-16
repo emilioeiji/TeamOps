@@ -21,6 +21,7 @@ namespace TeamOps.UI.Services
         public OperatorManagerInitPayload GetInitialPayload(int defaultShiftId, int defaultSectorId)
         {
             using var conn = _factory.CreateOpenConnection();
+            MasterCardModuleService.EnsureSchema(conn);
 
             var shifts = conn.Query<OperatorManagerLookupItem>(
                 @"
@@ -61,6 +62,7 @@ namespace TeamOps.UI.Services
         public OperatorManagerDirectoryPayload GetDirectory(OperatorManagerDirectoryFilter filter)
         {
             using var conn = _factory.CreateOpenConnection();
+            MasterCardModuleService.EnsureSchema(conn);
 
             var startDate = DateTime.Today.AddDays(-(Math.Max(1, filter.PeriodDays) - 1));
             var endDate = DateTime.Today;
@@ -101,10 +103,10 @@ namespace TeamOps.UI.Services
                     todoke AS (
                         SELECT
                             a.OperatorCodigoFJ,
-                            SUM(CASE WHEN a.TodokeMotivoId = 1 THEN 1 ELSE 0 END) AS YukyuDays,
-                            SUM(CASE WHEN a.TodokeMotivoId = 2 THEN 1 ELSE 0 END) AS FaltaDays,
-                            SUM(CASE WHEN a.TodokeMotivoId = 3 THEN 1 ELSE 0 END) AS LateDays,
-                            SUM(CASE WHEN a.TodokeMotivoId = 5 THEN 1 ELSE 0 END) AS EarlyLeaveDays,
+                            COUNT(DISTINCT CASE WHEN a.TodokeMotivoId = 1 THEN date(a.RequestDate) ELSE NULL END) AS YukyuDays,
+                            COUNT(DISTINCT CASE WHEN a.TodokeMotivoId = 2 THEN date(a.RequestDate) ELSE NULL END) AS FaltaDays,
+                            COUNT(DISTINCT CASE WHEN a.TodokeMotivoId = 3 THEN date(a.RequestDate) ELSE NULL END) AS LateDays,
+                            COUNT(DISTINCT CASE WHEN a.TodokeMotivoId = 5 THEN date(a.RequestDate) ELSE NULL END) AS EarlyLeaveDays,
                             COUNT(DISTINCT CASE
                                 WHEN a.TodokeMotivoId IN (2, 3, 5) THEN date(a.RequestDate)
                                 ELSE NULL
@@ -180,9 +182,10 @@ namespace TeamOps.UI.Services
                         ? 0
                         : Math.Round((effectivePresenceDays / (double)row.ScheduledDays) * 100d, 1);
 
+                    var coveredDays = Math.Max(0, row.ScheduledDays - row.FaltaDays);
                     var coveragePercent = row.ScheduledDays <= 0
                         ? 0
-                        : Math.Round((Math.Min(row.ScheduledDays, row.PresentDays + row.YukyuDays) / (double)row.ScheduledDays) * 100d, 1);
+                        : Math.Round((coveredDays / (double)row.ScheduledDays) * 100d, 1);
 
                     return new OperatorManagerDirectoryItem(
                         row.CodigoFJ,
@@ -197,7 +200,7 @@ namespace TeamOps.UI.Services
                         row.Trainer,
                         row.IsLeader,
                         row.ScheduledDays,
-                        row.PresentDays,
+                        effectivePresenceDays,
                         row.YukyuDays,
                         row.FaltaDays,
                         row.LateDays,
@@ -223,6 +226,7 @@ namespace TeamOps.UI.Services
             }
 
             using var conn = _factory.CreateOpenConnection();
+            MasterCardModuleService.EnsureSchema(conn);
 
             var operatorInfo = conn.QuerySingleOrDefault<OperatorManagerOperatorInfo>(
                 @"
@@ -396,10 +400,45 @@ namespace TeamOps.UI.Services
                 })
                 .ToList();
 
-            var metrics = BuildPresenceMetrics(latestScheduleByDay.Values, presentRows, todokeRows, followUpCount);
-            var production = BuildProductionSummary(operatorInfo, scheduledRows, presentRows.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase), startDate, endDate);
+            var masterCardRows = conn.Query<OperatorManagerMasterCardRow>(
+                @"
+                    SELECT
+                        m.Id,
+                        COALESCE(NULLIF(eq.NamePt, ''), NULLIF(eq.NameJp, ''), '') AS EquipmentName,
+                        COALESCE(NULLIF(sec.NamePt, ''), NULLIF(sec.NameJp, ''), '') AS SectorName,
+                        m.Status,
+                        substr(m.StartDate, 1, 10) AS StartDate,
+                        CASE WHEN m.ConcludedAt IS NULL THEN '' ELSE substr(m.ConcludedAt, 1, 16) END AS ConcludedAt,
+                        CASE WHEN m.FollowDate IS NULL THEN '' ELSE substr(m.FollowDate, 1, 10) END AS FollowDate,
+                        CASE WHEN m.FinalizedAt IS NULL THEN '' ELSE substr(m.FinalizedAt, 1, 16) END AS FinalizedAt,
+                        COALESCE(m.Notes, '') AS Notes
+                    FROM MasterCards m
+                    LEFT JOIN Equipments eq ON eq.Id = m.EquipmentId
+                    LEFT JOIN Sectors sec ON sec.Id = m.SectorId
+                    WHERE m.OperatorCodigoFJ = @CodigoFJ
+                      AND date(m.StartDate) BETWEEN date(@StartDate) AND date(@EndDate)
+                    ORDER BY
+                        CASE m.Status
+                            WHEN 'follow' THEN 0
+                            WHEN 'in_progress' THEN 1
+                            ELSE 2
+                        END,
+                        date(COALESCE(m.FollowDate, m.StartDate)) ASC,
+                        m.Id DESC;",
+                new
+                {
+                    CodigoFJ = codigoFJ.Trim(),
+                    StartDate = startDate.ToString("yyyy-MM-dd"),
+                    EndDate = endDate.ToString("yyyy-MM-dd")
+                })
+                .ToList();
 
-            var dailyHistory = BuildDailyHistory(latestScheduleByDay, presentRows, latestTodokeByDay, movementRows);
+            var attendanceByDay = BuildAttendanceDaySummaries(latestScheduleByDay, presentRows, latestTodokeByDay, movementRows);
+            var metrics = BuildPresenceMetrics(attendanceByDay.Values, presentRows, latestTodokeByDay.Values, followUpCount);
+            var production = BuildProductionSummary(operatorInfo, scheduledRows, presentRows.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase), startDate, endDate);
+            var masterCards = BuildMasterCardSummary(masterCardRows);
+
+            var dailyHistory = BuildDailyHistory(attendanceByDay.Values, presentRows, latestTodokeByDay, movementRows);
 
             return new OperatorManagerReportPayload(
                 operatorInfo.CodigoFJ,
@@ -412,6 +451,7 @@ namespace TeamOps.UI.Services
                 operatorInfo.Trainer,
                 operatorInfo.IsLeader,
                 metrics,
+                masterCards,
                 production,
                 recentFollowUps
                     .Select(item => new OperatorManagerFollowUpItem(
@@ -428,30 +468,94 @@ namespace TeamOps.UI.Services
                 dailyHistory);
         }
 
+        private OperatorManagerMasterCardSummary BuildMasterCardSummary(IReadOnlyList<OperatorManagerMasterCardRow> rows)
+        {
+            var today = DateTime.Today;
+            var inProgressCount = rows.Count(item => item.Status == "in_progress");
+            var followCount = rows.Count(item => item.Status == "follow");
+            var completedCount = rows.Count(item => item.Status == "completed");
+            var overdueFollowCount = rows.Count(item =>
+                item.Status == "follow"
+                && DateTime.TryParse(item.FollowDate, out var followDate)
+                && followDate.Date < today);
+            var dueSoonFollowCount = rows.Count(item =>
+                item.Status == "follow"
+                && DateTime.TryParse(item.FollowDate, out var followDate)
+                && followDate.Date >= today
+                && followDate.Date <= today.AddDays(7));
+
+            return new OperatorManagerMasterCardSummary(
+                rows.Count,
+                inProgressCount,
+                followCount,
+                completedCount,
+                overdueFollowCount,
+                dueSoonFollowCount,
+                rows
+                    .Take(12)
+                    .Select(item => new OperatorManagerMasterCardItem(
+                        item.Id,
+                        item.EquipmentName,
+                        item.SectorName,
+                        item.Status,
+                        item.StartDate,
+                        item.ConcludedAt,
+                        item.FollowDate,
+                        item.FinalizedAt,
+                        item.Notes,
+                        ResolveMasterCardFollowState(item)))
+                    .ToList());
+        }
+
+        private static string ResolveMasterCardFollowState(OperatorManagerMasterCardRow row)
+        {
+            if (row.Status != "follow")
+            {
+                return row.Status switch
+                {
+                    "in_progress" => "in_progress",
+                    "completed" => "completed",
+                    _ => "none"
+                };
+            }
+
+            if (!DateTime.TryParse(row.FollowDate, out var followDate))
+            {
+                return "follow";
+            }
+
+            var today = DateTime.Today;
+            if (followDate.Date < today)
+            {
+                return "overdue";
+            }
+
+            if (followDate.Date <= today.AddDays(7))
+            {
+                return "due_soon";
+            }
+
+            return "scheduled";
+        }
+
         private OperatorManagerPresenceMetrics BuildPresenceMetrics(
-            IEnumerable<OperatorManagerScheduleRow> latestSchedules,
+            IEnumerable<OperatorManagerAttendanceDaySummary> attendanceDays,
             IReadOnlyDictionary<string, OperatorManagerPresenceRow> presences,
             IEnumerable<OperatorManagerTodokeRow> todokes,
             int followUpCount)
         {
-            var scheduleList = latestSchedules.ToList();
-            var scheduledDays = scheduleList.Count(item =>
-                !string.Equals(item.AvailabilityStatus, "Folga", StringComparison.OrdinalIgnoreCase) &&
-                (!string.IsNullOrWhiteSpace(item.AssignmentCode) || item.LocalId > 0 || !string.IsNullOrWhiteSpace(item.AvailabilityStatus)));
+            var dayList = attendanceDays
+                .Where(item => item.CountsAsScheduled)
+                .ToList();
 
-            var presentDays = presences.Count;
-            var todokeList = todokes.ToList();
-            var yukyuDays = todokeList.Count(item => item.MotiveId == 1);
-            var faltaDays = todokeList.Count(item => item.MotiveId == 2);
-            var lateDays = todokeList.Count(item => item.MotiveId == 3);
-            var earlyLeaveDays = todokeList.Count(item => item.MotiveId == 5);
-            var presenceImpactDays = todokeList
-                .Where(item => item.MotiveId == 2 || item.MotiveId == 3 || item.MotiveId == 5)
-                .Select(item => item.Day)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Count();
-            var pendingTodokeCount = todokeList.Count(item => !item.Validated);
-            var effectivePresenceDays = Math.Max(0, scheduledDays - presenceImpactDays);
+            var scheduledDays = dayList.Count;
+            var effectivePresenceDays = dayList.Count(item => item.CountsTowardPresence);
+            var coveredDays = dayList.Count(item => item.CountsTowardCoverage);
+            var yukyuDays = dayList.Count(item => item.StatusKey == AttendanceStatusKeys.Yukyu);
+            var faltaDays = dayList.Count(item => item.StatusKey == AttendanceStatusKeys.Falta);
+            var lateDays = dayList.Count(item => item.StatusKey == AttendanceStatusKeys.Late);
+            var earlyLeaveDays = dayList.Count(item => item.StatusKey == AttendanceStatusKeys.EarlyLeave);
+            var pendingTodokeCount = todokes.Count(item => !item.Validated);
 
             var presencePercent = scheduledDays <= 0
                 ? 0
@@ -459,11 +563,11 @@ namespace TeamOps.UI.Services
 
             var coveragePercent = scheduledDays <= 0
                 ? 0
-                : Math.Round((Math.Min(scheduledDays, presentDays + yukyuDays) / (double)scheduledDays) * 100d, 1);
+                : Math.Round((coveredDays / (double)scheduledDays) * 100d, 1);
 
             return new OperatorManagerPresenceMetrics(
                 scheduledDays,
-                presentDays,
+                effectivePresenceDays,
                 yukyuDays,
                 faltaDays,
                 lateDays,
@@ -602,31 +706,21 @@ namespace TeamOps.UI.Services
         }
 
         private List<OperatorManagerDailyHistoryItem> BuildDailyHistory(
-            IReadOnlyDictionary<string, OperatorManagerScheduleRow> latestScheduleByDay,
+            IEnumerable<OperatorManagerAttendanceDaySummary> attendanceDays,
             IReadOnlyDictionary<string, OperatorManagerPresenceRow> presences,
             IReadOnlyDictionary<string, OperatorManagerTodokeRow> todokes,
             IReadOnlyDictionary<string, OperatorManagerMovementRow> movements)
         {
-            var allDays = latestScheduleByDay.Keys
-                .Concat(presences.Keys)
-                .Concat(todokes.Keys)
-                .Concat(movements.Keys)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderByDescending(day => day, StringComparer.OrdinalIgnoreCase)
+            var orderedDays = attendanceDays
+                .OrderByDescending(item => item.Day, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            var list = new List<OperatorManagerDailyHistoryItem>(allDays.Count);
-            foreach (var day in allDays)
+            var list = new List<OperatorManagerDailyHistoryItem>(orderedDays.Count);
+            foreach (var daySummary in orderedDays)
             {
-                latestScheduleByDay.TryGetValue(day, out var schedule);
-                presences.TryGetValue(day, out var presence);
-                todokes.TryGetValue(day, out var todoke);
-                movements.TryGetValue(day, out var movement);
-
-                var status = ResolveDailyStatus(schedule, presence, todoke, movement);
-                var area = !string.IsNullOrWhiteSpace(schedule?.AssignmentCode)
-                    ? schedule.AssignmentCode
-                    : movement?.AssignmentCode ?? string.Empty;
+                presences.TryGetValue(daySummary.Day, out var presence);
+                todokes.TryGetValue(daySummary.Day, out var todoke);
+                movements.TryGetValue(daySummary.Day, out var movement);
 
                 var notes = new List<string>();
                 if (!string.IsNullOrWhiteSpace(todoke?.Notes))
@@ -645,9 +739,9 @@ namespace TeamOps.UI.Services
                 }
 
                 list.Add(new OperatorManagerDailyHistoryItem(
-                    day,
-                    status,
-                    area,
+                    daySummary.Day,
+                    daySummary.DisplayStatus,
+                    daySummary.Area,
                     string.Join(" | ", notes.Where(item => !string.IsNullOrWhiteSpace(item))),
                     todoke != null && !todoke.Validated));
             }
@@ -655,40 +749,122 @@ namespace TeamOps.UI.Services
             return list.Take(20).ToList();
         }
 
-        private static string ResolveDailyStatus(
+        private static IReadOnlyDictionary<string, OperatorManagerAttendanceDaySummary> BuildAttendanceDaySummaries(
+            IReadOnlyDictionary<string, OperatorManagerScheduleRow> latestScheduleByDay,
+            IReadOnlyDictionary<string, OperatorManagerPresenceRow> presences,
+            IReadOnlyDictionary<string, OperatorManagerTodokeRow> todokes,
+            IReadOnlyDictionary<string, OperatorManagerMovementRow> movements)
+        {
+            var allDays = latestScheduleByDay.Keys
+                .Concat(presences.Keys)
+                .Concat(todokes.Keys)
+                .Concat(movements.Keys)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var map = new Dictionary<string, OperatorManagerAttendanceDaySummary>(StringComparer.OrdinalIgnoreCase);
+            foreach (var day in allDays)
+            {
+                latestScheduleByDay.TryGetValue(day, out var schedule);
+                presences.TryGetValue(day, out var presence);
+                todokes.TryGetValue(day, out var todoke);
+                movements.TryGetValue(day, out var movement);
+
+                var statusKey = ResolveAttendanceStatusKey(schedule, presence, todoke, movement);
+                var area = !string.IsNullOrWhiteSpace(schedule?.AssignmentCode)
+                    ? schedule.AssignmentCode
+                    : movement?.AssignmentCode ?? string.Empty;
+                var countsAsScheduled = IsScheduledDay(schedule);
+                var countsTowardPresence = countsAsScheduled && statusKey != AttendanceStatusKeys.Falta
+                    && statusKey != AttendanceStatusKeys.Late
+                    && statusKey != AttendanceStatusKeys.EarlyLeave;
+                var countsTowardCoverage = countsAsScheduled && statusKey != AttendanceStatusKeys.Falta;
+
+                map[day] = new OperatorManagerAttendanceDaySummary(
+                    day,
+                    statusKey,
+                    ResolveDisplayStatus(statusKey),
+                    area,
+                    countsAsScheduled,
+                    countsTowardPresence,
+                    countsTowardCoverage);
+            }
+
+            return map;
+        }
+
+        private static string ResolveAttendanceStatusKey(
             OperatorManagerScheduleRow? schedule,
             OperatorManagerPresenceRow? presence,
             OperatorManagerTodokeRow? todoke,
             OperatorManagerMovementRow? movement)
         {
-            if (todoke != null)
+            if (todoke?.MotiveId == 2)
             {
-                return todoke.MotiveName;
+                return AttendanceStatusKeys.Falta;
             }
 
-            if (movement != null)
+            if (todoke?.MotiveId == 3
+                || string.Equals(movement?.MovementType, "late", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(schedule?.AvailabilityStatus, "Atraso", StringComparison.OrdinalIgnoreCase))
             {
-                return movement.MovementType switch
-                {
-                    "late" => "Atraso",
-                    "early_leave" => "Sair cedo",
-                    _ => movement.MovementType
-                };
+                return AttendanceStatusKeys.Late;
+            }
+
+            if (todoke?.MotiveId == 5
+                || string.Equals(movement?.MovementType, "early_leave", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(schedule?.AvailabilityStatus, "Saiu cedo", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(schedule?.AvailabilityStatus, "Saida antecipada", StringComparison.OrdinalIgnoreCase))
+            {
+                return AttendanceStatusKeys.EarlyLeave;
+            }
+
+            if (todoke?.MotiveId == 1
+                || string.Equals(schedule?.AvailabilityStatus, "Yukyu", StringComparison.OrdinalIgnoreCase))
+            {
+                return AttendanceStatusKeys.Yukyu;
+            }
+
+            if (string.Equals(schedule?.AvailabilityStatus, "Folga", StringComparison.OrdinalIgnoreCase))
+            {
+                return AttendanceStatusKeys.Folga;
             }
 
             if (presence != null)
             {
-                return "Presente";
+                return AttendanceStatusKeys.Present;
             }
 
-            if (!string.IsNullOrWhiteSpace(schedule?.AvailabilityStatus))
+            if (IsScheduledDay(schedule))
             {
-                return schedule.AvailabilityStatus;
+                return AttendanceStatusKeys.Scheduled;
             }
 
-            return !string.IsNullOrWhiteSpace(schedule?.AssignmentCode) || schedule?.LocalId > 0
-                ? "Escalado"
-                : "Sem registro";
+            return AttendanceStatusKeys.NoRecord;
+        }
+
+        private static bool IsScheduledDay(OperatorManagerScheduleRow? schedule)
+        {
+            return schedule != null
+                && !string.Equals(schedule.AvailabilityStatus, "Folga", StringComparison.OrdinalIgnoreCase)
+                && (!string.IsNullOrWhiteSpace(schedule.AssignmentCode)
+                    || schedule.LocalId > 0
+                    || !string.IsNullOrWhiteSpace(schedule.AvailabilityStatus));
+        }
+
+        private static string ResolveDisplayStatus(string statusKey)
+        {
+            return statusKey switch
+            {
+                AttendanceStatusKeys.Falta => "Falta",
+                AttendanceStatusKeys.Late => "Atraso",
+                AttendanceStatusKeys.EarlyLeave => "Sair cedo",
+                AttendanceStatusKeys.Yukyu => "Yukyu",
+                AttendanceStatusKeys.Folga => "Folga",
+                AttendanceStatusKeys.Present => "Presente",
+                AttendanceStatusKeys.Scheduled => "Escalado",
+                _ => "Sem registro"
+            };
         }
 
         private static double CalculateRunningMinutes(IReadOnlyList<ProductionEventPoint> events, ProductionShiftPeriod period)
@@ -798,6 +974,15 @@ namespace TeamOps.UI.Services
             public string Reason { get; set; } = string.Empty;
         }
 
+        private sealed record OperatorManagerAttendanceDaySummary(
+            string Day,
+            string StatusKey,
+            string DisplayStatus,
+            string Area,
+            bool CountsAsScheduled,
+            bool CountsTowardPresence,
+            bool CountsTowardCoverage);
+
         private sealed class OperatorManagerFollowUpRow
         {
             public int Id { get; set; }
@@ -809,6 +994,19 @@ namespace TeamOps.UI.Services
             public string EquipmentName { get; set; } = string.Empty;
             public string Description { get; set; } = string.Empty;
             public string Guidance { get; set; } = string.Empty;
+        }
+
+        private sealed class OperatorManagerMasterCardRow
+        {
+            public int Id { get; set; }
+            public string EquipmentName { get; set; } = string.Empty;
+            public string SectorName { get; set; } = string.Empty;
+            public string Status { get; set; } = string.Empty;
+            public string StartDate { get; set; } = string.Empty;
+            public string ConcludedAt { get; set; } = string.Empty;
+            public string FollowDate { get; set; } = string.Empty;
+            public string FinalizedAt { get; set; } = string.Empty;
+            public string Notes { get; set; } = string.Empty;
         }
 
         private sealed class OperatorManagerMachineRow
@@ -825,6 +1023,18 @@ namespace TeamOps.UI.Services
         }
 
         private sealed record ProductionEventPoint(int MachineId, int StatusCode, DateTime EventDateTime);
+
+        private static class AttendanceStatusKeys
+        {
+            public const string Scheduled = "scheduled";
+            public const string Present = "present";
+            public const string Yukyu = "yukyu";
+            public const string Falta = "falta";
+            public const string Late = "late";
+            public const string EarlyLeave = "early_leave";
+            public const string Folga = "folga";
+            public const string NoRecord = "no_record";
+        }
     }
 
     public sealed record OperatorManagerInitPayload(
@@ -887,6 +1097,7 @@ namespace TeamOps.UI.Services
         bool Trainer,
         bool IsLeader,
         OperatorManagerPresenceMetrics Presence,
+        OperatorManagerMasterCardSummary MasterCards,
         OperatorManagerProductionSummary Production,
         IReadOnlyList<OperatorManagerFollowUpItem> FollowUps,
         IReadOnlyList<OperatorManagerDailyHistoryItem> DailyHistory);
@@ -902,6 +1113,27 @@ namespace TeamOps.UI.Services
         int FollowUpCount,
         double PresencePercent,
         double CoveragePercent);
+
+    public sealed record OperatorManagerMasterCardSummary(
+        int TotalCount,
+        int InProgressCount,
+        int FollowCount,
+        int CompletedCount,
+        int OverdueFollowCount,
+        int DueSoonFollowCount,
+        IReadOnlyList<OperatorManagerMasterCardItem> Items);
+
+    public sealed record OperatorManagerMasterCardItem(
+        int Id,
+        string EquipmentName,
+        string SectorName,
+        string Status,
+        string StartDateIso,
+        string ConcludedAt,
+        string FollowDateIso,
+        string FinalizedAt,
+        string Notes,
+        string FollowState);
 
     public sealed record OperatorManagerProductionSummary(
         double EstimatedRunningMinutes,

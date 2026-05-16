@@ -11,6 +11,7 @@ using TeamOps.Core.Common;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Db;
 using TeamOps.Data.Repositories;
+using TeamOps.UI.Services;
 
 namespace TeamOps.UI.Forms
 {
@@ -150,6 +151,17 @@ namespace TeamOps.UI.Forms
                         ));
                     break;
 
+                case "open:mastercard":
+                    if (!HasAccess(AccessLevel.KL))
+                        ShowAccessDeniedAsync();
+                    else
+                        OpenDialog(() => new HTMLFormMasterCard(
+                            _factory,
+                            _user,
+                            _currentOperator
+                        ));
+                    break;
+
                 case "open:production":
                     if (!HasAccess(AccessLevel.GL))
                         ShowAccessDeniedAsync();
@@ -262,7 +274,9 @@ namespace TeamOps.UI.Forms
                     ? _currentShift.NamePt
                     : _currentShift.NameJp,
                 dateIso = DateTime.Now.ToString("O"),
-                openTasksForShift = GetOpenTasksForCurrentShift()
+                openTasksForShift = GetOpenTasksForCurrentShift(),
+                masterCardsInProgress = GetMasterCardCountByStatus("in_progress"),
+                masterCardsFollow = GetMasterCardCountByStatus("follow")
             });
         }
 
@@ -299,6 +313,13 @@ namespace TeamOps.UI.Forms
                     ShiftId = _currentShift.Id
                 }
             );
+        }
+
+        private int GetMasterCardCountByStatus(string status)
+        {
+            using var conn = _factory.CreateOpenConnection();
+            MasterCardModuleService.EnsureSchema(conn);
+            return MasterCardModuleService.CountByStatus(conn, status);
         }
 
         private bool HasAccess(AccessLevel level)

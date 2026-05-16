@@ -8,54 +8,54 @@
 <body>
     <header class="header-bar">
         <div class="header-copy">
-            <h1>Relatorio Follow</h1>
-            <p>Consulta dos acompanhamentos com busca rapida, exportacao e impressao.</p>
+            <h1 data-i18n="headerTitle">Relatorio Follow</h1>
+            <p data-i18n="headerSubtitle">Consulta dos acompanhamentos com busca rapida, exportacao e impressao.</p>
         </div>
-        <div class="header-badge"><strong id="totalCount">0</strong><span> registros</span></div>
+        <div class="header-badge"><strong id="totalCount">0</strong><span id="totalSuffix"> registros</span></div>
     </header>
 
     <main class="page-shell">
         <section class="filter-card">
             <div class="filter-grid">
                 <label class="filter-field">
-                    <span>Data Inicial</span>
+                    <span data-i18n="labelStart">Data Inicial</span>
                     <input id="dtInicial" class="input" type="date">
                 </label>
 
                 <label class="filter-field">
-                    <span>Data Final</span>
+                    <span data-i18n="labelEnd">Data Final</span>
                     <input id="dtFinal" class="input" type="date">
                 </label>
 
                 <label class="filter-field">
-                    <span>Turno</span>
+                    <span data-i18n="labelShift">Turno</span>
                     <select id="cmbShift" class="input"></select>
                 </label>
 
                 <label class="filter-field">
-                    <span>Tipo</span>
+                    <span data-i18n="labelType">Tipo</span>
                     <select id="cmbType" class="input"></select>
                 </label>
 
                 <label class="filter-field">
-                    <span>Motivo</span>
+                    <span data-i18n="labelReason">Motivo</span>
                     <select id="cmbReason" class="input"></select>
                 </label>
 
                 <label class="filter-field">
-                    <span>Setor</span>
+                    <span data-i18n="labelSector">Setor</span>
                     <select id="cmbSector" class="input"></select>
                 </label>
 
                 <label class="filter-field filter-field-wide">
-                    <span>Buscar</span>
-                    <input id="txtSearch" class="input" type="text" placeholder="Operador, descricao, orientacao, setor...">
+                    <span data-i18n="labelSearch">Buscar</span>
+                    <input id="txtSearch" class="input" type="text" data-i18n-placeholder="searchPlaceholder" placeholder="Operador, descricao, orientacao, setor...">
                 </label>
 
                 <div class="filter-actions">
-                    <button id="btnBuscar" class="btn-secondary" type="button">Buscar</button>
-                    <button id="btnLimpar" class="btn-ghost" type="button">Limpar</button>
-                    <button id="btnExportar" class="btn-primary" type="button">Exportar</button>
+                    <button id="btnBuscar" class="btn-secondary" type="button" data-i18n="btnSearch">Buscar</button>
+                    <button id="btnLimpar" class="btn-ghost" type="button" data-i18n="btnClear">Limpar</button>
+                    <button id="btnExportar" class="btn-primary" type="button" data-i18n="btnExport">Exportar</button>
                 </div>
             </div>
         </section>
@@ -63,8 +63,8 @@
         <section class="table-card">
             <div class="table-head">
                 <div>
-                    <h2>Registros</h2>
-                    <p>Filtros reduzidos para manter a busca mais rapida no dia a dia.</p>
+                    <h2 data-i18n="tableTitle">Registros</h2>
+                    <p data-i18n="tableSubtitle">Filtros reduzidos para manter a busca mais rapida no dia a dia.</p>
                 </div>
             </div>
 
@@ -72,20 +72,20 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Data</th>
-                            <th>Turno</th>
-                            <th>Operador</th>
-                            <th>Tipo</th>
-                            <th>Motivo</th>
-                            <th>Setor</th>
-                            <th>Descricao</th>
-                            <th>Orientacao</th>
-                            <th class="actions-col">Acoes</th>
+                            <th data-i18n="colDate">Data</th>
+                            <th data-i18n="colShift">Turno</th>
+                            <th data-i18n="colOperator">Operador</th>
+                            <th data-i18n="colType">Tipo</th>
+                            <th data-i18n="colReason">Motivo</th>
+                            <th data-i18n="colSector">Setor</th>
+                            <th data-i18n="colDescription">Descricao</th>
+                            <th data-i18n="colGuidance">Orientacao</th>
+                            <th class="actions-col" data-i18n="colActions">Acoes</th>
                         </tr>
                     </thead>
                     <tbody id="tblBody">
                         <tr>
-                            <td colspan="9" class="empty-cell">Carregando...</td>
+                            <td colspan="9" class="empty-cell" data-i18n="loading">Carregando...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -97,10 +97,10 @@
         <div class="modal-content">
             <button id="btnCloseModal" class="close" type="button" aria-label="Fechar">x</button>
             <div class="modal-head">
-                <h3>Detalhes do Acompanhamento</h3>
+                <h3 data-i18n="modalTitle">Detalhes do Acompanhamento</h3>
                 <div class="modal-actions">
-                    <button id="btnModalOperator" class="btn-secondary" type="button">Historico do operador</button>
-                    <button id="btnModalPrint" class="btn-primary" type="button">Ficha para impressao</button>
+                    <button id="btnModalOperator" class="btn-secondary" type="button" data-i18n="btnOperatorHistory">Historico do operador</button>
+                    <button id="btnModalPrint" class="btn-primary" type="button" data-i18n="btnPrintSheet">Ficha para impressao</button>
                 </div>
             </div>
             <div id="modalBody" class="modal-body"></div>

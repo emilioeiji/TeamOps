@@ -21,6 +21,7 @@ namespace TeamOps.UI.Forms
             Operator currentOperator)
         {
             InitializeComponent();
+            Text = L("Sobra de peca", "\u90e8\u54c1\u4f59\u308a\u767b\u9332");
 
             _factory = factory;
             _currentOperator = currentOperator;
@@ -72,12 +73,17 @@ namespace TeamOps.UI.Forms
             using var conn = _factory.CreateOpenConnection();
 
             var shiftName = conn.QueryFirstOrDefault<string>(
-                "SELECT NamePt FROM Shifts WHERE Id = @id",
+                string.Equals(Program.CurrentLocale, "ja-JP", StringComparison.OrdinalIgnoreCase)
+                    ? "SELECT COALESCE(NULLIF(NameJp, ''), NamePt, '') FROM Shifts WHERE Id = @id"
+                    : "SELECT COALESCE(NamePt, '') FROM Shifts WHERE Id = @id",
                 new { id = _currentOperator.ShiftId }
             ) ?? "";
 
             var operators = conn.Query(
-                @"SELECT CodigoFJ, NameRomanji
+                @"SELECT
+                      CodigoFJ,
+                      COALESCE(NameRomanji, CodigoFJ) AS NamePt,
+                      COALESCE(NULLIF(NameNihongo, ''), NameRomanji, CodigoFJ) AS NameJp
                   FROM Operators
                   WHERE Status = 1 AND ShiftId = @shiftId
                   ORDER BY NameRomanji",
@@ -85,13 +91,19 @@ namespace TeamOps.UI.Forms
             ).ToList();
 
             var machines = conn.Query(
-                @"SELECT Id, NamePt
+                @"SELECT
+                      Id,
+                      COALESCE(NamePt, '') AS NamePt,
+                      COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp
                   FROM Machines
                   ORDER BY NamePt"
             ).ToList();
 
             var shains = conn.Query(
-                @"SELECT Id, NameRomanji
+                @"SELECT
+                      Id,
+                      COALESCE(NameRomanji, '') AS NamePt,
+                      COALESCE(NULLIF(NameNihongo, ''), NameRomanji, '') AS NameJp
                   FROM Shain
                   ORDER BY NameRomanji"
             ).ToList();
@@ -101,9 +113,17 @@ namespace TeamOps.UI.Forms
             PostJson(new
             {
                 type = "init",
+                locale = Program.CurrentLocale,
                 shiftId = _currentOperator.ShiftId,
                 shiftName,
-                leaderName = _currentOperator.NameRomanji,
+                leaderNamePt = string.IsNullOrWhiteSpace(_currentOperator.NameRomanji)
+                    ? _currentOperator.CodigoFJ
+                    : _currentOperator.NameRomanji,
+                leaderNameJp = string.IsNullOrWhiteSpace(_currentOperator.NameNihongo)
+                    ? (string.IsNullOrWhiteSpace(_currentOperator.NameRomanji)
+                        ? _currentOperator.CodigoFJ
+                        : _currentOperator.NameRomanji)
+                    : _currentOperator.NameNihongo,
                 today = DateTime.Today.ToString("yyyy-MM-dd"),
                 operators,
                 machines,
@@ -116,7 +136,7 @@ namespace TeamOps.UI.Forms
         {
             try
             {
-                ValidatePayload(msg);
+                ValidatePayloadLocalized(msg);
 
                 using var conn = _factory.CreateOpenConnection();
 
@@ -214,14 +234,18 @@ namespace TeamOps.UI.Forms
                 SELECT
                     s.Id AS id,
                     substr(s.Data, 1, 10) AS data,
-                    sh.NamePt AS shiftName,
+                    COALESCE(sh.NamePt, '') AS shiftNamePt,
+                    COALESCE(NULLIF(sh.NameJp, ''), sh.NamePt, '') AS shiftNameJp,
                     s.Lote AS lote,
-                    o.NameRomanji AS operatorName,
+                    COALESCE(o.NameRomanji, s.OperadorId) AS operatorNamePt,
+                    COALESCE(NULLIF(o.NameNihongo, ''), o.NameRomanji, s.OperadorId) AS operatorNameJp,
                     s.Tanjuu AS tanjuu,
                     s.PesoGramas AS pesoGramas,
                     s.Quantidade AS quantidade,
-                    m.NamePt AS machineName,
-                    sa.NameRomanji AS shainName,
+                    COALESCE(m.NamePt, '') AS machineNamePt,
+                    COALESCE(NULLIF(m.NameJp, ''), m.NamePt, '') AS machineNameJp,
+                    COALESCE(sa.NameRomanji, '') AS shainNamePt,
+                    COALESCE(NULLIF(sa.NameNihongo, ''), sa.NameRomanji, '') AS shainNameJp,
                     COALESCE(s.Observacao, '') AS observacao,
                     s.Lider AS lider,
                     substr(s.CreatedAt, 1, 16) AS createdAt,
@@ -242,6 +266,46 @@ namespace TeamOps.UI.Forms
             webViewSobraDePeca.CoreWebView2.PostWebMessageAsJson(
                 JsonSerializer.Serialize(payload)
             );
+        }
+
+        private void ValidatePayloadLocalized(JsRequest msg)
+        {
+            if (string.IsNullOrWhiteSpace(msg.date))
+                throw new InvalidOperationException(L("Informe a data.", "\u65e5\u4ed8\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
+
+            if (!DateTime.TryParse(msg.date, out _))
+                throw new InvalidOperationException(L("Informe uma data valida.", "\u6709\u52b9\u306a\u65e5\u4ed8\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
+
+            if (string.IsNullOrWhiteSpace(msg.lote))
+                throw new InvalidOperationException(L("Informe o lote.", "\u30ed\u30c3\u30c8\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
+
+            if (string.IsNullOrWhiteSpace(msg.opCodigoFJ))
+                throw new InvalidOperationException(L("Selecione um operador.", "\u4f5c\u696d\u8005\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
+
+            if (msg.tanjuu <= 0)
+                throw new InvalidOperationException(L("Informe um tanjuu valido.", "\u6709\u52b9\u306a\u5358\u91cd\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
+
+            if (msg.pesoGramas <= 0)
+                throw new InvalidOperationException(L("Informe um peso valido.", "\u6709\u52b9\u306a\u91cd\u91cf\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
+
+            if (msg.quantidade <= 0)
+                throw new InvalidOperationException(L("Quantidade invalida.", "\u6570\u91cf\u304c\u7121\u52b9\u3067\u3059\u3002"));
+
+            if (msg.machineId <= 0)
+                throw new InvalidOperationException(L("Selecione uma maquina.", "\u8a2d\u5099\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
+
+            if (msg.shainId <= 0)
+                throw new InvalidOperationException(L("Selecione um shain.", "\u793e\u54e1\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
+
+            if (string.IsNullOrWhiteSpace(msg.item))
+                throw new InvalidOperationException(L("Informe o item.", "\u54c1\u76ee\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
+        }
+
+        private static string L(string pt, string jp)
+        {
+            return string.Equals(Program.CurrentLocale, "ja-JP", StringComparison.OrdinalIgnoreCase)
+                ? jp
+                : pt;
         }
     }
 }
