@@ -332,6 +332,42 @@ code {
     color: var(--red);
 }
 
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(11, 18, 32, 0.36);
+    backdrop-filter: blur(4px);
+}
+
+.loading-card {
+    width: min(360px, calc(100% - 30px));
+    padding: 28px 24px;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 28px 60px rgba(0, 0, 0, 0.18);
+    text-align: center;
+}
+
+.spinner {
+    width: 42px;
+    height: 42px;
+    margin: 0 auto 16px;
+    border: 4px solid rgba(21, 87, 153, 0.14);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .planner-card,
 .detail-card,
 .day-card {

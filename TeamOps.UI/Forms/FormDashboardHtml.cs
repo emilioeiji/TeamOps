@@ -212,28 +212,14 @@ namespace TeamOps.UI.Forms
                     if (!HasAccess(AccessLevel.KL))
                         ShowAccessDeniedAsync();
                     else
-                        OpenDialog(() => new FormPR(
-                            new PRRepository(_factory),
-                            new PRCategoriaRepository(_factory),
-                            new PRPrioridadeRepository(_factory),
-                            new SectorRepository(_factory),
-                            new OperatorRepository(_factory),
-                            _currentOperator
-                        ));
+                        OpenDialog(() => new HTMLFormPrCl(_factory, _currentOperator, isPr: true));
                     break;
 
                 case "open:cl":
                     if (!HasAccess(AccessLevel.KL))
                         ShowAccessDeniedAsync();
                     else
-                        OpenDialog(() => new FormCL(
-                            new CLRepository(_factory),
-                            new CLCategoriaRepository(_factory),
-                            new CLPrioridadeRepository(_factory),
-                            new SectorRepository(_factory),
-                            new OperatorRepository(_factory),
-                            _currentOperator
-                        ));
+                        OpenDialog(() => new HTMLFormPrCl(_factory, _currentOperator, isPr: false));
                     break;
 
                 case "open:yukyu":

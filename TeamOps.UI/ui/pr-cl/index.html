@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Documento - TeamOps</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="header-bar">
+        <div>
+            <span id="txtBadge" class="badge">Documento</span>
+            <h1 id="txtTitle">Novo documento</h1>
+            <p id="txtSubtitle">Preencha os dados principais para gerar o arquivo Excel pelo template configurado.</p>
+        </div>
+        <div class="meta-box">
+            <span id="txtAuthorLabel">Autor</span>
+            <strong id="lblAuthor">-</strong>
+            <small id="lblDate">-</small>
+        </div>
+    </header>
+
+    <main class="page">
+        <section id="notice" class="notice hidden"></section>
+
+        <section class="form-card">
+            <div class="form-grid">
+                <label class="field">
+                    <span id="txtSector">Setor</span>
+                    <select id="sectorId"></select>
+                </label>
+
+                <label class="field">
+                    <span id="txtCategory">Categoria</span>
+                    <select id="categoryId"></select>
+                </label>
+
+                <label class="field">
+                    <span id="txtPriority">Prioridade</span>
+                    <select id="priorityId"></select>
+                </label>
+
+                <label class="field field-title">
+                    <span id="txtDocTitle">Titulo</span>
+                    <input id="docTitle" type="text" autocomplete="off">
+                </label>
+
+                <label class="field field-file">
+                    <span id="txtFileName">Nome do arquivo</span>
+                    <input id="fileName" type="text" readonly>
+                </label>
+            </div>
+
+            <div class="actions">
+                <button id="btnClear" class="btn btn-secondary" type="button">Limpar</button>
+                <button id="btnSave" class="btn btn-primary" type="button">Salvar e gerar Excel</button>
+            </div>
+        </section>
+    </main>
+
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-card">
+            <div class="spinner"></div>
+            <strong id="txtLoading">Gerando arquivo...</strong>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

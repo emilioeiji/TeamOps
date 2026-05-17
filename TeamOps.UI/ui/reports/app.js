@@ -41,7 +41,9 @@ const I18N = {
         devSubtitle: "Atalhos reservados para manter o mesmo mapa do menu antigo.",
         tileOperatorsTitle: "Operadores",
         tilePrTitle: "PR",
+        tilePrSubtitle: "Consulta de PR gerados por periodo e categoria",
         tileClTitle: "CL",
+        tileClSubtitle: "Consulta de CL gerados por periodo e categoria",
         tileSobraTitle: "Sobra de Peca",
         soon: "Em breve",
         notifyTitle: "Aviso"
@@ -77,7 +79,9 @@ const I18N = {
         devSubtitle: "\u65e7\u30e1\u30cb\u30e5\u30fc\u69cb\u6210\u3092\u7dad\u6301\u3059\u308b\u305f\u3081\u306e\u4e88\u7d04\u67a0\u3067\u3059\u3002",
         tileOperatorsTitle: "\u30aa\u30da\u30ec\u30fc\u30bf\u30fc",
         tilePrTitle: "PR",
+        tilePrSubtitle: "PR \u6587\u66f8\u3092\u671f\u9593\u3068\u30ab\u30c6\u30b4\u30ea\u3067\u691c\u7d22",
         tileClTitle: "CL",
+        tileClSubtitle: "CL \u6587\u66f8\u3092\u671f\u9593\u3068\u30ab\u30c6\u30b4\u30ea\u3067\u691c\u7d22",
         tileSobraTitle: "Sobra de Peca",
         soon: "\u8fd1\u65e5\u5bfe\u5fdc",
         notifyTitle: "\u901a\u77e5"
@@ -158,10 +162,11 @@ function applyLocale() {
     setText("txtDevSubtitle", t("devSubtitle"));
     setText("txtTileOperatorsTitle", t("tileOperatorsTitle"));
     setText("txtTilePrTitle", t("tilePrTitle"));
+    setText("txtTilePrSubtitle", t("tilePrSubtitle"));
     setText("txtTileClTitle", t("tileClTitle"));
+    setText("txtTileClSubtitle", t("tileClSubtitle"));
     setText("txtTileSobraTitle", t("tileSobraTitle"));
     setText("txtTileSoon1", t("soon"));
-    setText("txtTileSoon2", t("soon"));
     setText("txtTileSoon3", t("soon"));
 }
 

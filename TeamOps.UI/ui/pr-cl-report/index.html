@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatorio PR/CL - TeamOps</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="page-header">
+        <div>
+            <span id="txtBadge" class="badge">Relatorio</span>
+            <h1 id="txtTitle">Relatorio</h1>
+            <p id="txtSubtitle">Consulta dos documentos gerados por periodo, setor, categoria e prioridade.</p>
+        </div>
+    </header>
+
+    <main class="page">
+        <section class="filters-card">
+            <label class="field"><span id="txtStart">Inicio</span><input id="start" type="date"></label>
+            <label class="field"><span id="txtEnd">Fim</span><input id="end" type="date"></label>
+            <label class="field"><span id="txtSector">Setor</span><select id="sectorId"></select></label>
+            <label class="field"><span id="txtCategory">Categoria</span><select id="categoryId"></select></label>
+            <label class="field"><span id="txtPriority">Prioridade</span><select id="priorityId"></select></label>
+            <label class="field field-search"><span id="txtSearch">Buscar</span><input id="search" type="search"></label>
+            <button id="btnApply" class="btn-primary" type="button">Aplicar</button>
+        </section>
+
+        <section class="summary-grid">
+            <article><span id="txtCount">Documentos</span><strong id="sumCount">0</strong></article>
+            <article><span id="txtSectors">Setores</span><strong id="sumSectors">0</strong></article>
+            <article><span id="txtAuthors">Autores</span><strong id="sumAuthors">0</strong></article>
+        </section>
+
+        <section id="notice" class="notice hidden"></section>
+
+        <section class="table-card">
+            <div class="table-head">
+                <h2 id="txtTableTitle">Documentos</h2>
+                <span id="rowCount">0</span>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th id="thDate">Data</th>
+                            <th id="thTitle">Titulo</th>
+                            <th id="thSector">Setor</th>
+                            <th id="thCategory">Categoria</th>
+                            <th id="thPriority">Prioridade</th>
+                            <th id="thAuthor">Autor</th>
+                            <th id="thFile">Arquivo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rows"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

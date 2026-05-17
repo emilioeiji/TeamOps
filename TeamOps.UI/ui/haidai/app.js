@@ -38,9 +38,11 @@ window.chrome?.webview?.addEventListener("message", event => {
             showNotice(payload.data?.message || "", "success");
             break;
         case "export_result":
+            hideLoading();
             showNotice(`${payload.data?.message || "Exportado."} ${payload.data?.directory || ""}`.trim(), "success");
             break;
         case "error":
+            hideLoading();
             showNotice(payload.message || "Erro inesperado.", "error");
             break;
     }
@@ -271,11 +273,14 @@ function saveMonthPlan() {
 
 function exportHtml() {
     const month = getSelectedMonth();
-    post({
-        action: "export_html",
-        date: buildSelectedDateIso(month.year, month.month, state.selectedDay),
-        sectorId: Number(document.getElementById("sectorPicker").value || 0)
-    });
+    showLoading();
+    window.setTimeout(() => {
+        post({
+            action: "export_html",
+            date: buildSelectedDateIso(month.year, month.month, state.selectedDay),
+            sectorId: Number(document.getElementById("sectorPicker").value || 0)
+        });
+    }, 40);
 }
 
 function renderPlanner(plan) {
@@ -287,7 +292,8 @@ function renderPlanner(plan) {
 
     const headDays = days.map(day => `<th>${day}</th>`).join("");
     const body = groups.map(group => {
-        const rows = (group.operators || []).map(operator => {
+        const operators = sortMonthOperatorsForSelectedDay(group.operators || []);
+        const rows = operators.map(operator => {
             const cells = (operator.cells || []).map(cell => {
                 const value = escapeAttr(cell.assignmentCode || "");
                 const classes = buildPlanCellClasses(cell.assignmentCode || "", cell.status || "");
@@ -341,6 +347,7 @@ function renderDetail() {
     const shiftId = Number(document.getElementById("shiftPicker").value || 0);
     const localOptions = buildLocalOptions(row.codigoFJ, sectorId, row.localId);
     const trainerOptions = buildTrainerOptions(sectorId, shiftId, row.trainerCodigoFJ, row.codigoFJ);
+    const pairOptions = buildPairOptions(row);
     const roleTags = [];
 
     if (row.trainer) {
@@ -397,7 +404,7 @@ function renderDetail() {
 
             <label class="detail-field">
                 <span>Dupla</span>
-                <input data-field="pairKey" type="text" value="${escapeAttr(row.pairKey || "")}" placeholder="Par 01">
+                <select data-field="pairKey">${pairOptions}</select>
             </label>
 
             <label class="detail-field">
@@ -414,6 +421,7 @@ function renderDetail() {
         <div class="check-row">
             <label><input data-field="isTrainee" type="checkbox" ${row.isTrainee ? "checked" : ""}> Aprendiz</label>
             <label><input data-field="countsTowardKousu" type="checkbox" ${row.countsTowardKousu !== false ? "checked" : ""}> Conta no kousu</label>
+            <label><input data-field="applyPairToMonth" type="checkbox" checked> Fixar dupla no mes</label>
         </div>
 
         <div class="action-row">
@@ -543,7 +551,8 @@ function saveDetail(container) {
         trainerCodigoFJ: readField(container, "trainerCodigoFJ"),
         notes: readField(container, "notes"),
         isTrainee: readCheckbox(container, "isTrainee"),
-        countsTowardKousu: readCheckbox(container, "countsTowardKousu")
+        countsTowardKousu: readCheckbox(container, "countsTowardKousu"),
+        applyPairToMonth: readCheckbox(container, "applyPairToMonth")
     });
 }
 
@@ -700,6 +709,31 @@ function flattenMonthOperators(plan) {
     return (plan?.groups || []).flatMap(group => group.operators || []);
 }
 
+function sortMonthOperatorsForSelectedDay(operators) {
+    const boardRows = flattenBoardRows(state.board);
+    const selectedPairs = new Map(boardRows.map(row => [row.codigoFJ, String(row.pairKey || "").trim()]));
+    return [...operators].sort((left, right) => {
+        const leftPair = selectedPairs.get(left.codigoFJ) || "";
+        const rightPair = selectedPairs.get(right.codigoFJ) || "";
+
+        if (leftPair || rightPair) {
+            const pairCompare = (leftPair || `ZZZ-${left.codigoFJ}`).localeCompare(
+                rightPair || `ZZZ-${right.codigoFJ}`,
+                undefined,
+                { numeric: true, sensitivity: "base" }
+            );
+            if (pairCompare !== 0) {
+                return pairCompare;
+            }
+        }
+
+        return String(left.name || "").localeCompare(String(right.name || ""), undefined, {
+            numeric: true,
+            sensitivity: "base"
+        });
+    });
+}
+
 function buildLocalOptions(operatorCodigoFJ, sectorId, selectedId) {
     const options = [`<option value="">Sem area definida</option>`];
     const allowedSectorIds = getAllowedLocalSectorIdsForOperator(operatorCodigoFJ, sectorId);
@@ -773,6 +807,41 @@ function buildTrainerOptions(sectorId, shiftId, selectedCodigoFJ, currentOperato
     });
 
     return options.join("");
+}
+
+function buildPairOptions(row) {
+    const selectedPair = String(row?.pairKey || "").trim();
+    const groupId = Number(row?.groupId || 0);
+    const groupName = String(row?.groupName || groupId || "G").trim();
+    const prefix = groupId > 0
+        ? `G${groupId}`
+        : sanitizePairToken(groupName || "G");
+    const usedPairs = flattenBoardRows(state.board)
+        .filter(item => Number(item.groupId || 0) === groupId && item.pairKey)
+        .map(item => String(item.pairKey).trim())
+        .filter(Boolean);
+    const defaultPairs = Array.from({ length: 12 }, (_, index) => `${prefix}-D${String(index + 1).padStart(2, "0")}`);
+    const pairs = Array.from(new Set([selectedPair, ...usedPairs, ...defaultPairs].filter(Boolean)));
+
+    return [
+        `<option value="" ${selectedPair ? "" : "selected"}>Sem dupla</option>`,
+        ...pairs.map((pair, index) => {
+            const pairNumber = pair.match(/D(\d+)$/i)?.[1] || String(index + 1).padStart(2, "0");
+            const label = pair.startsWith(prefix)
+                ? `Dupla ${pairNumber}`
+                : `Dupla ${pair}`;
+            return `<option value="${escapeAttr(pair)}" ${pair === selectedPair ? "selected" : ""}>${escapeHtml(label)}</option>`;
+        })
+    ].join("");
+}
+
+function sanitizePairToken(value) {
+    return String(value || "G")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^A-Za-z0-9]+/g, "")
+        .toUpperCase()
+        .slice(0, 8) || "G";
 }
 
 function buildReplacementHint(currentOperatorCodigoFJ) {
@@ -898,6 +967,16 @@ function hideNotice() {
     const notice = document.getElementById("notice");
     notice.className = "notice hidden";
     notice.textContent = "";
+}
+
+function showLoading() {
+    document.getElementById("loadingOverlay").classList.remove("hidden");
+    document.getElementById("btnExport").disabled = true;
+}
+
+function hideLoading() {
+    document.getElementById("loadingOverlay").classList.add("hidden");
+    document.getElementById("btnExport").disabled = false;
 }
 
 function post(payload) {

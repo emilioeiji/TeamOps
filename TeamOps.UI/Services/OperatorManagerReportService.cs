@@ -1034,7 +1034,7 @@ namespace TeamOps.UI.Services
                             continue;
                         }
 
-                        localRunning += CalculateRunningMinutes(points, shiftPeriod);
+                        localRunning += CalculateRunningMinutes(points, ResolveObservedProductionPeriod(points, shiftPeriod));
                     }
 
                     dayRunningMinutes += localRunning;
@@ -1253,6 +1253,43 @@ namespace TeamOps.UI.Services
             }
 
             return running;
+        }
+
+        private static ProductionShiftPeriod ResolveObservedProductionPeriod(
+            IReadOnlyList<ProductionEventPoint> events,
+            ProductionShiftPeriod scheduledPeriod)
+        {
+            var end = scheduledPeriod.End;
+            var now = DateTime.Now;
+            if (end > now)
+            {
+                end = now;
+            }
+
+            var latestEvent = events
+                .Where(item => item.EventDateTime >= scheduledPeriod.Start && item.EventDateTime <= scheduledPeriod.End)
+                .OrderByDescending(item => item.EventDateTime)
+                .FirstOrDefault();
+
+            if (latestEvent == null)
+            {
+                end = scheduledPeriod.Start;
+            }
+            else if (latestEvent.EventDateTime < end)
+            {
+                end = latestEvent.EventDateTime;
+            }
+
+            if (end < scheduledPeriod.Start)
+            {
+                end = scheduledPeriod.Start;
+            }
+
+            return new ProductionShiftPeriod
+            {
+                Start = scheduledPeriod.Start,
+                End = end
+            };
         }
 
         private sealed class OperatorManagerDirectoryRow

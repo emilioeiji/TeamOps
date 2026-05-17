@@ -360,11 +360,15 @@ namespace TeamOps.UI.Forms
                     ReadBool(root, "isTrainee"),
                     ReadString(root, "trainerCodigoFJ"),
                     ReadBool(root, "countsTowardKousu", true),
-                    ReadString(root, "notes")));
+                    ReadString(root, "notes"),
+                    ReadBool(root, "applyPairToMonth")));
 
             SendBoard(date, shiftId, sectorId);
             SendMonthlyPlan(date.Year, date.Month, shiftId, sectorId);
-            PostNotify(L("Escala do dia salva.", "Daily assignment saved."));
+            PostNotify(
+                ReadBool(root, "applyPairToMonth")
+                    ? L("Escala salva e dupla fixada no mes.", "Assignment saved and pair fixed for the month.")
+                    : L("Escala do dia salva.", "Daily assignment saved."));
         }
 
         private void MarkException(JsonElement root)

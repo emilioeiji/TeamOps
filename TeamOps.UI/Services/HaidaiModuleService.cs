@@ -940,14 +940,18 @@ namespace TeamOps.UI.Services
                     transaction) ?? string.Empty;
             }
 
-            UpsertAssignmentInternal(
-                conn,
-                transaction,
-                request with
-                {
-                    SectorId = storageSectorId,
-                    AssignmentCode = assignmentCode ?? string.Empty
-                });
+            var normalizedRequest = request with
+            {
+                SectorId = storageSectorId,
+                AssignmentCode = assignmentCode ?? string.Empty
+            };
+
+            UpsertAssignmentInternal(conn, transaction, normalizedRequest);
+
+            if (normalizedRequest.ApplyPairToMonth)
+            {
+                ApplyPairKeyToMonth(conn, transaction, normalizedRequest);
+            }
 
             transaction.Commit();
         }
@@ -1846,6 +1850,78 @@ namespace TeamOps.UI.Services
             }
         }
 
+        private static void ApplyPairKeyToMonth(System.Data.IDbConnection conn, System.Data.IDbTransaction transaction, HaidaiSaveAssignmentRequest request)
+        {
+            var monthStart = new DateTime(request.Date.Year, request.Date.Month, 1);
+            var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+            var pairKey = NullIfWhiteSpace(request.PairKey);
+
+            conn.Execute(
+                @"
+                    UPDATE HaidaiAssignments
+                    SET PairKey = @PairKey,
+                        UpdatedAt = CURRENT_TIMESTAMP
+                    WHERE date(ScheduleDate) BETWEEN date(@MonthStart) AND date(@MonthEnd)
+                      AND ShiftId = @ShiftId
+                      AND SectorId = @SectorId
+                      AND OperatorCodigoFJ = @OperatorCodigoFJ;",
+                new
+                {
+                    PairKey = pairKey,
+                    MonthStart = monthStart.ToString("yyyy-MM-dd"),
+                    MonthEnd = monthEnd.ToString("yyyy-MM-dd"),
+                    request.ShiftId,
+                    request.SectorId,
+                    request.OperatorCodigoFJ
+                },
+                transaction);
+
+            if (pairKey == null)
+            {
+                return;
+            }
+
+            for (var date = monthStart; date <= monthEnd; date = date.AddDays(1))
+            {
+                conn.Execute(
+                    @"
+                        INSERT INTO HaidaiAssignments (
+                            ScheduleDate,
+                            ShiftId,
+                            SectorId,
+                            OperatorCodigoFJ,
+                            PairKey,
+                            CountsTowardKousu,
+                            IsLineupActive
+                        )
+                        SELECT
+                            @ScheduleDate,
+                            @ShiftId,
+                            @SectorId,
+                            @OperatorCodigoFJ,
+                            @PairKey,
+                            1,
+                            0
+                        WHERE NOT EXISTS (
+                            SELECT 1
+                            FROM HaidaiAssignments
+                            WHERE date(ScheduleDate) = date(@ScheduleDate)
+                              AND ShiftId = @ShiftId
+                              AND SectorId = @SectorId
+                              AND OperatorCodigoFJ = @OperatorCodigoFJ
+                        );",
+                    new
+                    {
+                        ScheduleDate = date.ToString("yyyy-MM-dd"),
+                        request.ShiftId,
+                        request.SectorId,
+                        request.OperatorCodigoFJ,
+                        PairKey = pairKey
+                    },
+                    transaction);
+            }
+        }
+
         private static object? NullIfWhiteSpace(string? value)
         {
             return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
@@ -1974,6 +2050,7 @@ namespace TeamOps.UI.Services
                 .ToList();
 
             var tvAreaGroups = tvAreaRows
+                .Where(row => !row.IsTrainee)
                 .GroupBy(BuildTvAreaKey)
                 .OrderBy(group => AreaSortKey(group.Key), StringComparer.OrdinalIgnoreCase)
                 .ThenBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
@@ -2161,6 +2238,10 @@ namespace TeamOps.UI.Services
             border-color: #a8d4c4;
             background: #f2faf6;
         }}
+        .area-card.paired {{
+            border-color: #a8d4c4;
+            background: #f2faf6;
+        }}
         .area-header {{
             display: flex;
             align-items: center;
@@ -2198,6 +2279,19 @@ namespace TeamOps.UI.Services
             align-content: stretch;
         }}
         .area-card.two-up .operator-list {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+        .area-card.paired .operator-list {{
+            grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+        }}
+        .operator-pair {{
+            min-width: 0;
+            min-height: 0;
+            display: grid;
+            gap: 6px;
+            align-content: stretch;
+        }}
+        .pair-label {{
+            display: none;
+        }}
         .area-card.two-up .operator-card {{
             display: grid;
             grid-template-rows: auto minmax(0, 1fr);
@@ -2554,12 +2648,20 @@ namespace TeamOps.UI.Services
         private static string BuildTvAreaCardMarkup(IGrouping<string, HaidaiBoardRow> group)
         {
             var operators = group
-                .OrderBy(row => row.IsTrainee)
+                .OrderBy(row => string.IsNullOrWhiteSpace(row.PairKey) ? "ZZZ" + row.CodigoFJ : row.PairKey, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(row => row.IsTrainee)
                 .ThenBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            var operatorMarkup = string.Join(Environment.NewLine, operators.Select(BuildTvOperatorMarkup));
-            var countClass = operators.Count == 2 ? " two-up" : string.Empty;
+            var hasPairGroup = operators
+                .Where(row => !string.IsNullOrWhiteSpace(row.PairKey))
+                .GroupBy(row => row.PairKey.Trim(), StringComparer.OrdinalIgnoreCase)
+                .Any(pair => pair.Count() > 1);
+
+            var operatorMarkup = BuildTvOperatorGroupMarkup(operators);
+            var countClass = hasPairGroup
+                ? " paired"
+                : operators.Count == 2 ? " two-up" : string.Empty;
 
             return $@"
                 <article class=""area-card{countClass}"">
@@ -2569,6 +2671,39 @@ namespace TeamOps.UI.Services
                     </div>
                     <div class=""operator-list"">{operatorMarkup}</div>
                 </article>";
+        }
+
+        private static string BuildTvOperatorGroupMarkup(IReadOnlyList<HaidaiBoardRow> operators)
+        {
+            var groups = operators
+                .GroupBy(
+                    row => string.IsNullOrWhiteSpace(row.PairKey)
+                        ? "__single__" + row.CodigoFJ
+                        : row.PairKey.Trim(),
+                    StringComparer.OrdinalIgnoreCase)
+                .Select(group => new
+                {
+                    Key = group.Key,
+                    IsPair = !group.Key.StartsWith("__single__", StringComparison.OrdinalIgnoreCase) && group.Count() > 1,
+                    Rows = group
+                        .OrderBy(row => row.IsTrainee)
+                        .ThenBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
+                        .ToList()
+                });
+
+            return string.Join(Environment.NewLine, groups.Select(group =>
+            {
+                if (!group.IsPair)
+                {
+                    return string.Join(Environment.NewLine, group.Rows.Select(BuildTvOperatorMarkup));
+                }
+
+                return $@"
+                    <div class=""operator-pair"">
+                        <span class=""pair-label"">Par {EscapeHtml(group.Key)}</span>
+                        {string.Join(Environment.NewLine, group.Rows.Select(BuildTvOperatorMarkup))}
+                    </div>";
+            }));
         }
 
         private static string BuildTvOperatorMarkup(HaidaiBoardRow row)
@@ -3169,7 +3304,8 @@ namespace TeamOps.UI.Services
         bool IsTrainee,
         string TrainerCodigoFJ,
         bool CountsTowardKousu,
-        string Notes);
+        string Notes,
+        bool ApplyPairToMonth = false);
 
     public sealed record HaidaiMovementRequest(
         DateTime Date,
