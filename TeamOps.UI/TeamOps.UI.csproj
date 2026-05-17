@@ -223,6 +223,15 @@
     <None Update="ui\operator-manager-report\style.css">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="ui\presence-report\app.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="ui\presence-report\index.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="ui\presence-report\style.css">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="ui\production-monitor\app.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

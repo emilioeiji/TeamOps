@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatorio de Presenca - TeamOps</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="page-header">
+        <div>
+            <span id="txtBadge" class="badge">Presenca</span>
+            <h1 id="txtTitle">Relatorio de Presenca</h1>
+            <p id="txtSubtitle">Consolidado por operador usando escala do Haidai, presenca, Todoke e movimentos.</p>
+        </div>
+        <div class="period-pill">
+            <span id="txtWindow">Periodo</span>
+            <strong id="lblWindow">-</strong>
+        </div>
+    </header>
+
+    <main class="page">
+        <section class="filters-card">
+            <label class="field">
+                <span id="txtStart">Inicio</span>
+                <input id="startDate" type="date">
+            </label>
+            <label class="field">
+                <span id="txtEnd">Fim</span>
+                <input id="endDate" type="date">
+            </label>
+            <label class="field">
+                <span id="txtShift">Turno</span>
+                <select id="shiftId"></select>
+            </label>
+            <label class="field">
+                <span id="txtSector">Setor</span>
+                <select id="sectorId"></select>
+            </label>
+            <label class="field">
+                <span id="txtGroup">Grupo</span>
+                <select id="groupId"></select>
+            </label>
+            <label class="field">
+                <span id="txtStatus">Status</span>
+                <select id="status">
+                    <option id="optStatusAll" value="all">Todos</option>
+                    <option id="optStatusPresent" value="present">Presenca</option>
+                    <option id="optStatusIssue" value="issue">Ocorrencias</option>
+                    <option id="optStatusYukyu" value="yukyu">Yukyu</option>
+                    <option id="optStatusFalta" value="falta">Falta</option>
+                    <option id="optStatusLate" value="late">Atraso</option>
+                    <option id="optStatusEarly" value="early_leave">Saida antecipada</option>
+                    <option id="optStatusPending" value="pending">Todoke pendente</option>
+                </select>
+            </label>
+            <label class="field field-search">
+                <span id="txtSearch">Buscar</span>
+                <input id="search" type="search" placeholder="FJ ou nome">
+            </label>
+            <button id="btnApply" class="primary-button" type="button">Aplicar</button>
+        </section>
+
+        <section id="summary" class="summary-grid"></section>
+
+        <section class="table-card">
+            <div class="table-head">
+                <div>
+                    <h2 id="txtTableTitle">Operadores</h2>
+                    <p id="txtTableSubtitle">Percentual calculado sobre dias escalados no periodo.</p>
+                </div>
+                <strong id="lblCount">0</strong>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th id="thOperator">Operador</th>
+                            <th id="thGroup">Grupo</th>
+                            <th id="thScheduled">Escalado</th>
+                            <th id="thPresent">Conforme</th>
+                            <th id="thPercent">%</th>
+                            <th id="thIssues">Ocorrencias</th>
+                            <th id="thLast">Ultimo status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rows">
+                        <tr><td colspan="7" class="empty-cell">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <div id="toast" class="toast hidden" role="status" aria-live="polite">
+        <strong id="toastTitle">Aviso</strong>
+        <span id="toastMessage">-</span>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

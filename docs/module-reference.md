@@ -30,11 +30,13 @@
 ## Relatorios
 
 - **Finalidade:** consulta consolidada de dados operacionais.
-- **Arquivos principais:** `HTMLFormReports.cs`, `ui/reports/*`.
+- **Arquivos principais:** `HTMLFormReports.cs`, `ui/reports/*`, `HTMLFormOperatorManagerReport.cs`, `ui/operator-manager-report/*`, `HTMLFormPresenceReport.cs`, `ui/presence-report/*`, `OperatorManagerReportService.cs`.
 - **Dependencias:** Hikitsugui, leituras, operadores e SQLite.
 - **Inputs:** filtros de relatorio.
 - **Outputs:** visualizacao e possiveis exportacoes/impressao.
-- **Riscos:** consultas grandes podem ficar lentas em banco de rede.
+- **Relatorio gerencial de operadores:** consolida presenca, producao, Master Card, follow-up e historico diario do operador selecionado. O percentual de producao usa minutos rodando divididos pelos minutos programados por maquina/local no periodo.
+- **Relatorio de presenca:** consulta focada em escala e comparecimento, com filtros por periodo, turno, setor, grupo, status e busca por FJ/nome. Considera Haidai, registros de presenca, Yukyu/Todoke e movimentos para destacar presenca conforme, falta, Yukyu, atraso, saida antecipada e Todoke pendente.
+- **Riscos:** consultas grandes podem ficar lentas em banco de rede; percentuais dependem de escala/local e eventos de maquina cadastrados corretamente.
 
 ## Presenca/Layout
 

@@ -21,7 +21,7 @@ Centralizar informacoes operacionais usadas no ambiente industrial, reduzindo de
 
 - Dashboard principal.
 - Operadores e atribuicoes.
-- Relatorios.
+- Relatorios, incluindo relatorio gerencial de operadores e relatorio dedicado de presenca.
 - Layout/presenca de operadores.
 - Haidai, com exportacao HTML para TV ou monitor publico.
 - Follow-up e relatorios de follow-up.

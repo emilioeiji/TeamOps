@@ -1,0 +1,220 @@
+using Microsoft.Web.WebView2.Core;
+using System;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Windows.Forms;
+using TeamOps.Core.Entities;
+using TeamOps.Data.Db;
+using TeamOps.UI.Services;
+
+namespace TeamOps.UI.Forms
+{
+    public sealed class HTMLFormPresenceReport : Form
+    {
+        private readonly Operator _currentOperator;
+        private readonly OperatorManagerReportService _service;
+        private readonly Microsoft.Web.WebView2.WinForms.WebView2 _webView;
+
+        public HTMLFormPresenceReport(SqliteConnectionFactory factory, Operator currentOperator)
+        {
+            _currentOperator = currentOperator;
+            _service = new OperatorManagerReportService(factory);
+
+            Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            Text = L("Relatorio de Presenca", "Attendance Report");
+            Width = 1460;
+            Height = 900;
+            StartPosition = FormStartPosition.CenterParent;
+
+            _webView = new Microsoft.Web.WebView2.WinForms.WebView2
+            {
+                Dock = DockStyle.Fill
+            };
+
+            Controls.Add(_webView);
+            InitializeWebView();
+        }
+
+        private async void InitializeWebView()
+        {
+            await _webView.EnsureCoreWebView2Async(null);
+
+            var core = _webView.CoreWebView2;
+            core.Settings.IsWebMessageEnabled = true;
+            core.Settings.AreDefaultScriptDialogsEnabled = true;
+            core.Settings.AreDefaultContextMenusEnabled = true;
+            core.Settings.AreDevToolsEnabled = true;
+            core.WebMessageReceived += WebMessageReceived;
+
+            core.SetVirtualHostNameToFolderMapping(
+                "app",
+                Path.Combine(Application.StartupPath, "ui", "presence-report"),
+                CoreWebView2HostResourceAccessKind.Allow);
+
+            core.Navigate("https://app/index.html");
+        }
+
+        private void WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+        {
+            try
+            {
+                using var json = JsonDocument.Parse(e.WebMessageAsJson);
+                var root = json.RootElement;
+                var action = ReadString(root, "action");
+
+                switch (action)
+                {
+                    case "load":
+                        SendInit();
+                        break;
+
+                    case "apply_filters":
+                        SendReport(new OperatorPresenceReportFilter(
+                            ReadString(root, "startDateIso"),
+                            ReadString(root, "endDateIso"),
+                            ReadInt(root, "shiftId"),
+                            ReadInt(root, "sectorId"),
+                            ReadInt(root, "groupId"),
+                            ReadString(root, "status"),
+                            ReadString(root, "search")));
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                PostJson(new
+                {
+                    type = "error",
+                    message = ex.Message
+                });
+            }
+        }
+
+        private void SendInit()
+        {
+            var init = _service.GetInitialPayload(_currentOperator.ShiftId, _currentOperator.SectorId);
+            var endDate = DateTime.Today;
+            var startDate = endDate.AddDays(-29);
+
+            PostJson(new
+            {
+                type = "init",
+                data = new
+                {
+                    locale = Program.CurrentLocale,
+                    defaults = new
+                    {
+                        startDateIso = startDate.ToString("yyyy-MM-dd"),
+                        endDateIso = endDate.ToString("yyyy-MM-dd"),
+                        shiftId = init.DefaultShiftId,
+                        sectorId = init.DefaultSectorId,
+                        groupId = 0,
+                        status = "all"
+                    },
+                    shifts = init.Shifts.Select(item => new { id = item.Id, name = item.Name }),
+                    sectors = init.Sectors.Select(item => new { id = item.Id, name = item.Name }),
+                    groups = init.Groups.Select(item => new { id = item.Id, name = item.Name })
+                }
+            });
+        }
+
+        private void SendReport(OperatorPresenceReportFilter filter)
+        {
+            var report = _service.GetPresenceReport(filter);
+
+            PostJson(new
+            {
+                type = "report",
+                data = new
+                {
+                    startDateIso = report.StartDateIso,
+                    endDateIso = report.EndDateIso,
+                    summary = new
+                    {
+                        operatorCount = report.Summary.OperatorCount,
+                        scheduledDays = report.Summary.ScheduledDays,
+                        presentDays = report.Summary.PresentDays,
+                        yukyuDays = report.Summary.YukyuDays,
+                        faltaDays = report.Summary.FaltaDays,
+                        lateDays = report.Summary.LateDays,
+                        earlyLeaveDays = report.Summary.EarlyLeaveDays,
+                        presencePercent = report.Summary.PresencePercent
+                    },
+                    rows = report.Rows.Select(item => new
+                    {
+                        codigoFJ = item.CodigoFJ,
+                        name = item.Name,
+                        nameJp = item.NameJp,
+                        shiftName = item.ShiftName,
+                        sectorName = item.SectorName,
+                        groupName = item.GroupName,
+                        scheduledDays = item.ScheduledDays,
+                        presentDays = item.PresentDays,
+                        yukyuDays = item.YukyuDays,
+                        faltaDays = item.FaltaDays,
+                        lateDays = item.LateDays,
+                        earlyLeaveDays = item.EarlyLeaveDays,
+                        pendingTodokeCount = item.PendingTodokeCount,
+                        presencePercent = item.PresencePercent,
+                        lastStatus = item.LastStatus,
+                        lastDateIso = item.LastDateIso,
+                        lastArea = item.LastArea
+                    })
+                }
+            });
+        }
+
+        private void PostJson(object payload)
+        {
+            var json = JsonSerializer.Serialize(payload);
+
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() =>
+                {
+                    if (_webView.CoreWebView2 != null)
+                    {
+                        _webView.CoreWebView2.PostWebMessageAsJson(json);
+                    }
+                }));
+                return;
+            }
+
+            if (_webView.CoreWebView2 != null)
+            {
+                _webView.CoreWebView2.PostWebMessageAsJson(json);
+            }
+        }
+
+        private static int ReadInt(JsonElement root, string propertyName, int defaultValue = 0)
+        {
+            if (!root.TryGetProperty(propertyName, out var property))
+            {
+                return defaultValue;
+            }
+
+            return property.ValueKind switch
+            {
+                JsonValueKind.Number when property.TryGetInt32(out var number) => number,
+                JsonValueKind.String when int.TryParse(property.GetString(), out var number) => number,
+                _ => defaultValue
+            };
+        }
+
+        private static string ReadString(JsonElement root, string propertyName)
+        {
+            return root.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String
+                ? property.GetString() ?? string.Empty
+                : string.Empty;
+        }
+
+        private static string L(string pt, string en)
+        {
+            return string.Equals(Program.CurrentLocale, "ja-JP", StringComparison.OrdinalIgnoreCase)
+                ? en
+                : pt;
+        }
+    }
+}

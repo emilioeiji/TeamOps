@@ -35,6 +35,20 @@ Modulo administrativo para atribuir operadores a liderancas/grupos. Disponivel a
 
 Consulta dados consolidados e registros operacionais. Requer perfil de lideranca.
 
+No hub de relatorios, os principais atalhos sao:
+
+- **Operadores:** relatorio gerencial por operador. Use para analisar presenca, producao, Master Card, follow-up e historico diario. O percentual de producao compara o tempo rodando das maquinas do local com o tempo programado para essas maquinas no periodo filtrado.
+- **Presenca:** relatorio focado somente em comparecimento. Use para acompanhar dias escalados, presenca conforme, Yukyu, faltas, atrasos, saidas antecipadas e Todoke pendente. Possui filtros por periodo, turno, setor, grupo, status e busca por FJ/nome.
+- **Follow, Tasks e MasterCard:** consultas especificas dos respectivos modulos.
+
+Para usar o relatorio de presenca:
+
+1. Abra **Relatorios** no dashboard.
+2. Clique em **Presenca**.
+3. Selecione o periodo e, se necessario, filtre por turno, setor, grupo ou status.
+4. Use a busca para localizar um operador pelo codigo FJ ou nome.
+5. Confira os cards de resumo e a tabela de operadores.
+
 ### Presenca e layout
 
 Exibe e organiza a presenca de operadores por setor/turno. Pode usar arquivos CSV de agenda importados pelo sistema.

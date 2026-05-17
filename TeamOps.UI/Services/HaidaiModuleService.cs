@@ -139,9 +139,11 @@ namespace TeamOps.UI.Services
                         o.GroupId,
                         COALESCE(NULLIF(g.NamePt, ''), NULLIF(g.NameJp, ''), 'Grupo ' || o.GroupId) AS GroupName,
                         COALESCE(o.Trainer, 0) AS Trainer,
-                        COALESCE(o.IsLeader, 0) AS IsLeader
+                        COALESCE(o.IsLeader, 0) AS IsLeader,
+                        COALESCE(u.AccessLevel, CASE WHEN COALESCE(o.IsLeader, 0) = 1 THEN 3 ELSE 1 END) AS AccessLevel
                     FROM Operators o
                     LEFT JOIN Groups g ON g.Id = o.GroupId
+                    LEFT JOIN Users u ON u.CodigoFJ = o.CodigoFJ
                     WHERE COALESCE(o.Status, 1) = 1
                     ORDER BY o.GroupId, o.NameRomanji, o.CodigoFJ;")
                 .ToList();
@@ -184,9 +186,11 @@ namespace TeamOps.UI.Services
                         o.GroupId,
                         COALESCE(NULLIF(g.NamePt, ''), NULLIF(g.NameJp, ''), 'Grupo ' || o.GroupId) AS GroupName,
                         COALESCE(o.Trainer, 0) AS Trainer,
-                        COALESCE(o.IsLeader, 0) AS IsLeader
+                        COALESCE(o.IsLeader, 0) AS IsLeader,
+                        COALESCE(u.AccessLevel, CASE WHEN COALESCE(o.IsLeader, 0) = 1 THEN 3 ELSE 1 END) AS AccessLevel
                     FROM Operators o
                     LEFT JOIN Groups g ON g.Id = o.GroupId
+                    LEFT JOIN Users u ON u.CodigoFJ = o.CodigoFJ
                     WHERE COALESCE(o.Status, 1) = 1
                       AND o.ShiftId = @ShiftId
                       AND (
@@ -518,7 +522,7 @@ namespace TeamOps.UI.Services
 
             if (IsOffDayCode(normalized))
             {
-                return new HaidaiResolvedMonthlyCell(null, "休", false, false, "Folga");
+                return new HaidaiResolvedMonthlyCell(null, "\u4f11", false, false, "Folga");
             }
 
             if (IsDisplayExceptionCode(normalized) && existing != null)
@@ -568,19 +572,19 @@ namespace TeamOps.UI.Services
             }
 
             return string.Equals(record.AvailabilityStatus, "Folga", StringComparison.OrdinalIgnoreCase)
-                ? "休"
+                ? "\u4f11"
                 : string.Empty;
         }
 
         private static bool IsDisplayExceptionCode(string value)
         {
-            return string.Equals(value, "欠", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(value, "有", StringComparison.OrdinalIgnoreCase);
+            return string.Equals(value, "\u6b20", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "\u6709", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsOffDayCode(string value)
         {
-            return string.Equals(value, "休", StringComparison.OrdinalIgnoreCase)
+            return string.Equals(value, "\u4f11", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(value, "folga", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(value, "off", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(value, "-", StringComparison.OrdinalIgnoreCase);
@@ -682,9 +686,11 @@ namespace TeamOps.UI.Services
                         o.GroupId,
                         COALESCE(NULLIF(g.NamePt, ''), NULLIF(g.NameJp, ''), 'Grupo ' || o.GroupId) AS GroupName,
                         COALESCE(o.Trainer, 0) AS Trainer,
-                        COALESCE(o.IsLeader, 0) AS IsLeader
+                        COALESCE(o.IsLeader, 0) AS IsLeader,
+                        COALESCE(u.AccessLevel, CASE WHEN COALESCE(o.IsLeader, 0) = 1 THEN 3 ELSE 1 END) AS AccessLevel
                     FROM Operators o
                     LEFT JOIN Groups g ON g.Id = o.GroupId
+                    LEFT JOIN Users u ON u.CodigoFJ = o.CodigoFJ
                     WHERE COALESCE(o.Status, 1) = 1
                       AND o.ShiftId = @ShiftId
                       AND (
@@ -826,12 +832,15 @@ namespace TeamOps.UI.Services
                         op.GroupName,
                         op.Trainer,
                         op.IsLeader,
+                        op.AccessLevel,
                         local?.Id,
                         local?.Name ?? string.Empty,
                         local?.ShortCode ?? string.Empty,
+                        local?.SectorId,
                         displayLocal?.Id,
                         displayLocal?.Name ?? string.Empty,
                         displayLocal?.ShortCode ?? string.Empty,
+                        displayLocal?.SectorId,
                         displayAssignmentCode,
                         baseAssignmentCode,
                         assignment?.PairKey ?? string.Empty,
@@ -1256,6 +1265,7 @@ namespace TeamOps.UI.Services
             }
 
             Directory.CreateDirectory(exportDirectory);
+            CopyHaidaiExportAssets(exportDirectory);
 
             using var conn = _factory.CreateOpenConnection();
 
@@ -1326,8 +1336,8 @@ namespace TeamOps.UI.Services
         {
             return motiveId switch
             {
-                1 => "有",
-                2 => "欠",
+                1 => "\u6709",
+                2 => "\u6b20",
                 _ => assignmentCode
             };
         }
@@ -1884,6 +1894,43 @@ namespace TeamOps.UI.Services
             return string.IsNullOrWhiteSpace(result) ? "haidai" : result;
         }
 
+        private static void CopyHaidaiExportAssets(string exportDirectory)
+        {
+            var sourceAssets = Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "ui",
+                "presence",
+                "assets");
+
+            if (!Directory.Exists(sourceAssets))
+            {
+                return;
+            }
+
+            var targetAssets = Path.Combine(exportDirectory, "assets");
+            Directory.CreateDirectory(targetAssets);
+
+            var defaultSource = Path.Combine(sourceAssets, "default-operator.png");
+            if (File.Exists(defaultSource))
+            {
+                File.Copy(defaultSource, Path.Combine(targetAssets, "default-operator.png"), overwrite: true);
+            }
+
+            var sourceOperators = Path.Combine(sourceAssets, "operators");
+            if (!Directory.Exists(sourceOperators))
+            {
+                return;
+            }
+
+            var targetOperators = Path.Combine(targetAssets, "operators");
+            Directory.CreateDirectory(targetOperators);
+
+            foreach (var file in Directory.EnumerateFiles(sourceOperators))
+            {
+                File.Copy(file, Path.Combine(targetOperators, Path.GetFileName(file)), overwrite: true);
+            }
+        }
+
         private static string BuildExportHtml(int sectorId, string sectorName, string shiftName, string otherFileName, HaidaiBoardPayload board)
         {
             var rows = board.Groups
@@ -1894,62 +1941,56 @@ namespace TeamOps.UI.Services
                 .Where(row => row.IsLineupActive && !string.IsNullOrWhiteSpace(row.AssignmentCode))
                 .ToList();
 
-            var layout = LoadExportLayout(sectorId);
-            var exportSlots = layout?.Locals
-                .Where(slot => slot.ShowInExport != false)
+            var tvAreaRows = activeRows
+                .Where(row => IsExportableTvAreaRow(row, sectorId))
                 .ToList();
 
-            var unmappedRows = activeRows
-                .Where(row =>
-                {
-                    if ((row.DisplayLocalId ?? row.LocalId) is int placeholderLocalId
-                        && (placeholderLocalId == DadPlaceholderLocalId || placeholderLocalId == GBareruPlaceholderLocalId))
-                    {
-                        return false;
-                    }
-
-                    return layout == null
-                        || exportSlots == null
-                        || !exportSlots.Any(item => SlotMatchesRow(item, row));
-                })
+            var tvAreaGroups = tvAreaRows
+                .GroupBy(BuildTvAreaKey)
+                .OrderBy(group => AreaSortKey(group.Key), StringComparer.OrdinalIgnoreCase)
+                .ThenBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            var summaryBadges = new List<(string Label, int Value)>
-            {
-                ("Operadores", board.Summary.OperatorCount),
-                ("Escalados", board.Summary.AssignedCount),
-                ("Aprendizes", board.Summary.TraineeCount),
-                ("Duplas", board.Summary.PairCount)
-            };
+            var tvTrainingRows = tvAreaRows
+                .Where(row => row.IsTrainee || !string.IsNullOrWhiteSpace(row.TrainerCodigoFJ))
+                .OrderBy(row => AreaSortKey(BuildTvAreaKey(row)), StringComparer.OrdinalIgnoreCase)
+                .ThenBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
-            if (unmappedRows.Count > 0)
-            {
-                summaryBadges.Add(("Sem posicao", unmappedRows.Count));
-            }
+            var tvPresentLeaders = rows
+                .Where(IsPresentLeader)
+                .OrderBy(row => row.AccessLevel == 2 ? 0 : 1)
+                .ThenBy(row => row.GroupName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
-            var summaryMarkup = string.Empty;
-
-            var layoutMarkup = layout == null
-                ? string.Empty
-                : BuildMappedLayoutMarkup(layout, activeRows, summaryBadges);
-
-            var unmappedMarkup = unmappedRows.Count == 0
-                ? string.Empty
-                : string.Join(
-                    Environment.NewLine,
-                    unmappedRows.Select(row => $@"
-                        <span class=""unmapped-chip"">{EscapeHtml(row.AssignmentCode)} - {EscapeHtml(row.Name)}</span>"));
-
-            var fallbackMarkup = string.Join(
+            var tvSummaryMarkup = string.Join(
                 Environment.NewLine,
-                activeRows
-                    .GroupBy(row => string.IsNullOrWhiteSpace(row.AssignmentCode) ? "Sem area" : row.AssignmentCode)
-                    .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
-                    .Select(group => $@"
-                        <div class=""fallback-item"">
-                            <strong>{EscapeHtml(group.Key)}</strong>
-                            <span>{EscapeHtml(string.Join(" / ", group.Select(item => item.Name)))}</span>
-                        </div>"));
+                new List<(string Label, int Value, string Tone)>
+                {
+                    ("Escalados", tvAreaRows.Count, "ok"),
+                    ("Areas", tvAreaGroups.Count, "area"),
+                    ("Treino", tvTrainingRows.Count, "train"),
+                    ("Lideres", tvPresentLeaders.Count, "leader"),
+                    ("Yukyu", board.Summary.YukyuCount, "warn"),
+                    ("Faltas", board.Summary.FaltaCount, "danger")
+                }.Select(item => $@"
+                    <div class=""metric metric-{EscapeHtml(item.Tone)}"">
+                        <strong>{item.Value}</strong>
+                        <span>{EscapeHtml(item.Label)}</span>
+                    </div>"));
+
+            var tvAreaMarkup = tvAreaGroups.Count == 0
+                ? @"<article class=""empty-card"">Nenhuma area escalada para este turno.</article>"
+                : BuildTvAreaPagesMarkup(tvAreaGroups);
+
+            var tvTrainingMarkup = tvTrainingRows.Count == 0
+                ? @"<div class=""compact-empty"">Sem treinamento hoje</div>"
+                : string.Join(Environment.NewLine, tvTrainingRows.Select(BuildTrainingRowMarkup));
+
+            var tvLeaderMarkup = tvPresentLeaders.Count == 0
+                ? @"<div class=""compact-empty"">Nenhum lider presente neste turno</div>"
+                : string.Join(Environment.NewLine, tvPresentLeaders.Select(BuildLeaderRowMarkup));
 
             return $@"
 <!DOCTYPE html>
@@ -1961,302 +2002,671 @@ namespace TeamOps.UI.Services
     <style>
         :root {{
             color-scheme: light;
-            --bg: #edf4fa;
+            --bg: #eef3f7;
             --surface: #ffffff;
-            --accent: #124a88;
-            --text: #132238;
-            --muted: #607185;
-            --border: #d6e1eb;
+            --surface-2: #f6f9fc;
+            --accent: #135f84;
+            --accent-2: #23745c;
+            --text: #14202e;
+            --muted: #5f6e7c;
+            --border: #d3dde6;
+            --warn: #b46b00;
+            --danger: #b43a43;
+            --train: #7a4b00;
         }}
-        * {{
-            box-sizing: border-box;
-        }}
+        * {{ box-sizing: border-box; }}
+        html,
         body {{
             margin: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
             font-family: ""Segoe UI"", Tahoma, sans-serif;
-            background:
-                radial-gradient(circle at top right, rgba(18, 74, 136, 0.15), transparent 24%),
-                linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+            background: var(--bg);
             color: var(--text);
         }}
         .page {{
-            min-height: 100vh;
-            padding: 8px;
+            height: 100vh;
+            padding: 16px;
             display: grid;
-            gap: 6px;
-            grid-template-rows: auto 1fr auto;
+            grid-template-columns: minmax(0, 1fr) minmax(250px, 17vw);
+            grid-template-rows: auto minmax(0, 1fr) auto;
+            gap: 14px;
         }}
         .topbar {{
+            grid-column: 1 / -1;
             display: flex;
-            justify-content: flex-end;
-            padding: 0;
-            background: transparent;
-            border-radius: 0;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 58px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            background: var(--surface);
+            border: 1px solid var(--border);
         }}
-        .topbar > div {{
-            display: none;
+        .title-block {{ min-width: 0; }}
+        h1 {{
+            margin: 0;
+            font-size: clamp(24px, 2.1vw, 42px);
+            line-height: 1;
+            letter-spacing: 0;
         }}
-        .topbar a {{
+        .subtitle {{
+            margin-top: 5px;
+            color: var(--muted);
+            font-size: clamp(13px, 1vw, 18px);
+            font-weight: 700;
+        }}
+        .switch-link {{
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 30px;
-            padding: 0 12px;
-            border-radius: 999px;
-            background: rgba(18, 74, 136, 0.08);
-            border: 1px solid rgba(18, 74, 136, 0.14);
+            min-height: 42px;
+            padding: 0 16px;
+            border-radius: 8px;
+            background: #e8f2f7;
+            border: 1px solid #bfdae6;
             color: var(--accent);
             text-decoration: none;
             font-weight: 700;
-            font-size: 11px;
+            font-size: 14px;
             white-space: nowrap;
         }}
-        .summary {{
-            display: none;
-        }}
-        .map-card,
-        .fallback-card {{
-            padding: 8px;
-            border-radius: 18px;
+        .areas-panel,
+        .summary-box,
+        .leaders-box,
+        .training-strip {{
+            border-radius: 8px;
             background: var(--surface);
             border: 1px solid var(--border);
-            box-shadow: 0 12px 28px rgba(19, 34, 56, 0.08);
-        }}
-        .map-card {{
-            min-height: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }}
-        .layout-stage {{
-            position: relative;
-            width: min(100%, calc((100vh - 132px) * 2.02));
-            min-height: min(calc(100vh - 132px), 78vw);
+            padding: 12px;
             overflow: hidden;
-            border-radius: 18px;
-            border: 1px solid var(--border);
-            background: linear-gradient(180deg, #ffffff 0%, #f6fbff 100%);
         }}
-        .layout-canvas {{
+        .areas-panel {{ min-height: 0; }}
+        .area-pages {{
+            position: relative;
+            height: 100%;
+            min-height: 0;
+        }}
+        .area-page {{
             position: absolute;
             inset: 0;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 420ms ease;
         }}
-        .corridor {{
-            position: absolute;
-            border-radius: 999px;
-            background: linear-gradient(180deg, #e2edf7 0%, #cddced 100%);
+        .area-page.active {{
+            opacity: 1;
+            pointer-events: auto;
         }}
-        .map-widget {{
-            position: absolute;
-            padding: 8px;
-            border-radius: 18px;
-            border: 1px solid #c9d8e7;
-            background: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(237,245,255,0.94) 100%);
-            box-shadow: 0 8px 18px rgba(20, 33, 51, 0.06);
-            overflow: hidden;
-        }}
-        .summary-widget {{
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 6px;
-            align-content: center;
+        .area-grid {{
             height: 100%;
-        }}
-        .summary-mini {{
+            min-height: 0;
             display: grid;
-            gap: 2px;
-            padding: 6px;
-            border-radius: 12px;
-            background: rgba(255,255,255,0.72);
-            border: 1px solid #d8e5f2;
-        }}
-        .summary-mini strong {{
-            font-size: clamp(12px, 0.95vw, 16px);
-            color: var(--accent);
-            line-height: 1;
-        }}
-        .summary-mini span {{
-            font-size: clamp(8px, 0.62vw, 10px);
-            color: var(--muted);
-            font-weight: 700;
-        }}
-        .local-box {{
-            position: absolute;
-            padding: 10px;
-            border-radius: 18px;
-            border: 2px solid #c9d8e7;
-            background: linear-gradient(180deg, #ffffff 0%, #edf5ff 100%);
-            box-shadow: 0 10px 22px rgba(20, 33, 51, 0.08);
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-rows: repeat(4, minmax(0, 1fr));
+            gap: 10px;
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
         }}
-        .local-box-compound {{
-            padding: 8px;
-        }}
-        .local-box-compound small {{
-            display: none;
-        }}
-        .local-box strong {{
-            display: block;
-            font-size: clamp(13px, 1.15vw, 18px);
-            color: var(--accent);
-        }}
-        .local-box small {{
-            display: block;
-            margin-top: 4px;
-            font-size: clamp(9px, 0.75vw, 11px);
-            color: var(--muted);
-        }}
-        .operator-stack {{
-            display: grid;
-            gap: 6px;
-            margin-top: 8px;
-            min-height: 0;
-        }}
-        .local-box-compound .operator-stack {{
-            margin-top: 4px;
-        }}
-        .operator-split {{
-            display: grid;
-            gap: 6px;
-            margin-top: 6px;
-            flex: 1;
-            min-height: 0;
-        }}
-        .split-horizontal {{
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }}
-        .split-vertical {{
-            grid-template-rows: repeat(2, minmax(0, 1fr));
-        }}
-        .split-cell {{
-            display: grid;
+        .area-pages.few-areas .area-grid {{
+            grid-template-rows: none;
+            grid-auto-rows: minmax(170px, 190px);
             align-content: start;
-            gap: 4px;
-            padding: 3px 4px;
-            border-radius: 12px;
-            background: rgba(245, 249, 255, 0.78);
-            border: 1px solid #d8e5f2;
-            min-height: 0;
-            overflow: hidden;
         }}
-        .split-label {{
+        .area-card {{
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            gap: 8px;
+            min-width: 0;
+            min-height: 0;
+            padding: 10px;
+            border-radius: 8px;
+            background: var(--surface-2);
+            border: 2px solid #cddbe6;
+        }}
+        .area-card.two-up {{
+            border-color: #a8d4c4;
+            background: #f2faf6;
+        }}
+        .area-header {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            min-width: 0;
+        }}
+        .area-code {{
+            min-width: 0;
+            color: var(--accent);
+            font-size: clamp(20px, 1.55vw, 30px);
+            font-weight: 900;
+            line-height: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }}
+        .area-count {{
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 22px;
-            min-height: 22px;
+            width: 32px;
+            min-width: 32px;
+            height: 32px;
             border-radius: 999px;
-            background: #124a88;
-            color: #fff;
-            font-size: clamp(9px, 0.72vw, 11px);
+            background: #dfeef4;
+            color: var(--accent);
+            font-size: 17px;
+            font-weight: 900;
+        }}
+        .operator-list {{
+            min-height: 0;
+            display: grid;
+            gap: 7px;
+            align-content: stretch;
+        }}
+        .area-card.two-up .operator-list {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+        .area-card.two-up .operator-card {{
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            justify-items: center;
+            align-content: start;
+            text-align: center;
+            gap: 3px;
+            padding: 6px 8px;
+            overflow: hidden;
+        }}
+        .area-card.two-up .operator-photo {{
+            width: clamp(34px, 2.8vw, 50px);
+            height: clamp(34px, 2.8vw, 50px);
+            min-width: clamp(34px, 2.8vw, 50px);
+            border-width: 2px;
+        }}
+        .area-card.two-up .operator-text {{
+            width: 100%;
+            min-height: 0;
+        }}
+        .area-card.two-up .operator-name {{
+            font-size: clamp(13px, 0.95vw, 18px);
+            line-height: 1.08;
+        }}
+        .area-card.two-up .operator-meta {{
+            font-size: clamp(8px, 0.58vw, 10px);
+        }}
+        .operator-card {{
+            min-width: 0;
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            align-content: center;
+            gap: 8px;
+            padding: 8px;
+            border-radius: 8px;
+            background: #ffffff;
+            border: 1px solid #d6e2eb;
+            overflow: hidden;
+        }}
+        .operator-photo {{
+            width: clamp(42px, 3.8vw, 72px);
+            height: clamp(42px, 3.8vw, 72px);
+            min-width: clamp(42px, 3.8vw, 72px);
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #ffffff;
+            box-shadow: 0 0 0 1px #bfd0dc;
+            background: #e7eef4;
+        }}
+        .operator-text {{
+            min-width: 0;
+            flex: 1;
+        }}
+        .operator-card.trainee {{
+            background: #fff7df;
+            border-color: #efca76;
+        }}
+        .operator-card.leader {{
+            background: #eef7fb;
+            border-color: #a9cedf;
+        }}
+        .operator-name {{
+            min-width: 0;
+            font-size: clamp(16px, 1.25vw, 24px);
+            font-weight: 900;
+            line-height: 1.08;
+            overflow: visible;
+            white-space: normal;
+            word-break: normal;
+            overflow-wrap: anywhere;
+        }}
+        .operator-meta {{
+            color: var(--muted);
+            font-size: clamp(9px, 0.72vw, 13px);
             font-weight: 800;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }}
-        .operator-split .operator-pill {{
-            padding: 3px 6px;
-            font-size: clamp(9px, 0.8vw, 11px);
-            line-height: 1.1;
+        .page-indicator {{
+            position: absolute;
+            right: 12px;
+            bottom: 10px;
+            min-width: 52px;
+            min-height: 28px;
+            display: none;
+            place-items: center;
+            border-radius: 999px;
+            background: rgba(20, 32, 46, 0.78);
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 900;
         }}
-        .operator-split .operator-pill .subcode {{
-            margin-top: 2px;
-            font-size: clamp(7px, 0.58vw, 9px);
+        .area-pages.has-pages .page-indicator {{
+            display: grid;
         }}
-        .operator-pill {{
+        .side-panel {{
+            min-height: 0;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            gap: 12px;
+        }}
+        .summary-box {{
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }}
+        .metric {{
+            min-width: 0;
+            padding: 8px;
+            border-radius: 8px;
+            background: #f3f8fb;
+            border: 1px solid #d5e5ed;
+        }}
+        .metric strong {{
             display: block;
-            padding: 7px 8px;
-            border-radius: 12px;
-            background: #f5f9ff;
-            border: 1px solid #d8e5f2;
-            font-size: clamp(10px, 0.95vw, 14px);
-            font-weight: 700;
-            line-height: 1.2;
+            font-size: clamp(22px, 1.9vw, 38px);
+            line-height: 1;
+            color: var(--accent);
         }}
-        .operator-pill.trainee {{
-            background: #fff3d6;
-            border-color: #f4d18c;
-        }}
-        .operator-pill .subcode {{
+        .metric span {{
             display: block;
             margin-top: 3px;
-            font-size: clamp(8px, 0.7vw, 11px);
             color: var(--muted);
-            font-weight: 600;
+            font-size: 12px;
+            font-weight: 800;
         }}
-        .footer-strip {{
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            align-items: center;
+        .metric-train strong {{ color: var(--train); }}
+        .metric-leader strong {{ color: var(--accent-2); }}
+        .metric-warn strong {{ color: var(--warn); }}
+        .metric-danger strong {{ color: var(--danger); }}
+        .leaders-box {{
+            min-height: 0;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            gap: 8px;
         }}
-        .footer-copy {{
+        .panel-title {{
+            margin: 0;
+            font-size: clamp(16px, 1.15vw, 23px);
+            line-height: 1;
+            color: var(--text);
+        }}
+        .leader-list,
+        .training-list {{
+            min-height: 0;
+            display: grid;
+            align-content: start;
+            gap: 7px;
+            overflow: hidden;
+        }}
+        .leader-row,
+        .training-row {{
+            min-width: 0;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+        }}
+        .leader-row strong,
+        .training-row strong {{
+            display: block;
+            min-width: 0;
+            font-size: clamp(15px, 1vw, 20px);
+            line-height: 1.05;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }}
+        .leader-row span,
+        .training-row span {{
+            display: block;
+            margin-top: 3px;
             color: var(--muted);
-            font-size: 11px;
-            font-weight: 600;
+            font-size: clamp(11px, 0.82vw, 15px);
+            font-weight: 800;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }}
-        .unmapped-chip {{
+        .role-badge {{
             display: inline-flex;
             align-items: center;
+            justify-content: center;
+            min-width: 34px;
             min-height: 24px;
-            padding: 0 8px;
+            margin-right: 6px;
             border-radius: 999px;
-            background: #f8fbff;
-            border: 1px solid var(--border);
-            font-size: 10px;
-            color: var(--text);
-            font-weight: 700;
+            background: #dbeee7;
+            color: #1d684e;
+            font-size: 12px;
+            font-weight: 900;
         }}
-        .fallback-list {{
-            display: grid;
-            gap: 10px;
+        .role-gl {{
+            background: #deedf5;
+            color: #145b7b;
         }}
-        .fallback-item {{
+        .training-strip {{
+            grid-column: 1 / 2;
+            min-height: 116px;
             display: grid;
-            gap: 4px;
-            padding: 12px 14px;
-            border-radius: 14px;
-            border: 1px solid var(--border);
-            background: #f9fbfe;
+            grid-template-rows: auto minmax(0, 1fr);
+            gap: 8px;
+        }}
+        .training-list {{ grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }}
+        .compact-empty,
+        .empty-card {{
+            min-height: 64px;
+            display: grid;
+            place-items: center;
+            border-radius: 8px;
+            border: 1px dashed var(--border);
+            color: var(--muted);
+            font-size: 18px;
+            font-weight: 800;
+            background: var(--surface-2);
         }}
         @media (max-width: 1100px) {{
-            .layout-stage {{
-                width: 100%;
-                min-height: calc(100vh - 112px);
+            body {{ overflow: auto; }}
+            .page {{
+                height: auto;
+                min-height: 100vh;
+                grid-template-columns: 1fr;
             }}
+            .training-strip {{ grid-column: 1; }}
         }}
     </style>
 </head>
 <body>
     <main class=""page"">
         <section class=""topbar"">
-            <div>
+            <div class=""title-block"">
                 <h1>{EscapeHtml(sectorName)} - {EscapeHtml(shiftName)}</h1>
-                <p>{EscapeHtml(board.DateIso)} · atualizacao automatica a cada 2 minutos</p>
+                <div class=""subtitle"">{EscapeHtml(board.DateIso)} | atualizacao automatica a cada 2 minutos</div>
             </div>
-            <a href=""{EscapeHtml(otherFileName)}"">Abrir outro turno</a>
+            <a class=""switch-link"" href=""{EscapeHtml(otherFileName)}"">Abrir outro turno</a>
         </section>
 
-        <section class=""summary"">
-            {summaryMarkup}
+        <section class=""areas-panel"">
+            <div class=""area-pages{BuildAreaPagesClass(tvAreaGroups.Count)}"" data-page-count=""{Math.Max(1, (int)Math.Ceiling(tvAreaGroups.Count / 16d))}"">
+                {tvAreaMarkup}
+                <div class=""page-indicator"" id=""pageIndicator"">1/{Math.Max(1, (int)Math.Ceiling(tvAreaGroups.Count / 16d))}</div>
+            </div>
         </section>
 
-        {(string.IsNullOrWhiteSpace(layoutMarkup)
-            ? $@"<article class=""fallback-card"">
-                    <div class=""fallback-list"">{fallbackMarkup}</div>
-                </article>"
-            : $@"<article class=""map-card"">
-                    {layoutMarkup}
-                </article>")}
+        <aside class=""side-panel"">
+            <section class=""summary-box"">
+                {tvSummaryMarkup}
+            </section>
+            <section class=""leaders-box"">
+                <h2 class=""panel-title"">Lideres presentes</h2>
+                <div class=""leader-list"">{tvLeaderMarkup}</div>
+            </section>
+        </aside>
 
-        {(string.IsNullOrWhiteSpace(unmappedMarkup)
-            ? string.Empty
-            : $@"<section class=""footer-strip"">
-                    <span class=""footer-copy"">Sem posicao no mapa:</span>
-                    {unmappedMarkup}
-                </section>")}
+        <section class=""training-strip"">
+            <h2 class=""panel-title"">Treinamentos</h2>
+            <div class=""training-list"">{tvTrainingMarkup}</div>
+        </section>
     </main>
+    <script>
+        (() => {{
+            const pages = Array.from(document.querySelectorAll('.area-page'));
+            const indicator = document.getElementById('pageIndicator');
+            if (pages.length <= 1) {{
+                return;
+            }}
+
+            let index = 0;
+            const show = nextIndex => {{
+                pages[index].classList.remove('active');
+                index = nextIndex % pages.length;
+                pages[index].classList.add('active');
+                if (indicator) {{
+                    indicator.textContent = `${{index + 1}}/${{pages.length}}`;
+                }}
+            }};
+
+            setInterval(() => show(index + 1), 12000);
+        }})();
+    </script>
 </body>
 </html>";
+
+        }
+        private static string BuildTvAreaPagesMarkup(IReadOnlyList<IGrouping<string, HaidaiBoardRow>> groups)
+        {
+            const int pageSize = 16;
+            var pages = groups
+                .Select((group, index) => new { group, index })
+                .GroupBy(item => item.index / pageSize)
+                .Select((page, pageIndex) => $@"
+                    <div class=""area-page{(pageIndex == 0 ? " active" : string.Empty)}"">
+                        <div class=""area-grid"">
+                            {string.Join(Environment.NewLine, page.Select(item => BuildTvAreaCardMarkup(item.group)))}
+                        </div>
+                    </div>");
+
+            return string.Join(Environment.NewLine, pages);
+        }
+
+        private static string BuildAreaPagesClass(int areaCount)
+        {
+            var classes = new List<string>();
+            if (areaCount > 16)
+            {
+                classes.Add("has-pages");
+            }
+
+            if (areaCount <= 8)
+            {
+                classes.Add("few-areas");
+            }
+
+            return classes.Count == 0 ? string.Empty : " " + string.Join(" ", classes);
+        }
+
+        private static string BuildTvAreaCardMarkup(IGrouping<string, HaidaiBoardRow> group)
+        {
+            var operators = group
+                .OrderBy(row => row.IsTrainee)
+                .ThenBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var operatorMarkup = string.Join(Environment.NewLine, operators.Select(BuildTvOperatorMarkup));
+            var countClass = operators.Count == 2 ? " two-up" : string.Empty;
+
+            return $@"
+                <article class=""area-card{countClass}"">
+                    <div class=""area-header"">
+                        <div class=""area-code"">{EscapeHtml(group.Key)}</div>
+                        <div class=""area-count"">{operators.Count}</div>
+                    </div>
+                    <div class=""operator-list"">{operatorMarkup}</div>
+                </article>";
+        }
+
+        private static string BuildTvOperatorMarkup(HaidaiBoardRow row)
+        {
+            var classes = new List<string> { "operator-card" };
+            if (row.IsTrainee)
+            {
+                classes.Add("trainee");
+            }
+
+            if (row.IsLeader)
+            {
+                classes.Add("leader");
+            }
+
+            var tags = new List<string>();
+            if (row.IsLeader)
+            {
+                tags.Add(LeaderRole(row));
+            }
+
+            if (row.IsTrainee)
+            {
+                tags.Add("Treino");
+            }
+
+            if (!row.CountsTowardKousu)
+            {
+                tags.Add("Nao conta kousu");
+            }
+
+            if (!string.IsNullOrWhiteSpace(row.MovementSummary))
+            {
+                tags.Add(row.MovementSummary);
+            }
+
+            var meta = tags.Count == 0
+                ? row.CodigoFJ
+                : $"{row.CodigoFJ} | {string.Join(" | ", tags)}";
+
+            return $@"
+                <div class=""{EscapeHtml(string.Join(" ", classes))}"">
+                    <img class=""operator-photo"" src=""{EscapeHtml(ResolveOperatorPhotoPath(row.CodigoFJ))}"" alt=""{EscapeHtml(row.Name)}"">
+                    <div class=""operator-text"">
+                        <div class=""operator-name"">{EscapeHtml(row.Name)}</div>
+                        <div class=""operator-meta"">{EscapeHtml(meta)}</div>
+                    </div>
+                </div>";
+        }
+
+        private static string ResolveOperatorPhotoPath(string codigoFJ)
+        {
+            var normalizedCode = (codigoFJ ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(normalizedCode))
+            {
+                return "assets/default-operator.png";
+            }
+
+            var sourceOperators = Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "ui",
+                "presence",
+                "assets",
+                "operators");
+
+            var extensions = new[] { ".png", ".jpg", ".jpeg", ".webp" };
+            foreach (var extension in extensions)
+            {
+                var fileName = normalizedCode + extension;
+                if (File.Exists(Path.Combine(sourceOperators, fileName)))
+                {
+                    return "assets/operators/" + fileName;
+                }
+            }
+
+            return "assets/default-operator.png";
+        }
+
+        private static string BuildTrainingRowMarkup(HaidaiBoardRow row)
+        {
+            var trainer = string.IsNullOrWhiteSpace(row.TrainerCodigoFJ)
+                ? "Treinador nao informado"
+                : $"Treinador {row.TrainerCodigoFJ}";
+
+            return $@"
+                <div class=""training-row"">
+                    <strong>{EscapeHtml(row.Name)}</strong>
+                    <span>{EscapeHtml(BuildTvAreaKey(row))} | {EscapeHtml(trainer)}</span>
+                </div>";
+        }
+
+        private static string BuildLeaderRowMarkup(HaidaiBoardRow row)
+        {
+            var role = LeaderRole(row);
+            var roleClass = string.Equals(role, "GL", StringComparison.OrdinalIgnoreCase) ? " role-gl" : string.Empty;
+            var status = string.IsNullOrWhiteSpace(row.Status) ? "Nao escalado" : row.Status;
+
+            return $@"
+                <div class=""leader-row"">
+                    <strong><span class=""role-badge{roleClass}"">{EscapeHtml(role)}</span>{EscapeHtml(row.Name)}</strong>
+                    <span>{EscapeHtml(row.GroupName)} | {EscapeHtml(status)}</span>
+                </div>";
+        }
+
+        private static bool IsExportableTvAreaRow(HaidaiBoardRow row, int sectorId)
+        {
+            if (!row.LocalId.HasValue || row.LocalSectorId != sectorId)
+            {
+                return false;
+            }
+
+            var displayLocalId = row.DisplayLocalId ?? row.LocalId;
+            return displayLocalId != DadPlaceholderLocalId
+                && displayLocalId != GBareruPlaceholderLocalId;
+        }
+
+        private static bool IsPresentLeader(HaidaiBoardRow row)
+        {
+            if (!row.IsLeader)
+            {
+                return false;
+            }
+
+            if (row.ExceptionMotiveId == 1 || row.ExceptionMotiveId == 2)
+            {
+                return false;
+            }
+
+            return !row.LocalId.HasValue
+                && !string.Equals(row.Status, "Folga", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string BuildTvAreaKey(HaidaiBoardRow row)
+        {
+            var value = FirstNonEmpty(row.DisplayLocalShortCode, row.LocalShortCode, row.AssignmentCode, row.DisplayLocalName, row.LocalName);
+            return string.IsNullOrWhiteSpace(value) ? "Sem area" : value.Trim();
+        }
+
+        private static string FirstNonEmpty(params string[] values)
+        {
+            foreach (var value in values)
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value;
+                }
+            }
+
+            return string.Empty;
+        }
+
+        private static string LeaderRole(HaidaiBoardRow row)
+        {
+            return row.AccessLevel == 2 ? "KL" : "GL";
+        }
+
+        private static string AreaSortKey(string area)
+        {
+            var digits = new string((area ?? string.Empty).Where(char.IsDigit).ToArray());
+            if (int.TryParse(digits, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number))
+            {
+                return number.ToString("0000", CultureInfo.InvariantCulture);
+            }
+
+            return area ?? string.Empty;
         }
 
         private static HaidaiExportLayoutDefinition? LoadExportLayout(int sectorId)
@@ -2655,12 +3065,15 @@ namespace TeamOps.UI.Services
         string GroupName,
         bool Trainer,
         bool IsLeader,
+        int AccessLevel,
         int? LocalId,
         string LocalName,
         string LocalShortCode,
+        int? LocalSectorId,
         int? DisplayLocalId,
         string DisplayLocalName,
         string DisplayLocalShortCode,
+        int? DisplayLocalSectorId,
         string AssignmentCode,
         string StoredAssignmentCode,
         string PairKey,
@@ -2727,6 +3140,7 @@ namespace TeamOps.UI.Services
         public string GroupName { get; set; } = string.Empty;
         public bool Trainer { get; set; }
         public bool IsLeader { get; set; }
+        public int AccessLevel { get; set; }
     }
 
     internal sealed class HaidaiOperatorSectorRow
