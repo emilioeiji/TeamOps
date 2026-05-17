@@ -307,6 +307,56 @@
         </section>
     </main>
 
+    <div id="pendingModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="pendingModalTitle">
+        <section class="pending-modal">
+            <header class="pending-modal-head">
+                <div>
+                    <span id="txtPendingBadge" class="pending-badge">Pendencias do turno</span>
+                    <h2 id="pendingModalTitle">Antes de iniciar</h2>
+                    <p id="txtPendingSubtitle">Existem pendencias abertas no sistema para acompanhamento.</p>
+                </div>
+                <button id="btnClosePendingModal" class="modal-icon-button" type="button" aria-label="Fechar">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </header>
+
+            <div class="pending-summary">
+                <article>
+                    <span id="txtPendingTasksLabel">Tasks em aberto</span>
+                    <strong id="modalTaskCount">0</strong>
+                </article>
+                <article>
+                    <span id="txtPendingMasterLabel">MasterCard pendente</span>
+                    <strong id="modalMasterCount">0</strong>
+                </article>
+            </div>
+
+            <div class="pending-lists">
+                <section>
+                    <div class="pending-list-title">
+                        <h3 id="txtPendingTasksTitle">Tasks</h3>
+                        <button class="link-button" type="button" data-action="open:tasks" id="btnOpenTasksFromModal">Abrir</button>
+                    </div>
+                    <div id="pendingTasksList" class="pending-list"></div>
+                </section>
+
+                <section>
+                    <div class="pending-list-title">
+                        <h3 id="txtPendingMasterTitle">MasterCard</h3>
+                        <button class="link-button" type="button" data-action="open:mastercard" id="btnOpenMasterFromModal">Abrir</button>
+                    </div>
+                    <div id="pendingMasterList" class="pending-list"></div>
+                </section>
+            </div>
+
+            <footer class="pending-modal-actions">
+                <button id="btnAcknowledgePending" class="ack-button" type="button">Estou ciente</button>
+            </footer>
+        </section>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>

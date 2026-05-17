@@ -4,7 +4,9 @@
 using Dapper;
 using Microsoft.Web.WebView2.Core;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Windows.Forms;
 using TeamOps.Core.Common;
@@ -26,6 +28,7 @@ namespace TeamOps.UI.Forms
         {
             InitializeComponent();
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            WindowState = FormWindowState.Maximized;
 
             _user = user;
 
@@ -276,7 +279,12 @@ namespace TeamOps.UI.Forms
                 dateIso = DateTime.Now.ToString("O"),
                 openTasksForShift = GetOpenTasksForCurrentShift(),
                 masterCardsInProgress = GetMasterCardCountByStatus("in_progress"),
-                masterCardsFollow = GetMasterCardCountByStatus("follow")
+                masterCardsFollow = GetMasterCardCountByStatus("follow"),
+                pending = new
+                {
+                    tasks = GetPendingTaskItems(),
+                    masterCards = GetPendingMasterCardItems()
+                }
             });
         }
 
@@ -313,6 +321,88 @@ namespace TeamOps.UI.Forms
                     ShiftId = _currentShift.Id
                 }
             );
+        }
+
+        private IReadOnlyList<object> GetPendingTaskItems()
+        {
+            using var conn = _factory.CreateOpenConnection();
+
+            var tasksTableExists = conn.ExecuteScalar<int>(
+                @"SELECT COUNT(1)
+                  FROM sqlite_master
+                  WHERE type = 'table'
+                    AND name = 'Tasks'"
+            ) > 0;
+
+            if (!tasksTableExists)
+                return Array.Empty<object>();
+
+            return conn.Query<DashboardTaskPendingRow>(
+                @"SELECT
+                      t.Id,
+                      COALESCE(t.Description, '') AS Description,
+                      substr(t.DueDate, 1, 10) AS DueDate,
+                      COALESCE(t.Status, '') AS Status,
+                      COALESCE(op.NameRomanji, t.AssigneeCodigoFJ, '') AS AssigneeNamePt,
+                      COALESCE(NULLIF(op.NameNihongo, ''), op.NameRomanji, t.AssigneeCodigoFJ, '') AS AssigneeNameJp
+                  FROM Tasks t
+                  LEFT JOIN Operators op ON op.CodigoFJ = t.AssigneeCodigoFJ
+                  WHERE t.ShiftId = @ShiftId
+                    AND t.Status NOT IN ('completed', 'cancelled')
+                  ORDER BY date(t.DueDate) ASC, t.Id DESC
+                  LIMIT 6;",
+                new
+                {
+                    ShiftId = _currentShift.Id
+                })
+                .Select(item => new
+                {
+                    id = item.Id,
+                    description = item.Description,
+                    dueDate = item.DueDate,
+                    status = item.Status,
+                    assigneeNamePt = item.AssigneeNamePt,
+                    assigneeNameJp = item.AssigneeNameJp
+                })
+                .Cast<object>()
+                .ToList();
+        }
+
+        private IReadOnlyList<object> GetPendingMasterCardItems()
+        {
+            using var conn = _factory.CreateOpenConnection();
+            MasterCardModuleService.EnsureSchema(conn);
+
+            return conn.Query<DashboardMasterCardPendingRow>(
+                @"SELECT
+                      m.Id,
+                      COALESCE(op.NameRomanji, m.OperatorCodigoFJ, '') AS OperatorNamePt,
+                      COALESCE(NULLIF(op.NameNihongo, ''), op.NameRomanji, m.OperatorCodigoFJ, '') AS OperatorNameJp,
+                      COALESCE(eq.NamePt, eq.NameJp, '') AS EquipmentNamePt,
+                      COALESCE(NULLIF(eq.NameJp, ''), eq.NamePt, '') AS EquipmentNameJp,
+                      COALESCE(m.Status, '') AS Status,
+                      COALESCE(substr(m.FollowDate, 1, 10), '') AS FollowDate
+                  FROM MasterCards m
+                  LEFT JOIN Operators op ON op.CodigoFJ = m.OperatorCodigoFJ
+                  LEFT JOIN Equipments eq ON eq.Id = m.EquipmentId
+                  WHERE m.Status IN ('in_progress', 'follow')
+                  ORDER BY
+                      CASE m.Status WHEN 'follow' THEN 0 ELSE 1 END,
+                      date(COALESCE(m.FollowDate, m.StartDate)) ASC,
+                      m.Id DESC
+                  LIMIT 6;")
+                .Select(item => new
+                {
+                    id = item.Id,
+                    operatorNamePt = item.OperatorNamePt,
+                    operatorNameJp = item.OperatorNameJp,
+                    equipmentNamePt = item.EquipmentNamePt,
+                    equipmentNameJp = item.EquipmentNameJp,
+                    status = item.Status,
+                    followDate = item.FollowDate
+                })
+                .Cast<object>()
+                .ToList();
         }
 
         private int GetMasterCardCountByStatus(string status)
@@ -386,6 +476,27 @@ namespace TeamOps.UI.Forms
                    root.TryGetProperty(name, out var prop)
                 ? prop.GetString() ?? ""
                 : "";
+        }
+
+        private sealed class DashboardTaskPendingRow
+        {
+            public int Id { get; set; }
+            public string Description { get; set; } = string.Empty;
+            public string DueDate { get; set; } = string.Empty;
+            public string Status { get; set; } = string.Empty;
+            public string AssigneeNamePt { get; set; } = string.Empty;
+            public string AssigneeNameJp { get; set; } = string.Empty;
+        }
+
+        private sealed class DashboardMasterCardPendingRow
+        {
+            public int Id { get; set; }
+            public string OperatorNamePt { get; set; } = string.Empty;
+            public string OperatorNameJp { get; set; } = string.Empty;
+            public string EquipmentNamePt { get; set; } = string.Empty;
+            public string EquipmentNameJp { get; set; } = string.Empty;
+            public string Status { get; set; } = string.Empty;
+            public string FollowDate { get; set; } = string.Empty;
         }
     }
 }

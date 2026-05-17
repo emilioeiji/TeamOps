@@ -18,6 +18,7 @@ namespace TeamOps.UI.Services
         private const int GdadSectorId = 3;
         private const int DadPlaceholderLocalId = 97;
         private const int GBareruPlaceholderLocalId = 98;
+        private const int TvExportPageSize = 20;
 
         private readonly SqliteConnectionFactory _factory;
 
@@ -774,6 +775,27 @@ namespace TeamOps.UI.Services
                 .GroupBy(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
 
+            var trainerCodes = assignments.Values
+                .Select(item => item.TrainerCodigoFJ?.Trim())
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            var trainerNames = trainerCodes.Length == 0
+                ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                : conn.Query<TrainerLookupRow>(
+                    @"
+                        SELECT
+                            CodigoFJ,
+                            COALESCE(NULLIF(NameRomanji, ''), NULLIF(NameNihongo, ''), CodigoFJ) AS Name
+                        FROM Operators
+                        WHERE CodigoFJ IN @TrainerCodes;",
+                    new
+                    {
+                        TrainerCodes = trainerCodes
+                    })
+                    .ToDictionary(item => item.CodigoFJ, item => item.Name, StringComparer.OrdinalIgnoreCase);
+
             var exceptions = conn.Query<HaidaiExceptionRecord>(
                 @"
                     SELECT
@@ -814,6 +836,11 @@ namespace TeamOps.UI.Services
                     var displayLocal = ResolveDisplayLocal(sectorId, op.HomeSectorId, local, localsById);
                     var baseAssignmentCode = ResolveAssignmentCode(assignment, local);
                     var status = ResolveStatus(exception, assignment, baseAssignmentCode);
+                    var trainerCode = assignment?.TrainerCodigoFJ ?? string.Empty;
+                    var trainerName = !string.IsNullOrWhiteSpace(trainerCode)
+                        && trainerNames.TryGetValue(trainerCode, out var foundTrainerName)
+                            ? foundTrainerName
+                            : string.Empty;
                     var hasSharedDisplayLocal = displayLocal != null
                         && !string.IsNullOrWhiteSpace(displayLocal.ShortCode)
                         && displayLocal.Id != local?.Id;
@@ -845,7 +872,8 @@ namespace TeamOps.UI.Services
                         baseAssignmentCode,
                         assignment?.PairKey ?? string.Empty,
                         assignment?.IsTrainee ?? false,
-                        assignment?.TrainerCodigoFJ ?? string.Empty,
+                        trainerCode,
+                        trainerName,
                         assignment?.CountsTowardKousu ?? true,
                         assignment?.IsLineupActive ?? false,
                         assignment?.Notes ?? string.Empty,
@@ -1992,6 +2020,8 @@ namespace TeamOps.UI.Services
                 ? @"<div class=""compact-empty"">Nenhum lider presente neste turno</div>"
                 : string.Join(Environment.NewLine, tvPresentLeaders.Select(BuildLeaderRowMarkup));
 
+            var pageCount = Math.Max(1, (int)Math.Ceiling(tvAreaGroups.Count / (double)TvExportPageSize));
+
             return $@"
 <!DOCTYPE html>
 <html lang=""pt-BR"">
@@ -2027,11 +2057,11 @@ namespace TeamOps.UI.Services
         }}
         .page {{
             height: 100vh;
-            padding: 16px;
+            padding: 14px;
             display: grid;
             grid-template-columns: minmax(0, 1fr) minmax(250px, 17vw);
             grid-template-rows: auto minmax(0, 1fr) auto;
-            gap: 14px;
+            gap: 12px;
         }}
         .topbar {{
             grid-column: 1 / -1;
@@ -2047,15 +2077,18 @@ namespace TeamOps.UI.Services
         .title-block {{ min-width: 0; }}
         h1 {{
             margin: 0;
+            display: flex;
+            align-items: baseline;
+            gap: 14px;
+            flex-wrap: wrap;
             font-size: clamp(24px, 2.1vw, 42px);
             line-height: 1;
             letter-spacing: 0;
         }}
-        .subtitle {{
-            margin-top: 5px;
-            color: var(--muted);
-            font-size: clamp(13px, 1vw, 18px);
-            font-weight: 700;
+        .title-date {{
+            color: var(--accent);
+            font-size: clamp(16px, 1.1vw, 22px);
+            font-weight: 900;
         }}
         .switch-link {{
             display: inline-flex;
@@ -2103,23 +2136,23 @@ namespace TeamOps.UI.Services
             height: 100%;
             min-height: 0;
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(5, minmax(0, 1fr));
             grid-template-rows: repeat(4, minmax(0, 1fr));
-            gap: 10px;
+            gap: 8px;
             overflow: hidden;
         }}
         .area-pages.few-areas .area-grid {{
             grid-template-rows: none;
-            grid-auto-rows: minmax(170px, 190px);
+            grid-auto-rows: minmax(150px, 180px);
             align-content: start;
         }}
         .area-card {{
             display: grid;
             grid-template-rows: auto minmax(0, 1fr);
-            gap: 8px;
+            gap: 6px;
             min-width: 0;
             min-height: 0;
-            padding: 10px;
+            padding: 8px;
             border-radius: 8px;
             background: var(--surface-2);
             border: 2px solid #cddbe6;
@@ -2138,7 +2171,7 @@ namespace TeamOps.UI.Services
         .area-code {{
             min-width: 0;
             color: var(--accent);
-            font-size: clamp(20px, 1.55vw, 30px);
+            font-size: clamp(18px, 1.3vw, 26px);
             font-weight: 900;
             line-height: 1;
             white-space: nowrap;
@@ -2155,13 +2188,13 @@ namespace TeamOps.UI.Services
             border-radius: 999px;
             background: #dfeef4;
             color: var(--accent);
-            font-size: 17px;
+            font-size: 16px;
             font-weight: 900;
         }}
         .operator-list {{
             min-height: 0;
             display: grid;
-            gap: 7px;
+            gap: 6px;
             align-content: stretch;
         }}
         .area-card.two-up .operator-list {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
@@ -2171,14 +2204,14 @@ namespace TeamOps.UI.Services
             justify-items: center;
             align-content: start;
             text-align: center;
-            gap: 3px;
-            padding: 6px 8px;
+            gap: 4px;
+            padding: 5px 6px;
             overflow: hidden;
         }}
         .area-card.two-up .operator-photo {{
-            width: clamp(34px, 2.8vw, 50px);
-            height: clamp(34px, 2.8vw, 50px);
-            min-width: clamp(34px, 2.8vw, 50px);
+            width: clamp(34px, 2.45vw, 48px);
+            height: clamp(34px, 2.45vw, 48px);
+            min-width: clamp(34px, 2.45vw, 48px);
             border-width: 2px;
         }}
         .area-card.two-up .operator-text {{
@@ -2186,7 +2219,7 @@ namespace TeamOps.UI.Services
             min-height: 0;
         }}
         .area-card.two-up .operator-name {{
-            font-size: clamp(13px, 0.95vw, 18px);
+            font-size: clamp(12px, 0.86vw, 17px);
             line-height: 1.08;
         }}
         .area-card.two-up .operator-meta {{
@@ -2199,17 +2232,17 @@ namespace TeamOps.UI.Services
             align-items: center;
             justify-content: center;
             align-content: center;
-            gap: 8px;
-            padding: 8px;
+            gap: 7px;
+            padding: 7px;
             border-radius: 8px;
             background: #ffffff;
             border: 1px solid #d6e2eb;
             overflow: hidden;
         }}
         .operator-photo {{
-            width: clamp(42px, 3.8vw, 72px);
-            height: clamp(42px, 3.8vw, 72px);
-            min-width: clamp(42px, 3.8vw, 72px);
+            width: clamp(40px, 3.15vw, 64px);
+            height: clamp(40px, 3.15vw, 64px);
+            min-width: clamp(40px, 3.15vw, 64px);
             border-radius: 50%;
             object-fit: cover;
             border: 3px solid #ffffff;
@@ -2230,7 +2263,7 @@ namespace TeamOps.UI.Services
         }}
         .operator-name {{
             min-width: 0;
-            font-size: clamp(16px, 1.25vw, 24px);
+            font-size: clamp(15px, 1.06vw, 22px);
             font-weight: 900;
             line-height: 1.08;
             overflow: visible;
@@ -2240,7 +2273,7 @@ namespace TeamOps.UI.Services
         }}
         .operator-meta {{
             color: var(--muted);
-            font-size: clamp(9px, 0.72vw, 13px);
+            font-size: clamp(9px, 0.68vw, 12px);
             font-weight: 800;
             white-space: nowrap;
             overflow: hidden;
@@ -2250,10 +2283,12 @@ namespace TeamOps.UI.Services
             position: absolute;
             right: 12px;
             bottom: 10px;
-            min-width: 52px;
-            min-height: 28px;
+            min-width: 114px;
+            min-height: 34px;
             display: none;
-            place-items: center;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
             border-radius: 999px;
             background: rgba(20, 32, 46, 0.78);
             color: #ffffff;
@@ -2261,7 +2296,29 @@ namespace TeamOps.UI.Services
             font-weight: 900;
         }}
         .area-pages.has-pages .page-indicator {{
-            display: grid;
+            display: flex;
+        }}
+        .page-nav {{
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.34);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            cursor: pointer;
+            font-size: 19px;
+            line-height: 1;
+            font-weight: 900;
+        }}
+        .page-nav:hover {{
+            background: rgba(255, 255, 255, 0.24);
+        }}
+        .page-label {{
+            min-width: 38px;
+            text-align: center;
         }}
         .side-panel {{
             min-height: 0;
@@ -2317,6 +2374,11 @@ namespace TeamOps.UI.Services
             align-content: start;
             gap: 7px;
             overflow: hidden;
+        }}
+        .leader-list {{
+            overflow-y: auto;
+            padding-right: 3px;
+            scrollbar-width: thin;
         }}
         .leader-row,
         .training-row {{
@@ -2399,16 +2461,19 @@ namespace TeamOps.UI.Services
     <main class=""page"">
         <section class=""topbar"">
             <div class=""title-block"">
-                <h1>{EscapeHtml(sectorName)} - {EscapeHtml(shiftName)}</h1>
-                <div class=""subtitle"">{EscapeHtml(board.DateIso)} | atualizacao automatica a cada 2 minutos</div>
+                <h1>{EscapeHtml(sectorName)} - {EscapeHtml(shiftName)} <span class=""title-date"">{EscapeHtml(board.DateIso)}</span></h1>
             </div>
             <a class=""switch-link"" href=""{EscapeHtml(otherFileName)}"">Abrir outro turno</a>
         </section>
 
         <section class=""areas-panel"">
-            <div class=""area-pages{BuildAreaPagesClass(tvAreaGroups.Count)}"" data-page-count=""{Math.Max(1, (int)Math.Ceiling(tvAreaGroups.Count / 16d))}"">
+            <div class=""area-pages{BuildAreaPagesClass(tvAreaGroups.Count)}"" data-page-count=""{pageCount}"">
                 {tvAreaMarkup}
-                <div class=""page-indicator"" id=""pageIndicator"">1/{Math.Max(1, (int)Math.Ceiling(tvAreaGroups.Count / 16d))}</div>
+                <div class=""page-indicator"" id=""pageIndicator"">
+                    <button class=""page-nav"" id=""prevPage"" type=""button"" aria-label=""Pagina anterior"">&lt;</button>
+                    <span class=""page-label"" id=""pageLabel"">1/{pageCount}</span>
+                    <button class=""page-nav"" id=""nextPage"" type=""button"" aria-label=""Proxima pagina"">&gt;</button>
+                </div>
             </div>
         </section>
 
@@ -2430,7 +2495,9 @@ namespace TeamOps.UI.Services
     <script>
         (() => {{
             const pages = Array.from(document.querySelectorAll('.area-page'));
-            const indicator = document.getElementById('pageIndicator');
+            const label = document.getElementById('pageLabel');
+            const prev = document.getElementById('prevPage');
+            const next = document.getElementById('nextPage');
             if (pages.length <= 1) {{
                 return;
             }}
@@ -2438,14 +2505,15 @@ namespace TeamOps.UI.Services
             let index = 0;
             const show = nextIndex => {{
                 pages[index].classList.remove('active');
-                index = nextIndex % pages.length;
+                index = (nextIndex + pages.length) % pages.length;
                 pages[index].classList.add('active');
-                if (indicator) {{
-                    indicator.textContent = `${{index + 1}}/${{pages.length}}`;
+                if (label) {{
+                    label.textContent = `${{index + 1}}/${{pages.length}}`;
                 }}
             }};
 
-            setInterval(() => show(index + 1), 12000);
+            prev?.addEventListener('click', () => show(index - 1));
+            next?.addEventListener('click', () => show(index + 1));
         }})();
     </script>
 </body>
@@ -2454,10 +2522,9 @@ namespace TeamOps.UI.Services
         }
         private static string BuildTvAreaPagesMarkup(IReadOnlyList<IGrouping<string, HaidaiBoardRow>> groups)
         {
-            const int pageSize = 16;
             var pages = groups
                 .Select((group, index) => new { group, index })
-                .GroupBy(item => item.index / pageSize)
+                .GroupBy(item => item.index / TvExportPageSize)
                 .Select((page, pageIndex) => $@"
                     <div class=""area-page{(pageIndex == 0 ? " active" : string.Empty)}"">
                         <div class=""area-grid"">
@@ -2471,7 +2538,7 @@ namespace TeamOps.UI.Services
         private static string BuildAreaPagesClass(int areaCount)
         {
             var classes = new List<string>();
-            if (areaCount > 16)
+            if (areaCount > TvExportPageSize)
             {
                 classes.Add("has-pages");
             }
@@ -2538,16 +2605,17 @@ namespace TeamOps.UI.Services
                 tags.Add(row.MovementSummary);
             }
 
-            var meta = tags.Count == 0
-                ? row.CodigoFJ
-                : $"{row.CodigoFJ} | {string.Join(" | ", tags)}";
+            var meta = string.Join(" | ", tags);
+            var metaMarkup = string.IsNullOrWhiteSpace(meta)
+                ? string.Empty
+                : $@"<div class=""operator-meta"">{EscapeHtml(meta)}</div>";
 
             return $@"
                 <div class=""{EscapeHtml(string.Join(" ", classes))}"">
                     <img class=""operator-photo"" src=""{EscapeHtml(ResolveOperatorPhotoPath(row.CodigoFJ))}"" alt=""{EscapeHtml(row.Name)}"">
                     <div class=""operator-text"">
                         <div class=""operator-name"">{EscapeHtml(row.Name)}</div>
-                        <div class=""operator-meta"">{EscapeHtml(meta)}</div>
+                        {metaMarkup}
                     </div>
                 </div>";
         }
@@ -2582,9 +2650,9 @@ namespace TeamOps.UI.Services
 
         private static string BuildTrainingRowMarkup(HaidaiBoardRow row)
         {
-            var trainer = string.IsNullOrWhiteSpace(row.TrainerCodigoFJ)
+            var trainer = string.IsNullOrWhiteSpace(row.TrainerName)
                 ? "Treinador nao informado"
-                : $"Treinador {row.TrainerCodigoFJ}";
+                : $"Treinador {row.TrainerName}";
 
             return $@"
                 <div class=""training-row"">
@@ -3079,6 +3147,7 @@ namespace TeamOps.UI.Services
         string PairKey,
         bool IsTrainee,
         string TrainerCodigoFJ,
+        string TrainerName,
         bool CountsTowardKousu,
         bool IsLineupActive,
         string Notes,
@@ -3147,6 +3216,12 @@ namespace TeamOps.UI.Services
     {
         public string CodigoFJ { get; set; } = string.Empty;
         public int SectorId { get; set; }
+    }
+
+    internal sealed class TrainerLookupRow
+    {
+        public string CodigoFJ { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
     }
 
     internal sealed class HaidaiAssignmentRecord

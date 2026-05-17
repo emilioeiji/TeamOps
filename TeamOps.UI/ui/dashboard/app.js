@@ -48,6 +48,21 @@ const I18N = {
         statTasks: "Tasks em Aberto",
         statMasterInProgress: "MasterCard em Andamento",
         statMasterFollow: "MasterCard em Follow",
+        pendingBadge: "Pendencias do turno",
+        pendingTitle: "Antes de iniciar",
+        pendingSubtitle: "Existem pendencias abertas no sistema para acompanhamento.",
+        pendingTasksLabel: "Tasks em aberto",
+        pendingMasterLabel: "MasterCard pendente",
+        pendingTasksTitle: "Tasks",
+        pendingMasterTitle: "MasterCard",
+        pendingOpen: "Abrir",
+        pendingAck: "Estou ciente",
+        pendingEmpty: "Nenhum item pendente.",
+        pendingDue: "Prazo",
+        pendingFollow: "Follow",
+        statusPending: "Pendente",
+        statusInProgress: "Em andamento",
+        statusFollow: "Follow",
         groupOpsTitle: "Operacao",
         groupOpsSubtitle: "Cadastros, acompanhamento e consulta de registros.",
         groupDocsTitle: "Hikitsugui e Documentos",
@@ -106,6 +121,21 @@ const I18N = {
         statTasks: "\u672a\u5b8c\u4e86\u30bf\u30b9\u30af",
         statMasterInProgress: "MasterCard \u9032\u884c\u4e2d",
         statMasterFollow: "MasterCard Follow",
+        pendingBadge: "\u30b7\u30d5\u30c8\u306e\u672a\u5b8c\u4e86",
+        pendingTitle: "\u958b\u59cb\u524d\u306e\u78ba\u8a8d",
+        pendingSubtitle: "\u30b7\u30b9\u30c6\u30e0\u306b\u78ba\u8a8d\u304c\u5fc5\u8981\u306a\u672a\u5b8c\u4e86\u9805\u76ee\u304c\u3042\u308a\u307e\u3059\u3002",
+        pendingTasksLabel: "\u672a\u5b8c\u4e86\u30bf\u30b9\u30af",
+        pendingMasterLabel: "MasterCard \u672a\u5b8c\u4e86",
+        pendingTasksTitle: "\u30bf\u30b9\u30af",
+        pendingMasterTitle: "MasterCard",
+        pendingOpen: "\u958b\u304f",
+        pendingAck: "\u78ba\u8a8d\u3057\u307e\u3057\u305f",
+        pendingEmpty: "\u672a\u5b8c\u4e86\u9805\u76ee\u306f\u3042\u308a\u307e\u305b\u3093\u3002",
+        pendingDue: "\u671f\u9650",
+        pendingFollow: "Follow",
+        statusPending: "\u672a\u7740\u624b",
+        statusInProgress: "\u9032\u884c\u4e2d",
+        statusFollow: "Follow",
         groupOpsTitle: "\u904b\u7528",
         groupOpsSubtitle: "\u767b\u9332\u3001\u30d5\u30a9\u30ed\u30fc\u3001\u8a18\u9332\u78ba\u8a8d\u3002",
         groupDocsTitle: "\u5f15\u7d99\u304e\u3068\u6587\u66f8",
@@ -153,7 +183,8 @@ const I18N = {
 
 const state = {
     locale: "pt-BR",
-    payload: null
+    payload: null,
+    pendingModalShown: false
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -176,6 +207,12 @@ function bindActions() {
             action: "set_locale",
             locale: nextLocale
         });
+    });
+
+    document.getElementById("btnClosePendingModal").addEventListener("click", closePendingModal);
+    document.getElementById("btnAcknowledgePending").addEventListener("click", closePendingModal);
+    ["btnOpenTasksFromModal", "btnOpenMasterFromModal"].forEach(id => {
+        document.getElementById(id).addEventListener("click", closePendingModal);
     });
 }
 
@@ -206,6 +243,7 @@ function hydrateDashboard(payload) {
     setText("lblOpenTasks", payload.openTasksForShift ?? 0);
     setText("lblMasterInProgress", payload.masterCardsInProgress ?? 0);
     setText("lblMasterFollow", payload.masterCardsFollow ?? 0);
+    renderPendingModal(payload);
 
     const level = Number(payload.accessLevel ?? 0);
     const label = ACCESS_LABELS[state.locale]?.[level] || `Nivel ${level}`;
@@ -215,6 +253,7 @@ function hydrateDashboard(payload) {
     setText("accessBadge", `${profilePrefix} ${label}`);
 
     applyPermissions(level);
+    maybeShowPendingModal(payload);
 }
 
 function refreshNames() {
@@ -275,6 +314,16 @@ function setLocale(locale) {
     setText("txtStatTasks", strings.statTasks);
     setText("txtStatMasterInProgress", strings.statMasterInProgress);
     setText("txtStatMasterFollow", strings.statMasterFollow);
+    setText("txtPendingBadge", strings.pendingBadge);
+    setText("pendingModalTitle", strings.pendingTitle);
+    setText("txtPendingSubtitle", strings.pendingSubtitle);
+    setText("txtPendingTasksLabel", strings.pendingTasksLabel);
+    setText("txtPendingMasterLabel", strings.pendingMasterLabel);
+    setText("txtPendingTasksTitle", strings.pendingTasksTitle);
+    setText("txtPendingMasterTitle", strings.pendingMasterTitle);
+    setText("btnOpenTasksFromModal", strings.pendingOpen);
+    setText("btnOpenMasterFromModal", strings.pendingOpen);
+    setText("btnAcknowledgePending", strings.pendingAck);
     setText("txtGroupOpsTitle", strings.groupOpsTitle);
     setText("txtGroupOpsSubtitle", strings.groupOpsSubtitle);
     setText("txtGroupDocsTitle", strings.groupDocsTitle);
@@ -324,7 +373,113 @@ function setLocale(locale) {
         const label = ACCESS_LABELS[state.locale]?.[level] || `Nivel ${level}`;
         setText("lblAccessLevel", label);
         setText("accessBadge", `${strings.profilePrefix} ${label}`);
+        renderPendingModal(state.payload);
     }
+}
+
+function renderPendingModal(payload) {
+    if (!payload) {
+        return;
+    }
+
+    const taskCount = Number(payload.openTasksForShift ?? 0);
+    const masterCount = Number(payload.masterCardsInProgress ?? 0) + Number(payload.masterCardsFollow ?? 0);
+    const pending = payload.pending || {};
+
+    setText("modalTaskCount", taskCount);
+    setText("modalMasterCount", masterCount);
+    renderTaskPendingList(pending.tasks || []);
+    renderMasterPendingList(pending.masterCards || []);
+}
+
+function renderTaskPendingList(items) {
+    const root = document.getElementById("pendingTasksList");
+    if (!items.length) {
+        root.innerHTML = `<div class="pending-empty">${escapeHtml(I18N[state.locale].pendingEmpty)}</div>`;
+        return;
+    }
+
+    root.innerHTML = items.map(item => `
+        <article class="pending-item">
+            <div>
+                <strong>${escapeHtml(item.description || `Task #${item.id}`)}</strong>
+                <span>${escapeHtml(localizedValue(item.assigneeNamePt, item.assigneeNameJp) || "-")}</span>
+            </div>
+            <small>${escapeHtml(I18N[state.locale].pendingDue)} ${escapeHtml(formatShortDate(item.dueDate))} | ${escapeHtml(statusLabel(item.status))}</small>
+        </article>
+    `).join("");
+}
+
+function renderMasterPendingList(items) {
+    const root = document.getElementById("pendingMasterList");
+    if (!items.length) {
+        root.innerHTML = `<div class="pending-empty">${escapeHtml(I18N[state.locale].pendingEmpty)}</div>`;
+        return;
+    }
+
+    root.innerHTML = items.map(item => `
+        <article class="pending-item">
+            <div>
+                <strong>${escapeHtml(localizedValue(item.operatorNamePt, item.operatorNameJp) || `MasterCard #${item.id}`)}</strong>
+                <span>${escapeHtml(localizedValue(item.equipmentNamePt, item.equipmentNameJp) || "-")}</span>
+            </div>
+            <small>${escapeHtml(statusLabel(item.status))}${item.followDate ? ` | ${escapeHtml(I18N[state.locale].pendingFollow)} ${escapeHtml(formatShortDate(item.followDate))}` : ""}</small>
+        </article>
+    `).join("");
+}
+
+function maybeShowPendingModal(payload) {
+    if (state.pendingModalShown) {
+        return;
+    }
+
+    const totalPending = Number(payload.openTasksForShift ?? 0)
+        + Number(payload.masterCardsInProgress ?? 0)
+        + Number(payload.masterCardsFollow ?? 0);
+
+    if (totalPending <= 0) {
+        return;
+    }
+
+    state.pendingModalShown = true;
+    document.body.classList.add("modal-open");
+    document.getElementById("pendingModal").classList.remove("hidden");
+}
+
+function closePendingModal() {
+    document.body.classList.remove("modal-open");
+    document.getElementById("pendingModal").classList.add("hidden");
+}
+
+function localizedValue(pt, jp) {
+    return state.locale === "ja-JP"
+        ? (jp || pt || "")
+        : (pt || jp || "");
+}
+
+function statusLabel(status) {
+    const strings = I18N[state.locale];
+    return {
+        pending: strings.statusPending,
+        in_progress: strings.statusInProgress,
+        follow: strings.statusFollow
+    }[status] || status || "-";
+}
+
+function formatShortDate(dateIso) {
+    if (!dateIso) {
+        return "-";
+    }
+
+    const [year, month, day] = String(dateIso).split("-").map(Number);
+    if (!year || !month || !day) {
+        return dateIso;
+    }
+
+    return new Intl.DateTimeFormat(state.locale, {
+        month: "2-digit",
+        day: "2-digit"
+    }).format(new Date(year, month - 1, day));
 }
 
 function formatDashboardDate(dateIso, locale) {
@@ -351,4 +506,12 @@ function setText(id, value) {
     if (element) {
         element.textContent = value ?? "-";
     }
+}
+
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;");
 }
