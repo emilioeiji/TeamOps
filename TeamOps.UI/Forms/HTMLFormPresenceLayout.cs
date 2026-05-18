@@ -157,7 +157,9 @@ namespace TeamOps.UI.Forms
                 {
                     CodigoFJ = item.OperatorCodigoFJ,
                     ShiftId = item.ShiftId,
-                    SectorId = item.SectorId,
+                    SectorId = item.LocalId.HasValue && locals.TryGetValue(item.LocalId.Value, out var local)
+                        ? local.SectorId
+                        : item.SectorId,
                     LocalId = item.LocalId ?? 0,
                     ScheduleDate = date
                 })

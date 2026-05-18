@@ -898,7 +898,7 @@ namespace TeamOps.UI.Services
 
             var summary = new HaidaiSummary(
                 rows.Count,
-                rows.Count(item => item.IsLineupActive && !string.IsNullOrWhiteSpace(item.AssignmentCode)),
+                rows.Count(item => IsAssignedInViewingSector(item, sectorId)),
                 rows.Count(item => item.ExceptionMotiveId == 1),
                 rows.Count(item => item.ExceptionMotiveId == 2),
                 rows.Count(item => string.Equals(item.Status, "Atraso", StringComparison.OrdinalIgnoreCase)),
@@ -909,12 +909,23 @@ namespace TeamOps.UI.Services
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .Count());
 
+            var areaTotals = rows
+                .Where(item => IsAssignedInViewingSector(item, sectorId))
+                .GroupBy(
+                    item => ResolveAreaTotalLabel(item),
+                    StringComparer.OrdinalIgnoreCase)
+                .OrderBy(group => AreaSortKey(group.Key), StringComparer.OrdinalIgnoreCase)
+                .ThenBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
+                .Select(group => new HaidaiAreaTotal(group.Key, group.Count()))
+                .ToList();
+
             return new HaidaiBoardPayload(
                 date.ToString("yyyy-MM-dd"),
                 shiftId,
                 sectorId,
                 summary,
-                grouped);
+                grouped,
+                areaTotals);
         }
 
         public void SaveAssignment(HaidaiSaveAssignmentRequest request)
@@ -1852,6 +1863,7 @@ namespace TeamOps.UI.Services
 
         private static void ApplyPairKeyToMonth(System.Data.IDbConnection conn, System.Data.IDbTransaction transaction, HaidaiSaveAssignmentRequest request)
         {
+            var applyStart = request.Date.Date;
             var monthStart = new DateTime(request.Date.Year, request.Date.Month, 1);
             var monthEnd = monthStart.AddMonths(1).AddDays(-1);
             var pairKey = NullIfWhiteSpace(request.PairKey);
@@ -1861,14 +1873,14 @@ namespace TeamOps.UI.Services
                     UPDATE HaidaiAssignments
                     SET PairKey = @PairKey,
                         UpdatedAt = CURRENT_TIMESTAMP
-                    WHERE date(ScheduleDate) BETWEEN date(@MonthStart) AND date(@MonthEnd)
+                    WHERE date(ScheduleDate) BETWEEN date(@ApplyStart) AND date(@MonthEnd)
                       AND ShiftId = @ShiftId
                       AND SectorId = @SectorId
                       AND OperatorCodigoFJ = @OperatorCodigoFJ;",
                 new
                 {
                     PairKey = pairKey,
-                    MonthStart = monthStart.ToString("yyyy-MM-dd"),
+                    ApplyStart = applyStart.ToString("yyyy-MM-dd"),
                     MonthEnd = monthEnd.ToString("yyyy-MM-dd"),
                     request.ShiftId,
                     request.SectorId,
@@ -1881,7 +1893,7 @@ namespace TeamOps.UI.Services
                 return;
             }
 
-            for (var date = monthStart; date <= monthEnd; date = date.AddDays(1))
+            for (var date = applyStart; date <= monthEnd; date = date.AddDays(1))
             {
                 conn.Execute(
                     @"
@@ -2821,6 +2833,40 @@ namespace TeamOps.UI.Services
                 && displayLocalId != GBareruPlaceholderLocalId;
         }
 
+        private static bool IsAssignedInViewingSector(HaidaiBoardRow row, int viewingSectorId)
+        {
+            if (!row.IsLineupActive || string.IsNullOrWhiteSpace(row.AssignmentCode))
+            {
+                return false;
+            }
+
+            if (row.LocalSectorId.HasValue)
+            {
+                return row.LocalSectorId.Value == viewingSectorId;
+            }
+
+            var displayLocalId = row.DisplayLocalId ?? row.LocalId;
+            if (displayLocalId == DadPlaceholderLocalId || displayLocalId == GBareruPlaceholderLocalId)
+            {
+                return false;
+            }
+
+            return row.DisplayLocalSectorId == viewingSectorId;
+        }
+
+        private static string ResolveAreaTotalLabel(HaidaiBoardRow row)
+        {
+            var label = FirstNonEmpty(
+                row.DisplayLocalShortCode,
+                row.LocalShortCode,
+                row.StoredAssignmentCode,
+                row.AssignmentCode,
+                row.DisplayLocalName,
+                row.LocalName);
+
+            return string.IsNullOrWhiteSpace(label) ? "Sem area" : label.Trim();
+        }
+
         private static bool IsPresentLeader(HaidaiBoardRow row)
         {
             if (!row.IsLeader)
@@ -3242,7 +3288,8 @@ namespace TeamOps.UI.Services
         int ShiftId,
         int SectorId,
         HaidaiSummary Summary,
-        IReadOnlyList<HaidaiGroupBlock> Groups);
+        IReadOnlyList<HaidaiGroupBlock> Groups,
+        IReadOnlyList<HaidaiAreaTotal> AreaTotals);
 
     public sealed record HaidaiSummary(
         int OperatorCount,
@@ -3253,6 +3300,10 @@ namespace TeamOps.UI.Services
         int EarlyLeaveCount,
         int TraineeCount,
         int PairCount);
+
+    public sealed record HaidaiAreaTotal(
+        string Area,
+        int OperatorCount);
 
     public sealed record HaidaiGroupBlock(
         int GroupId,

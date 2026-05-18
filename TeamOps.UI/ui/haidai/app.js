@@ -199,6 +199,7 @@ function hydrateBoard(data) {
     if (!rows.length) {
         document.getElementById("selectedDetailHost").innerHTML = `<div class="detail-empty">Nenhum operador encontrado para este dia.</div>`;
         document.getElementById("dayOverviewHost").innerHTML = "";
+        document.getElementById("areaTotalsHost").innerHTML = "";
         showNotice("Nenhum operador ativo encontrado para este setor e turno.", "warning");
         return;
     }
@@ -209,6 +210,7 @@ function hydrateBoard(data) {
 
     renderDetail();
     renderDayOverview();
+    renderAreaTotals(data.areaTotals || []);
     highlightPlannerSelection();
     hideNotice();
 }
@@ -421,7 +423,7 @@ function renderDetail() {
         <div class="check-row">
             <label><input data-field="isTrainee" type="checkbox" ${row.isTrainee ? "checked" : ""}> Aprendiz</label>
             <label><input data-field="countsTowardKousu" type="checkbox" ${row.countsTowardKousu !== false ? "checked" : ""}> Conta no kousu</label>
-            <label><input data-field="applyPairToMonth" type="checkbox" checked> Fixar dupla no mes</label>
+            <label><input data-field="applyPairToMonth" type="checkbox" checked> Replicar dupla para os proximos dias</label>
         </div>
 
         <div class="action-row">
@@ -469,6 +471,35 @@ function renderDayOverview() {
             </section>
         `;
     }).join("");
+}
+
+function renderAreaTotals(items) {
+    const host = document.getElementById("areaTotalsHost");
+    if (!items.length) {
+        host.innerHTML = `<div class="detail-empty">Nenhuma area planejada neste setor para o dia selecionado.</div>`;
+        return;
+    }
+
+    const rows = items.map(item => `
+        <tr>
+            <td>${escapeHtml(item.area || "-")}</td>
+            <td>${Number(item.operatorCount || 0)}</td>
+        </tr>
+    `).join("");
+
+    host.innerHTML = `
+        <div class="area-totals-wrap">
+            <table class="area-totals-table">
+                <thead>
+                    <tr>
+                        <th>Area</th>
+                        <th>Operadores</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    `;
 }
 
 function selectPlannerCell(operatorCodigoFJ, day, refresh) {

@@ -273,6 +273,11 @@ namespace TeamOps.UI.Forms
                         traineeCount = board.Summary.TraineeCount,
                         pairCount = board.Summary.PairCount
                     },
+                    areaTotals = board.AreaTotals.Select(item => new
+                    {
+                        area = item.Area,
+                        operatorCount = item.OperatorCount
+                    }),
                     groups = board.Groups.Select(group => new
                     {
                         groupId = group.GroupId,
