@@ -24,8 +24,10 @@ namespace TeamOps.Data.Db
             {
                 cmd.CommandText = @"
                     PRAGMA foreign_keys = ON;
-                    PRAGMA journal_mode = DELETE;      -- melhor concorrência em apps desktop
+                    PRAGMA journal_mode = WAL;      -- melhora leitura concorrente entre múltiplas telas/processos
                     PRAGMA synchronous = NORMAL;    -- bom balanço entre segurança e velocidade
+                    PRAGMA busy_timeout = 5000;     -- reduz falhas transitórias de lock em multiacesso
+                    PRAGMA temp_store = MEMORY;     -- reduz I/O temporário em consultas maiores
                 ";
                 cmd.ExecuteNonQuery();
             }

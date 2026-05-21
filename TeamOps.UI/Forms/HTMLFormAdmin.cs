@@ -98,7 +98,7 @@ namespace TeamOps.UI.Forms
                 data = new
                 {
                     locale = Program.CurrentLocale,
-                    activeEntity = "shift",
+                    activeEntity = "machine",
                     entities = _entities.Values.Select(entity => new
                     {
                         key = entity.Key,
@@ -129,13 +129,13 @@ namespace TeamOps.UI.Forms
                 }
             });
 
-            SendEntityRows("shift");
+            SendEntityRows("machine");
         }
 
         private object BuildLookups()
         {
             using var conn = _factory.CreateOpenConnection();
-            ProductionSchemaMigrator.Ensure(conn);
+            EnsureAdminSchema(conn);
 
             return new
             {
@@ -144,7 +144,9 @@ namespace TeamOps.UI.Forms
                         SELECT
                             Id AS id,
                             COALESCE(NamePt, '') AS namePt,
-                            COALESCE(NULLIF(NameJp, ''), NamePt, '') AS nameJp
+                            COALESCE(NULLIF(NameJp, ''), NamePt, '') AS nameJp,
+                            COALESCE(NamePt, '') AS labelPt,
+                            COALESCE(NULLIF(NameJp, ''), NamePt, '') AS labelJp
                         FROM Sectors
                         ORDER BY NamePt;"
                 ).ToList(),
@@ -153,10 +155,27 @@ namespace TeamOps.UI.Forms
                         SELECT
                             l.Id AS id,
                             COALESCE(l.NamePt, '') AS namePt,
-                            COALESCE(NULLIF(l.NameJp, ''), l.NamePt, '') AS nameJp
+                            COALESCE(NULLIF(l.NameJp, ''), l.NamePt, '') AS nameJp,
+                            COALESCE(l.SectorId, 0) AS sectorId,
+                            COALESCE(s.NamePt, '') AS sectorNamePt,
+                            COALESCE(NULLIF(s.NameJp, ''), s.NamePt, '') AS sectorNameJp,
+                            COALESCE(NULLIF(l.ShortCode, ''), NULLIF(l.NamePt, ''), NULLIF(l.NameJp, ''), 'L' || l.Id) AS shortCode,
+                            COALESCE(s.NamePt, '') || ' - ' || COALESCE(NULLIF(l.ShortCode, ''), NULLIF(l.NamePt, ''), NULLIF(l.NameJp, ''), 'L' || l.Id) || ' - ' || COALESCE(l.NamePt, '') AS labelPt,
+                            COALESCE(NULLIF(s.NameJp, ''), s.NamePt, '') || ' - ' || COALESCE(NULLIF(l.ShortCode, ''), NULLIF(l.NamePt, ''), NULLIF(l.NameJp, ''), 'L' || l.Id) || ' - ' || COALESCE(NULLIF(l.NameJp, ''), l.NamePt, '') AS labelJp
                         FROM Locals l
+                        LEFT JOIN Sectors s ON s.Id = l.SectorId
                         ORDER BY l.SectorId, l.NamePt, l.Id;"
                 ).ToList(),
+                machineActive = new[]
+                {
+                    new { id = 1, namePt = "Ativa", nameJp = "稼働", labelPt = "Ativa", labelJp = "稼働" },
+                    new { id = 0, namePt = "Inativa", nameJp = "停止", labelPt = "Inativa", labelJp = "停止" }
+                },
+                booleanChoices = new[]
+                {
+                    new { id = 1, namePt = "Sim", nameJp = "はい", labelPt = "Sim", labelJp = "はい" },
+                    new { id = 0, namePt = "Nao", nameJp = "いいえ", labelPt = "Nao", labelJp = "いいえ" }
+                },
                 statusClasses = new[]
                 {
                     new { id = 0, namePt = "Rodando", nameJp = "稼動中" },
@@ -167,13 +186,37 @@ namespace TeamOps.UI.Forms
             };
         }
 
+        private static void EnsureAdminSchema(IDbConnection conn)
+        {
+            ProductionSchemaMigrator.Ensure(conn);
+            EnsureColumn(conn, "Locals", "ShortCode", "TEXT");
+        }
+
+        private static void EnsureColumn(IDbConnection conn, string tableName, string columnName, string definition)
+        {
+            var exists = conn.ExecuteScalar<int>(
+                $@"
+                    SELECT COUNT(1)
+                    FROM pragma_table_info('{tableName}')
+                    WHERE name = @columnName;",
+                new
+                {
+                    columnName
+                }) > 0;
+
+            if (!exists)
+            {
+                conn.Execute($"ALTER TABLE {tableName} ADD COLUMN {columnName} {definition};");
+            }
+        }
+
         private void SendEntityRows(string entityKey)
         {
             if (!_entities.TryGetValue(entityKey, out var entity))
                 throw new InvalidOperationException(L("Item administrativo invalido.", "\u7121\u52b9\u306a\u7ba1\u7406\u9805\u76ee\u3067\u3059\u3002"));
 
             using var conn = _factory.CreateOpenConnection();
-            ProductionSchemaMigrator.Ensure(conn);
+            EnsureAdminSchema(conn);
             var rows = entity.QueryRows(conn).ToList();
 
             PostJson(new
@@ -196,11 +239,10 @@ namespace TeamOps.UI.Forms
             if (entity.ReadOnly)
                 throw new InvalidOperationException(L("Este item e somente leitura.", "\u3053\u306e\u9805\u76ee\u306f\u95b2\u89a7\u306e\u307f\u3067\u3059\u3002"));
 
-            var values = root.GetProperty("values");
-            var parameters = entity.BuildParameters(values);
-
             using var conn = _factory.CreateOpenConnection();
-            ProductionSchemaMigrator.Ensure(conn);
+            EnsureAdminSchema(conn);
+            var values = root.GetProperty("values");
+            var parameters = entity.BuildParameters(conn, values, null);
             conn.Execute(entity.InsertSql, parameters);
 
             PostJson(new
@@ -223,12 +265,10 @@ namespace TeamOps.UI.Forms
             if (entity.ReadOnly)
                 throw new InvalidOperationException(L("Este item e somente leitura.", "\u3053\u306e\u9805\u76ee\u306f\u95b2\u89a7\u306e\u307f\u3067\u3059\u3002"));
 
-            var values = root.GetProperty("values");
-            var parameters = entity.BuildParameters(values);
-            parameters.Add("@id", id);
-
             using var conn = _factory.CreateOpenConnection();
-            ProductionSchemaMigrator.Ensure(conn);
+            EnsureAdminSchema(conn);
+            var values = root.GetProperty("values");
+            var parameters = entity.BuildParameters(conn, values, id);
             conn.Execute(entity.UpdateSql, parameters);
 
             PostJson(new
@@ -252,7 +292,7 @@ namespace TeamOps.UI.Forms
                 throw new InvalidOperationException(L("Este item e somente leitura.", "\u3053\u306e\u9805\u76ee\u306f\u95b2\u89a7\u306e\u307f\u3067\u3059\u3002"));
 
             using var conn = _factory.CreateOpenConnection();
-            ProductionSchemaMigrator.Ensure(conn);
+            EnsureAdminSchema(conn);
             conn.Execute(entity.DeleteSql, new { id });
 
             PostJson(new
@@ -294,6 +334,7 @@ namespace TeamOps.UI.Forms
                     "\u904b\u7528\u7cfb\u30d5\u30a9\u30fc\u30e0\u306b\u7d10\u4ed8\u304f\u8a2d\u5099\u30de\u30b9\u30bf\u3067\u3059\u3002",
                     "Equipments"),
                 CreateMachineEntity(),
+                CreateMachineAuditEntity(),
                 CreateMachineStatusEntity(),
                 CreateNameEntity(
                     "category", "production",
@@ -358,7 +399,7 @@ namespace TeamOps.UI.Forms
                 InsertSql = $"INSERT INTO {tableName} (NamePt, NameJp) VALUES (@namePt, @nameJp);",
                 UpdateSql = $"UPDATE {tableName} SET NamePt = @namePt, NameJp = @nameJp WHERE Id = @id;",
                 DeleteSql = $"DELETE FROM {tableName} WHERE Id = @id;",
-                BuildParameters = values =>
+                BuildParameters = (_, values, _) =>
                 {
                     var namePt = ReadString(values, "namePt").Trim();
                     var nameJp = ReadString(values, "nameJp").Trim();
@@ -382,19 +423,22 @@ namespace TeamOps.UI.Forms
                 Group = "core",
                 TitlePt = "Locais",
                 TitleJp = "\u5834\u6240",
-                DescriptionPt = "Locais vinculados aos setores e usados nos registros.",
-                DescriptionJp = "\u30bb\u30af\u30bf\u30fc\u306b\u7d10\u4ed8\u304f\u5834\u6240\u30de\u30b9\u30bf\u3067\u3059\u3002",
+                DescriptionPt = "Locais, areas e codigos curtos usados em Haidai, producao, presence e exportacoes.",
+                DescriptionJp = "\u30cf\u30a4\u30c0\u30a4\u3001\u751f\u7523\u3001\u51fa\u5e2d\u3001\u51fa\u529b\u753b\u9762\u3067\u4f7f\u3046\u5834\u6240\u30fb\u30a8\u30ea\u30a2\u30fb\u7565\u79f0\u30b3\u30fc\u30c9\u3092\u7ba1\u7406\u3057\u307e\u3059\u3002",
                 Fields =
                 {
                     new AdminFieldDefinition("namePt", "Nome PT", "\u540d\u79f0 PT", "text", true),
                     new AdminFieldDefinition("nameJp", "Nome JP", "\u540d\u79f0 JP", "text", true),
+                    new AdminFieldDefinition("shortCode", "Codigo Curto", "\u7565\u79f0\u30b3\u30fc\u30c9", "text", true),
                     new AdminFieldDefinition("sectorId", "Setor", "\u30bb\u30af\u30bf\u30fc", "select", true, "sectors")
                 },
                 Columns =
                 {
                     new AdminColumnDefinition("id", null, "ID", "ID"),
+                    new AdminColumnDefinition("shortCode", null, "Codigo", "\u30b3\u30fc\u30c9"),
                     new AdminColumnDefinition("namePt", "nameJp", "Nome", "\u540d\u79f0"),
-                    new AdminColumnDefinition("sectorNamePt", "sectorNameJp", "Setor", "\u30bb\u30af\u30bf\u30fc")
+                    new AdminColumnDefinition("sectorNamePt", "sectorNameJp", "Setor", "\u30bb\u30af\u30bf\u30fc"),
+                    new AdminColumnDefinition("machineCount", null, "Maquinas", "\u8a2d\u5099\u6570")
                 },
                 QueryRows = conn => conn.Query(
                     @"
@@ -402,32 +446,63 @@ namespace TeamOps.UI.Forms
                             l.Id AS id,
                             COALESCE(l.NamePt, '') AS namePt,
                             COALESCE(l.NameJp, '') AS nameJp,
+                            COALESCE(NULLIF(l.ShortCode, ''), NULLIF(l.NamePt, ''), NULLIF(l.NameJp, ''), 'L' || l.Id) AS shortCode,
                             l.SectorId AS sectorId,
                             COALESCE(s.NamePt, '') AS sectorNamePt,
-                            COALESCE(NULLIF(s.NameJp, ''), s.NamePt, '') AS sectorNameJp
+                            COALESCE(NULLIF(s.NameJp, ''), s.NamePt, '') AS sectorNameJp,
+                            COUNT(m.Id) AS machineCount
                         FROM Locals l
                         LEFT JOIN Sectors s ON s.Id = l.SectorId
-                        ORDER BY l.Id;"
+                        LEFT JOIN Machines m ON m.LocalId = l.Id AND COALESCE(m.IsActive, 1) = 1
+                        GROUP BY l.Id, l.NamePt, l.NameJp, l.ShortCode, l.SectorId, s.NamePt, s.NameJp
+                        ORDER BY l.SectorId, shortCode, l.Id;"
                 ),
-                InsertSql = "INSERT INTO Locals (NamePt, NameJp, SectorId) VALUES (@namePt, @nameJp, @sectorId);",
-                UpdateSql = "UPDATE Locals SET NamePt = @namePt, NameJp = @nameJp, SectorId = @sectorId WHERE Id = @id;",
+                InsertSql = "INSERT INTO Locals (NamePt, NameJp, ShortCode, SectorId) VALUES (@namePt, @nameJp, @shortCode, @sectorId);",
+                UpdateSql = "UPDATE Locals SET NamePt = @namePt, NameJp = @nameJp, ShortCode = @shortCode, SectorId = @sectorId WHERE Id = @id;",
                 DeleteSql = "DELETE FROM Locals WHERE Id = @id;",
-                BuildParameters = values =>
+                BuildParameters = (conn, values, currentId) =>
                 {
                     var namePt = ReadString(values, "namePt").Trim();
                     var nameJp = ReadString(values, "nameJp").Trim();
+                    var shortCode = ReadString(values, "shortCode").Trim();
                     var sectorId = ReadInt(values, "sectorId");
 
                     if (string.IsNullOrWhiteSpace(namePt) || string.IsNullOrWhiteSpace(nameJp))
                         throw new InvalidOperationException(L("Preencha os dois campos de nome.", "\u4e21\u65b9\u306e\u540d\u79f0\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
 
+                    if (string.IsNullOrWhiteSpace(shortCode))
+                        throw new InvalidOperationException(L("Informe o codigo curto do local.", "\u5834\u6240\u306e\u7565\u79f0\u30b3\u30fc\u30c9\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
+
                     if (sectorId <= 0)
                         throw new InvalidOperationException(L("Selecione um setor valido.", "\u6709\u52b9\u306a\u30bb\u30af\u30bf\u30fc\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
+
+                    var duplicateShortCode = conn.ExecuteScalar<int>(
+                        @"
+                            SELECT COUNT(1)
+                            FROM Locals
+                            WHERE upper(trim(COALESCE(ShortCode, ''))) = upper(trim(@shortCode))
+                              AND SectorId = @sectorId
+                              AND (@currentId IS NULL OR Id <> @currentId);",
+                        new
+                        {
+                            shortCode,
+                            sectorId,
+                            currentId
+                        }
+                    ) > 0;
+
+                    if (duplicateShortCode)
+                        throw new InvalidOperationException(L("Ja existe um local com este codigo curto neste setor.", "\u3053\u306e\u30bb\u30af\u30bf\u30fc\u306b\u540c\u3058\u7565\u79f0\u30b3\u30fc\u30c9\u306e\u5834\u6240\u304c\u65e2\u306b\u3042\u308a\u307e\u3059\u3002"));
 
                     var parameters = new DynamicParameters();
                     parameters.Add("@namePt", namePt);
                     parameters.Add("@nameJp", nameJp);
+                    parameters.Add("@shortCode", shortCode);
                     parameters.Add("@sectorId", sectorId);
+                    if (currentId.HasValue)
+                    {
+                        parameters.Add("@id", currentId.Value);
+                    }
                     return parameters;
                 }
             };
@@ -441,25 +516,29 @@ namespace TeamOps.UI.Forms
                 Group = "production",
                 TitlePt = "Maquinas",
                 TitleJp = "\u6a5f\u68b0",
-                DescriptionPt = "Cadastro das maquinas do monitor de producao com codigo, linha, setor e local.",
-                DescriptionJp = "\u751f\u7523\u30e2\u30cb\u30bf\u30fc\u3067\u4f7f\u3046\u8a2d\u5099\u306e\u30b3\u30fc\u30c9\u3001\u30e9\u30a4\u30f3\u3001\u30bb\u30af\u30bf\u30fc\u3001\u5834\u6240\u3092\u7ba1\u7406\u3057\u307e\u3059\u3002",
+                DescriptionPt = "Cadastro das maquinas com vinculo consistente de codigo, linha, setor e LocalId para producao e relatorios.",
+                DescriptionJp = "\u751f\u7523\u30e2\u30cb\u30bf\u30fc\u3068\u30ec\u30dd\u30fc\u30c8\u3067\u4f7f\u3046\u8a2d\u5099\u306e\u30b3\u30fc\u30c9\u3001\u30e9\u30a4\u30f3\u3001\u30bb\u30af\u30bf\u30fc\u3001LocalId \u3092\u6574\u5408\u6027\u3042\u308a\u3067\u7ba1\u7406\u3057\u307e\u3059\u3002",
                 Fields =
                 {
-                    new AdminFieldDefinition("namePt", "Nome PT", "\u540d\u79f0 PT", "text", true),
-                    new AdminFieldDefinition("nameJp", "Nome JP", "\u540d\u79f0 JP", "text", true),
+                    new AdminFieldDefinition("namePt", "Nome PT", "\u540d\u79f0 PT", "text", false),
+                    new AdminFieldDefinition("nameJp", "Nome JP", "\u540d\u79f0 JP", "text", false),
                     new AdminFieldDefinition("machineCode", "Codigo da Maquina", "\u8a2d\u5099\u30b3\u30fc\u30c9", "text", true),
                     new AdminFieldDefinition("lineCode", "Linha", "\u30e9\u30a4\u30f3", "text", false),
                     new AdminFieldDefinition("sectorId", "Setor", "\u30bb\u30af\u30bf\u30fc", "select", false, "sectors"),
-                    new AdminFieldDefinition("localId", "Local", "\u5834\u6240", "select", false, "locals")
+                    new AdminFieldDefinition("localId", "Local", "\u5834\u6240", "select", false, "locals"),
+                    new AdminFieldDefinition("isActive", "Ativa", "\u7a3c\u50cd", "checkbox", false)
                 },
                 Columns =
                 {
                     new AdminColumnDefinition("id", null, "ID", "ID"),
                     new AdminColumnDefinition("machineCode", null, "Codigo", "\u30b3\u30fc\u30c9"),
+                    new AdminColumnDefinition("machineKey", null, "Chave", "\u30ad\u30fc"),
                     new AdminColumnDefinition("namePt", "nameJp", "Nome", "\u540d\u79f0"),
                     new AdminColumnDefinition("lineCode", null, "Linha", "\u30e9\u30a4\u30f3"),
                     new AdminColumnDefinition("sectorNamePt", "sectorNameJp", "Setor", "\u30bb\u30af\u30bf\u30fc"),
-                    new AdminColumnDefinition("localNamePt", "localNameJp", "Local", "\u5834\u6240")
+                    new AdminColumnDefinition("localDisplayPt", "localDisplayJp", "Local", "\u5834\u6240"),
+                    new AdminColumnDefinition("activeLabelPt", "activeLabelJp", "Status", "\u72b6\u614b"),
+                    new AdminColumnDefinition("validationPt", "validationJp", "Validacao", "\u691c\u8a3c")
                 },
                 QueryRows = conn => conn.Query(
                     @"
@@ -468,13 +547,43 @@ namespace TeamOps.UI.Forms
                             COALESCE(m.NamePt, '') AS namePt,
                             COALESCE(m.NameJp, '') AS nameJp,
                             COALESCE(m.MachineCode, '') AS machineCode,
+                            COALESCE(m.MachineKey, '') AS machineKey,
                             COALESCE(m.LineCode, '') AS lineCode,
                             COALESCE(m.SectorId, 0) AS sectorId,
                             COALESCE(m.LocalId, 0) AS localId,
+                            COALESCE(m.IsActive, 1) AS isActive,
                             COALESCE(s.NamePt, '') AS sectorNamePt,
                             COALESCE(NULLIF(s.NameJp, ''), s.NamePt, '') AS sectorNameJp,
                             COALESCE(l.NamePt, '') AS localNamePt,
-                            COALESCE(NULLIF(l.NameJp, ''), l.NamePt, '') AS localNameJp
+                            COALESCE(NULLIF(l.NameJp, ''), l.NamePt, '') AS localNameJp,
+                            CASE
+                                WHEN COALESCE(l.Id, 0) = 0 THEN ''
+                                ELSE COALESCE(NULLIF(l.ShortCode, ''), NULLIF(l.NamePt, ''), NULLIF(l.NameJp, ''), 'L' || l.Id) || ' - ' || COALESCE(l.NamePt, '')
+                            END AS localDisplayPt,
+                            CASE
+                                WHEN COALESCE(l.Id, 0) = 0 THEN ''
+                                ELSE COALESCE(NULLIF(l.ShortCode, ''), NULLIF(l.NamePt, ''), NULLIF(l.NameJp, ''), 'L' || l.Id) || ' - ' || COALESCE(NULLIF(l.NameJp, ''), l.NamePt, '')
+                            END AS localDisplayJp,
+                            CASE COALESCE(m.IsActive, 1)
+                                WHEN 1 THEN 'Ativa'
+                                ELSE 'Inativa'
+                            END AS activeLabelPt,
+                            CASE COALESCE(m.IsActive, 1)
+                                WHEN 1 THEN '稼働'
+                                ELSE '停止'
+                            END AS activeLabelJp,
+                            CASE
+                                WHEN COALESCE(m.LocalId, 0) = 0 THEN 'Sem local vinculado'
+                                WHEN COALESCE(m.SectorId, 0) = 0 THEN 'Sem setor vinculado'
+                                WHEN COALESCE(l.SectorId, 0) <> COALESCE(m.SectorId, 0) THEN 'Setor da maquina difere do setor do local'
+                                ELSE 'OK'
+                            END AS validationPt,
+                            CASE
+                                WHEN COALESCE(m.LocalId, 0) = 0 THEN '場所未設定'
+                                WHEN COALESCE(m.SectorId, 0) = 0 THEN 'セクター未設定'
+                                WHEN COALESCE(l.SectorId, 0) <> COALESCE(m.SectorId, 0) THEN '設備セクターと場所セクターが一致しません'
+                                ELSE 'OK'
+                            END AS validationJp
                         FROM Machines m
                         LEFT JOIN Sectors s ON s.Id = m.SectorId
                         LEFT JOIN Locals l ON l.Id = m.LocalId
@@ -501,7 +610,7 @@ namespace TeamOps.UI.Forms
                         @lineCode,
                         @sectorId,
                         @localId,
-                        1
+                        @isActive
                     );",
                 UpdateSql = @"
                     UPDATE Machines
@@ -512,35 +621,71 @@ namespace TeamOps.UI.Forms
                         MachineKey = @machineKey,
                         LineCode = @lineCode,
                         SectorId = @sectorId,
-                        LocalId = @localId
+                        LocalId = @localId,
+                        IsActive = @isActive
                     WHERE Id = @id;",
                 DeleteSql = "DELETE FROM Machines WHERE Id = @id;",
-                BuildParameters = values =>
+                BuildParameters = (conn, values, currentId) =>
                 {
-                    var namePt = ReadString(values, "namePt").Trim();
-                    var nameJp = ReadString(values, "nameJp").Trim();
                     var machineCode = ReadString(values, "machineCode").Trim();
                     var lineCode = ReadString(values, "lineCode").Trim();
                     var sectorId = ReadInt(values, "sectorId");
                     var localId = ReadInt(values, "localId");
-
-                    if (string.IsNullOrWhiteSpace(namePt) || string.IsNullOrWhiteSpace(nameJp))
-                        throw new InvalidOperationException(L("Preencha os dois campos de nome.", "\u4e21\u65b9\u306e\u540d\u79f0\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
+                    var isActive = ReadBool(values, "isActive", true);
+                    var namePt = ReadString(values, "namePt").Trim();
+                    var nameJp = ReadString(values, "nameJp").Trim();
 
                     if (string.IsNullOrWhiteSpace(machineCode))
                         throw new InvalidOperationException(L("Informe o codigo da maquina.", "\u8a2d\u5099\u30b3\u30fc\u30c9\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
 
-                    if (localId > 0 && sectorId <= 0)
-                        throw new InvalidOperationException(L("Ao definir um local, selecione tambem o setor.", "\u5834\u6240\u3092\u8a2d\u5b9a\u3059\u308b\u5834\u5408\u306f\u30bb\u30af\u30bf\u30fc\u3082\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002"));
+                    if (string.IsNullOrWhiteSpace(namePt))
+                        namePt = machineCode;
+
+                    if (string.IsNullOrWhiteSpace(nameJp))
+                        nameJp = machineCode;
+
+                    if (localId > 0)
+                    {
+                        var localSectorId = conn.ExecuteScalar<int?>(
+                            @"SELECT SectorId FROM Locals WHERE Id = @id;",
+                            new { id = localId });
+
+                        if (!localSectorId.HasValue || localSectorId.Value <= 0)
+                            throw new InvalidOperationException(L("O local selecionado nao foi encontrado.", "\u9078\u629e\u3057\u305f\u5834\u6240\u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093\u3002"));
+
+                        sectorId = localSectorId.Value;
+                    }
+
+                    var machineKey = TeamOps.Data.Repositories.ProductionMachineRepository.BuildMachineKey(machineCode, lineCode);
+                    var duplicateMachine = conn.ExecuteScalar<int>(
+                        @"
+                            SELECT COUNT(1)
+                            FROM Machines
+                            WHERE upper(trim(COALESCE(MachineKey, ''))) = upper(trim(@machineKey))
+                              AND (@currentId IS NULL OR Id <> @currentId);",
+                        new
+                        {
+                            machineKey,
+                            currentId
+                        }
+                    ) > 0;
+
+                    if (duplicateMachine)
+                        throw new InvalidOperationException(L("Ja existe uma maquina com a mesma chave codigo + linha.", "\u540c\u3058\u8a2d\u5099\u30ad\u30fc\uff08\u30b3\u30fc\u30c9+\u30e9\u30a4\u30f3\uff09\u306e\u6a5f\u68b0\u304c\u65e2\u306b\u3042\u308a\u307e\u3059\u3002"));
 
                     var parameters = new DynamicParameters();
                     parameters.Add("@namePt", namePt);
                     parameters.Add("@nameJp", nameJp);
                     parameters.Add("@machineCode", machineCode);
-                    parameters.Add("@machineKey", TeamOps.Data.Repositories.ProductionMachineRepository.BuildMachineKey(machineCode, lineCode));
+                    parameters.Add("@machineKey", machineKey);
                     parameters.Add("@lineCode", string.IsNullOrWhiteSpace(lineCode) ? null : lineCode);
                     parameters.Add("@sectorId", sectorId > 0 ? sectorId : null);
                     parameters.Add("@localId", localId > 0 ? localId : null);
+                    parameters.Add("@isActive", isActive ? 1 : 0);
+                    if (currentId.HasValue)
+                    {
+                        parameters.Add("@id", currentId.Value);
+                    }
                     return parameters;
                 }
             };
@@ -635,7 +780,7 @@ namespace TeamOps.UI.Forms
                         SortOrder = @sortOrder
                     WHERE Id = @id;",
                 DeleteSql = "DELETE FROM MachineStatuses WHERE Id = @id;",
-                BuildParameters = values =>
+                BuildParameters = (_, values, currentId) =>
                 {
                     var statusCode = ReadInt(values, "statusCode");
                     var displayCode = ReadInt(values, "displayCode");
@@ -661,8 +806,76 @@ namespace TeamOps.UI.Forms
                     parameters.Add("@colorHex", colorHex);
                     parameters.Add("@textColorHex", textColorHex);
                     parameters.Add("@sortOrder", statusCode);
+                    if (currentId.HasValue)
+                    {
+                        parameters.Add("@id", currentId.Value);
+                    }
                     return parameters;
                 }
+            };
+        }
+
+        private static AdminEntityDefinition CreateMachineAuditEntity()
+        {
+            return new AdminEntityDefinition
+            {
+                Key = "machine_audit",
+                Group = "production",
+                ReadOnly = true,
+                TitlePt = "Pendencias de Maquina",
+                TitleJp = "設備の要確認",
+                DescriptionPt = "Lista rapida para achar maquinas sem local, sem setor ou com vinculo inconsistente.",
+                DescriptionJp = "場所未設定・セクター未設定・紐付け不整合の設備を確認する一覧です。",
+                Columns =
+                {
+                    new AdminColumnDefinition("machineCode", null, "Codigo", "コード"),
+                    new AdminColumnDefinition("lineCode", null, "Linha", "ライン"),
+                    new AdminColumnDefinition("sectorNamePt", "sectorNameJp", "Setor da Maquina", "設備セクター"),
+                    new AdminColumnDefinition("localDisplayPt", "localDisplayJp", "Local", "場所"),
+                    new AdminColumnDefinition("issuePt", "issueJp", "Pendencia", "要確認")
+                },
+                QueryRows = conn => conn.Query(
+                    @"
+                        SELECT
+                            COALESCE(m.MachineCode, '') AS machineCode,
+                            COALESCE(m.LineCode, '') AS lineCode,
+                            COALESCE(s.NamePt, '') AS sectorNamePt,
+                            COALESCE(NULLIF(s.NameJp, ''), s.NamePt, '') AS sectorNameJp,
+                            CASE
+                                WHEN COALESCE(l.Id, 0) = 0 THEN ''
+                                ELSE COALESCE(NULLIF(l.ShortCode, ''), NULLIF(l.NamePt, ''), NULLIF(l.NameJp, ''), 'L' || l.Id) || ' - ' || COALESCE(l.NamePt, '')
+                            END AS localDisplayPt,
+                            CASE
+                                WHEN COALESCE(l.Id, 0) = 0 THEN ''
+                                ELSE COALESCE(NULLIF(l.ShortCode, ''), NULLIF(l.NamePt, ''), NULLIF(l.NameJp, ''), 'L' || l.Id) || ' - ' || COALESCE(NULLIF(l.NameJp, ''), l.NamePt, '')
+                            END AS localDisplayJp,
+                            CASE
+                                WHEN COALESCE(m.LocalId, 0) = 0 THEN 'Maquina sem LocalId'
+                                WHEN COALESCE(m.SectorId, 0) = 0 THEN 'Maquina sem SectorId'
+                                WHEN COALESCE(l.Id, 0) = 0 THEN 'Local vinculado nao existe mais'
+                                WHEN COALESCE(l.SectorId, 0) <> COALESCE(m.SectorId, 0) THEN 'SectorId da maquina diferente do setor do local'
+                                ELSE ''
+                            END AS issuePt,
+                            CASE
+                                WHEN COALESCE(m.LocalId, 0) = 0 THEN 'LocalId 未設定'
+                                WHEN COALESCE(m.SectorId, 0) = 0 THEN 'SectorId 未設定'
+                                WHEN COALESCE(l.Id, 0) = 0 THEN '紐付け先の場所が存在しません'
+                                WHEN COALESCE(l.SectorId, 0) <> COALESCE(m.SectorId, 0) THEN '設備の SectorId と場所のセクターが一致しません'
+                                ELSE ''
+                            END AS issueJp
+                        FROM Machines m
+                        LEFT JOIN Sectors s ON s.Id = m.SectorId
+                        LEFT JOIN Locals l ON l.Id = m.LocalId
+                        WHERE COALESCE(m.LocalId, 0) = 0
+                           OR COALESCE(m.SectorId, 0) = 0
+                           OR COALESCE(l.Id, 0) = 0
+                           OR COALESCE(l.SectorId, 0) <> COALESCE(m.SectorId, 0)
+                        ORDER BY COALESCE(m.MachineCode, ''), COALESCE(m.LineCode, ''), m.Id;"
+                ),
+                InsertSql = string.Empty,
+                UpdateSql = string.Empty,
+                DeleteSql = string.Empty,
+                BuildParameters = (_, _, _) => throw new InvalidOperationException(L("Esta lista e somente leitura.", "この一覧は閲覧のみです。"))
             };
         }
 
@@ -699,7 +912,7 @@ namespace TeamOps.UI.Forms
                 InsertSql = "INSERT INTO Shain (NameRomanji, NameNihongo) VALUES (@nameRomanji, @nameNihongo);",
                 UpdateSql = "UPDATE Shain SET NameRomanji = @nameRomanji, NameNihongo = @nameNihongo WHERE Id = @id;",
                 DeleteSql = "DELETE FROM Shain WHERE Id = @id;",
-                BuildParameters = values =>
+                BuildParameters = (_, values, currentId) =>
                 {
                     var nameRomanji = ReadString(values, "nameRomanji").Trim();
                     var nameNihongo = ReadString(values, "nameNihongo").Trim();
@@ -710,6 +923,10 @@ namespace TeamOps.UI.Forms
                     var parameters = new DynamicParameters();
                     parameters.Add("@nameRomanji", nameRomanji);
                     parameters.Add("@nameNihongo", nameNihongo);
+                    if (currentId.HasValue)
+                    {
+                        parameters.Add("@id", currentId.Value);
+                    }
                     return parameters;
                 }
             };
@@ -758,7 +975,7 @@ namespace TeamOps.UI.Forms
                 InsertSql = string.Empty,
                 UpdateSql = string.Empty,
                 DeleteSql = string.Empty,
-                BuildParameters = _ => throw new InvalidOperationException(L("O log do sistema e somente leitura.", "\u30b7\u30b9\u30c6\u30e0\u30ed\u30b0\u306f\u95b2\u89a7\u306e\u307f\u3067\u3059\u3002"))
+                BuildParameters = (_, _, _) => throw new InvalidOperationException(L("O log do sistema e somente leitura.", "\u30b7\u30b9\u30c6\u30e0\u30ed\u30b0\u306f\u95b2\u89a7\u306e\u307f\u3067\u3059\u3002"))
             };
         }
 
@@ -785,6 +1002,22 @@ namespace TeamOps.UI.Forms
                 JsonValueKind.Number => prop.GetInt32(),
                 JsonValueKind.String when int.TryParse(prop.GetString(), out var parsed) => parsed,
                 _ => 0
+            };
+        }
+
+        private static bool ReadBool(JsonElement root, string propertyName, bool defaultValue = false)
+        {
+            if (!root.TryGetProperty(propertyName, out var prop))
+                return defaultValue;
+
+            return prop.ValueKind switch
+            {
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                JsonValueKind.Number => prop.GetInt32() != 0,
+                JsonValueKind.String when bool.TryParse(prop.GetString(), out var parsed) => parsed,
+                JsonValueKind.String when int.TryParse(prop.GetString(), out var parsedInt) => parsedInt != 0,
+                _ => defaultValue
             };
         }
 
@@ -822,7 +1055,7 @@ namespace TeamOps.UI.Forms
             public string InsertSql { get; set; } = string.Empty;
             public string UpdateSql { get; set; } = string.Empty;
             public string DeleteSql { get; set; } = string.Empty;
-            public Func<JsonElement, DynamicParameters> BuildParameters { get; set; } = _ => new DynamicParameters();
+            public Func<IDbConnection, JsonElement, int?, DynamicParameters> BuildParameters { get; set; } = (_, _, _) => new DynamicParameters();
         }
 
         private sealed class AdminFieldDefinition

@@ -73,6 +73,15 @@ const I18N = {
         productionMinutes: "Minutos estimados rodando",
         productionKadouritsu: "Kadouritsu estimado",
         productionAreas: "Areas recentes",
+        productionCoverage: "Cobertura no periodo",
+        productionFullDays: "completos",
+        productionPartialDays: "parciais",
+        coverageFull: "Turno completo",
+        coverageLate: "Parcial por atraso",
+        coverageEarlyLeave: "Parcial por saida antecipada",
+        coverageReplacementLate: "Cobriu atraso",
+        coverageReplacementEarlyLeave: "Cobriu saida",
+        coverageWindow: "Janela",
         masterEquipment: "Equipamento",
         masterSector: "Setor",
         masterStart: "Inicio",
@@ -147,6 +156,15 @@ const I18N = {
         productionMinutes: "Estimated running minutes",
         productionKadouritsu: "Estimated kadouritsu",
         productionAreas: "Recent areas",
+        productionCoverage: "Coverage in period",
+        productionFullDays: "full",
+        productionPartialDays: "partial",
+        coverageFull: "Full shift",
+        coverageLate: "Partial due to late arrival",
+        coverageEarlyLeave: "Partial due to early leave",
+        coverageReplacementLate: "Covered late arrival",
+        coverageReplacementEarlyLeave: "Covered early leave",
+        coverageWindow: "Window",
         masterEquipment: "Equipment",
         masterSector: "Sector",
         masterStart: "Start",
@@ -406,6 +424,10 @@ function renderReport(data) {
                         <span>${escapeHtml(t("productionKadouritsu"))}</span>
                         <strong>${formatPercent(production.estimatedKadouritsuPercent)}</strong>
                     </div>
+                    <div class="summary-row">
+                        <span>${escapeHtml(t("productionCoverage"))}</span>
+                        <strong>${formatCoveragePeriodSummary(production)}</strong>
+                    </div>
                     <div class="summary-row summary-row-top">
                         <span>${escapeHtml(t("productionAreas"))}</span>
                         <strong>${escapeHtml((production.localNames || []).join(", ") || t("na"))}</strong>
@@ -417,6 +439,7 @@ function renderReport(data) {
                                     <th>${escapeHtml(t("historyDate"))}</th>
                                     <th>${escapeHtml(t("productionMinutes"))}</th>
                                     <th>${escapeHtml(t("productionKadouritsu"))}</th>
+                                    <th>${escapeHtml(t("productionCoverage"))}</th>
                                     <th>${escapeHtml(t("productionAreas"))}</th>
                                 </tr>
                             </thead>
@@ -480,7 +503,7 @@ function renderReport(data) {
 
 function renderProductionRows(days) {
     if (!days.length) {
-        return `<tr><td colspan="4" class="table-empty">${escapeHtml(t("noHistory"))}</td></tr>`;
+        return `<tr><td colspan="5" class="table-empty">${escapeHtml(t("noHistory"))}</td></tr>`;
     }
 
     return days.map(day => `
@@ -488,9 +511,36 @@ function renderProductionRows(days) {
             <td>${escapeHtml(formatDateOnly(day.dateIso))}</td>
             <td>${formatNumber(day.estimatedRunningMinutes)} min</td>
             <td>${formatPercent(day.estimatedKadouritsuPercent)}</td>
+            <td>
+                <div class="coverage-cell">
+                    <span class="coverage-pill coverage-pill-${escapeHtmlAttr(day.isPartialCoverage ? "partial" : "full")}">${escapeHtml(coverageLabel(day.coverageMode))}</span>
+                    <small>${escapeHtml(t("coverageWindow"))}: ${formatNumber(day.effectiveMinutes)} / ${formatNumber(day.plannedMinutes)} min</small>
+                </div>
+            </td>
             <td>${escapeHtml((day.localNames || []).join(", ") || t("na"))}</td>
         </tr>
     `).join("");
+}
+
+function formatCoveragePeriodSummary(production) {
+    const full = Number(production.fullCoverageDays || 0);
+    const partial = Number(production.partialCoverageDays || 0);
+    return `${full} ${escapeHtml(t("productionFullDays"))} · ${partial} ${escapeHtml(t("productionPartialDays"))}`;
+}
+
+function coverageLabel(mode) {
+    switch ((mode || "full").toLowerCase()) {
+        case "late":
+            return t("coverageLate");
+        case "early_leave":
+            return t("coverageEarlyLeave");
+        case "replacement_late":
+            return t("coverageReplacementLate");
+        case "replacement_early_leave":
+            return t("coverageReplacementEarlyLeave");
+        default:
+            return t("coverageFull");
+    }
 }
 
 function renderFollowUps(items) {

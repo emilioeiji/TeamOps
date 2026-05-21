@@ -116,6 +116,10 @@ namespace TeamOps.UI.Forms
                         RegisterMovement(root);
                         break;
 
+                    case "delete_movement":
+                        DeleteMovement(root);
+                        break;
+
                     case "restore_lineup":
                         var restoreDate = ReadDate(root, "date");
                         var restoreShiftId = ReadInt(root, "shiftId");
@@ -308,7 +312,19 @@ namespace TeamOps.UI.Forms
                             exceptionNotes = row.ExceptionNotes,
                             status = row.Status,
                             movementSummary = row.MovementSummary,
-                            movementCount = row.MovementCount
+                            movementCount = row.MovementCount,
+                            movements = row.Movements.Select(movement => new
+                            {
+                                id = movement.Id,
+                                movementType = movement.MovementType,
+                                eventTime = movement.EventTime,
+                                eventDateTime = movement.EventDateTime,
+                                assignmentCode = movement.AssignmentCode,
+                                pairKey = movement.PairKey,
+                                replacementOperatorCodigoFJ = movement.ReplacementOperatorCodigoFJ,
+                                reason = movement.Reason,
+                                createdAt = movement.CreatedAt
+                            })
                         })
                     })
                 }
@@ -419,6 +435,7 @@ namespace TeamOps.UI.Forms
                     shiftId,
                     sectorId,
                     ReadString(root, "operatorCodigoFJ"),
+                    ReadNullableInt(root, "movementId"),
                     movementType,
                     ReadString(root, "eventTime"),
                     ReadString(root, "replacementOperatorCodigoFJ"),
@@ -434,6 +451,29 @@ namespace TeamOps.UI.Forms
                 movementType == "late"
                     ? L("Atraso registrado e enviado ao Todoke como pendente.", "Late arrival registered and sent to Todoke as pending.")
                     : L("Saida antecipada registrada e enviada ao Todoke como pendente.", "Early leave registered and sent to Todoke as pending."));
+        }
+
+        private void DeleteMovement(JsonElement root)
+        {
+            var date = ReadDate(root, "date");
+            var shiftId = ReadInt(root, "shiftId");
+            var sectorId = ReadInt(root, "sectorId");
+            var movementId = ReadInt(root, "movementId");
+            if (movementId <= 0)
+            {
+                throw new InvalidOperationException(L("Movimento invalido.", "Invalid movement."));
+            }
+
+            _service.DeleteMovement(
+                date,
+                shiftId,
+                sectorId,
+                ReadString(root, "operatorCodigoFJ"),
+                movementId);
+
+            SendBoard(date, shiftId, sectorId);
+            SendMonthlyPlan(date.Year, date.Month, shiftId, sectorId);
+            PostNotify(L("Movimento removido com sucesso.", "Movement removed."));
         }
 
         private void ExportHtml(JsonElement root)

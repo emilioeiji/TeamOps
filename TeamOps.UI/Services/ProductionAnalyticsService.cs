@@ -196,6 +196,56 @@ namespace TeamOps.Services
                 }
             ).ToList();
 
+            var scheduleOperatorCodes = scheduleHistoryRows
+                .Select(row => row.OperatorCodigoFJ)
+                .Where(code => !string.IsNullOrWhiteSpace(code))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            var movementRows = scheduleOperatorCodes.Length == 0
+                ? new List<MovementWindowRow>()
+                : conn.Query<MovementWindowRow>(
+                    @"
+                    SELECT
+                        date(ScheduleDate) AS Day,
+                        COALESCE(OperatorCodigoFJ, '') AS OperatorCodigoFJ,
+                        COALESCE(MovementType, '') AS MovementType,
+                        COALESCE(EventTime, '') AS EventTime,
+                        COALESCE(EventDateTime, '') AS EventDateTime,
+                        COALESCE(ReplacementOperatorCodigoFJ, '') AS ReplacementOperatorCodigoFJ
+                    FROM HaidaiMovements
+                    WHERE (OperatorCodigoFJ IN @OperatorCodes
+                        OR ReplacementOperatorCodigoFJ IN @OperatorCodes)
+                      AND date(ScheduleDate) BETWEEN date(@startDate) AND date(@endDate)
+                    ORDER BY date(ScheduleDate) DESC, COALESCE(EventTime, '') DESC, Id DESC;",
+                    new
+                    {
+                        OperatorCodes = scheduleOperatorCodes,
+                        startDate = historyStartDate.ToString("yyyy-MM-dd"),
+                        endDate = filter.Date.ToString("yyyy-MM-dd")
+                    })
+                .ToList();
+
+            var latestMovementByOperatorDay = movementRows
+                .Where(item => string.IsNullOrWhiteSpace(item.ReplacementOperatorCodigoFJ))
+                .GroupBy(
+                    item => $"{item.OperatorCodigoFJ}|{item.Day}",
+                    StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.First(),
+                    StringComparer.OrdinalIgnoreCase);
+
+            var latestReplacementMovementByOperatorDay = movementRows
+                .Where(item => !string.IsNullOrWhiteSpace(item.ReplacementOperatorCodigoFJ))
+                .GroupBy(
+                    item => $"{item.ReplacementOperatorCodigoFJ}|{item.Day}",
+                    StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.First(),
+                    StringComparer.OrdinalIgnoreCase);
+
             var operatorsByLocal = scheduleCurrentRows
                 .GroupBy(row => row.LocalId)
                 .ToDictionary(group => group.Key, group => group.ToList());
@@ -428,6 +478,11 @@ namespace TeamOps.Services
                     group => (group.Key.LocalId ?? 0, group.Key.Day),
                     group => group.First().ProductionPercent);
 
+            var localMachineCountByLocal = machines
+                .Where(machine => machine.LocalId.HasValue && machine.LocalId.Value > 0)
+                .GroupBy(machine => machine.LocalId!.Value)
+                .ToDictionary(group => group.Key, group => group.Count());
+
             var operatorScheduleGroups = scheduleHistoryRows
                 .Where(row => row.LocalId > 0 && !string.IsNullOrWhiteSpace(row.OperatorCodigoFJ))
                 .GroupBy(row => new { Day = row.ScheduleDate.Date, row.LocalId });
@@ -466,11 +521,39 @@ namespace TeamOps.Services
                         operatorAccumulator[item.OperatorCodigoFJ] = accumulator;
                     }
 
+                    var selectedShiftPeriod = GetShiftPeriod(scheduleGroup.Key.Day, selectedShiftName);
+                    var movementKey = $"{item.OperatorCodigoFJ}|{scheduleGroup.Key.Day:yyyy-MM-dd}";
+                    latestMovementByOperatorDay.TryGetValue(movementKey, out var movement);
+                    latestReplacementMovementByOperatorDay.TryGetValue(movementKey, out var replacementMovement);
+                    var coverage = DescribeCoverage(selectedShiftPeriod, movement, replacementMovement);
+                    var effectivePeriod = coverage.EffectivePeriod;
+                    var totalPeriodMinutes = Math.Max(0, (selectedShiftPeriod.End - selectedShiftPeriod.Start).TotalMinutes);
+                    var effectiveMinutes = Math.Max(0, (effectivePeriod.End - effectivePeriod.Start).TotalMinutes);
+                    if (totalPeriodMinutes <= 0 || effectiveMinutes <= 0)
+                    {
+                        continue;
+                    }
+
+                    var coverageRatio = Math.Min(1d, effectiveMinutes / totalPeriodMinutes);
+
                     // When an area is worked by a pair, both operators carry the same
                     // production history for that area/day because the final result depends
                     // on the full flow executed by the duo, not on splitting machine time.
-                    accumulator.EstimatedRunningMinutes += areaRunningMinutes;
+                    accumulator.EstimatedRunningMinutes += areaRunningMinutes * coverageRatio;
+                    if (localMachineCountByLocal.TryGetValue(scheduleGroup.Key.LocalId, out var localMachineCount))
+                    {
+                        accumulator.EligibleMinutes += effectiveMinutes * localMachineCount;
+                    }
                     accumulator.EntryKadouritsuPercents.Add(Math.Round(areaProductionPercent, 1));
+                    if (coverage.IsPartial)
+                    {
+                        accumulator.PartialCoverageDays.Add(scheduleGroup.Key.Day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+                        accumulator.FullCoverageDays.Remove(scheduleGroup.Key.Day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+                    }
+                    else if (!accumulator.PartialCoverageDays.Contains(scheduleGroup.Key.Day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)))
+                    {
+                        accumulator.FullCoverageDays.Add(scheduleGroup.Key.Day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+                    }
 
                     var localMachine = machines.FirstOrDefault(machine => machine.LocalId == item.LocalId);
                     if (localMachine != null)
@@ -489,9 +572,11 @@ namespace TeamOps.Services
                         OperatorNamePt = item.OperatorNamePt,
                         OperatorNameJp = item.OperatorNameJp,
                         EstimatedRunningMinutes = Math.Round(item.EstimatedRunningMinutes, 1),
-                        EstimatedKadouritsuPercent = item.EntryKadouritsuPercents.Count == 0
+                        EstimatedKadouritsuPercent = item.EligibleMinutes <= 0
                             ? 0
-                            : Math.Round(item.EntryKadouritsuPercents.Average(), 1),
+                            : Math.Round((item.EstimatedRunningMinutes / item.EligibleMinutes) * 100d, 1),
+                        FullCoverageDays = item.FullCoverageDays.Count,
+                        PartialCoverageDays = item.PartialCoverageDays.Count,
                         LocalNamesPt = item.LocalNamesPt
                             .Where(name => !string.IsNullOrWhiteSpace(name))
                             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -663,6 +748,38 @@ namespace TeamOps.Services
                 }
             ).ToList();
 
+            var operatorMovementRows = conn.Query<MovementWindowRow>(
+                @"
+                    SELECT
+                        date(ScheduleDate) AS Day,
+                        COALESCE(OperatorCodigoFJ, '') AS OperatorCodigoFJ,
+                        COALESCE(MovementType, '') AS MovementType,
+                        COALESCE(EventTime, '') AS EventTime,
+                        COALESCE(EventDateTime, '') AS EventDateTime,
+                        COALESCE(ReplacementOperatorCodigoFJ, '') AS ReplacementOperatorCodigoFJ
+                    FROM HaidaiMovements
+                    WHERE (OperatorCodigoFJ = @codigoFJ
+                        OR ReplacementOperatorCodigoFJ = @codigoFJ)
+                      AND date(ScheduleDate) BETWEEN date(@startDate) AND date(@endDate)
+                    ORDER BY date(ScheduleDate) DESC, COALESCE(EventTime, '') DESC, Id DESC;",
+                new
+                {
+                    codigoFJ = operatorCodigoFJ.Trim(),
+                    startDate = historyStartDate.ToString("yyyy-MM-dd"),
+                    endDate = filter.Date.ToString("yyyy-MM-dd")
+                })
+                .ToList();
+
+            var latestMovementByDay = operatorMovementRows
+                .Where(item => string.Equals(item.OperatorCodigoFJ, operatorCodigoFJ.Trim(), StringComparison.OrdinalIgnoreCase))
+                .GroupBy(item => item.Day, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+
+            var latestReplacementMovementByDay = operatorMovementRows
+                .Where(item => string.Equals(item.ReplacementOperatorCodigoFJ, operatorCodigoFJ.Trim(), StringComparison.OrdinalIgnoreCase))
+                .GroupBy(item => item.Day, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+
             if (scheduleRows.Count == 0)
             {
                 return detail;
@@ -687,9 +804,14 @@ namespace TeamOps.Services
                     continue;
                 }
 
-                var period = ResolveEffectivePeriod(
+                var baselinePeriod = ResolveEffectivePeriod(
                     GetShiftPeriod(scheduleRow.ScheduleDate.Date, selectedShiftHint),
                     latestKnownEventTime);
+                var dayKey = scheduleRow.ScheduleDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                latestMovementByDay.TryGetValue(dayKey, out var movement);
+                latestReplacementMovementByDay.TryGetValue(dayKey, out var replacementMovement);
+                var coverage = DescribeCoverage(baselinePeriod, movement, replacementMovement);
+                var period = coverage.EffectivePeriod;
 
                 var summaries = BuildMachineSummaries(
                     localMachines,
@@ -704,16 +826,20 @@ namespace TeamOps.Services
                     detail.Entries.Add(new ProductionOperatorHistoryEntryDto
                     {
                         Date = scheduleRow.ScheduleDate.Date,
-                    Label = scheduleRow.ScheduleDate.ToString("MM/dd", CultureInfo.InvariantCulture),
-                    LocalId = scheduleRow.LocalId,
-                    LocalNamePt = firstMachine.LocalNamePt,
-                    LocalNameJp = firstMachine.LocalNameJp,
+                        Label = scheduleRow.ScheduleDate.ToString("MM/dd", CultureInfo.InvariantCulture),
+                        LocalId = scheduleRow.LocalId,
+                        LocalNamePt = firstMachine.LocalNamePt,
+                        LocalNameJp = firstMachine.LocalNameJp,
                         RunningMinutes = aggregate.RunningMinutes,
                         StoppedMinutes = aggregate.StoppedMinutes,
                         InactiveMinutes = aggregate.InactiveMinutes,
                         ErrorMinutes = aggregate.ErrorMinutes,
                         EligibleMinutes = Math.Max(0, (period.End - period.Start).TotalMinutes),
-                        KadouritsuPercent = aggregate.ProductionPercent
+                        KadouritsuPercent = aggregate.ProductionPercent,
+                        CoverageMode = coverage.Mode,
+                        IsPartialCoverage = coverage.IsPartial,
+                        EffectiveMinutes = Math.Round(coverage.EffectiveMinutes, 1),
+                        PlannedMinutes = Math.Round(coverage.PlannedMinutes, 1)
                     });
                 }
 
@@ -734,6 +860,8 @@ namespace TeamOps.Services
             detail.AverageKadouritsuPercent = detail.Entries.Count == 0
                 ? 0
                 : Math.Round(detail.Entries.Average(entry => entry.KadouritsuPercent), 1);
+            detail.FullCoverageDays = detail.Entries.Count(entry => !entry.IsPartialCoverage);
+            detail.PartialCoverageDays = detail.Entries.Count(entry => entry.IsPartialCoverage);
 
             return detail;
         }
@@ -1021,6 +1149,149 @@ namespace TeamOps.Services
             };
         }
 
+        private static ProductionShiftPeriod ResolveEffectiveOperatorPeriod(
+            ProductionShiftPeriod scheduledPeriod,
+            MovementWindowRow? movement,
+            MovementWindowRow? replacementMovement)
+        {
+            var start = scheduledPeriod.Start;
+            var end = scheduledPeriod.End;
+
+            if ((movement == null || string.IsNullOrWhiteSpace(movement.EventTime))
+                && (replacementMovement == null || string.IsNullOrWhiteSpace(replacementMovement.EventTime)))
+            {
+                return new ProductionShiftPeriod
+                {
+                    Start = start,
+                    End = end
+                };
+            }
+
+            var eventMoment = movement == null
+                ? null
+                : ParseMovementMoment(movement.Day, movement.EventTime, movement.EventDateTime);
+            var replacementMoment = replacementMovement == null
+                ? null
+                : ParseMovementMoment(replacementMovement.Day, replacementMovement.EventTime, replacementMovement.EventDateTime);
+
+            if (!eventMoment.HasValue && !replacementMoment.HasValue)
+            {
+                return new ProductionShiftPeriod
+                {
+                    Start = start,
+                    End = end
+                };
+            }
+
+            if (eventMoment.HasValue && string.Equals(movement?.MovementType, "late", StringComparison.OrdinalIgnoreCase))
+            {
+                start = eventMoment.Value > start ? eventMoment.Value : start;
+            }
+            else if (eventMoment.HasValue && string.Equals(movement?.MovementType, "early_leave", StringComparison.OrdinalIgnoreCase))
+            {
+                end = eventMoment.Value < end ? eventMoment.Value : end;
+            }
+
+            if (replacementMoment.HasValue && string.Equals(replacementMovement?.MovementType, "late", StringComparison.OrdinalIgnoreCase))
+            {
+                end = replacementMoment.Value < end ? replacementMoment.Value : end;
+            }
+            else if (replacementMoment.HasValue && string.Equals(replacementMovement?.MovementType, "early_leave", StringComparison.OrdinalIgnoreCase))
+            {
+                start = replacementMoment.Value > start ? replacementMoment.Value : start;
+            }
+
+            if (end < start)
+            {
+                end = start;
+            }
+
+            return new ProductionShiftPeriod
+            {
+                Start = start,
+                End = end
+            };
+        }
+
+        private static ProductionCoverageDescriptor DescribeCoverage(
+            ProductionShiftPeriod scheduledPeriod,
+            MovementWindowRow? movement,
+            MovementWindowRow? replacementMovement)
+        {
+            var effectivePeriod = ResolveEffectiveOperatorPeriod(scheduledPeriod, movement, replacementMovement);
+            var plannedMinutes = Math.Max(0, (scheduledPeriod.End - scheduledPeriod.Start).TotalMinutes);
+            var effectiveMinutes = Math.Max(0, (effectivePeriod.End - effectivePeriod.Start).TotalMinutes);
+            var isPartial = plannedMinutes > 0 && effectiveMinutes + 0.5 < plannedMinutes;
+
+            var mode = "full";
+            if (replacementMovement != null)
+            {
+                if (string.Equals(replacementMovement.MovementType, "late", StringComparison.OrdinalIgnoreCase))
+                {
+                    mode = "replacement_late";
+                }
+                else if (string.Equals(replacementMovement.MovementType, "early_leave", StringComparison.OrdinalIgnoreCase))
+                {
+                    mode = "replacement_early_leave";
+                }
+            }
+            else if (movement != null)
+            {
+                if (string.Equals(movement.MovementType, "late", StringComparison.OrdinalIgnoreCase))
+                {
+                    mode = "late";
+                }
+                else if (string.Equals(movement.MovementType, "early_leave", StringComparison.OrdinalIgnoreCase))
+                {
+                    mode = "early_leave";
+                }
+            }
+
+            if (!isPartial)
+            {
+                mode = "full";
+            }
+
+            return new ProductionCoverageDescriptor(
+                effectivePeriod,
+                mode,
+                isPartial,
+                plannedMinutes,
+                effectiveMinutes);
+        }
+
+        private static DateTime? ParseMovementMoment(string day, string eventTime, string eventDateTime)
+        {
+            if (!string.IsNullOrWhiteSpace(eventDateTime)
+                && DateTime.TryParseExact(eventDateTime.Trim(), "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var explicitDateTime))
+            {
+                return explicitDateTime;
+            }
+
+            if (string.IsNullOrWhiteSpace(day) || string.IsNullOrWhiteSpace(eventTime))
+            {
+                return null;
+            }
+
+            if (!DateTime.TryParseExact(day, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var datePart))
+            {
+                return null;
+            }
+
+            var normalizedTime = eventTime.Trim();
+            if (normalizedTime.Length == 5)
+            {
+                normalizedTime += ":00";
+            }
+
+            if (!TimeSpan.TryParse(normalizedTime, CultureInfo.InvariantCulture, out var timePart))
+            {
+                return null;
+            }
+
+            return datePart.Date.Add(timePart);
+        }
+
         private static DateTime RoundDownToFiveMinutes(DateTime value)
         {
             var roundedMinute = value.Minute - (value.Minute % 5);
@@ -1246,6 +1517,16 @@ namespace TeamOps.Services
             public string OperatorNameJp { get; set; } = string.Empty;
         }
 
+        private sealed class MovementWindowRow
+        {
+            public string Day { get; set; } = string.Empty;
+            public string OperatorCodigoFJ { get; set; } = string.Empty;
+            public string MovementType { get; set; } = string.Empty;
+            public string EventTime { get; set; } = string.Empty;
+            public string EventDateTime { get; set; } = string.Empty;
+            public string ReplacementOperatorCodigoFJ { get; set; } = string.Empty;
+        }
+
         private sealed class ProductionOperatorAccumulator
         {
             public string OperatorCodigoFJ { get; set; } = string.Empty;
@@ -1256,7 +1537,16 @@ namespace TeamOps.Services
             public List<double> EntryKadouritsuPercents { get; } = new();
             public HashSet<string> LocalNamesPt { get; } = new(StringComparer.OrdinalIgnoreCase);
             public HashSet<string> LocalNamesJp { get; } = new(StringComparer.OrdinalIgnoreCase);
+            public HashSet<string> FullCoverageDays { get; } = new(StringComparer.OrdinalIgnoreCase);
+            public HashSet<string> PartialCoverageDays { get; } = new(StringComparer.OrdinalIgnoreCase);
         }
+
+        private readonly record struct ProductionCoverageDescriptor(
+            ProductionShiftPeriod EffectivePeriod,
+            string Mode,
+            bool IsPartial,
+            double PlannedMinutes,
+            double EffectiveMinutes);
 
         private readonly record struct SummaryAggregate(
             double RunningMinutes,

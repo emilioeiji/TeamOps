@@ -461,6 +461,37 @@ select {
     text-align: right;
 }
 
+.coverage-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.coverage-cell small {
+    color: var(--text-soft);
+}
+
+.coverage-pill {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.coverage-pill-full {
+    background: #eef6f1;
+    color: #2f6b48;
+}
+
+.coverage-pill-partial {
+    background: #fff4e5;
+    color: #9a5b00;
+}
+
 .table-wrap {
     overflow: auto;
     border: 1px solid #e2eaf3;

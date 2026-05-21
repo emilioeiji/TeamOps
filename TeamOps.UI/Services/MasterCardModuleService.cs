@@ -63,6 +63,9 @@ namespace TeamOps.UI.Services
                     CREATE INDEX IF NOT EXISTS IX_MasterCards_Operator_Trainer
                     ON MasterCards(OperatorCodigoFJ, TrainerCodigoFJ);
 
+                    CREATE INDEX IF NOT EXISTS IX_MasterCards_ReportScope
+                    ON MasterCards(SectorId, EquipmentId, Status, StartDate);
+
                     CREATE INDEX IF NOT EXISTS IX_MasterCardStatusHistory_MasterCardId
                     ON MasterCardStatusHistory(MasterCardId, ChangedAt);"
             );
@@ -508,7 +511,13 @@ namespace TeamOps.UI.Services
                 LEFT JOIN Sectors sec ON sec.Id = m.SectorId
                 LEFT JOIN Equipments eq ON eq.Id = m.EquipmentId
                 WHERE (@masterCardId = 0 OR m.Id = @masterCardId)
-                  AND (@masterCardId > 0 OR date(m.StartDate) BETWEEN date(@start) AND date(@end))
+                  AND (
+                        @masterCardId > 0
+                        OR (
+                            (m.Status = 'completed' AND date(COALESCE(m.FinalizedAt, m.ConcludedAt, m.StartDate)) BETWEEN date(@start) AND date(@end))
+                            OR (m.Status <> 'completed' AND date(m.StartDate) <= date(@end))
+                        )
+                  )
                   AND (@sectorId = 0 OR m.SectorId = @sectorId)
                   AND (@equipmentId = 0 OR m.EquipmentId = @equipmentId)
                   AND (@status = '' OR m.Status = @status)

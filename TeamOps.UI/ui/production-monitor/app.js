@@ -78,9 +78,18 @@ const I18N = {
         operatorHistoryRun: "Min. rodando",
         operatorHistoryStop: "Parado",
         operatorHistoryError: "Erro",
+        operatorHistoryCoverage: "Cobertura",
         operatorHistoryAvg: "Media",
         operatorHistoryAreas: "Areas",
         operatorHistoryEmpty: "Sem historico para este operador no recorte atual.",
+        operatorCoverageFull: "Turno completo",
+        operatorCoverageLate: "Parcial por atraso",
+        operatorCoverageEarlyLeave: "Parcial por saida antecipada",
+        operatorCoverageReplacementLate: "Cobriu atraso",
+        operatorCoverageReplacementEarlyLeave: "Cobriu saida",
+        operatorCoveragePartialDays: "dias parciais",
+        operatorCoverageFullDays: "dias completos",
+        operatorCoverageWindow: "Janela",
         selectMachine: "Selecione uma maquina.",
         importingSuccess: "Importacao concluida.",
         running: "Rodando",
@@ -552,17 +561,52 @@ function renderAreaHistory(items) {
     wrap.innerHTML = items.map(item => `
         <article class="area-history-item">
             <strong>${escapeHtml(getAreaLabel(item))}</strong>
-            <div class="spark-grid">
-                ${(item.days || []).map(day => `
-                    <div class="spark-cell" title="${escapeHtml(day.label)} - ${escapeHtml(toFixed(day.productionPercent))}%">
-                        <div class="spark-cell-bar" style="height:${Math.max(8, Math.min(100, Number(day.productionPercent || 0)))}%"></div>
-                        <span class="spark-cell-label">${escapeHtml(day.label || "-")}</span>
-                    </div>
-                `).join("")}
-            </div>
+            ${buildAreaHistoryLineChart(item.days || [], getAreaLabel(item))}
             <div class="spark-avg">${toFixed(averagePercent(item.days || []))}%</div>
         </article>
     `).join("");
+}
+
+function buildAreaHistoryLineChart(days, areaLabel) {
+    if (!days.length) {
+        return `<div class="spark-empty">${escapeHtml(t("noTrend"))}</div>`;
+    }
+
+    const width = 420;
+    const height = 88;
+    const padding = { top: 10, right: 8, bottom: 22, left: 8 };
+    const innerWidth = width - padding.left - padding.right;
+    const innerHeight = height - padding.top - padding.bottom;
+    const maxValue = 100;
+
+    const points = days.map((day, index) => {
+        const x = padding.left + (days.length <= 1 ? innerWidth / 2 : (innerWidth * index) / (days.length - 1));
+        const y = padding.top + innerHeight - ((Math.max(0, Math.min(maxValue, Number(day.productionPercent || 0))) / maxValue) * innerHeight);
+        return {
+            x,
+            y,
+            label: day.label || "-",
+            value: Number(day.productionPercent || 0)
+        };
+    });
+
+    const path = points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+    const gridLines = [0, 50, 100].map(percent => {
+        const y = padding.top + innerHeight - ((percent / maxValue) * innerHeight);
+        return `<line x1="${padding.left}" x2="${width - padding.right}" y1="${y}" y2="${y}"></line>`;
+    }).join("");
+    const labels = points.map(point => `<text x="${point.x}" y="${height - 6}" text-anchor="middle">${escapeHtml(point.label)}</text>`).join("");
+
+    return `
+        <div class="spark-line-shell">
+            <svg class="spark-line-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="Historico por area de ${escapeHtmlAttr(areaLabel)}">
+                <g class="spark-line-grid">${gridLines}</g>
+                ${points.length >= 2 ? `<path class="spark-line-path" d="${path}" fill="none"></path>` : ""}
+                ${points.map(point => `<circle class="spark-line-point" cx="${point.x}" cy="${point.y}" r="3.5"><title>${escapeHtml(point.label)} - ${escapeHtml(toFixed(point.value))}%</title></circle>`).join("")}
+                <g class="spark-line-labels">${labels}</g>
+            </svg>
+        </div>
+    `;
 }
 
 function renderOperatorRanking(items) {
@@ -581,6 +625,9 @@ function renderOperatorRanking(items) {
                 <small>${escapeHtml(item.operatorCodigoFJ || "-")}</small>
                 <div class="operator-ranking-locals">
                     ${getOperatorLocalNames(item).map(name => `<span class="operator-ranking-local">${escapeHtml(name)}</span>`).join("")}
+                </div>
+                <div class="operator-ranking-coverage">
+                    <span class="coverage-chip coverage-chip-${escapeHtmlAttr(Number(item.partialCoverageDays || 0) > 0 ? "partial" : "full")}">${escapeHtml(formatOperatorCoverageSummary(item))}</span>
                 </div>
                 <div class="operator-ranking-progress-track">
                     <div class="operator-ranking-progress-fill" style="width:${clampPercent(item.estimatedKadouritsuPercent)}%"></div>
@@ -693,13 +740,19 @@ function renderOperatorDetail(data) {
     const rows = data.entries || [];
 
     if (!rows.length) {
-        body.innerHTML = `<tr><td colspan="6" class="empty-cell">${escapeHtml(t("operatorHistoryEmpty"))}</td></tr>`;
+        body.innerHTML = `<tr><td colspan="7" class="empty-cell">${escapeHtml(t("operatorHistoryEmpty"))}</td></tr>`;
     } else {
         body.innerHTML = rows.map(row => `
             <tr>
                 <td>${escapeHtml(formatDateOnly(row.date) || row.label || "-")}</td>
                 <td>${escapeHtml(getOperatorEntryAreaName(row))}</td>
                 <td>${toFixed(row.kadouritsuPercent)}%</td>
+                <td>
+                    <div class="coverage-cell">
+                        <span class="coverage-chip coverage-chip-${escapeHtmlAttr(row.isPartialCoverage ? "partial" : "full")}">${escapeHtml(coverageLabel(row.coverageMode))}</span>
+                        <small>${escapeHtml(t("operatorCoverageWindow"))}: ${toFixed(row.effectiveMinutes)} / ${toFixed(row.plannedMinutes)} min</small>
+                    </div>
+                </td>
                 <td>${toFixed(row.runningMinutes)}</td>
                 <td>${toFixed(row.stoppedMinutes)}</td>
                 <td>${toFixed(row.errorMinutes)}</td>
@@ -762,6 +815,7 @@ function applyLocale() {
     setText("txtOperatorModalDate", t("operatorHistoryDate"));
     setText("txtOperatorModalArea", t("operatorHistoryArea"));
     setText("txtOperatorModalPercent", t("operatorHistoryPercent"));
+    setText("txtOperatorModalCoverage", t("operatorHistoryCoverage"));
     setText("txtOperatorModalRunMinutes", t("operatorHistoryRun"));
     setText("txtOperatorModalStopMinutes", t("operatorHistoryStop"));
     setText("txtOperatorModalErrorMinutes", t("operatorHistoryError"));
@@ -928,6 +982,31 @@ function buildAreaSummaryLine(area) {
 
 function formatMachineMinutesSummary(row) {
     return `${toFixed(row.runningMinutes)} ${t("machineMinutesRunning")} · ${toFixed(row.stoppedMinutes)} ${t("machineMinutesStopped")} · ${toFixed(row.errorMinutes)} ${t("machineMinutesError")}`;
+}
+
+function formatOperatorCoverageSummary(item) {
+    const partial = Number(item.partialCoverageDays || 0);
+    const full = Number(item.fullCoverageDays || 0);
+    if (partial > 0) {
+        return `${partial} ${t("operatorCoveragePartialDays")}`;
+    }
+
+    return `${full} ${t("operatorCoverageFullDays")}`;
+}
+
+function coverageLabel(mode) {
+    switch ((mode || "full").toLowerCase()) {
+        case "late":
+            return t("operatorCoverageLate");
+        case "early_leave":
+            return t("operatorCoverageEarlyLeave");
+        case "replacement_late":
+            return t("operatorCoverageReplacementLate");
+        case "replacement_early_leave":
+            return t("operatorCoverageReplacementEarlyLeave");
+        default:
+            return t("operatorCoverageFull");
+    }
 }
 
 function averagePercent(days) {

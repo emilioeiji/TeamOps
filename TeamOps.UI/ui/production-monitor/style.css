@@ -853,6 +853,40 @@ tbody td {
     font-weight: 700;
 }
 
+.operator-ranking-coverage {
+    margin-top: 8px;
+}
+
+.coverage-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.coverage-chip-full {
+    background: #eef6f1;
+    color: #2f6b48;
+}
+
+.coverage-chip-partial {
+    background: #fff4e5;
+    color: #9a5b00;
+}
+
+.coverage-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.coverage-cell small {
+    color: var(--text-muted);
+}
+
 .operator-ranking-progress-track {
     margin-top: 12px;
 }
@@ -966,33 +1000,47 @@ tbody td {
     align-items: center;
 }
 
-.spark-grid {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 6px;
-}
-
-.spark-cell {
-    min-height: 54px;
-    border-radius: 12px;
-    background: #eef3fa;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    align-items: center;
-    padding: 8px 4px;
-    gap: 6px;
-}
-
-.spark-cell-bar {
+.spark-line-shell {
     width: 100%;
-    border-radius: 999px;
-    background: linear-gradient(180deg, #7fb0ff 0%, #2563eb 100%);
+    min-height: 88px;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #f7fbff 0%, #ffffff 100%);
+    border: 1px solid #e4edf8;
+    padding: 6px;
 }
 
-.spark-cell-label {
+.spark-line-chart {
+    width: 100%;
+    height: 88px;
+    overflow: visible;
+}
+
+.spark-line-grid line {
+    stroke: #dbe7f5;
+    stroke-width: 1;
+}
+
+.spark-line-path {
+    stroke: #2563eb;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.spark-line-point {
+    fill: #ffffff;
+    stroke: #2563eb;
+    stroke-width: 2;
+}
+
+.spark-line-labels text {
     font-size: 10px;
+    fill: var(--text-muted);
+}
+
+.spark-empty {
     color: var(--text-muted);
+    font-size: 13px;
 }
 
 .spark-avg {

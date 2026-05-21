@@ -183,6 +183,52 @@ select {
     gap: 18px;
 }
 
+.metrics-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.metric-card {
+    padding: 16px 18px;
+    border: 1px solid rgba(217, 226, 236, 0.95);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: var(--shadow-soft);
+}
+
+.metric-card span {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+}
+
+.metric-card strong {
+    display: block;
+    font-size: 28px;
+    color: var(--color-text);
+}
+
+.metric-card.is-ok {
+    background: linear-gradient(180deg, #f4fff8 0%, #ffffff 100%);
+}
+
+.metric-card.is-warning {
+    background: linear-gradient(180deg, #fff7ea 0%, #ffffff 100%);
+}
+
+.metric-card.is-info {
+    background: linear-gradient(180deg, #eef5ff 0%, #ffffff 100%);
+}
+
+.metric-card.is-muted {
+    background: linear-gradient(180deg, #f7f9fc 0%, #ffffff 100%);
+}
+
 .toolbar-card,
 .table-card {
     padding: 22px;
@@ -301,6 +347,10 @@ tbody tr:hover td {
     background: #f8fbff;
 }
 
+tbody tr.row-warning td {
+    background: #fffaf1;
+}
+
 .actions-col {
     width: 1%;
     white-space: nowrap;
@@ -351,6 +401,31 @@ tbody tr:hover td {
 .empty-cell {
     text-align: center;
     color: var(--color-text-muted);
+}
+
+.cell-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.cell-badge.is-ok {
+    background: #e9f9ef;
+    color: #1f7a45;
+}
+
+.cell-badge.is-warning {
+    background: #fff0d8;
+    color: #9a5a00;
+}
+
+.cell-badge.is-muted {
+    background: #eef3fb;
+    color: #516174;
 }
 
 .modal {
@@ -415,6 +490,33 @@ tbody tr:hover td {
     gap: 6px;
 }
 
+.form-field-checkbox {
+    justify-content: flex-end;
+}
+
+.checkbox-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 42px;
+    padding: 0 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #fff;
+}
+
+.checkbox-inline input {
+    width: 18px;
+    height: 18px;
+}
+
+.field-required {
+    margin-left: 6px;
+    font-style: normal;
+    font-size: 11px;
+    color: var(--color-primary);
+}
+
 .modal-actions {
     display: flex;
     justify-content: flex-end;
@@ -429,6 +531,10 @@ tbody tr:hover td {
 
     .sidebar-card {
         position: static;
+    }
+
+    .metrics-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
@@ -449,5 +555,10 @@ tbody tr:hover td {
     .input {
         min-width: 0;
         width: 100%;
+    }
+
+    .metrics-strip,
+    .form-grid {
+        grid-template-columns: 1fr;
     }
 }

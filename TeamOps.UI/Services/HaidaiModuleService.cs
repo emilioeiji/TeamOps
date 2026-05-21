@@ -93,6 +93,8 @@ namespace TeamOps.UI.Services
 
                     CREATE INDEX IF NOT EXISTS IX_HaidaiMovements_DateShiftSectorOperator
                     ON HaidaiMovements(ScheduleDate, ShiftId, SectorId, OperatorCodigoFJ);");
+
+            EnsureColumn(conn, "HaidaiMovements", "EventDateTime", "TEXT");
         }
 
         public HaidaiInitPayload GetInitialPayload(int defaultShiftId, int defaultSectorId)
@@ -756,6 +758,7 @@ namespace TeamOps.UI.Services
                         OperatorCodigoFJ,
                         COALESCE(MovementType, '') AS MovementType,
                         COALESCE(EventTime, '') AS EventTime,
+                        COALESCE(EventDateTime, '') AS EventDateTime,
                         COALESCE(AssignmentCode, '') AS AssignmentCode,
                         COALESCE(PairKey, '') AS PairKey,
                         COALESCE(ReplacementOperatorCodigoFJ, '') AS ReplacementOperatorCodigoFJ,
@@ -882,7 +885,17 @@ namespace TeamOps.UI.Services
                         exception?.Notes ?? string.Empty,
                         status,
                         latestMovement == null ? string.Empty : BuildMovementSummary(latestMovement),
-                        movements.Count);
+                        movements.Count,
+                        movements.Select(movement => new HaidaiBoardMovement(
+                            movement.Id,
+                            movement.MovementType,
+                            movement.EventTime,
+                            movement.EventDateTime,
+                            movement.AssignmentCode,
+                            movement.PairKey,
+                            movement.ReplacementOperatorCodigoFJ,
+                            movement.Reason,
+                            movement.CreatedAt)).ToList());
                 })
                 .ToList();
 
@@ -1135,60 +1148,142 @@ namespace TeamOps.UI.Services
             var pairKey = string.IsNullOrWhiteSpace(assignment?.PairKey)
                 ? request.PairKey
                 : assignment.PairKey;
+            var replacementOperatorCodigoFJ = request.ReplacementOperatorCodigoFJ.Trim();
+            var existingMovement = request.MovementId.HasValue
+                ? conn.QueryFirstOrDefault<HaidaiMovementRecord>(
+                    @"
+                        SELECT
+                            Id,
+                            OperatorCodigoFJ,
+                            COALESCE(MovementType, '') AS MovementType,
+                            COALESCE(EventTime, '') AS EventTime,
+                            COALESCE(EventDateTime, '') AS EventDateTime,
+                            COALESCE(AssignmentCode, '') AS AssignmentCode,
+                            COALESCE(PairKey, '') AS PairKey,
+                            COALESCE(ReplacementOperatorCodigoFJ, '') AS ReplacementOperatorCodigoFJ,
+                            COALESCE(Reason, '') AS Reason,
+                            COALESCE(CreatedAt, '') AS CreatedAt
+                        FROM HaidaiMovements
+                        WHERE Id = @Id
+                          AND OperatorCodigoFJ = @OperatorCodigoFJ
+                          AND ShiftId = @ShiftId
+                          AND SectorId = @SectorId
+                          AND date(ScheduleDate) = date(@ScheduleDate)
+                        LIMIT 1;",
+                    new
+                    {
+                        Id = request.MovementId.Value,
+                        request.OperatorCodigoFJ,
+                        request.ShiftId,
+                        SectorId = storageSectorId,
+                        ScheduleDate = normalizedDate
+                    },
+                    transaction)
+                : null;
 
-            conn.Execute(
-                @"
-                    INSERT INTO HaidaiMovements (
-                        ScheduleDate,
-                        ShiftId,
-                        SectorId,
-                        OperatorCodigoFJ,
-                        MovementType,
-                        EventTime,
-                        LocalId,
-                        AssignmentCode,
-                        PairKey,
-                        ReplacementOperatorCodigoFJ,
-                        Reason,
-                        CreatedByCodigoFJ
-                    )
-                    VALUES (
-                        @ScheduleDate,
-                        @ShiftId,
-                        @SectorId,
-                        @OperatorCodigoFJ,
-                        @MovementType,
-                        @EventTime,
-                        @LocalId,
-                        @AssignmentCode,
-                        @PairKey,
-                        @ReplacementOperatorCodigoFJ,
-                        @Reason,
-                        @CreatedByCodigoFJ
-                    );",
-                new
-                {
-                    ScheduleDate = normalizedDate,
+            var eventDateTime = ResolveMovementEventDateTime(conn, transaction, request.Date, request.ShiftId, request.EventTime);
+
+            if (existingMovement != null)
+            {
+                conn.Execute(
+                    @"
+                        UPDATE HaidaiMovements
+                        SET MovementType = @MovementType,
+                            EventTime = @EventTime,
+                            EventDateTime = @EventDateTime,
+                            LocalId = @LocalId,
+                            AssignmentCode = @AssignmentCode,
+                            PairKey = @PairKey,
+                            ReplacementOperatorCodigoFJ = @ReplacementOperatorCodigoFJ,
+                            Reason = @Reason
+                        WHERE Id = @Id;",
+                    new
+                    {
+                        Id = existingMovement.Id,
+                        request.MovementType,
+                        EventTime = NullIfWhiteSpace(request.EventTime),
+                        EventDateTime = eventDateTime,
+                        LocalId = localId,
+                        AssignmentCode = NullIfWhiteSpace(assignmentCode),
+                        PairKey = NullIfWhiteSpace(pairKey),
+                        ReplacementOperatorCodigoFJ = NullIfWhiteSpace(replacementOperatorCodigoFJ),
+                        Reason = NullIfWhiteSpace(request.Reason)
+                    },
+                    transaction);
+            }
+            else
+            {
+                conn.Execute(
+                    @"
+                        INSERT INTO HaidaiMovements (
+                            ScheduleDate,
+                            ShiftId,
+                            SectorId,
+                            OperatorCodigoFJ,
+                            MovementType,
+                            EventTime,
+                            EventDateTime,
+                            LocalId,
+                            AssignmentCode,
+                            PairKey,
+                            ReplacementOperatorCodigoFJ,
+                            Reason,
+                            CreatedByCodigoFJ
+                        )
+                        VALUES (
+                            @ScheduleDate,
+                            @ShiftId,
+                            @SectorId,
+                            @OperatorCodigoFJ,
+                            @MovementType,
+                            @EventTime,
+                            @EventDateTime,
+                            @LocalId,
+                            @AssignmentCode,
+                            @PairKey,
+                            @ReplacementOperatorCodigoFJ,
+                            @Reason,
+                            @CreatedByCodigoFJ
+                        );",
+                    new
+                    {
+                        ScheduleDate = normalizedDate,
+                        request.ShiftId,
+                        SectorId = storageSectorId,
+                        request.OperatorCodigoFJ,
+                        request.MovementType,
+                        EventTime = NullIfWhiteSpace(request.EventTime),
+                        EventDateTime = eventDateTime,
+                        LocalId = localId,
+                        AssignmentCode = NullIfWhiteSpace(assignmentCode),
+                        PairKey = NullIfWhiteSpace(pairKey),
+                        ReplacementOperatorCodigoFJ = NullIfWhiteSpace(replacementOperatorCodigoFJ),
+                        Reason = NullIfWhiteSpace(request.Reason),
+                        request.CreatedByCodigoFJ
+                    },
+                    transaction);
+            }
+
+            if (existingMovement != null
+                && !string.IsNullOrWhiteSpace(existingMovement.ReplacementOperatorCodigoFJ)
+                && !string.Equals(existingMovement.ReplacementOperatorCodigoFJ.Trim(), replacementOperatorCodigoFJ, StringComparison.OrdinalIgnoreCase))
+            {
+                RemoveDerivedReplacementAssignment(
+                    conn,
+                    transaction,
+                    request.Date,
                     request.ShiftId,
-                    SectorId = storageSectorId,
+                    request.SectorId,
                     request.OperatorCodigoFJ,
-                    request.MovementType,
-                    EventTime = NullIfWhiteSpace(request.EventTime),
-                    LocalId = localId,
-                    AssignmentCode = NullIfWhiteSpace(assignmentCode),
-                    PairKey = NullIfWhiteSpace(pairKey),
-                    ReplacementOperatorCodigoFJ = NullIfWhiteSpace(request.ReplacementOperatorCodigoFJ),
-                    Reason = NullIfWhiteSpace(request.Reason),
-                    request.CreatedByCodigoFJ
-                },
-                transaction);
+                    existingMovement.ReplacementOperatorCodigoFJ.Trim());
+            }
 
             var movementTodokeNotes = BuildMovementTodokeNotes(
                 request.MovementType,
                 request.EventTime,
                 request.Reason,
                 assignmentCode,
-                request.ReplacementOperatorCodigoFJ);
+                replacementOperatorCodigoFJ);
 
             UpsertPendingTodokeRequest(
                 conn,
@@ -1197,7 +1292,8 @@ namespace TeamOps.UI.Services
                 normalizedDate,
                 ResolveMovementTodokeMotiveId(request.MovementType),
                 movementTodokeNotes,
-                request.CreatedByCodigoFJ);
+                request.CreatedByCodigoFJ,
+                replaceMovementMotives: true);
 
             if (assignment != null)
             {
@@ -1216,7 +1312,7 @@ namespace TeamOps.UI.Services
                     transaction);
             }
 
-            if (!string.IsNullOrWhiteSpace(request.ReplacementOperatorCodigoFJ))
+            if (!string.IsNullOrWhiteSpace(replacementOperatorCodigoFJ))
             {
                 UpsertAssignmentInternal(
                     conn,
@@ -1226,8 +1322,8 @@ namespace TeamOps.UI.Services
                         request.ShiftId,
                         ResolveStorageSectorId(
                             request.SectorId,
-                            ResolveOperatorHomeSectorId(conn, request.ReplacementOperatorCodigoFJ.Trim(), request.SectorId, transaction)),
-                        request.ReplacementOperatorCodigoFJ.Trim(),
+                            ResolveOperatorHomeSectorId(conn, replacementOperatorCodigoFJ, request.SectorId, transaction)),
+                        replacementOperatorCodigoFJ,
                         localId,
                         assignmentCode ?? string.Empty,
                         pairKey ?? string.Empty,
@@ -1235,6 +1331,210 @@ namespace TeamOps.UI.Services
                         string.Empty,
                         true,
                         BuildReplacementNote(request.OperatorCodigoFJ, request.MovementType, request.EventTime, request.Reason)));
+            }
+
+            transaction.Commit();
+        }
+
+        public void DeleteMovement(DateTime date, int shiftId, int sectorId, string operatorCodigoFJ, int movementId)
+        {
+            EnsureSchema();
+
+            using var conn = _factory.CreateOpenConnection();
+            using var transaction = conn.BeginTransaction();
+
+            var normalizedDate = date.ToString("yyyy-MM-dd");
+            var storageSectorId = ResolveStorageSectorId(
+                sectorId,
+                ResolveOperatorHomeSectorId(conn, operatorCodigoFJ, sectorId, transaction));
+            var movement = conn.QueryFirstOrDefault<HaidaiMovementRecord>(
+                @"
+                    SELECT
+                        Id,
+                        OperatorCodigoFJ,
+                        COALESCE(MovementType, '') AS MovementType,
+                        COALESCE(EventTime, '') AS EventTime,
+                        COALESCE(EventDateTime, '') AS EventDateTime,
+                        COALESCE(AssignmentCode, '') AS AssignmentCode,
+                        COALESCE(PairKey, '') AS PairKey,
+                        COALESCE(ReplacementOperatorCodigoFJ, '') AS ReplacementOperatorCodigoFJ,
+                        COALESCE(Reason, '') AS Reason,
+                        COALESCE(CreatedAt, '') AS CreatedAt
+                    FROM HaidaiMovements
+                    WHERE Id = @Id
+                      AND OperatorCodigoFJ = @OperatorCodigoFJ
+                      AND ShiftId = @ShiftId
+                      AND SectorId = @SectorId
+                      AND date(ScheduleDate) = date(@ScheduleDate)
+                    LIMIT 1;",
+                new
+                {
+                    Id = movementId,
+                    OperatorCodigoFJ = operatorCodigoFJ,
+                    ShiftId = shiftId,
+                    SectorId = storageSectorId,
+                    ScheduleDate = normalizedDate
+                },
+                transaction);
+
+            if (movement == null)
+            {
+                transaction.Commit();
+                return;
+            }
+
+            conn.Execute(
+                @"DELETE FROM HaidaiMovements WHERE Id = @Id;",
+                new { Id = movementId },
+                transaction);
+
+            if (!string.IsNullOrWhiteSpace(movement.ReplacementOperatorCodigoFJ))
+            {
+                RemoveDerivedReplacementAssignment(
+                    conn,
+                    transaction,
+                    date,
+                    shiftId,
+                    sectorId,
+                    operatorCodigoFJ,
+                    movement.ReplacementOperatorCodigoFJ.Trim());
+            }
+
+            var latestMovement = conn.QueryFirstOrDefault<HaidaiMovementRecord>(
+                @"
+                    SELECT
+                        Id,
+                        OperatorCodigoFJ,
+                        COALESCE(MovementType, '') AS MovementType,
+                        COALESCE(EventTime, '') AS EventTime,
+                        COALESCE(EventDateTime, '') AS EventDateTime,
+                        COALESCE(AssignmentCode, '') AS AssignmentCode,
+                        COALESCE(PairKey, '') AS PairKey,
+                        COALESCE(ReplacementOperatorCodigoFJ, '') AS ReplacementOperatorCodigoFJ,
+                        COALESCE(Reason, '') AS Reason,
+                        COALESCE(CreatedAt, '') AS CreatedAt
+                    FROM HaidaiMovements
+                    WHERE OperatorCodigoFJ = @OperatorCodigoFJ
+                      AND ShiftId = @ShiftId
+                      AND SectorId = @SectorId
+                      AND date(ScheduleDate) = date(@ScheduleDate)
+                    ORDER BY COALESCE(EventTime, '') DESC, Id DESC
+                    LIMIT 1;",
+                new
+                {
+                    OperatorCodigoFJ = operatorCodigoFJ,
+                    ShiftId = shiftId,
+                    SectorId = storageSectorId,
+                    ScheduleDate = normalizedDate
+                },
+                transaction);
+
+            if (latestMovement == null)
+            {
+                var movementIds = conn.Query<long>(
+                    @"
+                        SELECT Id
+                        FROM AcompYukyu
+                        WHERE OperatorCodigoFJ = @OperatorCodigoFJ
+                          AND date(RequestDate) = date(@RequestDate)
+                          AND TodokeMotivoId IN (3, 5);",
+                    new
+                    {
+                        OperatorCodigoFJ = operatorCodigoFJ,
+                        RequestDate = normalizedDate
+                    },
+                    transaction)
+                    .ToList();
+
+                if (movementIds.Count > 0)
+                {
+                    DeleteAcompYukyuCascade(conn, transaction, movementIds);
+                }
+
+                conn.Execute(
+                    @"
+                        UPDATE HaidaiAssignments
+                        SET IsLineupActive = CASE
+                                WHEN COALESCE(AssignmentCode, '') = '' AND COALESCE(LocalId, 0) = 0 THEN 0
+                                ELSE 1
+                            END,
+                            AvailabilityStatus = CASE
+                                WHEN COALESCE(AssignmentCode, '') = '' AND COALESCE(LocalId, 0) = 0 THEN NULL
+                                ELSE 'Escalado'
+                            END,
+                            UpdatedAt = CURRENT_TIMESTAMP
+                        WHERE OperatorCodigoFJ = @OperatorCodigoFJ
+                          AND ShiftId = @ShiftId
+                          AND SectorId = @SectorId
+                          AND date(ScheduleDate) = date(@ScheduleDate);",
+                    new
+                    {
+                        OperatorCodigoFJ = operatorCodigoFJ,
+                        ShiftId = shiftId,
+                        SectorId = storageSectorId,
+                        ScheduleDate = normalizedDate
+                    },
+                    transaction);
+            }
+            else
+            {
+                var latestNotes = BuildMovementTodokeNotes(
+                    latestMovement.MovementType,
+                    latestMovement.EventTime,
+                    latestMovement.Reason,
+                    latestMovement.AssignmentCode,
+                    latestMovement.ReplacementOperatorCodigoFJ);
+
+                UpsertPendingTodokeRequest(
+                    conn,
+                    transaction,
+                    operatorCodigoFJ,
+                    normalizedDate,
+                    ResolveMovementTodokeMotiveId(latestMovement.MovementType),
+                    latestNotes,
+                    string.Empty,
+                    replaceMovementMotives: true);
+
+                conn.Execute(
+                    @"
+                        UPDATE HaidaiAssignments
+                        SET IsLineupActive = 0,
+                            AvailabilityStatus = @AvailabilityStatus,
+                            UpdatedAt = CURRENT_TIMESTAMP
+                        WHERE OperatorCodigoFJ = @OperatorCodigoFJ
+                          AND ShiftId = @ShiftId
+                          AND SectorId = @SectorId
+                          AND date(ScheduleDate) = date(@ScheduleDate);",
+                    new
+                    {
+                        OperatorCodigoFJ = operatorCodigoFJ,
+                        ShiftId = shiftId,
+                        SectorId = storageSectorId,
+                        ScheduleDate = normalizedDate,
+                        AvailabilityStatus = latestMovement.MovementType == "late" ? "Atraso" : "Saiu cedo"
+                    },
+                    transaction);
+
+                if (!string.IsNullOrWhiteSpace(latestMovement.ReplacementOperatorCodigoFJ))
+                {
+                    UpsertAssignmentInternal(
+                        conn,
+                        transaction,
+                        new HaidaiSaveAssignmentRequest(
+                            date,
+                            shiftId,
+                            ResolveStorageSectorId(
+                                sectorId,
+                                ResolveOperatorHomeSectorId(conn, latestMovement.ReplacementOperatorCodigoFJ.Trim(), sectorId, transaction)),
+                            latestMovement.ReplacementOperatorCodigoFJ.Trim(),
+                            null,
+                            latestMovement.AssignmentCode,
+                            latestMovement.PairKey,
+                            false,
+                            string.Empty,
+                            true,
+                            BuildReplacementNote(operatorCodigoFJ, latestMovement.MovementType, latestMovement.EventTime, latestMovement.Reason)));
+                }
             }
 
             transaction.Commit();
@@ -1481,6 +1781,88 @@ namespace TeamOps.UI.Services
             return string.Join(" | ", parts);
         }
 
+        private static string ResolveMovementEventDateTime(
+            System.Data.IDbConnection conn,
+            System.Data.IDbTransaction transaction,
+            DateTime scheduleDate,
+            int shiftId,
+            string eventTime)
+        {
+            var normalizedTime = NormalizeEventTime(eventTime);
+            if (string.IsNullOrWhiteSpace(normalizedTime) || !TimeSpan.TryParse(normalizedTime, out var timePart))
+            {
+                return string.Empty;
+            }
+
+            var actualDate = scheduleDate.Date;
+            if (IsOvernightShift(conn, transaction, shiftId) && timePart < TimeSpan.FromHours(12))
+            {
+                actualDate = actualDate.AddDays(1);
+            }
+
+            return actualDate.Add(timePart).ToString("yyyy-MM-dd HH:mm:ss");
+        }
+
+        private static string NormalizeEventTime(string eventTime)
+        {
+            var value = (eventTime ?? string.Empty).Trim();
+            if (value.Length == 5)
+            {
+                value += ":00";
+            }
+
+            return value;
+        }
+
+        private static bool IsOvernightShift(System.Data.IDbConnection conn, System.Data.IDbTransaction transaction, int shiftId)
+        {
+            var shiftName = conn.ExecuteScalar<string?>(
+                @"
+                    SELECT COALESCE(NULLIF(NamePt, ''), NULLIF(NameJp, ''), '')
+                    FROM Shifts
+                    WHERE Id = @Id
+                    LIMIT 1;",
+                new { Id = shiftId },
+                transaction) ?? string.Empty;
+
+            return shiftName.IndexOf("noite", StringComparison.OrdinalIgnoreCase) >= 0
+                || shiftName.IndexOf("night", StringComparison.OrdinalIgnoreCase) >= 0
+                || shiftName.IndexOf("yakin", StringComparison.OrdinalIgnoreCase) >= 0
+                || shiftName.Contains("夜", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static void RemoveDerivedReplacementAssignment(
+            System.Data.IDbConnection conn,
+            System.Data.IDbTransaction transaction,
+            DateTime date,
+            int shiftId,
+            int sectorId,
+            string originalOperatorCodigoFJ,
+            string replacementOperatorCodigoFJ)
+        {
+            var storageSectorId = ResolveStorageSectorId(
+                sectorId,
+                ResolveOperatorHomeSectorId(conn, replacementOperatorCodigoFJ, sectorId, transaction));
+
+            conn.Execute(
+                @"
+                    DELETE FROM HaidaiAssignments
+                    WHERE OperatorCodigoFJ = @OperatorCodigoFJ
+                      AND ShiftId = @ShiftId
+                      AND SectorId = @SectorId
+                      AND date(ScheduleDate) = date(@ScheduleDate)
+                      AND COALESCE(Notes, '') LIKE @NotesPattern;",
+                new
+                {
+                    OperatorCodigoFJ = replacementOperatorCodigoFJ,
+                    ShiftId = shiftId,
+                    SectorId = storageSectorId,
+                    ScheduleDate = date.ToString("yyyy-MM-dd"),
+                    NotesPattern = $"Substituindo {originalOperatorCodigoFJ}%"
+                },
+                transaction);
+        }
+
         private static void UpsertPendingTodokeRequest(
             System.Data.IDbConnection conn,
             System.Data.IDbTransaction transaction,
@@ -1489,7 +1871,8 @@ namespace TeamOps.UI.Services
             int motiveId,
             string? notes,
             string authorizedByCodigoFJ,
-            bool replaceExceptionMotives = false)
+            bool replaceExceptionMotives = false,
+            bool replaceMovementMotives = false)
         {
             const string exactSql = @"
                 SELECT Id
@@ -1509,8 +1892,17 @@ namespace TeamOps.UI.Services
                 ORDER BY Id DESC
                 LIMIT 1;";
 
+            const string movementSql = @"
+                SELECT Id
+                FROM AcompYukyu
+                WHERE OperatorCodigoFJ = @OperatorCodigoFJ
+                  AND date(RequestDate) = date(@RequestDate)
+                  AND TodokeMotivoId IN (3, 5)
+                ORDER BY Id DESC
+                LIMIT 1;";
+
             var existingId = conn.ExecuteScalar<long?>(
-                replaceExceptionMotives ? exceptionSql : exactSql,
+                replaceExceptionMotives ? exceptionSql : replaceMovementMotives ? movementSql : exactSql,
                 new
                 {
                     OperatorCodigoFJ = operatorCodigoFJ,
@@ -1581,7 +1973,8 @@ namespace TeamOps.UI.Services
                       AND Id <> @CurrentId
                       AND (
                             (@ReplaceExceptionMotives = 1 AND TodokeMotivoId IN (1, 2))
-                         OR (@ReplaceExceptionMotives = 0 AND TodokeMotivoId = @TodokeMotivoId)
+                         OR (@ReplaceMovementMotives = 1 AND TodokeMotivoId IN (3, 5))
+                         OR (@ReplaceExceptionMotives = 0 AND @ReplaceMovementMotives = 0 AND TodokeMotivoId = @TodokeMotivoId)
                       );",
                 new
                 {
@@ -1589,6 +1982,7 @@ namespace TeamOps.UI.Services
                     RequestDate = requestDate,
                     CurrentId = currentId,
                     ReplaceExceptionMotives = replaceExceptionMotives ? 1 : 0,
+                    ReplaceMovementMotives = replaceMovementMotives ? 1 : 0,
                     TodokeMotivoId = motiveId
                 },
                 transaction);
@@ -1761,6 +2155,8 @@ namespace TeamOps.UI.Services
         {
             var normalizedDate = request.Date.ToString("yyyy-MM-dd");
             var assignmentCode = (request.AssignmentCode ?? string.Empty).Trim();
+            var isOffDay = IsOffDayCode(assignmentCode);
+            var normalizedAssignmentCode = isOffDay ? "\u4f11" : assignmentCode;
 
             var existingId = conn.ExecuteScalar<long?>(
                 @"
@@ -1791,20 +2187,22 @@ namespace TeamOps.UI.Services
                             IsTrainee = @IsTrainee,
                             TrainerCodigoFJ = @TrainerCodigoFJ,
                             CountsTowardKousu = @CountsTowardKousu,
-                            IsLineupActive = 1,
-                            AvailabilityStatus = 'Escalado',
+                            IsLineupActive = @IsLineupActive,
+                            AvailabilityStatus = @AvailabilityStatus,
                             Notes = @Notes,
                             UpdatedAt = CURRENT_TIMESTAMP
                         WHERE Id = @Id;",
                     new
                     {
                         Id = existingId.Value,
-                        request.LocalId,
-                        AssignmentCode = assignmentCode,
-                        PairKey = NullIfWhiteSpace(request.PairKey),
-                        IsTrainee = request.IsTrainee ? 1 : 0,
-                        TrainerCodigoFJ = NullIfWhiteSpace(request.TrainerCodigoFJ),
-                        CountsTowardKousu = request.CountsTowardKousu ? 1 : 0,
+                        LocalId = isOffDay ? null : request.LocalId,
+                        AssignmentCode = normalizedAssignmentCode,
+                        PairKey = isOffDay ? null : NullIfWhiteSpace(request.PairKey),
+                        IsTrainee = isOffDay ? 0 : request.IsTrainee ? 1 : 0,
+                        TrainerCodigoFJ = isOffDay ? null : NullIfWhiteSpace(request.TrainerCodigoFJ),
+                        CountsTowardKousu = isOffDay ? 0 : request.CountsTowardKousu ? 1 : 0,
+                        IsLineupActive = isOffDay ? 0 : 1,
+                        AvailabilityStatus = isOffDay ? "Folga" : "Escalado",
                         Notes = NullIfWhiteSpace(request.Notes)
                     },
                     transaction);
@@ -1839,8 +2237,8 @@ namespace TeamOps.UI.Services
                             @IsTrainee,
                             @TrainerCodigoFJ,
                             @CountsTowardKousu,
-                            1,
-                            'Escalado',
+                            @IsLineupActive,
+                            @AvailabilityStatus,
                             @Notes
                         );",
                     new
@@ -1849,12 +2247,14 @@ namespace TeamOps.UI.Services
                         request.ShiftId,
                         request.SectorId,
                         request.OperatorCodigoFJ,
-                        request.LocalId,
-                        AssignmentCode = assignmentCode,
-                        PairKey = NullIfWhiteSpace(request.PairKey),
-                        IsTrainee = request.IsTrainee ? 1 : 0,
-                        TrainerCodigoFJ = NullIfWhiteSpace(request.TrainerCodigoFJ),
-                        CountsTowardKousu = request.CountsTowardKousu ? 1 : 0,
+                        LocalId = isOffDay ? null : request.LocalId,
+                        AssignmentCode = normalizedAssignmentCode,
+                        PairKey = isOffDay ? null : NullIfWhiteSpace(request.PairKey),
+                        IsTrainee = isOffDay ? 0 : request.IsTrainee ? 1 : 0,
+                        TrainerCodigoFJ = isOffDay ? null : NullIfWhiteSpace(request.TrainerCodigoFJ),
+                        CountsTowardKousu = isOffDay ? 0 : request.CountsTowardKousu ? 1 : 0,
+                        IsLineupActive = isOffDay ? 0 : 1,
+                        AvailabilityStatus = isOffDay ? "Folga" : "Escalado",
                         Notes = NullIfWhiteSpace(request.Notes)
                     },
                     transaction);
@@ -3342,7 +3742,19 @@ namespace TeamOps.UI.Services
         string ExceptionNotes,
         string Status,
         string MovementSummary,
-        int MovementCount);
+        int MovementCount,
+        IReadOnlyList<HaidaiBoardMovement> Movements);
+
+    public sealed record HaidaiBoardMovement(
+        int Id,
+        string MovementType,
+        string EventTime,
+        string EventDateTime,
+        string AssignmentCode,
+        string PairKey,
+        string ReplacementOperatorCodigoFJ,
+        string Reason,
+        string CreatedAt);
 
     public sealed record HaidaiSaveAssignmentRequest(
         DateTime Date,
@@ -3363,6 +3775,7 @@ namespace TeamOps.UI.Services
         int ShiftId,
         int SectorId,
         string OperatorCodigoFJ,
+        int? MovementId,
         string MovementType,
         string EventTime,
         string ReplacementOperatorCodigoFJ,
@@ -3435,6 +3848,7 @@ namespace TeamOps.UI.Services
         public string OperatorCodigoFJ { get; set; } = string.Empty;
         public string MovementType { get; set; } = string.Empty;
         public string EventTime { get; set; } = string.Empty;
+        public string EventDateTime { get; set; } = string.Empty;
         public string AssignmentCode { get; set; } = string.Empty;
         public string PairKey { get; set; } = string.Empty;
         public string ReplacementOperatorCodigoFJ { get; set; } = string.Empty;

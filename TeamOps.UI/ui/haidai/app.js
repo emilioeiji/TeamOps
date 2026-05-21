@@ -9,7 +9,8 @@ const state = {
     monthPlan: null,
     board: null,
     selectedOperatorCodigoFJ: "",
-    selectedDay: 1
+    selectedDay: 1,
+    movementDraft: null
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -87,6 +88,22 @@ function bindEvents() {
     document.getElementById("plannerTable").addEventListener("paste", handlePlannerPaste);
 
     document.getElementById("selectedDetailHost").addEventListener("click", event => {
+        const movementButton = event.target.closest("[data-movement-action]");
+        if (movementButton) {
+            const container = event.currentTarget;
+            const movementId = Number(movementButton.dataset.movementId || 0);
+            const movementAction = movementButton.dataset.movementAction;
+            if (movementAction === "edit") {
+                editMovement(container, movementId);
+                return;
+            }
+
+            if (movementAction === "delete") {
+                deleteMovement(container, movementId);
+                return;
+            }
+        }
+
         const button = event.target.closest("[data-row-action]");
         if (!button) {
             return;
@@ -107,6 +124,11 @@ function bindEvents() {
 
         if (action === "falta") {
             markException(container, 2);
+            return;
+        }
+
+        if (action === "off") {
+            markOffDay(container);
             return;
         }
 
@@ -157,6 +179,13 @@ function bindEvents() {
         renderDetail();
         highlightPlannerSelection();
     });
+
+    document.getElementById("movementBackdrop").addEventListener("click", closeMovementModal);
+    document.getElementById("btnCloseMovementModal").addEventListener("click", closeMovementModal);
+    document.getElementById("btnCancelMovementModal").addEventListener("click", closeMovementModal);
+    document.getElementById("btnConfirmMovementModal").addEventListener("click", submitMovementModal);
+    document.getElementById("movementReplacementSearch").addEventListener("input", renderReplacementCandidates);
+    document.getElementById("movementTime").addEventListener("input", refreshMovementDateHint);
 }
 
 function hydrateInit(data) {
@@ -379,6 +408,8 @@ function renderDetail() {
         detailNotes.push(`Obs.: ${row.notes}`);
     }
 
+    const movementHistory = renderMovementHistory(row);
+
     host.dataset.op = row.codigoFJ;
     host.innerHTML = `
         <div class="detail-header">
@@ -392,6 +423,7 @@ function renderDetail() {
         </div>
 
         ${detailNotes.length ? `<div class="detail-note">${escapeHtml(detailNotes.join(" | "))}</div>` : ""}
+        ${movementHistory}
 
         <div class="detail-grid">
             <label class="detail-field">
@@ -428,6 +460,7 @@ function renderDetail() {
 
         <div class="action-row">
             <button class="btn btn-inline btn-save" type="button" data-row-action="save">Salvar dia</button>
+            <button class="btn btn-inline btn-secondary" type="button" data-row-action="off">Folga</button>
             <button class="btn btn-inline btn-yukyu" type="button" data-row-action="yukyu">Yukyu</button>
             <button class="btn btn-inline btn-falta" type="button" data-row-action="falta">Falta</button>
             <button class="btn btn-inline btn-secondary" type="button" data-row-action="late">Atraso</button>
@@ -614,6 +647,31 @@ function markException(container, motiveId) {
     showNotice(`${label} enviado para o controle de Todoke.`, "success");
 }
 
+function markOffDay(container) {
+    if (Number(container.dataset.exceptionMotiveId || 0) > 0) {
+        showNotice("Remova Yukyu/Falta antes de marcar folga.", "warning");
+        return;
+    }
+
+    post({
+        action: "save_assignment",
+        date: getSelectedDateIso(),
+        shiftId: Number(document.getElementById("shiftPicker").value || 0),
+        sectorId: Number(document.getElementById("sectorPicker").value || 0),
+        operatorCodigoFJ: container.dataset.op,
+        localId: null,
+        assignmentCode: "休",
+        pairKey: "",
+        trainerCodigoFJ: "",
+        notes: readField(container, "notes"),
+        isTrainee: false,
+        countsTowardKousu: false,
+        applyPairToMonth: false
+    });
+
+    showNotice("Folga registrada para o dia selecionado.", "success");
+}
+
 function clearException(container) {
     const confirmed = window.confirm("Remover Yukyu/Falta deste operador para a data selecionada?");
     if (!confirmed) {
@@ -630,41 +688,286 @@ function clearException(container) {
 }
 
 function registerMovement(container, movementType) {
-    const timeLabel = movementType === "late" ? "Horario do atraso (HH:mm)" : "Horario da saida (HH:mm)";
-    const reasonLabel = movementType === "late" ? "Motivo do atraso" : "Motivo da saida antecipada";
-    const replacementHint = buildReplacementHint(container.dataset.op);
+    openMovementModal(container, movementType, null);
+}
 
-    const eventTime = window.prompt(timeLabel, "") || "";
-    if (!eventTime.trim()) {
+function openMovementModal(container, movementType, movement) {
+    state.movementDraft = {
+        operatorCodigoFJ: container.dataset.op,
+        movementId: movement ? Number(movement.id || 0) : null,
+        movementType,
+        localId: nullableNumber(readField(container, "localId")),
+        assignmentCode: movement?.assignmentCode || readField(container, "assignmentCode"),
+        pairKey: movement?.pairKey || readField(container, "pairKey")
+    };
+
+    document.getElementById("movementTitle").textContent = movement
+        ? movementType === "late" ? "Editar atraso" : "Editar saida antecipada"
+        : movementType === "late" ? "Registrar atraso" : "Registrar saida antecipada";
+    document.getElementById("movementSubtitle").textContent = movementType === "late"
+        ? "Informe o horario em que o operador entrou e, se houve cobertura, selecione o substituto."
+        : "Informe o horario em que o operador saiu e, se houve cobertura, selecione o substituto.";
+    document.getElementById("btnConfirmMovementModal").textContent = movement ? "Salvar ajuste" : "Confirmar";
+    document.getElementById("movementTime").value = (movement?.eventTime || "").slice(0, 5);
+    document.getElementById("movementReason").value = movement?.reason || "";
+    document.getElementById("movementReplacementSearch").value = "";
+    document.getElementById("movementReplacementCodigoFJ").value = movement?.replacementOperatorCodigoFJ || "";
+    if (movement?.replacementOperatorCodigoFJ) {
+        const selectedOperator = findOperator(movement.replacementOperatorCodigoFJ);
+        document.getElementById("movementReplacementSearch").value = selectedOperator
+            ? `${selectedOperator.codigoFJ} - ${selectedOperator.name || selectedOperator.nameJp || ""}`.trim()
+            : movement.replacementOperatorCodigoFJ;
+    }
+    renderReplacementCandidates();
+    refreshMovementDateHint();
+    document.getElementById("movementModal").classList.remove("hidden");
+    window.setTimeout(() => document.getElementById("movementTime").focus(), 0);
+}
+
+function closeMovementModal() {
+    document.getElementById("movementModal").classList.add("hidden");
+    document.getElementById("btnConfirmMovementModal").textContent = "Confirmar";
+    state.movementDraft = null;
+}
+
+function submitMovementModal() {
+    if (!state.movementDraft) {
+        return;
+    }
+
+    const eventTime = (document.getElementById("movementTime").value || "").trim();
+    if (!eventTime) {
         showNotice("Informe o horario do movimento.", "warning");
         return;
     }
 
-    const reason = window.prompt(reasonLabel, "") || "";
-    if (!reason.trim()) {
+    const reason = (document.getElementById("movementReason").value || "").trim();
+    if (!reason) {
         showNotice("Informe o motivo do movimento.", "warning");
         return;
     }
 
-    const replacementOperatorCodigoFJ = window.prompt(
-        `Codigo FJ do substituto${replacementHint ? `\nSugestoes: ${replacementHint}` : ""}`,
-        ""
-    ) || "";
+    const replacementOperatorCodigoFJ = (document.getElementById("movementReplacementCodigoFJ").value || "").trim();
+    const draft = state.movementDraft;
+    if (!replacementOperatorCodigoFJ) {
+        const confirmedWithoutReplacement = window.confirm("Confirmar que nenhum operador ira substituir este movimento?");
+        if (!confirmedWithoutReplacement) {
+            return;
+        }
+    }
 
     post({
         action: "register_movement",
         date: getSelectedDateIso(),
         shiftId: Number(document.getElementById("shiftPicker").value || 0),
         sectorId: Number(document.getElementById("sectorPicker").value || 0),
-        operatorCodigoFJ: container.dataset.op,
-        movementType,
+        operatorCodigoFJ: draft.operatorCodigoFJ,
+        movementId: draft.movementId || 0,
+        movementType: draft.movementType,
         eventTime,
         reason,
         replacementOperatorCodigoFJ,
-        localId: nullableNumber(readField(container, "localId")),
-        assignmentCode: readField(container, "assignmentCode"),
-        pairKey: readField(container, "pairKey")
+        localId: draft.localId,
+        assignmentCode: draft.assignmentCode,
+        pairKey: draft.pairKey
     });
+
+    closeMovementModal();
+}
+
+function renderReplacementCandidates() {
+    const wrap = document.getElementById("movementReplacementList");
+    const selectedField = document.getElementById("movementReplacementCodigoFJ");
+    const search = (document.getElementById("movementReplacementSearch").value || "").trim().toLowerCase();
+    const currentOperatorCodigoFJ = state.movementDraft?.operatorCodigoFJ || "";
+    const shiftId = Number(document.getElementById("shiftPicker").value || 0);
+    const sectorId = Number(document.getElementById("sectorPicker").value || 0);
+
+    const candidates = state.operators
+        .filter(item => item.codigoFJ !== currentOperatorCodigoFJ)
+        .filter(item => shiftId <= 0 || Number(item.shiftId || 0) === shiftId)
+        .filter(item => {
+            const homeSectorId = Number(item.sectorId || 0);
+            return sectorId <= 0 || homeSectorId === sectorId || homeSectorId === 3;
+        })
+        .filter(item => {
+            if (!search) {
+                return true;
+            }
+
+            return [item.codigoFJ, item.name, item.nameJp, item.groupName]
+                .filter(Boolean)
+                .some(value => String(value).toLowerCase().includes(search));
+        })
+        .slice(0, 18);
+
+    if (!candidates.length) {
+        wrap.innerHTML = `<div class="replacement-empty">Nenhum operador encontrado para este filtro.</div>`;
+        return;
+    }
+
+    wrap.innerHTML = candidates.map(item => {
+        const selected = selectedField.value === item.codigoFJ;
+        return `
+            <button type="button" class="replacement-item ${selected ? "is-selected" : ""}" data-replacement="${escapeAttr(item.codigoFJ)}">
+                <div>
+                    <strong>${escapeHtml(item.name || item.codigoFJ)}</strong>
+                    <small>${escapeHtml(item.codigoFJ)}${item.groupName ? ` · ${escapeHtml(item.groupName)}` : ""}</small>
+                </div>
+                <small>${escapeHtml(item.nameJp || "")}</small>
+            </button>
+        `;
+    }).join("");
+
+    wrap.querySelectorAll("[data-replacement]").forEach(button => {
+        button.addEventListener("click", () => {
+            const code = button.dataset.replacement || "";
+            const operator = findOperator(code);
+            selectedField.value = code;
+            document.getElementById("movementReplacementSearch").value = operator
+                ? `${operator.codigoFJ} - ${operator.name || operator.nameJp || ""}`.trim()
+                : code;
+            renderReplacementCandidates();
+        });
+    });
+}
+
+function editMovement(container, movementId) {
+    const row = getSelectedBoardRow();
+    const movement = (row?.movements || []).find(item => Number(item.id || 0) === Number(movementId));
+    if (!row || !movement) {
+        return;
+    }
+
+    openMovementModal(container, movement.movementType, movement);
+}
+
+function deleteMovement(container, movementId) {
+    const row = getSelectedBoardRow();
+    const movement = (row?.movements || []).find(item => Number(item.id || 0) === Number(movementId));
+    if (!row || !movement) {
+        return;
+    }
+
+    const confirmed = window.confirm("Remover este movimento e ajustar a substituicao relacionada?");
+    if (!confirmed) {
+        return;
+    }
+
+    post({
+        action: "delete_movement",
+        date: getSelectedDateIso(),
+        shiftId: Number(document.getElementById("shiftPicker").value || 0),
+        sectorId: Number(document.getElementById("sectorPicker").value || 0),
+        operatorCodigoFJ: container.dataset.op,
+        movementId
+    });
+}
+
+function renderMovementHistory(row) {
+    const movements = row.movements || [];
+    if (!movements.length) {
+        return "";
+    }
+
+    const cards = movements.map(movement => {
+        const replacementName = resolveOperatorDisplayName(movement.replacementOperatorCodigoFJ);
+        const eventDateLabel = formatMovementEventDateTime(movement.eventDateTime, movement.eventTime);
+        return `
+            <article class="movement-history-card">
+                <div class="movement-history-head">
+                    <div class="movement-history-copy">
+                        <strong>${escapeHtml(movementTypeLabel(movement.movementType))}</strong>
+                        <small>${escapeHtml(eventDateLabel)}</small>
+                        <small>${escapeHtml(replacementName ? `Substituto: ${replacementName}` : "Sem substituto")}</small>
+                        ${movement.reason ? `<small>${escapeHtml(movement.reason)}</small>` : ""}
+                    </div>
+                    <div class="movement-history-actions">
+                        <button class="btn btn-inline btn-secondary" type="button" data-movement-action="edit" data-movement-id="${Number(movement.id || 0)}">Editar</button>
+                        <button class="btn btn-inline btn-clear" type="button" data-movement-action="delete" data-movement-id="${Number(movement.id || 0)}">Remover</button>
+                    </div>
+                </div>
+            </article>
+        `;
+    }).join("");
+
+    return `<div class="movement-history">${cards}</div>`;
+}
+
+function refreshMovementDateHint() {
+    const hint = document.getElementById("movementDateHint");
+    const time = (document.getElementById("movementTime").value || "").trim();
+    hint.textContent = buildMovementActualDateHint(time);
+}
+
+function buildMovementActualDateHint(time) {
+    if (!time) {
+        return "A data real sera ajustada automaticamente conforme o turno.";
+    }
+
+    const shiftName = getSelectedShiftName();
+    const baseDate = getSelectedDateIso();
+    if (isOvernightShiftName(shiftName) && time < "12:00") {
+        return `Movimento real: ${formatDateOnly(addDaysIso(baseDate, 1))} ${time} (referente ao dia do Haidai).`;
+    }
+
+    return `Movimento real: ${formatDateOnly(baseDate)} ${time}.`;
+}
+
+function getSelectedShiftName() {
+    const shiftId = Number(document.getElementById("shiftPicker").value || 0);
+    return (state.shifts || []).find(item => Number(item.id || 0) === shiftId)?.name || "";
+}
+
+function isOvernightShiftName(name) {
+    const value = String(name || "").toLowerCase();
+    return value.includes("noite") || value.includes("night") || value.includes("yakin") || String(name || "").includes("夜");
+}
+
+function addDaysIso(dateIso, days) {
+    const [year, month, day] = String(dateIso || "").split("-").map(Number);
+    const value = new Date(year || 0, (month || 1) - 1, day || 1);
+    value.setDate(value.getDate() + Number(days || 0));
+    return `${String(value.getFullYear()).padStart(4, "0")}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+}
+
+function resolveOperatorDisplayName(codigoFJ) {
+    if (!codigoFJ) {
+        return "";
+    }
+
+    const operator = findOperator(codigoFJ);
+    if (!operator) {
+        return codigoFJ;
+    }
+
+    return `${operator.codigoFJ} - ${operator.name || operator.nameJp || codigoFJ}`;
+}
+
+function movementTypeLabel(movementType) {
+    return movementType === "late" ? "Atraso" : movementType === "early_leave" ? "Saida antecipada" : movementType || "-";
+}
+
+function formatMovementEventDateTime(eventDateTime, fallbackTime) {
+    if (eventDateTime) {
+        const [datePart, timePart] = String(eventDateTime).split(" ");
+        return `${formatDateOnly(datePart)} ${String(timePart || fallbackTime || "").slice(0, 5)}`.trim();
+    }
+
+    return fallbackTime || "-";
+}
+
+function formatDateOnly(dateIso) {
+    const [year, month, day] = String(dateIso || "").split("-");
+    if (!year || !month || !day) {
+        return String(dateIso || "-");
+    }
+
+    return `${day}/${month}/${year}`;
+}
+
+function findOperator(codigoFJ) {
+    return findOperatorMeta(codigoFJ);
 }
 
 function restoreLineup(container) {

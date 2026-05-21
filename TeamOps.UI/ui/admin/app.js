@@ -7,25 +7,26 @@ const state = {
     rows: [],
     filteredRows: [],
     modalMode: "create",
-    editingId: 0
+    editingId: 0,
+    shortCodeTouched: false
 };
 
 const I18N = {
     "pt-BR": {
         title: "Administracao",
         headerTitle: "Administracao",
-        headerSubtitle: "Cadastros administrativos concentrados em um unico painel, com edicao em modal.",
+        headerSubtitle: "Painel central para ajustar bases do sistema, vinculos operacionais e cadastros usados em producao, Haidai e relatorios.",
         metaEntity: "Cadastro ativo",
         metaTotal: "Registros",
         sidebarTitle: "Itens",
-        sidebarSubtitle: "Selecione o cadastro que deseja manter.",
-        badge: "Painel administrativo",
+        sidebarSubtitle: "Priorize Locais e Maquinas para manter o sistema consistente com o banco.",
+        badge: "Configuracao do sistema",
         searchLabel: "Buscar",
-        searchPlaceholder: "Buscar por nome...",
+        searchPlaceholder: "Buscar por codigo, nome, setor, local ou validacao...",
         new: "Novo",
         tableTitle: "Registros",
-        tableSubtitle: "Edite ou exclua direto da lista para manter o fluxo rapido.",
-        tableReadonlySubtitle: "Consulta simples do historico, sem permitir inclusao, edicao ou exclusao.",
+        tableSubtitle: "Ajuste os dados direto na lista e use os indicadores para corrigir pendencias antes que afetem outras telas.",
+        tableReadonlySubtitle: "Consulta simples do historico ou das pendencias, sem permitir inclusao, edicao ou exclusao.",
         actions: "Acoes",
         actionEdit: "Editar",
         actionDelete: "Excluir",
@@ -37,45 +38,79 @@ const I18N = {
         modalEditSubtitle: "Ajuste os dados e salve as alteracoes.",
         cancel: "Cancelar",
         save: "Salvar",
+        saveChanges: "Salvar alteracoes",
+        createRecord: "Cadastrar",
         readonlyBadge: "Somente leitura",
         selectPlaceholder: "Selecione...",
         confirmDelete: entity => `Deseja excluir este registro de ${entity}?`,
-        saved: "Cadastro salvo com sucesso.",
-        updated: "Cadastro atualizado com sucesso.",
-        deleted: "Cadastro excluido com sucesso."
+        metricsTotal: "Total",
+        metricsFiltered: "Visiveis",
+        metricsMode: "Modo",
+        metricsEditable: "Editavel",
+        metricsReadonly: "Leitura",
+        metricsMachinesLinked: "Com local",
+        metricsMachinesActive: "Ativas",
+        metricsMachinesPending: "Pendencias",
+        metricsLocalsShortCode: "Com codigo",
+        metricsLocalsLinked: "Com maquinas",
+        metricsLocalsSectors: "Setores",
+        metricsAuditMissingLocal: "Sem local",
+        metricsAuditMismatch: "Divergencia",
+        metricsAuditMissingSector: "Sem setor",
+        yes: "Sim",
+        no: "Nao",
+        validationOk: "OK",
+        fieldRequired: "Obrigatorio"
     },
     "ja-JP": {
-        title: "\u7ba1\u7406",
-        headerTitle: "\u7ba1\u7406",
-        headerSubtitle: "\u8907\u6570\u306e\u7ba1\u7406\u30de\u30b9\u30bf\u3092\u4e00\u3064\u306e\u753b\u9762\u306b\u96c6\u7d04\u3057\u3001\u30e2\u30fc\u30c0\u30eb\u3067\u7de8\u96c6\u3067\u304d\u307e\u3059\u3002",
-        metaEntity: "\u9078\u629e\u4e2d",
-        metaTotal: "\u4ef6\u6570",
-        sidebarTitle: "\u9805\u76ee",
-        sidebarSubtitle: "\u7ba1\u7406\u3059\u308b\u30de\u30b9\u30bf\u3092\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
-        badge: "\u7ba1\u7406\u30d1\u30cd\u30eb",
-        searchLabel: "\u691c\u7d22",
-        searchPlaceholder: "\u540d\u79f0\u3067\u691c\u7d22...",
-        new: "\u65b0\u898f",
-        tableTitle: "\u30ec\u30b3\u30fc\u30c9",
-        tableSubtitle: "\u30ea\u30b9\u30c8\u304b\u3089\u3059\u3070\u3084\u304f\u7de8\u96c6\u30fb\u524a\u9664\u3067\u304d\u307e\u3059\u3002",
-        tableReadonlySubtitle: "\u5c65\u6b74\u3092\u53c2\u7167\u3059\u308b\u305f\u3081\u306e\u4e00\u89a7\u3067\u3001\u8ffd\u52a0\u30fb\u7de8\u96c6\u30fb\u524a\u9664\u306f\u3067\u304d\u307e\u305b\u3093\u3002",
-        actions: "\u64cd\u4f5c",
-        actionEdit: "\u7de8\u96c6",
-        actionDelete: "\u524a\u9664",
-        loading: "\u8aad\u307f\u8fbc\u307f\u4e2d...",
-        empty: "\u30ec\u30b3\u30fc\u30c9\u304c\u3042\u308a\u307e\u305b\u3093\u3002",
-        modalCreateTitle: entity => `${entity} \u3092\u65b0\u898f\u767b\u9332`,
-        modalEditTitle: entity => `${entity} \u3092\u7de8\u96c6`,
-        modalCreateSubtitle: "\u5fc5\u8981\u9805\u76ee\u3092\u5165\u529b\u3057\u3066\u4fdd\u5b58\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
-        modalEditSubtitle: "\u5185\u5bb9\u3092\u4fee\u6b63\u3057\u3066\u4fdd\u5b58\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
-        cancel: "\u30ad\u30e3\u30f3\u30bb\u30eb",
-        save: "\u4fdd\u5b58",
-        readonlyBadge: "\u95b2\u89a7\u306e\u307f",
-        selectPlaceholder: "\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044",
-        confirmDelete: entity => `${entity} \u306e\u3053\u306e\u30ec\u30b3\u30fc\u30c9\u3092\u524a\u9664\u3057\u307e\u3059\u304b\u3002`,
-        saved: "\u767b\u9332\u3092\u4fdd\u5b58\u3057\u307e\u3057\u305f\u3002",
-        updated: "\u767b\u9332\u3092\u66f4\u65b0\u3057\u307e\u3057\u305f\u3002",
-        deleted: "\u767b\u9332\u3092\u524a\u9664\u3057\u307e\u3057\u305f\u3002"
+        title: "管理",
+        headerTitle: "管理",
+        headerSubtitle: "生産、ハイダイ、レポートで使う基礎マスタと運用紐付けをまとめて調整する画面です。",
+        metaEntity: "選択中",
+        metaTotal: "件数",
+        sidebarTitle: "項目",
+        sidebarSubtitle: "特に場所と設備の紐付けを優先して整備してください。",
+        badge: "システム設定",
+        searchLabel: "検索",
+        searchPlaceholder: "コード、名称、セクター、場所、検証結果で検索...",
+        new: "新規",
+        tableTitle: "レコード",
+        tableSubtitle: "一覧から直接修正し、他画面へ影響する前に不整合を直せます。",
+        tableReadonlySubtitle: "履歴または要確認一覧の参照用です。追加・編集・削除はできません。",
+        actions: "操作",
+        actionEdit: "編集",
+        actionDelete: "削除",
+        loading: "読み込み中...",
+        empty: "レコードがありません。",
+        modalCreateTitle: entity => `${entity} を新規登録`,
+        modalEditTitle: entity => `${entity} を編集`,
+        modalCreateSubtitle: "必要項目を入力して保存してください。",
+        modalEditSubtitle: "内容を修正して保存してください。",
+        cancel: "キャンセル",
+        save: "保存",
+        saveChanges: "変更を保存",
+        createRecord: "登録",
+        readonlyBadge: "閲覧のみ",
+        selectPlaceholder: "選択してください",
+        confirmDelete: entity => `${entity} のこのレコードを削除しますか。`,
+        metricsTotal: "総数",
+        metricsFiltered: "表示中",
+        metricsMode: "モード",
+        metricsEditable: "編集可",
+        metricsReadonly: "参照",
+        metricsMachinesLinked: "場所あり",
+        metricsMachinesActive: "稼働",
+        metricsMachinesPending: "要確認",
+        metricsLocalsShortCode: "略称あり",
+        metricsLocalsLinked: "設備あり",
+        metricsLocalsSectors: "セクター数",
+        metricsAuditMissingLocal: "場所未設定",
+        metricsAuditMismatch: "不一致",
+        metricsAuditMissingSector: "セクター未設定",
+        yes: "はい",
+        no: "いいえ",
+        validationOk: "OK",
+        fieldRequired: "必須"
     }
 };
 
@@ -174,9 +209,13 @@ function normalizeLookups(lookups) {
 
     Object.keys(lookups || {}).forEach(key => {
         normalized[key] = (lookups[key] || []).map(item => ({
+            ...item,
             id: Number(item.id || 0),
             namePt: item.namePt || "",
-            nameJp: item.nameJp || item.namePt || ""
+            nameJp: item.nameJp || item.namePt || "",
+            labelPt: item.labelPt || item.namePt || "",
+            labelJp: item.labelJp || item.nameJp || item.namePt || "",
+            sectorId: Number(item.sectorId || 0)
         }));
     });
 
@@ -199,13 +238,13 @@ function applyLocale() {
     setText("btnNew", t("new"));
     setText("txtTableTitle", t("tableTitle"));
     setText("btnCancelModal", t("cancel"));
-    setText("btnSaveModal", t("save"));
 
     const entity = currentEntity();
     setText("entityTitle", entity ? entityTitle(entity) : "-");
     setText("entityDescription", entity ? entityDescription(entity) : "-");
     setText("lblActiveEntity", entity ? entityTitle(entity) : "-");
     setText("lblTotalRows", state.rows.length);
+    setText("btnSaveModal", state.modalMode === "edit" ? t("saveChanges") : t("createRecord"));
 
     const tableSubtitle = entity?.readOnly ? t("tableReadonlySubtitle") : t("tableSubtitle");
     setText("txtTableSubtitle", tableSubtitle);
@@ -213,6 +252,8 @@ function applyLocale() {
     const btnNew = document.getElementById("btnNew");
     btnNew.classList.toggle("hidden", !!entity?.readOnly);
     btnNew.disabled = !!entity?.readOnly;
+
+    renderMetrics();
 }
 
 function renderEntityList() {
@@ -253,12 +294,78 @@ function renderEntityList() {
             if (!key || key === state.currentEntity) return;
             state.currentEntity = key;
             state.rows = [];
+            state.filteredRows = [];
             applyLocale();
             renderEntityList();
             renderTable();
             send("load_entity", { entity: key });
         });
     });
+}
+
+function renderMetrics() {
+    const container = document.getElementById("entityMetrics");
+    const entity = currentEntity();
+
+    if (!container || !entity) {
+        return;
+    }
+
+    const metrics = buildMetrics(entity);
+    container.innerHTML = metrics.map(metric => `
+        <article class="metric-card ${metric.variant ? `is-${metric.variant}` : ""}">
+            <span>${escapeHtml(metric.label)}</span>
+            <strong>${escapeHtml(metric.value)}</strong>
+        </article>
+    `).join("");
+}
+
+function buildMetrics(entity) {
+    const total = state.rows.length;
+    const visible = state.filteredRows.length;
+    const metrics = [
+        { label: t("metricsTotal"), value: total },
+        { label: t("metricsFiltered"), value: visible },
+        { label: t("metricsMode"), value: entity.readOnly ? t("metricsReadonly") : t("metricsEditable"), variant: entity.readOnly ? "muted" : "ok" }
+    ];
+
+    if (entity.key === "machine") {
+        const linked = state.rows.filter(row => Number(row.localId || 0) > 0).length;
+        const active = state.rows.filter(row => Number(row.isActive || 0) === 1).length;
+        const pending = state.rows.filter(row => String(row.validationPt || "").trim().toUpperCase() !== "OK").length;
+        return [
+            { label: t("metricsTotal"), value: total },
+            { label: t("metricsMachinesLinked"), value: linked, variant: "info" },
+            { label: t("metricsMachinesActive"), value: active, variant: "ok" },
+            { label: t("metricsMachinesPending"), value: pending, variant: pending > 0 ? "warning" : "ok" }
+        ];
+    }
+
+    if (entity.key === "local") {
+        const withShortCode = state.rows.filter(row => String(row.shortCode || "").trim() !== "").length;
+        const linked = state.rows.filter(row => Number(row.machineCount || 0) > 0).length;
+        const sectors = new Set(state.rows.map(row => Number(row.sectorId || 0)).filter(id => id > 0)).size;
+        return [
+            { label: t("metricsTotal"), value: total },
+            { label: t("metricsLocalsShortCode"), value: withShortCode, variant: "info" },
+            { label: t("metricsLocalsLinked"), value: linked, variant: "ok" },
+            { label: t("metricsLocalsSectors"), value: sectors, variant: "muted" }
+        ];
+    }
+
+    if (entity.key === "machine_audit") {
+        const missingLocal = state.rows.filter(row => String(row.issuePt || "").includes("LocalId") || String(row.issuePt || "").includes("local")).length;
+        const missingSector = state.rows.filter(row => String(row.issuePt || "").includes("SectorId") || String(row.issuePt || "").includes("setor")).length;
+        const mismatch = state.rows.filter(row => String(row.issuePt || "").includes("diferente") || String(row.issuePt || "").includes("inconsistente")).length;
+        return [
+            { label: t("metricsTotal"), value: total, variant: total > 0 ? "warning" : "ok" },
+            { label: t("metricsAuditMissingLocal"), value: missingLocal, variant: missingLocal > 0 ? "warning" : "ok" },
+            { label: t("metricsAuditMissingSector"), value: missingSector, variant: missingSector > 0 ? "warning" : "ok" },
+            { label: t("metricsAuditMismatch"), value: mismatch, variant: mismatch > 0 ? "warning" : "ok" }
+        ];
+    }
+
+    return metrics;
 }
 
 function renderTable() {
@@ -283,8 +390,8 @@ function renderTable() {
     }
 
     body.innerHTML = state.filteredRows.map(row => `
-        <tr>
-            ${entity.columns.map(column => `<td>${escapeHtml(displayValue(row, column))}</td>`).join("")}
+        <tr class="${resolveRowClass(entity, row)}">
+            ${entity.columns.map(column => `<td>${formatCellValue(row, column)}</td>`).join("")}
             ${entity.readOnly ? "" : `
                 <td class="actions-col">
                     <div class="action-buttons">
@@ -313,6 +420,36 @@ function renderTable() {
     });
 }
 
+function resolveRowClass(entity, row) {
+    if (entity.key === "machine" && String(row.validationPt || "").trim().toUpperCase() !== "OK") {
+        return "row-warning";
+    }
+
+    if (entity.key === "machine_audit") {
+        return "row-warning";
+    }
+
+    return "";
+}
+
+function formatCellValue(row, column) {
+    const value = displayValue(row, column);
+
+    if (typeof value === "string" && value.trim().toUpperCase() === "OK") {
+        return `<span class="cell-badge is-ok">${escapeHtml(value)}</span>`;
+    }
+
+    if (column.key === "validationPt" || column.key === "issuePt") {
+        return `<span class="cell-badge ${String(value).trim().toUpperCase() === "OK" ? "is-ok" : "is-warning"}">${escapeHtml(value || "-")}</span>`;
+    }
+
+    if (column.key === "activeLabelPt") {
+        return `<span class="cell-badge ${String(value).toLowerCase().includes("ativa") || String(value).includes("稼働") ? "is-ok" : "is-muted"}">${escapeHtml(value || "-")}</span>`;
+    }
+
+    return escapeHtml(value);
+}
+
 function applySearch() {
     const term = document.getElementById("searchInput").value.trim().toLowerCase();
     const entity = currentEntity();
@@ -320,12 +457,14 @@ function applySearch() {
     if (!entity) {
         state.filteredRows = [];
         renderTable();
+        renderMetrics();
         return;
     }
 
     if (!term) {
         state.filteredRows = [...state.rows];
         renderTable();
+        renderMetrics();
         return;
     }
 
@@ -337,6 +476,7 @@ function applySearch() {
     });
 
     renderTable();
+    renderMetrics();
 }
 
 function openModal(mode, id = 0) {
@@ -345,6 +485,7 @@ function openModal(mode, id = 0) {
 
     state.modalMode = mode;
     state.editingId = id;
+    state.shortCodeTouched = false;
 
     const row = mode === "edit"
         ? state.rows.find(item => Number(item.id) === Number(id))
@@ -352,19 +493,23 @@ function openModal(mode, id = 0) {
 
     setText("modalTitle", mode === "edit" ? t("modalEditTitle")(entityTitle(entity)) : t("modalCreateTitle")(entityTitle(entity)));
     setText("modalSubtitle", mode === "edit" ? t("modalEditSubtitle") : t("modalCreateSubtitle"));
+    setText("btnSaveModal", mode === "edit" ? t("saveChanges") : t("createRecord"));
 
     document.getElementById("modalFields").innerHTML = entity.fields.map(field => renderField(entity, field, row)).join("");
     document.getElementById("modal").classList.remove("hidden");
+
+    attachModalBehaviors(entity, row);
 }
 
 function renderField(entity, field, row) {
     const value = row?.[field.key] ?? "";
     const label = state.locale === "ja-JP" ? field.labelJp : field.labelPt;
+    const requiredBadge = field.required ? `<em class="field-required">${escapeHtml(t("fieldRequired"))}</em>` : "";
 
     if (field.type === "select") {
-        const options = (state.lookups[field.lookupKey] || [])
+        const options = getLookupOptionsForField(entity, field, row)
             .map(item => {
-                const text = state.locale === "ja-JP" ? item.nameJp : item.namePt;
+                const text = lookupOptionLabel(item);
                 const selected = Number(value) === Number(item.id) ? "selected" : "";
                 return `<option value="${item.id}" ${selected}>${escapeHtml(text)}</option>`;
             })
@@ -372,7 +517,7 @@ function renderField(entity, field, row) {
 
         return `
             <label class="form-field">
-                <span>${escapeHtml(label)}</span>
+                <span>${escapeHtml(label)} ${requiredBadge}</span>
                 <select class="input" data-field="${field.key}">
                     <option value="0">${escapeHtml(t("selectPlaceholder"))}</option>
                     ${options}
@@ -384,7 +529,7 @@ function renderField(entity, field, row) {
     if (field.type === "number") {
         return `
             <label class="form-field">
-                <span>${escapeHtml(label)}</span>
+                <span>${escapeHtml(label)} ${requiredBadge}</span>
                 <input class="input" type="number" step="1" data-field="${field.key}" value="${escapeHtmlAttr(value)}">
             </label>
         `;
@@ -394,18 +539,130 @@ function renderField(entity, field, row) {
         const normalized = normalizeColorValue(value);
         return `
             <label class="form-field">
-                <span>${escapeHtml(label)}</span>
+                <span>${escapeHtml(label)} ${requiredBadge}</span>
                 <input class="input" type="color" data-field="${field.key}" value="${escapeHtmlAttr(normalized)}">
+            </label>
+        `;
+    }
+
+    if (field.type === "checkbox") {
+        const checked = Number(value) === 1 || value === true || String(value).toLowerCase() === "true" ? "checked" : "";
+        return `
+            <label class="form-field form-field-checkbox">
+                <span>${escapeHtml(label)}</span>
+                <label class="checkbox-inline">
+                    <input type="checkbox" data-field="${field.key}" ${checked}>
+                    <strong>${checked ? escapeHtml(t("yes")) : escapeHtml(t("no"))}</strong>
+                </label>
             </label>
         `;
     }
 
     return `
         <label class="form-field">
-            <span>${escapeHtml(label)}</span>
+            <span>${escapeHtml(label)} ${requiredBadge}</span>
             <input class="input" type="text" data-field="${field.key}" value="${escapeHtmlAttr(value)}">
         </label>
     `;
+}
+
+function getLookupOptionsForField(entity, field, row) {
+    const items = [...(state.lookups[field.lookupKey] || [])];
+
+    if (entity.key === "machine" && field.key === "localId") {
+        const sectorId = Number(document.querySelector('[data-field="sectorId"]')?.value || row?.sectorId || 0);
+        if (sectorId > 0) {
+            return items.filter(item => Number(item.sectorId || 0) === sectorId);
+        }
+    }
+
+    return items;
+}
+
+function attachModalBehaviors(entity, row) {
+    document.querySelectorAll('[data-field][type="checkbox"]').forEach(input => {
+        input.addEventListener("change", () => {
+            const label = input.closest(".checkbox-inline")?.querySelector("strong");
+            if (label) {
+                label.textContent = input.checked ? t("yes") : t("no");
+            }
+        });
+    });
+
+    if (entity.key === "machine") {
+        const sectorField = document.querySelector('[data-field="sectorId"]');
+        const localField = document.querySelector('[data-field="localId"]');
+
+        if (sectorField && localField) {
+            sectorField.addEventListener("change", () => refreshLocalOptions(row));
+            localField.addEventListener("change", () => syncSectorFromSelectedLocal());
+            refreshLocalOptions(row);
+        }
+    }
+
+    if (entity.key === "local") {
+        const nameField = document.querySelector('[data-field="namePt"]');
+        const shortCodeField = document.querySelector('[data-field="shortCode"]');
+
+        if (shortCodeField) {
+            shortCodeField.addEventListener("input", () => {
+                state.shortCodeTouched = true;
+            });
+        }
+
+        if (nameField && shortCodeField) {
+            nameField.addEventListener("input", () => {
+                if (!state.shortCodeTouched && !shortCodeField.value.trim()) {
+                    shortCodeField.value = sanitizeShortCode(nameField.value);
+                }
+            });
+        }
+    }
+}
+
+function refreshLocalOptions(row) {
+    const entity = currentEntity();
+    if (!entity || entity.key !== "machine") return;
+
+    const localField = document.querySelector('[data-field="localId"]');
+    const sectorField = document.querySelector('[data-field="sectorId"]');
+    if (!localField || !sectorField) return;
+
+    const selectedLocal = Number(localField.value || row?.localId || 0);
+    const sectorId = Number(sectorField.value || row?.sectorId || 0);
+    const options = getLookupOptionsForField(entity, { key: "localId", lookupKey: "locals" }, row);
+
+    localField.innerHTML = `
+        <option value="0">${escapeHtml(t("selectPlaceholder"))}</option>
+        ${options.map(item => `
+            <option value="${item.id}" ${Number(item.id) === selectedLocal ? "selected" : ""}>
+                ${escapeHtml(lookupOptionLabel(item))}
+            </option>
+        `).join("")}
+    `;
+
+    if (selectedLocal > 0 && !options.some(item => Number(item.id) === selectedLocal)) {
+        localField.value = "0";
+    }
+
+    if (sectorId <= 0 && selectedLocal > 0) {
+        syncSectorFromSelectedLocal();
+    }
+}
+
+function syncSectorFromSelectedLocal() {
+    const localField = document.querySelector('[data-field="localId"]');
+    const sectorField = document.querySelector('[data-field="sectorId"]');
+    if (!localField || !sectorField) return;
+
+    const selectedLocalId = Number(localField.value || 0);
+    if (selectedLocalId <= 0) return;
+
+    const local = (state.lookups.locals || []).find(item => Number(item.id) === selectedLocalId);
+    if (!local || Number(local.sectorId || 0) <= 0) return;
+
+    sectorField.value = String(local.sectorId);
+    refreshLocalOptions();
 }
 
 function saveModal() {
@@ -414,6 +671,11 @@ function saveModal() {
 
     const values = {};
     document.querySelectorAll("[data-field]").forEach(input => {
+        if (input.type === "checkbox") {
+            values[input.dataset.field] = input.checked;
+            return;
+        }
+
         values[input.dataset.field] = input.value;
     });
 
@@ -450,6 +712,8 @@ function closeModal() {
     document.getElementById("modal").classList.add("hidden");
     state.modalMode = "create";
     state.editingId = 0;
+    state.shortCodeTouched = false;
+    setText("btnSaveModal", t("createRecord"));
 }
 
 function currentEntity() {
@@ -475,13 +739,19 @@ function displayValue(row, column) {
     return row[column.key] ?? "";
 }
 
+function lookupOptionLabel(item) {
+    return state.locale === "ja-JP"
+        ? (item.labelJp || item.nameJp || item.namePt || "")
+        : (item.labelPt || item.namePt || item.nameJp || "");
+}
+
 function groupLabel(group) {
     const labels = {
-        core: state.locale === "ja-JP" ? "\u57fa\u790e\u30de\u30b9\u30bf" : "Base",
-        production: state.locale === "ja-JP" ? "\u751f\u7523\u30de\u30b9\u30bf" : "Producao",
-        followup: state.locale === "ja-JP" ? "\u30d5\u30a9\u30ed\u30fc\u30de\u30b9\u30bf" : "Follow",
-        people: state.locale === "ja-JP" ? "\u4eba\u54e1" : "Pessoas",
-        misc: state.locale === "ja-JP" ? "\u305d\u306e\u4ed6" : "Outros"
+        core: state.locale === "ja-JP" ? "基礎マスタ" : "Base",
+        production: state.locale === "ja-JP" ? "生産マスタ" : "Producao",
+        followup: state.locale === "ja-JP" ? "フォローマスタ" : "Follow",
+        people: state.locale === "ja-JP" ? "人員" : "Pessoas",
+        misc: state.locale === "ja-JP" ? "その他" : "Outros"
     };
     return labels[group] || group;
 }
@@ -513,6 +783,14 @@ function iconDelete() {
             <path d="M6.75 8.25h10.5l-.8 10.1A1.5 1.5 0 0 1 14.95 19.75h-5.9a1.5 1.5 0 0 1-1.49-1.4l-.81-10.1Z"></path>
         </svg>
     `;
+}
+
+function sanitizeShortCode(value) {
+    return String(value || "")
+        .trim()
+        .replace(/\s+/g, "")
+        .replace(/[^A-Za-z0-9#\-_]/g, "")
+        .toUpperCase();
 }
 
 function escapeHtml(value) {

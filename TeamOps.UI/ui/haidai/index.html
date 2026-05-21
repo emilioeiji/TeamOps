@@ -153,6 +153,44 @@
         </div>
     </div>
 
+    <div id="movementModal" class="modal-shell hidden">
+        <div id="movementBackdrop" class="modal-backdrop"></div>
+        <section class="modal-card movement-modal-card">
+            <div class="modal-head">
+                <div>
+                    <h2 id="movementTitle">Registrar movimento</h2>
+                    <p id="movementSubtitle">Informe horario, motivo e, se houver, selecione o substituto.</p>
+                </div>
+                <button id="btnCloseMovementModal" class="icon-button" type="button" aria-label="Fechar">×</button>
+            </div>
+
+            <div class="movement-grid">
+                <label class="detail-field">
+                    <span>Horario</span>
+                    <input id="movementTime" type="time">
+                    <small id="movementDateHint" class="field-help">A data real sera ajustada automaticamente conforme o turno.</small>
+                </label>
+
+                <label class="detail-field">
+                    <span>Motivo</span>
+                    <input id="movementReason" type="text" placeholder="Descreva o motivo">
+                </label>
+
+                <label class="detail-field movement-search-field">
+                    <span>Substituto</span>
+                    <input id="movementReplacementSearch" type="text" placeholder="Buscar por FJ ou nome">
+                    <input id="movementReplacementCodigoFJ" type="hidden">
+                    <div id="movementReplacementList" class="replacement-list"></div>
+                </label>
+            </div>
+
+            <div class="modal-actions">
+                <button id="btnCancelMovementModal" class="btn btn-secondary" type="button">Cancelar</button>
+                <button id="btnConfirmMovementModal" class="btn btn-primary" type="button">Confirmar</button>
+            </div>
+        </section>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>

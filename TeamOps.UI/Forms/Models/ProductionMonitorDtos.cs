@@ -47,6 +47,8 @@ namespace TeamOps.UI.Forms.Models
         public double AverageKadouritsuPercent { get; set; }
         public double TotalRunningMinutes { get; set; }
         public int AssignedAreaCount { get; set; }
+        public int FullCoverageDays { get; set; }
+        public int PartialCoverageDays { get; set; }
         public List<string> LocalNamesPt { get; set; } = new();
         public List<string> LocalNamesJp { get; set; } = new();
         public List<ProductionOperatorHistoryEntryDto> Entries { get; } = new();
@@ -181,6 +183,8 @@ namespace TeamOps.UI.Forms.Models
         public string OperatorNameJp { get; set; } = string.Empty;
         public double EstimatedRunningMinutes { get; set; }
         public double EstimatedKadouritsuPercent { get; set; }
+        public int FullCoverageDays { get; set; }
+        public int PartialCoverageDays { get; set; }
         public List<string> LocalNamesPt { get; set; } = new();
         public List<string> LocalNamesJp { get; set; } = new();
     }
@@ -198,5 +202,9 @@ namespace TeamOps.UI.Forms.Models
         public double ErrorMinutes { get; set; }
         public double EligibleMinutes { get; set; }
         public double KadouritsuPercent { get; set; }
+        public string CoverageMode { get; set; } = "full";
+        public bool IsPartialCoverage { get; set; }
+        public double EffectiveMinutes { get; set; }
+        public double PlannedMinutes { get; set; }
     }
 }
