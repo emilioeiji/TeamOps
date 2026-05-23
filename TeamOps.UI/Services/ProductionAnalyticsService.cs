@@ -603,6 +603,8 @@ namespace TeamOps.Services
 
             using var conn = _factory.CreateOpenConnection();
             ProductionSchemaMigrator.Ensure(conn);
+            var haidaiService = new HaidaiModuleService(_factory);
+            haidaiService.EnsureSchema();
 
             var shifts = conn.Query<ShiftLookupRow>(
                 @"
@@ -728,17 +730,19 @@ namespace TeamOps.Services
             var scheduleRows = conn.Query<ScheduleRow>(
                 @"
                     SELECT
-                        sc.ScheduleDate,
-                        sc.LocalId,
-                        COALESCE(sc.CodigoFJ, '') AS OperatorCodigoFJ,
-                        COALESCE(op.NameRomanji, sc.CodigoFJ) AS OperatorNamePt,
-                        COALESCE(NULLIF(op.NameNihongo, ''), op.NameRomanji, sc.CodigoFJ) AS OperatorNameJp
-                    FROM OperatorSchedule sc
-                    LEFT JOIN Operators op ON op.CodigoFJ = sc.CodigoFJ
-                    WHERE date(sc.ScheduleDate) BETWEEN date(@startDate) AND date(@endDate)
-                      AND sc.ShiftId = @shiftId
-                      AND sc.CodigoFJ = @codigoFJ
-                    ORDER BY date(sc.ScheduleDate) DESC, sc.LocalId;",
+                        ha.ScheduleDate,
+                        ha.LocalId,
+                        COALESCE(ha.OperatorCodigoFJ, '') AS OperatorCodigoFJ,
+                        COALESCE(op.NameRomanji, ha.OperatorCodigoFJ) AS OperatorNamePt,
+                        COALESCE(NULLIF(op.NameNihongo, ''), op.NameRomanji, ha.OperatorCodigoFJ) AS OperatorNameJp
+                    FROM HaidaiAssignments ha
+                    LEFT JOIN Operators op ON op.CodigoFJ = ha.OperatorCodigoFJ
+                    WHERE date(ha.ScheduleDate) BETWEEN date(@startDate) AND date(@endDate)
+                      AND ha.ShiftId = @shiftId
+                      AND ha.OperatorCodigoFJ = @codigoFJ
+                      AND COALESCE(ha.IsLineupActive, 1) = 1
+                      AND COALESCE(ha.LocalId, 0) > 0
+                    ORDER BY date(ha.ScheduleDate) DESC, ha.LocalId;",
                 new
                 {
                     startDate = historyStartDate.ToString("yyyy-MM-dd"),

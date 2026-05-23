@@ -469,7 +469,11 @@ namespace TeamOps.UI.Forms
                         inactiveMinutes = entry.InactiveMinutes,
                         errorMinutes = entry.ErrorMinutes,
                         eligibleMinutes = entry.EligibleMinutes,
-                        kadouritsuPercent = entry.KadouritsuPercent
+                        kadouritsuPercent = entry.KadouritsuPercent,
+                        coverageMode = entry.CoverageMode,
+                        isPartialCoverage = entry.IsPartialCoverage,
+                        effectiveMinutes = entry.EffectiveMinutes,
+                        plannedMinutes = entry.PlannedMinutes
                     })
                 }
             });
