@@ -62,14 +62,17 @@ CREATE TABLE IF NOT EXISTS MachineCurrentStatus (
 
 CREATE TABLE IF NOT EXISTS MachineStatuses (
     Id INTEGER PRIMARY KEY AUTOINCREMENT,
-    StatusCode INTEGER NOT NULL UNIQUE,
+    SectorId INTEGER,
+    StatusCode INTEGER NOT NULL,
     DisplayCode INTEGER NOT NULL,
+    Classification TEXT NOT NULL DEFAULT 'StopCounts',
     NamePt TEXT NOT NULL,
     NameJp TEXT NOT NULL,
     ColorHex TEXT NOT NULL DEFAULT '#5B88E8',
     TextColorHex TEXT NOT NULL DEFAULT '#FFFFFF',
     SortOrder INTEGER NOT NULL DEFAULT 0,
-    IsActive INTEGER NOT NULL DEFAULT 1
+    IsActive INTEGER NOT NULL DEFAULT 1,
+    FOREIGN KEY (SectorId) REFERENCES Sectors(Id)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS IX_MachineEvents_UniqueEvent
@@ -96,13 +99,20 @@ ON Machines(LocalId);
 CREATE INDEX IF NOT EXISTS IX_Machines_SectorId
 ON Machines(SectorId);
 
-CREATE UNIQUE INDEX IF NOT EXISTS IX_MachineStatuses_StatusCode
-ON MachineStatuses(StatusCode);
+CREATE UNIQUE INDEX IF NOT EXISTS IX_MachineStatuses_Sector_StatusCode
+ON MachineStatuses(COALESCE(SectorId, 0), StatusCode);
 
 INSERT OR IGNORE INTO MachineStatuses
-(StatusCode, DisplayCode, NamePt, NameJp, ColorHex, TextColorHex, SortOrder, IsActive)
+(SectorId, StatusCode, DisplayCode, Classification, NamePt, NameJp, ColorHex, TextColorHex, SortOrder, IsActive)
 VALUES
-(0, 0, 'Rodando', '稼働中', '#5B88E8', '#FFFFFF', 0, 1),
-(1, 1, 'Inativo', '非稼働', '#EF6F63', '#FFFFFF', 1, 1),
-(3, 3, 'Parado', '停止', '#F2CB58', '#4A3200', 3, 1),
-(4, 4, 'Erro', 'エラー', '#FFFFFF', '#516174', 4, 1);
+(NULL, 0, 0, 'Running', 'Rodando', 'Running', '#5B88E8', '#FFFFFF', 0, 1),
+(NULL, 1, 1, 'StopCounts', 'Inativo', 'Inactive', '#EF6F63', '#FFFFFF', 1, 1),
+(NULL, 3, 3, 'StopCounts', 'Parado', 'Stop', '#F2CB58', '#4A3200', 3, 1),
+(NULL, 4, 4, 'Error', 'Erro', 'Error', '#FFFFFF', '#516174', 4, 1),
+(2, 0, 0, 'Running', 'Rodando', '運転', '#5B88E8', '#FFFFFF', 0, 1),
+(2, 1, 3, 'StopCounts', 'Parado DAD', '停止中', '#F2CB58', '#4A3200', 1, 1),
+(2, 3, 3, 'StopNoCount', 'Limpeza programada', '清掃', '#8EC5A8', '#123524', 3, 1),
+(2, 4, 4, 'Error', 'Erro', '異常', '#FFFFFF', '#516174', 4, 1),
+(2, 17, 1, 'StopNoCount', 'Intervalo', 'レス処理', '#8EC5A8', '#123524', 17, 1),
+(2, 18, 1, 'StopNoCount', 'Limpeza programada', '吸引時間', '#8EC5A8', '#123524', 18, 1),
+(2, 19, 1, 'StopNoCount', 'Amostra', 'サンプル', '#8EC5A8', '#123524', 19, 1);

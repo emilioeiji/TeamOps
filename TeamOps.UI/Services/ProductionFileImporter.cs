@@ -59,8 +59,11 @@ namespace TeamOps.Services
             using var tx = conn.BeginTransaction();
 
             var machineCache = new Dictionary<string, Machine>(StringComparer.OrdinalIgnoreCase);
-            var knownStatusCodes = conn.Query<int>("SELECT StatusCode FROM MachineStatuses;", transaction: tx)
-                .ToHashSet();
+            var knownStatusCodes = conn.Query<StatusKeyRow>(
+                    "SELECT SectorId, StatusCode FROM MachineStatuses;",
+                    transaction: tx)
+                .Select(row => BuildStatusKey(row.SectorId, row.StatusCode))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
             var touchedMachineIds = new HashSet<int>();
 
             _planImporter.ImportLatestPlanFiles(
@@ -100,10 +103,11 @@ namespace TeamOps.Services
                             }
                         }
 
-                        if (!knownStatusCodes.Contains(parsed.StatusCode))
+                        var statusKey = BuildStatusKey(parsed.SectorId, parsed.StatusCode);
+                        if (!knownStatusCodes.Contains(statusKey))
                         {
-                            EnsureMachineStatus(conn, parsed.StatusCode, parsed.StatusText);
-                            knownStatusCodes.Add(parsed.StatusCode);
+                            EnsureMachineStatus(conn, parsed.SectorId, parsed.StatusCode, parsed.StatusText);
+                            knownStatusCodes.Add(statusKey);
                         }
 
                         var machineEvent = new MachineEvent
@@ -311,13 +315,23 @@ namespace TeamOps.Services
             }
         }
 
-        private static void EnsureMachineStatus(System.Data.IDbConnection conn, int statusCode, string statusText)
+        private static string BuildStatusKey(int? sectorId, int statusCode)
+        {
+            return $"{sectorId.GetValueOrDefault()}:{statusCode}";
+        }
+
+        private static void EnsureMachineStatus(System.Data.IDbConnection conn, int? sectorId, int statusCode, string statusText)
         {
             var existing = conn.ExecuteScalar<int>(
                 @"SELECT COUNT(1)
                   FROM MachineStatuses
-                  WHERE StatusCode = @statusCode;",
-                new { statusCode });
+                  WHERE COALESCE(SectorId, 0) = @sectorKey
+                    AND StatusCode = @statusCode;",
+                new
+                {
+                    sectorKey = sectorId.GetValueOrDefault(),
+                    statusCode
+                });
 
             if (existing > 0)
             {
@@ -340,6 +354,8 @@ namespace TeamOps.Services
                     (
                         StatusCode,
                         DisplayCode,
+                        SectorId,
+                        Classification,
                         NamePt,
                         NameJp,
                         ColorHex,
@@ -351,6 +367,8 @@ namespace TeamOps.Services
                     (
                         @statusCode,
                         @displayCode,
+                        @sectorId,
+                        @classification,
                         @namePt,
                         @nameJp,
                         @colorHex,
@@ -362,6 +380,13 @@ namespace TeamOps.Services
                 {
                     statusCode,
                     displayCode,
+                    sectorId,
+                    classification = displayCode switch
+                    {
+                        0 => "Running",
+                        4 => "Error",
+                        _ => "StopCounts"
+                    },
                     namePt,
                     nameJp = string.IsNullOrWhiteSpace(statusText) ? namePt : statusText.Trim(),
                     colorHex,
@@ -545,6 +570,12 @@ namespace TeamOps.Services
             public string RecipeName { get; set; }
             public string LotNo { get; set; }
             public DateTime EventDateTime { get; set; }
+        }
+
+        private sealed class StatusKeyRow
+        {
+            public int? SectorId { get; set; }
+            public int StatusCode { get; set; }
         }
     }
 }

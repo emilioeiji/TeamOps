@@ -251,6 +251,7 @@ namespace TeamOps.UI.Forms
                     timeline = dashboard.Timeline.Select(row => new
                     {
                         localId = row.LocalId,
+                        sectorId = row.SectorId,
                         localNamePt = row.LocalNamePt,
                         localNameJp = row.LocalNameJp,
                         machineCode = row.MachineCode,
@@ -404,6 +405,7 @@ namespace TeamOps.UI.Forms
                 @"
                     SELECT
                         e.MachineId AS machineId,
+                        e.SectorId AS sectorId,
                         e.MachineCode AS machineCode,
                         COALESCE(e.LineCode, '') AS lineCode,
                         COALESCE(m.NamePt, e.MachineCode) AS machineNamePt,
@@ -510,8 +512,10 @@ namespace TeamOps.UI.Forms
             return conn.Query(
                 @"
                     SELECT
+                        COALESCE(SectorId, 0) AS sectorId,
                         StatusCode AS statusCode,
                         DisplayCode AS displayCode,
+                        COALESCE(Classification, '') AS classification,
                         COALESCE(NamePt, '') AS namePt,
                         COALESCE(NULLIF(NameJp, ''), NamePt, '') AS nameJp,
                         COALESCE(ColorHex, '#5B88E8') AS colorHex,

@@ -113,6 +113,7 @@ namespace TeamOps.Services
             var statusRows = conn.Query<StatusRow>(
                 @"
                     SELECT
+                        SectorId,
                         MachineId,
                         StatusCode,
                         COALESCE(StatusText, '') AS StatusText,
@@ -130,6 +131,7 @@ namespace TeamOps.Services
             var events = conn.Query<EventRow>(
                 @"
                     SELECT
+                        SectorId,
                         MachineId,
                         StatusCode,
                         COALESCE(StatusText, '') AS StatusText,
@@ -253,15 +255,17 @@ namespace TeamOps.Services
             var statusDefinitions = conn.Query<StatusDefinitionRow>(
                 @"
                     SELECT
+                        SectorId,
                         StatusCode,
                         DisplayCode,
+                        COALESCE(Classification, '') AS Classification,
                         COALESCE(NamePt, '') AS NamePt,
                         COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp,
                         COALESCE(ColorHex, '') AS ColorHex,
                         COALESCE(TextColorHex, '') AS TextColorHex
                     FROM MachineStatuses
                     WHERE COALESCE(IsActive, 1) = 1;"
-            ).ToDictionary(row => row.StatusCode);
+            ).ToDictionary(row => BuildStatusKey(row.SectorId, row.StatusCode), StringComparer.OrdinalIgnoreCase);
 
             var latestKnownEventCandidates = statusRows.Values
                 .Select(item => item.EventDateTime)
@@ -321,6 +325,7 @@ namespace TeamOps.Services
 
                 var timelineRow = new ProductionTimelineRowDto
                 {
+                    SectorId = machine.SectorId,
                     LocalId = machine.LocalId,
                     LocalNamePt = machine.LocalNamePt,
                     LocalNameJp = machine.LocalNameJp,
@@ -333,7 +338,7 @@ namespace TeamOps.Services
                 foreach (var moment in cellMoments)
                 {
                     var statusCode = ResolveStatusAt(machineEvents, moment);
-                    var displayCode = NormalizeStatusCode(statusCode, statusDefinitions);
+                    var displayCode = NormalizeStatusCode(machine.SectorId, statusCode, statusDefinitions);
                     timelineRow.Cells.Add(new ProductionTimelineCellDto
                     {
                         TimeLabel = moment.ToString("HH:mm", CultureInfo.InvariantCulture),
@@ -668,6 +673,7 @@ namespace TeamOps.Services
             var statusRows = conn.Query<StatusRow>(
                 @"
                     SELECT
+                        SectorId,
                         MachineId,
                         StatusCode,
                         COALESCE(StatusText, '') AS StatusText,
@@ -682,6 +688,7 @@ namespace TeamOps.Services
             var events = conn.Query<EventRow>(
                 @"
                     SELECT
+                        SectorId,
                         MachineId,
                         StatusCode,
                         COALESCE(StatusText, '') AS StatusText,
@@ -708,15 +715,17 @@ namespace TeamOps.Services
             var statusDefinitions = conn.Query<StatusDefinitionRow>(
                 @"
                     SELECT
+                        SectorId,
                         StatusCode,
                         DisplayCode,
+                        COALESCE(Classification, '') AS Classification,
                         COALESCE(NamePt, '') AS NamePt,
                         COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp,
                         COALESCE(ColorHex, '') AS ColorHex,
                         COALESCE(TextColorHex, '') AS TextColorHex
                     FROM MachineStatuses
                     WHERE COALESCE(IsActive, 1) = 1;"
-            ).ToDictionary(row => row.StatusCode);
+            ).ToDictionary(row => BuildStatusKey(row.SectorId, row.StatusCode), StringComparer.OrdinalIgnoreCase);
 
             var latestKnownEventCandidates = statusRows.Values
                 .Select(item => item.EventDateTime)
@@ -893,7 +902,7 @@ namespace TeamOps.Services
             IReadOnlyDictionary<int, StatusRow> statusRows,
             IReadOnlyDictionary<int, List<EventRow>> eventsByMachine,
             IReadOnlyDictionary<int, List<ScheduleRow>> operatorsByLocal,
-            IReadOnlyDictionary<int, StatusDefinitionRow> statusDefinitions,
+            IReadOnlyDictionary<string, StatusDefinitionRow> statusDefinitions,
             ProductionShiftPeriod period)
         {
             var summaries = new List<ProductionMachineSummaryDto>(machines.Count);
@@ -903,7 +912,7 @@ namespace TeamOps.Services
                 eventsByMachine.TryGetValue(machine.Id, out var machineEvents);
                 machineEvents ??= new List<EventRow>();
 
-                var metrics = CalculateMetrics(machineEvents, statusDefinitions, period);
+                var metrics = CalculateMetrics(machineEvents, machine.SectorId, statusDefinitions, period);
                 StatusRow? currentStatus = machineEvents
                     .Where(item => item.EventDateTime <= period.End)
                     .OrderByDescending(item => item.EventDateTime)
@@ -915,7 +924,8 @@ namespace TeamOps.Services
                 }
 
                 var rawStatusCode = currentStatus?.StatusCode ?? 1;
-                var displayCode = NormalizeStatusCode(rawStatusCode, statusDefinitions);
+                var statusSectorId = currentStatus?.SectorId ?? machine.SectorId;
+                var displayCode = NormalizeStatusCode(statusSectorId, rawStatusCode, statusDefinitions);
 
                 var summary = new ProductionMachineSummaryDto
                 {
@@ -933,7 +943,7 @@ namespace TeamOps.Services
                     StatusCode = rawStatusCode,
                     DisplayCode = displayCode,
                     StatusText = string.IsNullOrWhiteSpace(currentStatus?.StatusText)
-                        ? ResolveStatusLabel(rawStatusCode, displayCode, statusDefinitions, "pt-BR")
+                        ? ResolveStatusLabel(statusSectorId, rawStatusCode, displayCode, statusDefinitions, "pt-BR")
                         : currentStatus!.StatusText,
                     RecipeName = currentStatus?.RecipeName ?? string.Empty,
                     LotNo = currentStatus?.LotNo ?? string.Empty,
@@ -1063,13 +1073,15 @@ namespace TeamOps.Services
 
         private static ProductionMetrics CalculateMetrics(
             IReadOnlyList<EventRow> machineEvents,
-            IReadOnlyDictionary<int, StatusDefinitionRow> statusDefinitions,
+            int? machineSectorId,
+            IReadOnlyDictionary<string, StatusDefinitionRow> statusDefinitions,
             ProductionShiftPeriod period)
         {
             var running = 0d;
             var stopped = 0d;
             var inactive = 0d;
             var error = 0d;
+            var noCount = 0d;
             var total = Math.Max(0, (period.End - period.Start).TotalMinutes);
 
             var seed = machineEvents
@@ -1079,26 +1091,42 @@ namespace TeamOps.Services
 
             var cursor = period.Start;
             var currentStatus = seed?.StatusCode;
+            var currentSectorId = seed?.SectorId ?? machineSectorId;
 
             foreach (var machineEvent in machineEvents.Where(item => item.EventDateTime >= period.Start && item.EventDateTime <= period.End))
             {
                 if (machineEvent.EventDateTime > cursor)
                 {
-                    AddMinutes(NormalizeStatusCode(currentStatus ?? 1, statusDefinitions), (machineEvent.EventDateTime - cursor).TotalMinutes, ref running, ref stopped, ref inactive, ref error);
+                    AddMinutes(
+                        ResolveStatusDefinition(currentSectorId, currentStatus ?? 1, statusDefinitions),
+                        (machineEvent.EventDateTime - cursor).TotalMinutes,
+                        ref running,
+                        ref stopped,
+                        ref inactive,
+                        ref error,
+                        ref noCount);
                 }
 
                 cursor = machineEvent.EventDateTime < period.Start
                     ? period.Start
                     : machineEvent.EventDateTime;
                 currentStatus = machineEvent.StatusCode;
+                currentSectorId = machineEvent.SectorId ?? machineSectorId;
             }
 
             if (cursor < period.End)
             {
-                AddMinutes(NormalizeStatusCode(currentStatus ?? 1, statusDefinitions), (period.End - cursor).TotalMinutes, ref running, ref stopped, ref inactive, ref error);
+                AddMinutes(
+                    ResolveStatusDefinition(currentSectorId, currentStatus ?? 1, statusDefinitions),
+                    (period.End - cursor).TotalMinutes,
+                    ref running,
+                    ref stopped,
+                    ref inactive,
+                    ref error,
+                    ref noCount);
             }
 
-            return new ProductionMetrics(running, stopped, inactive, error, total);
+            return new ProductionMetrics(running, stopped, inactive, error, Math.Max(0, total - noCount));
         }
 
         private static ProductionShiftPeriod ResolveEffectivePeriod(ProductionShiftPeriod basePeriod, DateTime? latestKnownEventTime)
@@ -1314,26 +1342,33 @@ namespace TeamOps.Services
             return eventAtMoment?.StatusCode ?? 1;
         }
 
-        private static void AddMinutes(int statusCode, double minutes, ref double running, ref double stopped, ref double inactive, ref double error)
+        private static void AddMinutes(
+            StatusDefinitionRow statusDefinition,
+            double minutes,
+            ref double running,
+            ref double stopped,
+            ref double inactive,
+            ref double error,
+            ref double noCount)
         {
             if (minutes <= 0)
             {
                 return;
             }
 
-            switch (statusCode)
+            switch (NormalizeClassification(statusDefinition.Classification, statusDefinition.DisplayCode))
             {
-                case 0:
+                case "Running":
                     running += minutes;
                     break;
-                case 1:
-                    inactive += minutes;
+                case "StopNoCount":
+                    noCount += minutes;
                     break;
-                case 3:
-                    stopped += minutes;
-                    break;
-                case 4:
+                case "Error":
                     error += minutes;
+                    break;
+                case "StopCounts" when statusDefinition.DisplayCode == 3:
+                    stopped += minutes;
                     break;
                 default:
                     inactive += minutes;
@@ -1382,12 +1417,14 @@ namespace TeamOps.Services
         }
 
         private static string ResolveStatusLabel(
+            int? sectorId,
             int rawStatusCode,
             int displayCode,
-            IReadOnlyDictionary<int, StatusDefinitionRow> statusDefinitions,
+            IReadOnlyDictionary<string, StatusDefinitionRow> statusDefinitions,
             string locale)
         {
-            if (statusDefinitions.TryGetValue(rawStatusCode, out var statusDefinition))
+            var statusDefinition = ResolveStatusDefinition(sectorId, rawStatusCode, statusDefinitions);
+            if (statusDefinition.IsDefined)
             {
                 return string.Equals(locale, "ja-JP", StringComparison.OrdinalIgnoreCase)
                     ? (string.IsNullOrWhiteSpace(statusDefinition.NameJp) ? statusDefinition.NamePt : statusDefinition.NameJp)
@@ -1441,9 +1478,13 @@ namespace TeamOps.Services
             });
         }
 
-        private static int NormalizeStatusCode(int statusCode, IReadOnlyDictionary<int, StatusDefinitionRow> statusDefinitions)
+        private static int NormalizeStatusCode(
+            int? sectorId,
+            int statusCode,
+            IReadOnlyDictionary<string, StatusDefinitionRow> statusDefinitions)
         {
-            if (statusDefinitions.TryGetValue(statusCode, out var statusDefinition))
+            var statusDefinition = ResolveStatusDefinition(sectorId, statusCode, statusDefinitions);
+            if (statusDefinition.IsDefined)
             {
                 return statusDefinition.DisplayCode switch
                 {
@@ -1466,14 +1507,84 @@ namespace TeamOps.Services
             };
         }
 
+        private static StatusDefinitionRow ResolveStatusDefinition(
+            int? sectorId,
+            int statusCode,
+            IReadOnlyDictionary<string, StatusDefinitionRow> statusDefinitions)
+        {
+            if (sectorId.HasValue
+                && statusDefinitions.TryGetValue(BuildStatusKey(sectorId, statusCode), out var sectorDefinition))
+            {
+                sectorDefinition.IsDefined = true;
+                return sectorDefinition;
+            }
+
+            if (statusDefinitions.TryGetValue(BuildStatusKey(null, statusCode), out var globalDefinition))
+            {
+                globalDefinition.IsDefined = true;
+                return globalDefinition;
+            }
+
+            return new StatusDefinitionRow
+            {
+                StatusCode = statusCode,
+                DisplayCode = statusCode switch
+                {
+                    0 => 0,
+                    3 => 3,
+                    4 => 4,
+                    _ => 1
+                },
+                Classification = statusCode switch
+                {
+                    0 => "Running",
+                    4 => "Error",
+                    _ => "StopCounts"
+                }
+            };
+        }
+
+        private static string NormalizeClassification(string classification, int displayCode)
+        {
+            var normalized = (classification ?? string.Empty).Trim();
+            if (string.Equals(normalized, "Running", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Running";
+            }
+
+            if (string.Equals(normalized, "StopNoCount", StringComparison.OrdinalIgnoreCase))
+            {
+                return "StopNoCount";
+            }
+
+            if (string.Equals(normalized, "Error", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Error";
+            }
+
+            return displayCode == 0
+                ? "Running"
+                : displayCode == 4
+                    ? "Error"
+                    : "StopCounts";
+        }
+
+        private static string BuildStatusKey(int? sectorId, int statusCode)
+        {
+            return $"{sectorId.GetValueOrDefault()}:{statusCode}";
+        }
+
         private sealed class StatusDefinitionRow
         {
+            public int? SectorId { get; set; }
             public int StatusCode { get; set; }
             public int DisplayCode { get; set; }
+            public string Classification { get; set; } = string.Empty;
             public string NamePt { get; set; } = string.Empty;
             public string NameJp { get; set; } = string.Empty;
             public string ColorHex { get; set; } = string.Empty;
             public string TextColorHex { get; set; } = string.Empty;
+            public bool IsDefined { get; set; }
         }
 
         private sealed class ShiftLookupRow
@@ -1500,6 +1611,7 @@ namespace TeamOps.Services
 
         private class StatusRow
         {
+            public int? SectorId { get; set; }
             public int MachineId { get; set; }
             public int StatusCode { get; set; }
             public string StatusText { get; set; } = string.Empty;

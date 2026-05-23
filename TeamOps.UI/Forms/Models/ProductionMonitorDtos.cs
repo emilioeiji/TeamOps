@@ -98,6 +98,7 @@ namespace TeamOps.UI.Forms.Models
 
     public sealed class ProductionTimelineRowDto
     {
+        public int? SectorId { get; set; }
         public int? LocalId { get; set; }
         public string LocalNamePt { get; set; } = string.Empty;
         public string LocalNameJp { get; set; } = string.Empty;

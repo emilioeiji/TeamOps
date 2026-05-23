@@ -461,7 +461,7 @@ function renderMachineTable(rows) {
             </td>
             <td>
                 <div class="machine-status-stack">
-                    <span class="status-badge" style="${escapeHtmlAttr(getStatusBadgeStyle(row.statusCode, row.displayCode))}">${escapeHtml(getStatusLabel(row))}</span>
+                    <span class="status-badge" style="${escapeHtmlAttr(getStatusBadgeStyle(row.statusCode, row.displayCode, row.sectorId))}">${escapeHtml(getStatusLabel(row))}</span>
                     <small>${escapeHtml(formatMachineMinutesSummary(row))}</small>
                 </div>
             </td>
@@ -668,7 +668,7 @@ function renderTimeline(rows) {
     const bodyRows = rows.map(row => `
         <tr>
             <td class="timeline-machine-cell">${escapeHtml(getMachineCodeLineLabel(row))}</td>
-            ${row.cells.map(cell => `<td class="timeline-status-cell" style="${escapeHtmlAttr(getTimelineCellStyle(cell.statusCode, cell.displayCode))}" title="${escapeHtml(cell.timeLabel)}"></td>`).join("")}
+            ${row.cells.map(cell => `<td class="timeline-status-cell" style="${escapeHtmlAttr(getTimelineCellStyle(cell.statusCode, cell.displayCode, row.sectorId))}" title="${escapeHtml(cell.timeLabel)}"></td>`).join("")}
         </tr>
     `).join("");
 
@@ -701,7 +701,7 @@ function renderDetail(data) {
     body.innerHTML = rows.map(row => `
         <tr>
             <td>${escapeHtml(row.eventDateTime || "-")}</td>
-            <td><span class="status-badge" style="${escapeHtmlAttr(getStatusBadgeStyle(row.statusCode))}">${escapeHtml(getStatusLabel({ statusCode: row.statusCode }))}</span></td>
+            <td><span class="status-badge" style="${escapeHtmlAttr(getStatusBadgeStyle(row.statusCode, null, row.sectorId))}">${escapeHtml(getStatusLabel({ statusCode: row.statusCode, sectorId: row.sectorId }))}</span></td>
             <td>${escapeHtml(row.recipeName || "-")}</td>
             <td>${escapeHtml(row.lotNo || "-")}</td>
             <td>${escapeHtml(row.sourceFile || "-")}</td>
@@ -1034,7 +1034,7 @@ function groupAreasBySector(areas) {
 function getStatusLabel(row) {
     const statusCode = Number(row.statusCode || 0);
     const displayCode = Number(row.displayCode || statusCode || 0);
-    const configured = state.statuses[String(statusCode)] || state.statuses[String(displayCode)];
+    const configured = findStatusDefinition(row.sectorId, statusCode, displayCode);
     if (configured) {
         return state.locale === "ja-JP"
             ? (configured.nameJp || configured.namePt || String(statusCode))
@@ -1071,9 +1071,8 @@ function getStatusClass(statusCode) {
     }
 }
 
-function getStatusBadgeStyle(statusCode, fallbackCode = null) {
-    const configured = state.statuses[String(Number(statusCode || 0))]
-        || state.statuses[String(Number(fallbackCode || 0))];
+function getStatusBadgeStyle(statusCode, fallbackCode = null, sectorId = null) {
+    const configured = findStatusDefinition(sectorId, statusCode, fallbackCode);
     if (!configured) {
         return "";
     }
@@ -1087,9 +1086,8 @@ function getStatusBadgeStyle(statusCode, fallbackCode = null) {
     return `background:${background};color:${color};${border}`;
 }
 
-function getTimelineCellStyle(statusCode, fallbackCode = null) {
-    const configured = state.statuses[String(Number(statusCode || 0))]
-        || state.statuses[String(Number(fallbackCode || 0))];
+function getTimelineCellStyle(statusCode, fallbackCode = null, sectorId = null) {
+    const configured = findStatusDefinition(sectorId, statusCode, fallbackCode);
     if (!configured) {
         return "";
     }
@@ -1107,17 +1105,42 @@ function normalizeStatuses(statuses) {
     (statuses || []).forEach(item => {
         const code = Number(item.statusCode ?? item.code ?? -999);
         if (!Number.isFinite(code)) return;
+        const sectorId = Number(item.sectorId || 0);
 
-        map[String(code)] = {
+        const status = {
+            sectorId,
             statusCode: code,
             displayCode: Number(item.displayCode || 0),
+            classification: item.classification || "",
             namePt: item.namePt || "",
             nameJp: item.nameJp || item.namePt || "",
             colorHex: item.colorHex || "#5B88E8",
             textColorHex: item.textColorHex || "#FFFFFF"
         };
+
+        if (sectorId > 0) {
+            map[`${sectorId}:${code}`] = status;
+            return;
+        }
+
+        map[String(code)] = status;
     });
     return map;
+}
+
+function findStatusDefinition(sectorId, statusCode, fallbackCode = null) {
+    const normalizedSectorId = Number(sectorId || 0);
+    const code = Number(statusCode || 0);
+    const fallback = Number(fallbackCode || 0);
+
+    if (normalizedSectorId > 0) {
+        return state.statuses[`${normalizedSectorId}:${code}`]
+            || state.statuses[String(code)]
+            || state.statuses[`${normalizedSectorId}:${fallback}`]
+            || state.statuses[String(fallback)];
+    }
+
+    return state.statuses[String(code)] || state.statuses[String(fallback)];
 }
 
 function buildMachineDetailLabel(data) {

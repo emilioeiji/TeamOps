@@ -71,14 +71,17 @@ namespace TeamOps.Data.Db
 
                     CREATE TABLE IF NOT EXISTS MachineStatuses (
                         Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        StatusCode INTEGER NOT NULL UNIQUE,
+                        SectorId INTEGER,
+                        StatusCode INTEGER NOT NULL,
                         DisplayCode INTEGER NOT NULL,
+                        Classification TEXT NOT NULL DEFAULT 'StopCounts',
                         NamePt TEXT NOT NULL,
                         NameJp TEXT NOT NULL,
                         ColorHex TEXT NOT NULL DEFAULT '#5B88E8',
                         TextColorHex TEXT NOT NULL DEFAULT '#FFFFFF',
                         SortOrder INTEGER NOT NULL DEFAULT 0,
-                        IsActive INTEGER NOT NULL DEFAULT 1
+                        IsActive INTEGER NOT NULL DEFAULT 1,
+                        FOREIGN KEY (SectorId) REFERENCES Sectors(Id)
                     );
 
                     CREATE TABLE IF NOT EXISTS ProductionPlanSnapshots (
@@ -145,9 +148,6 @@ namespace TeamOps.Data.Db
                     CREATE INDEX IF NOT EXISTS IX_Machines_SectorId
                     ON Machines(SectorId);
 
-                    CREATE UNIQUE INDEX IF NOT EXISTS IX_MachineStatuses_StatusCode
-                    ON MachineStatuses(StatusCode);
-
                     CREATE UNIQUE INDEX IF NOT EXISTS IX_ProductionPlanSnapshots_SourceFile_ExportedAt
                     ON ProductionPlanSnapshots(SourceFile, ExportedAt);
 
@@ -158,7 +158,19 @@ namespace TeamOps.Data.Db
                     ON ProductionPlanRows(MachineCode);"
             );
 
+                EnsureMachineStatusColumns(conn);
+                RebuildMachineStatusesForSectorScope(conn);
+
+                conn.Execute(
+                    @"
+                    DROP INDEX IF EXISTS IX_MachineStatuses_StatusCode;
+
+                    CREATE UNIQUE INDEX IF NOT EXISTS IX_MachineStatuses_Sector_StatusCode
+                    ON MachineStatuses(COALESCE(SectorId, 0), StatusCode);"
+                );
+
                 SeedMachineStatuses(conn);
+                SeedDadMachineStatuses(conn);
                 NormalizeProductionStatuses(conn);
                 _ensured = true;
             }
@@ -193,6 +205,89 @@ namespace TeamOps.Data.Db
             }
         }
 
+        private static void EnsureMachineStatusColumns(IDbConnection conn)
+        {
+            EnsureColumn(conn, "MachineStatuses", "SectorId", "INTEGER");
+            EnsureColumn(conn, "MachineStatuses", "Classification", "TEXT NOT NULL DEFAULT 'StopCounts'");
+        }
+
+        private static void RebuildMachineStatusesForSectorScope(IDbConnection conn)
+        {
+            var createSql = conn.ExecuteScalar<string>(
+                @"
+                    SELECT COALESCE(sql, '')
+                    FROM sqlite_master
+                    WHERE type = 'table'
+                      AND name = 'MachineStatuses';"
+            ) ?? string.Empty;
+
+            if (!createSql.Contains("StatusCode INTEGER NOT NULL UNIQUE", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            conn.Execute(
+                @"
+                    DROP INDEX IF EXISTS IX_MachineStatuses_StatusCode;
+
+                    CREATE TABLE IF NOT EXISTS MachineStatuses_SectorMigration (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        SectorId INTEGER,
+                        StatusCode INTEGER NOT NULL,
+                        DisplayCode INTEGER NOT NULL,
+                        Classification TEXT NOT NULL DEFAULT 'StopCounts',
+                        NamePt TEXT NOT NULL,
+                        NameJp TEXT NOT NULL,
+                        ColorHex TEXT NOT NULL DEFAULT '#5B88E8',
+                        TextColorHex TEXT NOT NULL DEFAULT '#FFFFFF',
+                        SortOrder INTEGER NOT NULL DEFAULT 0,
+                        IsActive INTEGER NOT NULL DEFAULT 1,
+                        FOREIGN KEY (SectorId) REFERENCES Sectors(Id)
+                    );
+
+                    INSERT OR IGNORE INTO MachineStatuses_SectorMigration
+                    (
+                        Id,
+                        SectorId,
+                        StatusCode,
+                        DisplayCode,
+                        Classification,
+                        NamePt,
+                        NameJp,
+                        ColorHex,
+                        TextColorHex,
+                        SortOrder,
+                        IsActive
+                    )
+                    SELECT
+                        Id,
+                        SectorId,
+                        StatusCode,
+                        DisplayCode,
+                        CASE
+                            WHEN trim(COALESCE(Classification, '')) = '' THEN
+                                CASE DisplayCode
+                                    WHEN 0 THEN 'Running'
+                                    WHEN 4 THEN 'Error'
+                                    ELSE 'StopCounts'
+                                END
+                            ELSE Classification
+                        END,
+                        NamePt,
+                        NameJp,
+                        ColorHex,
+                        TextColorHex,
+                        SortOrder,
+                        IsActive
+                    FROM MachineStatuses;
+
+                    DROP TABLE MachineStatuses;
+
+                    ALTER TABLE MachineStatuses_SectorMigration
+                    RENAME TO MachineStatuses;"
+            );
+        }
+
         private static void NormalizeProductionStatuses(IDbConnection conn)
         {
             conn.Execute(
@@ -208,38 +303,56 @@ namespace TeamOps.Data.Db
                     UPDATE MachineStatuses
                     SET
                         DisplayCode = 0,
+                        Classification = 'Running',
                         NamePt = CASE WHEN trim(COALESCE(NamePt, '')) = '' THEN 'Rodando' ELSE NamePt END,
                         NameJp = CASE WHEN trim(COALESCE(NameJp, '')) = '' THEN '稼働中' ELSE NameJp END,
                         ColorHex = CASE WHEN trim(COALESCE(ColorHex, '')) = '' THEN '#5B88E8' ELSE ColorHex END,
                         TextColorHex = CASE WHEN trim(COALESCE(TextColorHex, '')) = '' THEN '#FFFFFF' ELSE TextColorHex END
-                    WHERE StatusCode = 0;
+                    WHERE SectorId IS NULL AND StatusCode = 0;
 
                     UPDATE MachineStatuses
                     SET
                         DisplayCode = 1,
+                        Classification = CASE
+                            WHEN trim(COALESCE(Classification, '')) = '' THEN 'StopCounts'
+                            ELSE Classification
+                        END,
                         NamePt = CASE WHEN trim(COALESCE(NamePt, '')) = '' THEN 'Inativo' ELSE NamePt END,
                         NameJp = CASE WHEN trim(COALESCE(NameJp, '')) = '' THEN '非稼働' ELSE NameJp END,
                         ColorHex = CASE WHEN trim(COALESCE(ColorHex, '')) = '' THEN '#EF6F63' ELSE ColorHex END,
                         TextColorHex = CASE WHEN trim(COALESCE(TextColorHex, '')) = '' THEN '#FFFFFF' ELSE TextColorHex END
-                    WHERE StatusCode = 1;
+                    WHERE SectorId IS NULL AND StatusCode = 1;
 
                     UPDATE MachineStatuses
                     SET
                         DisplayCode = 3,
+                        Classification = CASE
+                            WHEN trim(COALESCE(Classification, '')) = '' THEN 'StopCounts'
+                            ELSE Classification
+                        END,
                         NamePt = CASE WHEN trim(COALESCE(NamePt, '')) = '' THEN 'Parado' ELSE NamePt END,
                         NameJp = CASE WHEN trim(COALESCE(NameJp, '')) = '' THEN '停止' ELSE NameJp END,
                         ColorHex = CASE WHEN trim(COALESCE(ColorHex, '')) = '' THEN '#F2CB58' ELSE ColorHex END,
                         TextColorHex = CASE WHEN trim(COALESCE(TextColorHex, '')) = '' THEN '#4A3200' ELSE TextColorHex END
-                    WHERE StatusCode = 3;
+                    WHERE SectorId IS NULL AND StatusCode = 3;
 
                     UPDATE MachineStatuses
                     SET
                         DisplayCode = 4,
+                        Classification = 'Error',
                         NamePt = CASE WHEN trim(COALESCE(NamePt, '')) = '' THEN 'Erro' ELSE NamePt END,
                         NameJp = CASE WHEN trim(COALESCE(NameJp, '')) = '' THEN 'エラー' ELSE NameJp END,
                         ColorHex = CASE WHEN trim(COALESCE(ColorHex, '')) = '' THEN '#FFFFFF' ELSE ColorHex END,
                         TextColorHex = CASE WHEN trim(COALESCE(TextColorHex, '')) = '' THEN '#516174' ELSE TextColorHex END
-                    WHERE StatusCode = 4;"
+                    WHERE SectorId IS NULL AND StatusCode = 4;
+
+                    UPDATE MachineStatuses
+                    SET Classification = CASE DisplayCode
+                        WHEN 0 THEN 'Running'
+                        WHEN 4 THEN 'Error'
+                        ELSE 'StopCounts'
+                    END
+                    WHERE trim(COALESCE(Classification, '')) = '';"
             );
         }
 
@@ -254,6 +367,23 @@ namespace TeamOps.Data.Db
                     (1, 1, 'Inativo', '非稼働', '#EF6F63', '#FFFFFF', 1, 1),
                     (3, 3, 'Parado', '停止', '#F2CB58', '#4A3200', 3, 1),
                     (4, 4, 'Erro', 'エラー', '#FFFFFF', '#516174', 4, 1);"
+            );
+        }
+
+        private static void SeedDadMachineStatuses(IDbConnection conn)
+        {
+            conn.Execute(
+                @"
+                    INSERT OR IGNORE INTO MachineStatuses
+                    (SectorId, StatusCode, DisplayCode, Classification, NamePt, NameJp, ColorHex, TextColorHex, SortOrder, IsActive)
+                    VALUES
+                    (2, 0, 0, 'Running', 'Rodando', '運転', '#5B88E8', '#FFFFFF', 0, 1),
+                    (2, 1, 3, 'StopCounts', 'Parado DAD', '停止中', '#F2CB58', '#4A3200', 1, 1),
+                    (2, 3, 3, 'StopNoCount', 'Limpeza programada', '清掃', '#8EC5A8', '#123524', 3, 1),
+                    (2, 4, 4, 'Error', 'Erro', '異常', '#FFFFFF', '#516174', 4, 1),
+                    (2, 17, 1, 'StopNoCount', 'Intervalo', 'レス処理', '#8EC5A8', '#123524', 17, 1),
+                    (2, 18, 1, 'StopNoCount', 'Limpeza programada', '吸引時間', '#8EC5A8', '#123524', 18, 1),
+                    (2, 19, 1, 'StopNoCount', 'Amostra', 'サンプル', '#8EC5A8', '#123524', 19, 1);"
             );
         }
     }
