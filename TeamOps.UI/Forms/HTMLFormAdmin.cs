@@ -698,32 +698,40 @@ namespace TeamOps.UI.Forms
                 Key = "machine_status",
                 Group = "production",
                 TitlePt = "Status de Maquina",
-                TitleJp = "設備ステータス",
-                DescriptionPt = "Status brutos importados dos arquivos de producao, com nome bilingue, classificacao base e cor parametrizada.",
-                DescriptionJp = "生産ファイルから取り込む生ステータスを、名称・分類・色で管理します。",
+                TitleJp = "Machine Status",
+                DescriptionPt = "Status brutos importados dos arquivos de producao. Setor vazio significa status global/fallback.",
+                DescriptionJp = "Production machine statuses. Empty sector means global fallback.",
                 Fields =
                 {
-                    new AdminFieldDefinition("statusCode", "Codigo", "コード", "number", true),
-                    new AdminFieldDefinition("displayCode", "Classificacao", "分類", "select", true, "statusClasses"),
-                    new AdminFieldDefinition("namePt", "Nome PT", "名称 PT", "text", true),
-                    new AdminFieldDefinition("nameJp", "Nome JP", "名称 JP", "text", true),
-                    new AdminFieldDefinition("colorHex", "Cor", "色", "color", true),
-                    new AdminFieldDefinition("textColorHex", "Cor do Texto", "文字色", "color", true)
+                    new AdminFieldDefinition("sectorId", "Setor (vazio = Global)", "Sector (empty = Global)", "select", false, "sectors"),
+                    new AdminFieldDefinition("statusCode", "Codigo", "Code", "number", true),
+                    new AdminFieldDefinition("displayCode", "Visual", "Visual", "select", true, "statusClasses"),
+                    new AdminFieldDefinition("classification", "Regra eficiencia", "Efficiency rule", "text", true),
+                    new AdminFieldDefinition("namePt", "Nome PT", "Name PT", "text", true),
+                    new AdminFieldDefinition("nameJp", "Nome JP", "Name JP", "text", true),
+                    new AdminFieldDefinition("colorHex", "Cor", "Color", "color", true),
+                    new AdminFieldDefinition("textColorHex", "Cor do Texto", "Text Color", "color", true)
                 },
                 Columns =
                 {
                     new AdminColumnDefinition("id", null, "ID", "ID"),
-                    new AdminColumnDefinition("statusCode", null, "Codigo", "コード"),
-                    new AdminColumnDefinition("displayNamePt", "displayNameJp", "Classificacao", "分類"),
-                    new AdminColumnDefinition("namePt", "nameJp", "Nome", "名称"),
-                    new AdminColumnDefinition("colorHex", null, "Cor", "色")
+                    new AdminColumnDefinition("sectorDisplayPt", "sectorDisplayJp", "Setor", "Sector"),
+                    new AdminColumnDefinition("statusCode", null, "Codigo", "Code"),
+                    new AdminColumnDefinition("displayNamePt", "displayNameJp", "Visual", "Visual"),
+                    new AdminColumnDefinition("classification", null, "Regra eficiencia", "Efficiency rule"),
+                    new AdminColumnDefinition("namePt", "nameJp", "Nome", "Name"),
+                    new AdminColumnDefinition("colorHex", null, "Cor", "Color")
                 },
                 QueryRows = conn => conn.Query(
                     @"
                         SELECT
                             ms.Id AS id,
+                            COALESCE(ms.SectorId, 0) AS sectorId,
+                            COALESCE(s.NamePt, 'Global') AS sectorDisplayPt,
+                            COALESCE(NULLIF(s.NameJp, ''), s.NamePt, 'Global') AS sectorDisplayJp,
                             ms.StatusCode AS statusCode,
                             ms.DisplayCode AS displayCode,
+                            COALESCE(ms.Classification, '') AS classification,
                             COALESCE(ms.NamePt, '') AS namePt,
                             COALESCE(ms.NameJp, '') AS nameJp,
                             COALESCE(ms.ColorHex, '') AS colorHex,
@@ -736,20 +744,23 @@ namespace TeamOps.UI.Forms
                                 ELSE 'Inativo'
                             END AS displayNamePt,
                             CASE ms.DisplayCode
-                                WHEN 0 THEN '稼動中'
-                                WHEN 1 THEN '非稼働'
-                                WHEN 3 THEN '停止'
-                                WHEN 4 THEN 'エラー'
-                                ELSE '非稼働'
+                                WHEN 0 THEN 'Running'
+                                WHEN 1 THEN 'Inactive'
+                                WHEN 3 THEN 'Stop'
+                                WHEN 4 THEN 'Error'
+                                ELSE 'Inactive'
                             END AS displayNameJp
                         FROM MachineStatuses ms
-                        ORDER BY ms.SortOrder, ms.StatusCode, ms.Id;"
+                        LEFT JOIN Sectors s ON s.Id = ms.SectorId
+                        ORDER BY COALESCE(ms.SectorId, 0), ms.SortOrder, ms.StatusCode, ms.Id;"
                 ),
                 InsertSql = @"
                     INSERT INTO MachineStatuses
                     (
+                        SectorId,
                         StatusCode,
                         DisplayCode,
+                        Classification,
                         NamePt,
                         NameJp,
                         ColorHex,
@@ -759,8 +770,10 @@ namespace TeamOps.UI.Forms
                     )
                     VALUES
                     (
+                        @sectorId,
                         @statusCode,
                         @displayCode,
+                        @classification,
                         @namePt,
                         @nameJp,
                         @colorHex,
@@ -771,8 +784,10 @@ namespace TeamOps.UI.Forms
                 UpdateSql = @"
                     UPDATE MachineStatuses
                     SET
+                        SectorId = @sectorId,
                         StatusCode = @statusCode,
                         DisplayCode = @displayCode,
+                        Classification = @classification,
                         NamePt = @namePt,
                         NameJp = @nameJp,
                         ColorHex = @colorHex,
@@ -782,25 +797,29 @@ namespace TeamOps.UI.Forms
                 DeleteSql = "DELETE FROM MachineStatuses WHERE Id = @id;",
                 BuildParameters = (_, values, currentId) =>
                 {
+                    var sectorId = ReadInt(values, "sectorId");
                     var statusCode = ReadInt(values, "statusCode");
                     var displayCode = ReadInt(values, "displayCode");
+                    var classification = NormalizeMachineStatusClassification(ReadString(values, "classification"));
                     var namePt = ReadString(values, "namePt").Trim();
                     var nameJp = ReadString(values, "nameJp").Trim();
                     var colorHex = NormalizeHexColor(ReadString(values, "colorHex"));
                     var textColorHex = NormalizeHexColor(ReadString(values, "textColorHex"));
 
                     if (statusCode < 0)
-                        throw new InvalidOperationException(L("Informe um codigo de status valido.", "有効なステータスコードを入力してください。"));
+                        throw new InvalidOperationException(L("Informe um codigo de status valido.", "Invalid status code."));
 
                     if (displayCode != 0 && displayCode != 1 && displayCode != 3 && displayCode != 4)
-                        throw new InvalidOperationException(L("Selecione uma classificacao valida.", "有効な分類を選択してください。"));
+                        throw new InvalidOperationException(L("Selecione uma classificacao visual valida.", "Invalid visual status."));
 
                     if (string.IsNullOrWhiteSpace(namePt) || string.IsNullOrWhiteSpace(nameJp))
-                        throw new InvalidOperationException(L("Preencha os dois nomes do status.", "ステータス名を両方入力してください。"));
+                        throw new InvalidOperationException(L("Preencha os dois nomes do status.", "Fill both status names."));
 
                     var parameters = new DynamicParameters();
+                    parameters.Add("@sectorId", sectorId > 0 ? sectorId : null);
                     parameters.Add("@statusCode", statusCode);
                     parameters.Add("@displayCode", displayCode);
+                    parameters.Add("@classification", classification);
                     parameters.Add("@namePt", namePt);
                     parameters.Add("@nameJp", nameJp);
                     parameters.Add("@colorHex", colorHex);
@@ -1038,6 +1057,27 @@ namespace TeamOps.UI.Forms
                 normalized = "#" + normalized;
 
             return normalized.Length == 7 ? normalized.ToUpperInvariant() : "#FFFFFF";
+        }
+
+        private static string NormalizeMachineStatusClassification(string value)
+        {
+            var normalized = (value ?? string.Empty).Trim();
+
+            if (normalized.Equals("Running", StringComparison.OrdinalIgnoreCase))
+                return "Running";
+
+            if (normalized.Equals("StopCounts", StringComparison.OrdinalIgnoreCase))
+                return "StopCounts";
+
+            if (normalized.Equals("StopNoCount", StringComparison.OrdinalIgnoreCase))
+                return "StopNoCount";
+
+            if (normalized.Equals("Error", StringComparison.OrdinalIgnoreCase))
+                return "Error";
+
+            throw new InvalidOperationException(L(
+                "Informe uma regra de eficiencia valida: Running, StopCounts, StopNoCount ou Error.",
+                "Invalid efficiency rule: Running, StopCounts, StopNoCount or Error."));
         }
 
         private sealed class AdminEntityDefinition
