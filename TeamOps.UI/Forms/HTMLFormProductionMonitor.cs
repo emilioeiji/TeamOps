@@ -75,11 +75,11 @@ namespace TeamOps.UI.Forms
                 switch (action)
                 {
                     case "production_init":
-                        LoadInitial();
+                        _ = RunAsync(LoadInitialAsync());
                         break;
 
                     case "production_load_dashboard":
-                        SendDashboard(ReadFilter(root));
+                        _ = RunAsync(SendDashboardAsync(ReadFilter(root)));
                         break;
 
                     case "production_import":
@@ -87,11 +87,11 @@ namespace TeamOps.UI.Forms
                         break;
 
                     case "production_machine_detail":
-                        SendMachineDetail(ReadInt(root, "machineId", 0));
+                        _ = RunAsync(SendMachineDetailAsync(ReadInt(root, "machineId", 0)));
                         break;
 
                     case "production_operator_detail":
-                        SendOperatorDetail(ReadFilter(root), ReadString(root, "operatorCodigoFJ"));
+                        _ = RunAsync(SendOperatorDetailAsync(ReadFilter(root), ReadString(root, "operatorCodigoFJ")));
                         break;
                 }
             }
@@ -105,89 +105,107 @@ namespace TeamOps.UI.Forms
             }
         }
 
-        private void LoadInitial()
+        private async Task RunAsync(Task task)
         {
-            using var conn = _factory.CreateOpenConnection();
-            ProductionSchemaMigrator.Ensure(conn);
+            try
+            {
+                await task;
+            }
+            catch (Exception ex)
+            {
+                PostJson(new
+                {
+                    type = "error",
+                    message = ex.Message
+                });
+            }
+        }
 
+        private async Task LoadInitialAsync()
+        {
             var defaultDate = DateTime.Today;
             var defaultShiftId = _currentOperator.ShiftId;
 
-            PostJson(new
+            var initPayload = await Task.Run(() =>
             {
-                type = "init",
-                data = new
+                using var conn = _factory.CreateOpenConnection();
+                ProductionSchemaMigrator.Ensure(conn);
+
+                return new
                 {
-                    locale = Program.CurrentLocale,
-                    currentUser = _currentUser.Name,
-                    currentOperatorNamePt = _currentOperator.NameRomanji,
-                    currentOperatorNameJp = string.IsNullOrWhiteSpace(_currentOperator.NameNihongo)
-                        ? _currentOperator.NameRomanji
-                        : _currentOperator.NameNihongo,
-                    defaults = new
+                    type = "init",
+                    data = new
                     {
-                        dateIso = defaultDate.ToString("yyyy-MM-dd"),
-                        shiftId = defaultShiftId
-                    },
-                    shifts = conn.Query(
-                        @"
-                            SELECT
-                                Id AS id,
-                                COALESCE(NamePt, '') AS namePt,
-                                COALESCE(NULLIF(NameJp, ''), NamePt, '') AS nameJp
-                            FROM Shifts
-                            ORDER BY Id;"
-                    ),
-                    sectors = conn.Query(
-                        @"
-                            SELECT
-                                Id AS id,
-                                COALESCE(NamePt, '') AS namePt,
-                                COALESCE(NULLIF(NameJp, ''), NamePt, '') AS nameJp
-                            FROM Sectors
-                            ORDER BY Id;"
-                    ),
-                    locals = conn.Query(
-                        @"
-                            SELECT
-                                l.Id AS id,
-                                l.SectorId AS sectorId,
-                                COALESCE(l.NamePt, '') AS namePt,
-                                COALESCE(NULLIF(l.NameJp, ''), l.NamePt, '') AS nameJp
-                            FROM Locals l
-                            ORDER BY l.SectorId, l.Id;"
-                    ),
-                     machines = conn.Query(
-                        @"
-                            SELECT
-                                m.Id AS id,
-                                COALESCE(m.MachineCode, '') AS machineCode,
-                                COALESCE(m.LineCode, '') AS lineCode,
-                                COALESCE(m.NamePt, '') AS namePt,
-                                COALESCE(NULLIF(m.NameJp, ''), m.NamePt, '') AS nameJp,
-                                m.SectorId AS sectorId,
-                                m.LocalId AS localId
-                            FROM Machines m
-                            WHERE COALESCE(m.IsActive, 1) = 1
-                            ORDER BY COALESCE(m.SectorId, 0), COALESCE(m.LocalId, 0), COALESCE(m.LineCode, ''), COALESCE(m.MachineCode, ''), COALESCE(m.NamePt, ''), m.Id;"
-                    ),
-                    statuses = LoadStatuses(conn)
-                }
+                        locale = Program.CurrentLocale,
+                        currentUser = _currentUser.Name,
+                        currentOperatorNamePt = _currentOperator.NameRomanji,
+                        currentOperatorNameJp = string.IsNullOrWhiteSpace(_currentOperator.NameNihongo)
+                            ? _currentOperator.NameRomanji
+                            : _currentOperator.NameNihongo,
+                        defaults = new
+                        {
+                            dateIso = defaultDate.ToString("yyyy-MM-dd"),
+                            shiftId = defaultShiftId
+                        },
+                        shifts = conn.Query(
+                            @"
+                                SELECT
+                                    Id AS id,
+                                    COALESCE(NamePt, '') AS namePt,
+                                    COALESCE(NULLIF(NameJp, ''), NamePt, '') AS nameJp
+                                FROM Shifts
+                                ORDER BY Id;"
+                        ).ToList(),
+                        sectors = conn.Query(
+                            @"
+                                SELECT
+                                    Id AS id,
+                                    COALESCE(NamePt, '') AS namePt,
+                                    COALESCE(NULLIF(NameJp, ''), NamePt, '') AS nameJp
+                                FROM Sectors
+                                ORDER BY Id;"
+                        ).ToList(),
+                        locals = conn.Query(
+                            @"
+                                SELECT
+                                    l.Id AS id,
+                                    l.SectorId AS sectorId,
+                                    COALESCE(l.NamePt, '') AS namePt,
+                                    COALESCE(NULLIF(l.NameJp, ''), l.NamePt, '') AS nameJp
+                                FROM Locals l
+                                ORDER BY l.SectorId, l.Id;"
+                        ).ToList(),
+                        machines = conn.Query(
+                            @"
+                                SELECT
+                                    m.Id AS id,
+                                    COALESCE(m.MachineCode, '') AS machineCode,
+                                    COALESCE(m.LineCode, '') AS lineCode,
+                                    COALESCE(m.NamePt, '') AS namePt,
+                                    COALESCE(NULLIF(m.NameJp, ''), m.NamePt, '') AS nameJp,
+                                    m.SectorId AS sectorId,
+                                    m.LocalId AS localId
+                                FROM Machines m
+                                WHERE COALESCE(m.IsActive, 1) = 1
+                                ORDER BY COALESCE(m.SectorId, 0), COALESCE(m.LocalId, 0), COALESCE(m.LineCode, ''), COALESCE(m.MachineCode, ''), COALESCE(m.NamePt, ''), m.Id;"
+                        ).ToList(),
+                        statuses = LoadStatuses(conn)
+                    }
+                };
             });
 
-            SendDashboard(new ProductionDashboardFilter
+            PostJson(initPayload);
+
+            await SendDashboardAsync(new ProductionDashboardFilter
             {
                 Date = defaultDate,
                 ShiftId = defaultShiftId
             });
         }
 
-        private void SendDashboard(ProductionDashboardFilter filter)
+        private async Task SendDashboardAsync(ProductionDashboardFilter filter)
         {
-            using var conn = _factory.CreateOpenConnection();
-            ProductionSchemaMigrator.Ensure(conn);
-
-            var dashboard = _analyticsService.BuildDashboard(filter);
+            var dashboard = await Task.Run(() => _analyticsService.BuildDashboard(filter));
 
             PostJson(new
             {
@@ -341,7 +359,7 @@ namespace TeamOps.UI.Forms
                         localNamesPt = item.LocalNamesPt,
                          localNamesJp = item.LocalNamesJp
                      }),
-                     statuses = LoadStatuses(conn)
+                     statuses = LoadStatuses()
                  }
              });
         }
@@ -368,7 +386,7 @@ namespace TeamOps.UI.Forms
                     }
                 });
 
-                SendDashboard(filter);
+                await SendDashboardAsync(filter);
             }
             catch (Exception ex)
             {
@@ -380,7 +398,7 @@ namespace TeamOps.UI.Forms
             }
         }
 
-        private void SendMachineDetail(int machineId)
+        private async Task SendMachineDetailAsync(int machineId)
         {
             if (machineId <= 0)
             {
@@ -398,34 +416,37 @@ namespace TeamOps.UI.Forms
                 return;
             }
 
-            using var conn = _factory.CreateOpenConnection();
-            ProductionSchemaMigrator.Ensure(conn);
+            var rows = await Task.Run(() =>
+            {
+                using var conn = _factory.CreateOpenConnection();
+                ProductionSchemaMigrator.Ensure(conn);
 
-            var rows = conn.Query(
-                @"
-                    SELECT
-                        e.MachineId AS machineId,
-                        e.SectorId AS sectorId,
-                        e.MachineCode AS machineCode,
-                        COALESCE(e.LineCode, '') AS lineCode,
-                        COALESCE(m.NamePt, e.MachineCode) AS machineNamePt,
-                        COALESCE(NULLIF(m.NameJp, ''), m.NamePt, e.MachineCode) AS machineNameJp,
-                        substr(e.EventDateTime, 1, 16) AS eventDateTime,
-                        e.StatusCode AS statusCode,
-                        COALESCE(e.StatusText, '') AS statusText,
-                        COALESCE(e.RecipeName, '') AS recipeName,
-                        COALESCE(e.LotNo, '') AS lotNo,
-                        COALESCE(e.SourceFile, '') AS sourceFile
-                    FROM MachineEvents e
-                    LEFT JOIN Machines m ON m.Id = e.MachineId
-                    WHERE e.MachineId = @machineId
-                    ORDER BY datetime(e.EventDateTime) DESC, e.Id DESC
-                    LIMIT 80;",
+                return conn.Query(
+                    @"
+                        SELECT
+                            e.MachineId AS machineId,
+                            e.SectorId AS sectorId,
+                            e.MachineCode AS machineCode,
+                            COALESCE(e.LineCode, '') AS lineCode,
+                            COALESCE(m.NamePt, e.MachineCode) AS machineNamePt,
+                            COALESCE(NULLIF(m.NameJp, ''), m.NamePt, e.MachineCode) AS machineNameJp,
+                            substr(e.EventDateTime, 1, 16) AS eventDateTime,
+                            e.StatusCode AS statusCode,
+                            COALESCE(e.StatusText, '') AS statusText,
+                            COALESCE(e.RecipeName, '') AS recipeName,
+                            COALESCE(e.LotNo, '') AS lotNo,
+                            COALESCE(e.SourceFile, '') AS sourceFile
+                        FROM MachineEvents e
+                        LEFT JOIN Machines m ON m.Id = e.MachineId
+                        WHERE e.MachineId = @machineId
+                        ORDER BY e.EventDateTime DESC, e.Id DESC
+                        LIMIT 80;",
                     new
                     {
-                    machineId
-                }
-            );
+                        machineId
+                    }
+                ).ToList();
+            });
 
             PostJson(new
             {
@@ -440,9 +461,9 @@ namespace TeamOps.UI.Forms
             });
         }
 
-        private void SendOperatorDetail(ProductionDashboardFilter filter, string operatorCodigoFJ)
+        private async Task SendOperatorDetailAsync(ProductionDashboardFilter filter, string operatorCodigoFJ)
         {
-            var detail = _analyticsService.GetOperatorDetail(filter, operatorCodigoFJ);
+            var detail = await Task.Run(() => _analyticsService.GetOperatorDetail(filter, operatorCodigoFJ));
 
             PostJson(new
             {
@@ -505,6 +526,14 @@ namespace TeamOps.UI.Forms
             }
 
             return message;
+        }
+
+        private object LoadStatuses()
+        {
+            using var conn = _factory.CreateOpenConnection();
+            ProductionSchemaMigrator.Ensure(conn);
+
+            return LoadStatuses(conn);
         }
 
         private static object LoadStatuses(System.Data.IDbConnection conn)

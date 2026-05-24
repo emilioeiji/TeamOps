@@ -562,9 +562,14 @@ CREATE TABLE IF NOT EXISTS MachineStatuses (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS IX_MachineStatuses_Sector_StatusCode ON MachineStatuses(COALESCE(SectorId, 0), StatusCode);
+CREATE INDEX IF NOT EXISTS IX_MachineStatuses_SectorId ON MachineStatuses(SectorId);
+CREATE INDEX IF NOT EXISTS IX_MachineStatuses_StatusCode ON MachineStatuses(StatusCode);
 CREATE UNIQUE INDEX IF NOT EXISTS IX_MachineEvents_UniqueEvent ON MachineEvents(MachineId, EventDateTime, StatusCode);
 CREATE UNIQUE INDEX IF NOT EXISTS IX_MachineEvents_UniqueRawEvent ON MachineEvents(MachineId, EventDateTime, InternalState);
+CREATE INDEX IF NOT EXISTS IX_MachineEvents_EventDateTime ON MachineEvents(EventDateTime);
+CREATE INDEX IF NOT EXISTS IX_MachineEvents_Machine_EventTime ON MachineEvents(MachineId, EventDateTime);
 CREATE UNIQUE INDEX IF NOT EXISTS IX_Machines_MachineKey_Unique ON Machines(MachineKey);
+CREATE INDEX IF NOT EXISTS IX_Machines_MachineCode_LineCode ON Machines(MachineCode, LineCode);
 
 INSERT OR IGNORE INTO MachineStatuses
 (SectorId, StatusCode, DisplayCode, Classification, NamePt, NameJp, ColorHex, TextColorHex, SortOrder, IsActive)

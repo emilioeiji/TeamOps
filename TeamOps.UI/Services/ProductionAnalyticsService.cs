@@ -140,9 +140,9 @@ namespace TeamOps.Services
                         EventDateTime
                     FROM MachineEvents
                     WHERE MachineId IN @machineIds
-                      AND datetime(EventDateTime) <= datetime(@rangeEnd)
-                      AND datetime(EventDateTime) >= datetime(@rangeStart)
-                    ORDER BY MachineId, datetime(EventDateTime), Id;",
+                      AND EventDateTime <= @rangeEnd
+                      AND EventDateTime >= @rangeStart
+                    ORDER BY MachineId, EventDateTime, Id;",
                 new
                 {
                     machineIds,
@@ -697,9 +697,9 @@ namespace TeamOps.Services
                         EventDateTime
                     FROM MachineEvents
                     WHERE MachineId IN @machineIds
-                      AND datetime(EventDateTime) <= datetime(@rangeEnd)
-                      AND datetime(EventDateTime) >= datetime(@rangeStart)
-                    ORDER BY MachineId, datetime(EventDateTime), Id;",
+                      AND EventDateTime <= @rangeEnd
+                      AND EventDateTime >= @rangeStart
+                    ORDER BY MachineId, EventDateTime, Id;",
                 new
                 {
                     machineIds,
@@ -1334,12 +1334,15 @@ namespace TeamOps.Services
             IReadOnlyList<EventRow> machineEvents,
             DateTime moment)
         {
-            var eventAtMoment = machineEvents
-                .Where(item => item.EventDateTime <= moment)
-                .OrderByDescending(item => item.EventDateTime)
-                .FirstOrDefault();
+            for (var index = machineEvents.Count - 1; index >= 0; index--)
+            {
+                if (machineEvents[index].EventDateTime <= moment)
+                {
+                    return machineEvents[index].StatusCode;
+                }
+            }
 
-            return eventAtMoment?.StatusCode ?? 1;
+            return 1;
         }
 
         private static void AddMinutes(

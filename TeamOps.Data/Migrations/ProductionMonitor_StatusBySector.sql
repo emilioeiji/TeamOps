@@ -65,6 +65,12 @@ RENAME TO MachineStatuses;
 CREATE UNIQUE INDEX IF NOT EXISTS IX_MachineStatuses_Sector_StatusCode
 ON MachineStatuses(COALESCE(SectorId, 0), StatusCode);
 
+CREATE INDEX IF NOT EXISTS IX_MachineStatuses_SectorId
+ON MachineStatuses(SectorId);
+
+CREATE INDEX IF NOT EXISTS IX_MachineStatuses_StatusCode
+ON MachineStatuses(StatusCode);
+
 UPDATE MachineStatuses
 SET Classification = CASE DisplayCode
     WHEN 0 THEN 'Running'

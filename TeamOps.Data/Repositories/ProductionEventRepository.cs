@@ -92,7 +92,7 @@ namespace TeamOps.Data.Repositories
                         COALESCE(ImportedAt, CURRENT_TIMESTAMP) AS UpdatedAt
                     FROM MachineEvents
                     WHERE MachineId = @machineId
-                    ORDER BY datetime(EventDateTime) DESC, Id DESC
+                    ORDER BY EventDateTime DESC, Id DESC
                     LIMIT 1;",
                 new
                 {

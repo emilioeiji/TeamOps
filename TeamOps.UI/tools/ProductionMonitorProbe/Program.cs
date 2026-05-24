@@ -36,6 +36,14 @@ switch (command)
         RunStatusReport(args.Skip(1).ToArray());
         break;
 
+    case "schema-check":
+        RunSchemaValidation(repair: false);
+        break;
+
+    case "schema-repair":
+        RunSchemaValidation(repair: true);
+        break;
+
     case "demo":
     default:
         RunImport();
@@ -109,6 +117,49 @@ void ShowDashboards()
     }
 }
 
+void RunSchemaValidation(bool repair)
+{
+    using var conn = factory.CreateOpenConnection();
+
+    var before = InspectProductionSchema(conn);
+    if (repair)
+    {
+        ProductionSchemaMigrator.Ensure(conn);
+    }
+
+    var after = repair
+        ? InspectProductionSchema(conn)
+        : before;
+
+    Console.WriteLine(repair ? "=== PRODUCTION SCHEMA REPAIR ===" : "=== PRODUCTION SCHEMA CHECK ===");
+    Console.WriteLine($"Database={settings.DatabasePath}");
+    Console.WriteLine($"JournalMode={after.JournalMode}");
+    Console.WriteLine($"QuickCheck={after.QuickCheck}");
+
+    if (repair)
+    {
+        Console.WriteLine($"IssuesBefore={before.Issues.Count}");
+        foreach (var issue in before.Issues)
+        {
+            Console.WriteLine($"BEFORE: {issue}");
+        }
+    }
+
+    Console.WriteLine($"IssuesAfter={after.Issues.Count}");
+    foreach (var issue in after.Issues)
+    {
+        Console.WriteLine($"AFTER: {issue}");
+    }
+
+    if (after.Issues.Count == 0)
+    {
+        Console.WriteLine("OK: schema de producao validado.");
+        return;
+    }
+
+    Environment.ExitCode = 2;
+}
+
 void RunStatusHardeningChecks()
 {
     using var conn = factory.CreateOpenConnection();
@@ -175,6 +226,201 @@ void RunStatusHardeningChecks()
 
     Console.WriteLine("=== STATUS HARDENING CHECKS ===");
     Console.WriteLine("OK: indice setorial, seeds DAD, fallback conservador e formula StopNoCount validados.");
+}
+
+ProductionSchemaInspection InspectProductionSchema(System.Data.IDbConnection conn)
+{
+    var issues = new List<string>();
+    var journalMode = conn.ExecuteScalar<string>("PRAGMA journal_mode;") ?? string.Empty;
+    var quickCheck = conn.ExecuteScalar<string>("PRAGMA quick_check;") ?? string.Empty;
+
+    if (!quickCheck.Equals("ok", StringComparison.OrdinalIgnoreCase))
+    {
+        issues.Add($"DB_QUICK_CHECK_FAILED: {quickCheck}");
+    }
+
+    RequireTable(conn, "Machines", issues);
+    RequireTable(conn, "MachineEvents", issues);
+    RequireTable(conn, "MachineCurrentStatus", issues);
+    RequireTable(conn, "MachineStatuses", issues);
+
+    RequireColumn(conn, "Machines", "MachineCode", issues);
+    RequireColumn(conn, "Machines", "MachineKey", issues);
+    RequireColumn(conn, "Machines", "LineCode", issues);
+    RequireColumn(conn, "Machines", "LocalId", issues);
+    RequireColumn(conn, "Machines", "SectorId", issues);
+    RequireColumn(conn, "Machines", "IsActive", issues);
+
+    RequireColumn(conn, "MachineEvents", "MachineId", issues);
+    RequireColumn(conn, "MachineEvents", "SectorId", issues);
+    RequireColumn(conn, "MachineEvents", "StatusCode", issues);
+    RequireColumn(conn, "MachineEvents", "EventDateTime", issues);
+    RequireColumn(conn, "MachineEvents", "InternalState", issues);
+
+    RequireColumn(conn, "MachineCurrentStatus", "MachineId", issues);
+    RequireColumn(conn, "MachineCurrentStatus", "SectorId", issues);
+    RequireColumn(conn, "MachineCurrentStatus", "StatusCode", issues);
+    RequireColumn(conn, "MachineCurrentStatus", "EventDateTime", issues);
+
+    RequireColumn(conn, "MachineStatuses", "SectorId", issues);
+    RequireColumn(conn, "MachineStatuses", "StatusCode", issues);
+    RequireColumn(conn, "MachineStatuses", "DisplayCode", issues);
+    RequireColumn(conn, "MachineStatuses", "Classification", issues);
+
+    RequireIndex(conn, "IX_MachineStatuses_Sector_StatusCode", issues);
+    RequireIndex(conn, "IX_MachineEvents_UniqueEvent", issues);
+    RequireIndex(conn, "IX_MachineEvents_UniqueRawEvent", issues);
+    RequireIndex(conn, "IX_MachineEvents_EventDateTime", issues);
+    RequireIndex(conn, "IX_MachineEvents_Machine_EventTime", issues);
+    RequireIndex(conn, "IX_Machines_MachineKey_Unique", issues);
+    RequireIndex(conn, "IX_Machines_MachineCode_LineCode", issues);
+
+    WarnIfIndexExists(conn, "IX_MachineEvents_Sector_EventTime", issues);
+    WarnIfIndexExists(conn, "IX_MachineEvents_StatusCode_EventTime", issues);
+    WarnIfIndexExists(conn, "IX_MachineEvents_Sector_Status_EventTime", issues);
+
+    var statusIndexSql = conn.ExecuteScalar<string>(
+        @"
+            SELECT COALESCE(sql, '')
+            FROM sqlite_master
+            WHERE type = 'index'
+              AND name = 'IX_MachineStatuses_Sector_StatusCode';"
+    ) ?? string.Empty;
+
+    if (!statusIndexSql.Contains("COALESCE(SectorId, 0)", StringComparison.OrdinalIgnoreCase)
+        || !statusIndexSql.Contains("StatusCode", StringComparison.OrdinalIgnoreCase))
+    {
+        issues.Add("BAD_INDEX_SQL: IX_MachineStatuses_Sector_StatusCode deve usar COALESCE(SectorId, 0), StatusCode.");
+    }
+
+    var duplicateStatusKeys = conn.ExecuteScalar<int>(
+        @"
+            SELECT COUNT(1)
+            FROM (
+                SELECT COALESCE(SectorId, 0), StatusCode, COUNT(1) AS Total
+                FROM MachineStatuses
+                GROUP BY COALESCE(SectorId, 0), StatusCode
+                HAVING COUNT(1) > 1
+            );"
+    );
+    if (duplicateStatusKeys > 0)
+    {
+        issues.Add($"DUPLICATE_MACHINE_STATUSES: {duplicateStatusKeys}");
+    }
+
+    var globalSeedCount = conn.ExecuteScalar<int>(
+        @"
+            SELECT COUNT(1)
+            FROM MachineStatuses
+            WHERE SectorId IS NULL
+              AND StatusCode IN (0, 1, 3, 4);"
+    );
+    if (globalSeedCount < 4)
+    {
+        issues.Add($"MISSING_GLOBAL_STATUS_SEEDS: found {globalSeedCount}/4");
+    }
+
+    var dadSeedCount = conn.ExecuteScalar<int>(
+        @"
+            SELECT COUNT(1)
+            FROM MachineStatuses
+            WHERE SectorId = @DadSectorId
+              AND StatusCode IN (0, 1, 3, 4, 17, 18, 19);",
+        new
+        {
+            DadSectorId
+        }
+    );
+    if (dadSeedCount < 7)
+    {
+        issues.Add($"MISSING_DAD_STATUS_SEEDS: found {dadSeedCount}/7");
+    }
+
+    var dadNoCountCount = conn.ExecuteScalar<int>(
+        @"
+            SELECT COUNT(1)
+            FROM MachineStatuses
+            WHERE SectorId = @DadSectorId
+              AND StatusCode IN (3, 17, 18, 19)
+              AND Classification = 'StopNoCount';",
+        new
+        {
+            DadSectorId
+        }
+    );
+    if (dadNoCountCount < 4)
+    {
+        issues.Add($"BAD_DAD_STOP_NO_COUNT_SEEDS: found {dadNoCountCount}/4");
+    }
+
+    return new ProductionSchemaInspection(journalMode, quickCheck, issues);
+}
+
+static void RequireTable(System.Data.IDbConnection conn, string tableName, List<string> issues)
+{
+    var exists = conn.ExecuteScalar<int>(
+        @"
+            SELECT COUNT(1)
+            FROM sqlite_master
+            WHERE type = 'table'
+              AND name = @tableName;",
+        new
+        {
+            tableName
+        }) > 0;
+
+    if (!exists)
+    {
+        issues.Add($"MISSING_TABLE: {tableName}");
+    }
+}
+
+static void RequireColumn(System.Data.IDbConnection conn, string tableName, string columnName, List<string> issues)
+{
+    var exists = conn.ExecuteScalar<int>(
+        $@"
+            SELECT COUNT(1)
+            FROM pragma_table_info('{tableName}')
+            WHERE name = @columnName;",
+        new
+        {
+            columnName
+        }) > 0;
+
+    if (!exists)
+    {
+        issues.Add($"MISSING_COLUMN: {tableName}.{columnName}");
+    }
+}
+
+static void RequireIndex(System.Data.IDbConnection conn, string indexName, List<string> issues)
+{
+    if (!IndexExists(conn, indexName))
+    {
+        issues.Add($"MISSING_INDEX: {indexName}");
+    }
+}
+
+static void WarnIfIndexExists(System.Data.IDbConnection conn, string indexName, List<string> issues)
+{
+    if (IndexExists(conn, indexName))
+    {
+        issues.Add($"EXTRA_INDEX_PERFORMANCE_RISK: {indexName}");
+    }
+}
+
+static bool IndexExists(System.Data.IDbConnection conn, string indexName)
+{
+    return conn.ExecuteScalar<int>(
+        @"
+            SELECT COUNT(1)
+            FROM sqlite_master
+            WHERE type = 'index'
+              AND name = @indexName;",
+        new
+        {
+            indexName
+        }) > 0;
 }
 
 void RunStatusReport(string[] reportArgs)
@@ -690,3 +936,8 @@ readonly record struct StatusDefinitionResolution(
     StatusDefinitionProbeRow? Definition,
     string Source,
     bool UsedFallback);
+
+readonly record struct ProductionSchemaInspection(
+    string JournalMode,
+    string QuickCheck,
+    List<string> Issues);

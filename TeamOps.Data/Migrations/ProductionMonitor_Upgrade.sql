@@ -15,12 +15,12 @@ SET
         WHEN trim(COALESCE(MachineCode, '')) = '' THEN NULL
         ELSE upper(trim(COALESCE(LineCode, ''))) || ':' || upper(trim(COALESCE(MachineCode, '')))
     END
-WHERE trim(COALESCE(MachineCode, '')) <> '';
-
-DROP INDEX IF EXISTS IX_MachineEvents_UniqueEvent;
-DROP INDEX IF EXISTS IX_MachineEvents_UniqueRawEvent;
-DROP INDEX IF EXISTS IX_MachineCurrentStatus_MachineCode;
-DROP INDEX IF EXISTS IX_Machines_MachineKey_Unique;
+WHERE trim(COALESCE(MachineCode, '')) <> ''
+  AND (
+      MachineCode <> upper(trim(COALESCE(MachineCode, '')))
+      OR LineCode <> upper(trim(COALESCE(LineCode, '')))
+      OR COALESCE(MachineKey, '') <> upper(trim(COALESCE(LineCode, ''))) || ':' || upper(trim(COALESCE(MachineCode, '')))
+  );
 
 CREATE TABLE IF NOT EXISTS MachineEvents (
     Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,11 +87,18 @@ ON MachineEvents(EventDateTime);
 CREATE INDEX IF NOT EXISTS IX_MachineEvents_Machine_EventTime
 ON MachineEvents(MachineId, EventDateTime);
 
+DROP INDEX IF EXISTS IX_MachineEvents_Sector_EventTime;
+DROP INDEX IF EXISTS IX_MachineEvents_StatusCode_EventTime;
+DROP INDEX IF EXISTS IX_MachineEvents_Sector_Status_EventTime;
+
 CREATE INDEX IF NOT EXISTS IX_Machines_MachineCode
 ON Machines(MachineCode);
 
 CREATE UNIQUE INDEX IF NOT EXISTS IX_Machines_MachineKey_Unique
 ON Machines(MachineKey);
+
+CREATE INDEX IF NOT EXISTS IX_Machines_MachineCode_LineCode
+ON Machines(MachineCode, LineCode);
 
 CREATE INDEX IF NOT EXISTS IX_Machines_LocalId
 ON Machines(LocalId);
@@ -101,6 +108,12 @@ ON Machines(SectorId);
 
 CREATE UNIQUE INDEX IF NOT EXISTS IX_MachineStatuses_Sector_StatusCode
 ON MachineStatuses(COALESCE(SectorId, 0), StatusCode);
+
+CREATE INDEX IF NOT EXISTS IX_MachineStatuses_SectorId
+ON MachineStatuses(SectorId);
+
+CREATE INDEX IF NOT EXISTS IX_MachineStatuses_StatusCode
+ON MachineStatuses(StatusCode);
 
 INSERT OR IGNORE INTO MachineStatuses
 (SectorId, StatusCode, DisplayCode, Classification, NamePt, NameJp, ColorHex, TextColorHex, SortOrder, IsActive)

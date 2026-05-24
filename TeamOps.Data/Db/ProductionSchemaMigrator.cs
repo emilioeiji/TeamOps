@@ -26,11 +26,6 @@ namespace TeamOps.Data.Db
 
                 conn.Execute(
                     @"
-                    DROP INDEX IF EXISTS IX_MachineEvents_UniqueEvent;
-                    DROP INDEX IF EXISTS IX_MachineEvents_UniqueRawEvent;
-                    DROP INDEX IF EXISTS IX_MachineCurrentStatus_MachineCode;
-                    DROP INDEX IF EXISTS IX_Machines_MachineKey_Unique;
-
                     CREATE TABLE IF NOT EXISTS MachineEvents (
                         Id INTEGER PRIMARY KEY AUTOINCREMENT,
                         MachineId INTEGER NOT NULL,
@@ -122,7 +117,12 @@ namespace TeamOps.Data.Db
                             WHEN trim(COALESCE(MachineCode, '')) = '' THEN NULL
                             ELSE upper(trim(COALESCE(LineCode, ''))) || ':' || upper(trim(COALESCE(MachineCode, '')))
                         END
-                    WHERE trim(COALESCE(MachineCode, '')) <> '';
+                    WHERE trim(COALESCE(MachineCode, '')) <> ''
+                      AND (
+                          MachineCode <> upper(trim(COALESCE(MachineCode, '')))
+                          OR LineCode <> upper(trim(COALESCE(LineCode, '')))
+                          OR COALESCE(MachineKey, '') <> upper(trim(COALESCE(LineCode, ''))) || ':' || upper(trim(COALESCE(MachineCode, '')))
+                      );
 
                     CREATE UNIQUE INDEX IF NOT EXISTS IX_MachineEvents_UniqueEvent
                     ON MachineEvents(MachineId, EventDateTime, StatusCode);
@@ -136,8 +136,15 @@ namespace TeamOps.Data.Db
                     CREATE INDEX IF NOT EXISTS IX_MachineEvents_Machine_EventTime
                     ON MachineEvents(MachineId, EventDateTime);
 
+                    DROP INDEX IF EXISTS IX_MachineEvents_Sector_EventTime;
+                    DROP INDEX IF EXISTS IX_MachineEvents_StatusCode_EventTime;
+                    DROP INDEX IF EXISTS IX_MachineEvents_Sector_Status_EventTime;
+
                     CREATE INDEX IF NOT EXISTS IX_Machines_MachineCode
                     ON Machines(MachineCode);
+
+                    CREATE INDEX IF NOT EXISTS IX_Machines_MachineCode_LineCode
+                    ON Machines(MachineCode, LineCode);
 
                     CREATE UNIQUE INDEX IF NOT EXISTS IX_Machines_MachineKey_Unique
                     ON Machines(MachineKey);
@@ -160,13 +167,18 @@ namespace TeamOps.Data.Db
 
                 EnsureMachineStatusColumns(conn);
                 RebuildMachineStatusesForSectorScope(conn);
+                DropLegacyMachineStatusCodeIndex(conn);
 
                 conn.Execute(
                     @"
-                    DROP INDEX IF EXISTS IX_MachineStatuses_StatusCode;
-
                     CREATE UNIQUE INDEX IF NOT EXISTS IX_MachineStatuses_Sector_StatusCode
-                    ON MachineStatuses(COALESCE(SectorId, 0), StatusCode);"
+                    ON MachineStatuses(COALESCE(SectorId, 0), StatusCode);
+
+                    CREATE INDEX IF NOT EXISTS IX_MachineStatuses_SectorId
+                    ON MachineStatuses(SectorId);
+
+                    CREATE INDEX IF NOT EXISTS IX_MachineStatuses_StatusCode
+                    ON MachineStatuses(StatusCode);"
                 );
 
                 SeedMachineStatuses(conn);
@@ -288,17 +300,30 @@ namespace TeamOps.Data.Db
             );
         }
 
+        private static void DropLegacyMachineStatusCodeIndex(IDbConnection conn)
+        {
+            var indexSql = conn.ExecuteScalar<string>(
+                @"
+                    SELECT COALESCE(sql, '')
+                    FROM sqlite_master
+                    WHERE type = 'index'
+                      AND name = 'IX_MachineStatuses_StatusCode';"
+            ) ?? string.Empty;
+
+            if (indexSql.Contains("UNIQUE", System.StringComparison.OrdinalIgnoreCase))
+            {
+                conn.Execute("DROP INDEX IF EXISTS IX_MachineStatuses_StatusCode;");
+            }
+        }
+
         private static void NormalizeProductionStatuses(IDbConnection conn)
         {
             conn.Execute(
                 @"
-                    UPDATE MachineEvents
-                    SET StatusCode = CAST(trim(InternalState) AS INTEGER)
-                    WHERE trim(COALESCE(InternalState, '')) GLOB '[0-9]*';
-
                     UPDATE MachineCurrentStatus
                     SET StatusCode = CAST(trim(InternalState) AS INTEGER)
-                    WHERE trim(COALESCE(InternalState, '')) GLOB '[0-9]*';
+                    WHERE trim(COALESCE(InternalState, '')) GLOB '[0-9]*'
+                      AND StatusCode <> CAST(trim(InternalState) AS INTEGER);
 
                     UPDATE MachineStatuses
                     SET

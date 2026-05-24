@@ -36,7 +36,7 @@ namespace TeamOps.Data.Repositories
                         SectorId,
                         COALESCE(IsActive, 1) AS IsActive
                     FROM Machines
-                    WHERE upper(trim(COALESCE(MachineCode, ''))) = @machineCode
+                    WHERE MachineCode = @machineCode
                     LIMIT 1;",
                 new
                 {
@@ -64,12 +64,12 @@ namespace TeamOps.Data.Repositories
                         SectorId,
                         COALESCE(IsActive, 1) AS IsActive
                     FROM Machines
-                    WHERE upper(trim(COALESCE(MachineKey, ''))) = @machineKey
+                    WHERE MachineKey = @machineKey
                        OR (
-                            upper(trim(COALESCE(MachineCode, ''))) = @machineCode
-                            AND upper(trim(COALESCE(LineCode, ''))) = @lineCode
+                            MachineCode = @machineCode
+                            AND LineCode = @lineCode
                        )
-                    ORDER BY CASE WHEN upper(trim(COALESCE(MachineKey, ''))) = @machineKey THEN 0 ELSE 1 END, Id
+                    ORDER BY CASE WHEN MachineKey = @machineKey THEN 0 ELSE 1 END, Id
                     LIMIT 1;",
                 new
                 {

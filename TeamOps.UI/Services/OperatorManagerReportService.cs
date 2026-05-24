@@ -1015,9 +1015,9 @@ namespace TeamOps.UI.Services
                         EventDateTime
                     FROM MachineEvents
                     WHERE MachineId IN @MachineIds
-                      AND datetime(EventDateTime) >= datetime(@RangeStart)
-                      AND datetime(EventDateTime) <= datetime(@RangeEnd)
-                    ORDER BY MachineId, datetime(EventDateTime), Id;",
+                      AND EventDateTime >= @RangeStart
+                      AND EventDateTime <= @RangeEnd
+                    ORDER BY MachineId, EventDateTime, Id;",
                 new
                 {
                     MachineIds = machineIds,

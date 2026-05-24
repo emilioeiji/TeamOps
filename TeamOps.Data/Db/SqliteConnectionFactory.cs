@@ -7,6 +7,9 @@ namespace TeamOps.Data.Db
 {
     public sealed class SqliteConnectionFactory
     {
+        private static readonly object PragmasLock = new();
+        private static bool _journalConfigured;
+
         private readonly DbSettings _settings;
 
         public SqliteConnectionFactory(DbSettings settings)
@@ -19,20 +22,47 @@ namespace TeamOps.Data.Db
             var conn = new SqliteConnection(_settings.ConnectionString);
             conn.Open();
 
-            // Boas práticas para integridade e desempenho local
+            ConfigureConnection(conn);
+
+            return conn;
+        }
+
+        private static void ConfigureConnection(SqliteConnection conn)
+        {
+            // Keep per-connection pragmas cheap; journal_mode can acquire a write lock,
+            // so it is configured once per process instead of on every DB open.
             using (var cmd = conn.CreateCommand())
             {
+                cmd.CommandTimeout = 30;
                 cmd.CommandText = @"
                     PRAGMA foreign_keys = ON;
-                    PRAGMA journal_mode = WAL;      -- melhora leitura concorrente entre múltiplas telas/processos
                     PRAGMA synchronous = NORMAL;    -- bom balanço entre segurança e velocidade
-                    PRAGMA busy_timeout = 5000;     -- reduz falhas transitórias de lock em multiacesso
+                    PRAGMA busy_timeout = 30000;    -- aguarda locks transitórios em importação/telas concorrentes
                     PRAGMA temp_store = MEMORY;     -- reduz I/O temporário em consultas maiores
                 ";
                 cmd.ExecuteNonQuery();
             }
 
-            return conn;
+            if (_journalConfigured)
+            {
+                return;
+            }
+
+            lock (PragmasLock)
+            {
+                if (_journalConfigured)
+                {
+                    return;
+                }
+
+                using var cmd = conn.CreateCommand();
+                cmd.CommandTimeout = 30;
+                // DELETE avoids persistent .wal/.shm sidecar files and is more compatible
+                // with external SQLite tools used to inspect the production database.
+                cmd.CommandText = "PRAGMA journal_mode = DELETE;";
+                cmd.ExecuteNonQuery();
+                _journalConfigured = true;
+            }
         }
     }
 }
