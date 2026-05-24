@@ -128,7 +128,8 @@ const state = {
     dashboard: null,
     selectedAreaId: 0,
     selectedMachineId: 0,
-    pinnedNotice: false
+    pinnedNotice: false,
+    isImportingProduction: false
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -144,6 +145,7 @@ window.chrome?.webview?.addEventListener("message", event => {
             hydrateInit(msg.data || {});
             break;
         case "dashboard":
+            state.isImportingProduction = false;
             hideLoading();
             hydrateDashboard(msg.data || {});
             break;
@@ -155,11 +157,11 @@ window.chrome?.webview?.addEventListener("message", event => {
             renderOperatorDetail(msg.data || {});
             break;
         case "import_result":
-            hideLoading();
             state.pinnedNotice = true;
             showNotice(msg.data?.message || t("importingSuccess"), "success");
             break;
         case "error":
+            state.isImportingProduction = false;
             hideLoading();
             state.pinnedNotice = true;
             showNotice(msg.message || "Erro.", "error");
@@ -233,11 +235,20 @@ function hydrateDashboard(data) {
 }
 
 function refreshDashboard() {
+    if (state.isImportingProduction) {
+        return;
+    }
+
     state.pinnedNotice = false;
     send("production_load_dashboard", buildFilterPayload());
 }
 
 function importProduction() {
+    if (state.isImportingProduction) {
+        return;
+    }
+
+    state.isImportingProduction = true;
     state.pinnedNotice = false;
     showLoading();
     send("production_import", buildFilterPayload());
@@ -257,11 +268,19 @@ function buildFilterPayload() {
 }
 
 function onSectorChanged() {
+    if (state.isImportingProduction) {
+        return;
+    }
+
     fillLocalOptions();
     fillMachineOptions();
 }
 
 function onLocalChanged() {
+    if (state.isImportingProduction) {
+        return;
+    }
+
     fillMachineOptions();
 }
 
@@ -482,6 +501,10 @@ function renderMachineTable(rows) {
 
     body.querySelectorAll(".machine-row").forEach(row => {
         row.addEventListener("click", () => {
+            if (state.isImportingProduction) {
+                return;
+            }
+
             state.selectedMachineId = Number(row.dataset.machineId || 0);
             renderMachineTable(rows);
             send("production_machine_detail", { machineId: state.selectedMachineId });
@@ -642,6 +665,10 @@ function renderOperatorRanking(items) {
 
     wrap.querySelectorAll(".operator-ranking-item").forEach(card => {
         card.addEventListener("click", () => {
+            if (state.isImportingProduction) {
+                return;
+            }
+
             const operatorCodigoFJ = card.dataset.operator || "";
             if (!operatorCodigoFJ) {
                 return;
@@ -710,7 +737,7 @@ function renderDetail(data) {
 }
 
 function openOperatorDetail(operatorCodigoFJ) {
-    if (!operatorCodigoFJ) {
+    if (!operatorCodigoFJ || state.isImportingProduction) {
         return;
     }
 
@@ -1292,11 +1319,13 @@ function formatDateOnly(value) {
 function showLoading() {
     document.getElementById("loadingOverlay").classList.remove("hidden");
     document.getElementById("btnImport").disabled = true;
+    document.getElementById("btnRefresh").disabled = true;
 }
 
 function hideLoading() {
     document.getElementById("loadingOverlay").classList.add("hidden");
     document.getElementById("btnImport").disabled = false;
+    document.getElementById("btnRefresh").disabled = false;
 }
 
 function closeOperatorModal() {

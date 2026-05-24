@@ -4,6 +4,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using TeamOps.Core.Entities;
@@ -21,6 +22,8 @@ namespace TeamOps.UI.Forms
         private readonly Operator _currentOperator;
         private readonly ProductionAnalyticsService _analyticsService;
         private readonly ProductionFileImporter _fileImporter;
+        private readonly SemaphoreSlim _databaseOperationGate = new(1, 1);
+        private volatile bool _isImportingProduction;
 
         public HTMLFormProductionMonitor(
             SqliteConnectionFactory factory,
@@ -79,7 +82,10 @@ namespace TeamOps.UI.Forms
                         break;
 
                     case "production_load_dashboard":
-                        _ = RunAsync(SendDashboardAsync(ReadFilter(root)));
+                        if (!_isImportingProduction)
+                        {
+                            _ = RunAsync(SendDashboardAsync(ReadFilter(root)));
+                        }
                         break;
 
                     case "production_import":
@@ -87,11 +93,17 @@ namespace TeamOps.UI.Forms
                         break;
 
                     case "production_machine_detail":
-                        _ = RunAsync(SendMachineDetailAsync(ReadInt(root, "machineId", 0)));
+                        if (!_isImportingProduction)
+                        {
+                            _ = RunAsync(SendMachineDetailAsync(ReadInt(root, "machineId", 0)));
+                        }
                         break;
 
                     case "production_operator_detail":
-                        _ = RunAsync(SendOperatorDetailAsync(ReadFilter(root), ReadString(root, "operatorCodigoFJ")));
+                        if (!_isImportingProduction)
+                        {
+                            _ = RunAsync(SendOperatorDetailAsync(ReadFilter(root), ReadString(root, "operatorCodigoFJ")));
+                        }
                         break;
                 }
             }
@@ -126,75 +138,83 @@ namespace TeamOps.UI.Forms
             var defaultDate = DateTime.Today;
             var defaultShiftId = _currentOperator.ShiftId;
 
-            var initPayload = await Task.Run(() =>
+            await _databaseOperationGate.WaitAsync();
+            try
             {
-                using var conn = _factory.CreateOpenConnection();
-                ProductionSchemaMigrator.Ensure(conn);
-
-                return new
+                var initPayload = await Task.Run(() =>
                 {
-                    type = "init",
-                    data = new
-                    {
-                        locale = Program.CurrentLocale,
-                        currentUser = _currentUser.Name,
-                        currentOperatorNamePt = _currentOperator.NameRomanji,
-                        currentOperatorNameJp = string.IsNullOrWhiteSpace(_currentOperator.NameNihongo)
-                            ? _currentOperator.NameRomanji
-                            : _currentOperator.NameNihongo,
-                        defaults = new
-                        {
-                            dateIso = defaultDate.ToString("yyyy-MM-dd"),
-                            shiftId = defaultShiftId
-                        },
-                        shifts = conn.Query(
-                            @"
-                                SELECT
-                                    Id AS id,
-                                    COALESCE(NamePt, '') AS namePt,
-                                    COALESCE(NULLIF(NameJp, ''), NamePt, '') AS nameJp
-                                FROM Shifts
-                                ORDER BY Id;"
-                        ).ToList(),
-                        sectors = conn.Query(
-                            @"
-                                SELECT
-                                    Id AS id,
-                                    COALESCE(NamePt, '') AS namePt,
-                                    COALESCE(NULLIF(NameJp, ''), NamePt, '') AS nameJp
-                                FROM Sectors
-                                ORDER BY Id;"
-                        ).ToList(),
-                        locals = conn.Query(
-                            @"
-                                SELECT
-                                    l.Id AS id,
-                                    l.SectorId AS sectorId,
-                                    COALESCE(l.NamePt, '') AS namePt,
-                                    COALESCE(NULLIF(l.NameJp, ''), l.NamePt, '') AS nameJp
-                                FROM Locals l
-                                ORDER BY l.SectorId, l.Id;"
-                        ).ToList(),
-                        machines = conn.Query(
-                            @"
-                                SELECT
-                                    m.Id AS id,
-                                    COALESCE(m.MachineCode, '') AS machineCode,
-                                    COALESCE(m.LineCode, '') AS lineCode,
-                                    COALESCE(m.NamePt, '') AS namePt,
-                                    COALESCE(NULLIF(m.NameJp, ''), m.NamePt, '') AS nameJp,
-                                    m.SectorId AS sectorId,
-                                    m.LocalId AS localId
-                                FROM Machines m
-                                WHERE COALESCE(m.IsActive, 1) = 1
-                                ORDER BY COALESCE(m.SectorId, 0), COALESCE(m.LocalId, 0), COALESCE(m.LineCode, ''), COALESCE(m.MachineCode, ''), COALESCE(m.NamePt, ''), m.Id;"
-                        ).ToList(),
-                        statuses = LoadStatuses(conn)
-                    }
-                };
-            });
+                    using var conn = _factory.CreateOpenConnection();
+                    ProductionSchemaMigrator.Ensure(conn);
 
-            PostJson(initPayload);
+                    return new
+                    {
+                        type = "init",
+                        data = new
+                        {
+                            locale = Program.CurrentLocale,
+                            currentUser = _currentUser.Name,
+                            currentOperatorNamePt = _currentOperator.NameRomanji,
+                            currentOperatorNameJp = string.IsNullOrWhiteSpace(_currentOperator.NameNihongo)
+                                ? _currentOperator.NameRomanji
+                                : _currentOperator.NameNihongo,
+                            defaults = new
+                            {
+                                dateIso = defaultDate.ToString("yyyy-MM-dd"),
+                                shiftId = defaultShiftId
+                            },
+                            shifts = conn.Query(
+                                @"
+                                    SELECT
+                                        Id AS id,
+                                        COALESCE(NamePt, '') AS namePt,
+                                        COALESCE(NULLIF(NameJp, ''), NamePt, '') AS nameJp
+                                    FROM Shifts
+                                    ORDER BY Id;"
+                            ).ToList(),
+                            sectors = conn.Query(
+                                @"
+                                    SELECT
+                                        Id AS id,
+                                        COALESCE(NamePt, '') AS namePt,
+                                        COALESCE(NULLIF(NameJp, ''), NamePt, '') AS nameJp
+                                    FROM Sectors
+                                    ORDER BY Id;"
+                            ).ToList(),
+                            locals = conn.Query(
+                                @"
+                                    SELECT
+                                        l.Id AS id,
+                                        l.SectorId AS sectorId,
+                                        COALESCE(l.NamePt, '') AS namePt,
+                                        COALESCE(NULLIF(l.NameJp, ''), l.NamePt, '') AS nameJp
+                                    FROM Locals l
+                                    ORDER BY l.SectorId, l.Id;"
+                            ).ToList(),
+                            machines = conn.Query(
+                                @"
+                                    SELECT
+                                        m.Id AS id,
+                                        COALESCE(m.MachineCode, '') AS machineCode,
+                                        COALESCE(m.LineCode, '') AS lineCode,
+                                        COALESCE(m.NamePt, '') AS namePt,
+                                        COALESCE(NULLIF(m.NameJp, ''), m.NamePt, '') AS nameJp,
+                                        m.SectorId AS sectorId,
+                                        m.LocalId AS localId
+                                    FROM Machines m
+                                    WHERE COALESCE(m.IsActive, 1) = 1
+                                    ORDER BY COALESCE(m.SectorId, 0), COALESCE(m.LocalId, 0), COALESCE(m.LineCode, ''), COALESCE(m.MachineCode, ''), COALESCE(m.NamePt, ''), m.Id;"
+                            ).ToList(),
+                            statuses = LoadStatuses(conn)
+                        }
+                    };
+                });
+
+                PostJson(initPayload);
+            }
+            finally
+            {
+                _databaseOperationGate.Release();
+            }
 
             await SendDashboardAsync(new ProductionDashboardFilter
             {
@@ -205,170 +225,193 @@ namespace TeamOps.UI.Forms
 
         private async Task SendDashboardAsync(ProductionDashboardFilter filter)
         {
-            var dashboard = await Task.Run(() => _analyticsService.BuildDashboard(filter));
-
-            PostJson(new
+            await _databaseOperationGate.WaitAsync();
+            try
             {
-                type = "dashboard",
-                data = new
+                var dashboard = await Task.Run(() => _analyticsService.BuildDashboard(filter));
+
+                PostJson(new
                 {
-                    locale = Program.CurrentLocale,
-                    dateIso = filter.Date.ToString("yyyy-MM-dd"),
-                    shiftId = filter.ShiftId,
-                    sectorId = filter.SectorId,
-                    localId = filter.LocalId,
-                    machineId = filter.MachineId,
-                    machineCode = filter.MachineCode,
-                    periodStart = dashboard.Period.Start.ToString("yyyy-MM-dd HH:mm:ss"),
-                    periodEnd = dashboard.Period.End.ToString("yyyy-MM-dd HH:mm:ss"),
-                    productionPercent = dashboard.ProductionPercent,
-                    machinesRunning = dashboard.MachinesRunning,
-                    machinesStopped = dashboard.MachinesStopped,
-                    errorMinutes = dashboard.ErrorMinutes,
-                    inactiveMinutes = dashboard.InactiveMinutes,
-                    machines = dashboard.Machines.Select(machine => new
+                    type = "dashboard",
+                    data = new
                     {
-                        machineId = machine.MachineId,
-                        machineCode = machine.MachineCode,
-                        lineCode = machine.LineCode,
-                        machineNamePt = machine.MachineNamePt,
-                        machineNameJp = machine.MachineNameJp,
-                        sectorId = machine.SectorId,
-                        sectorNamePt = machine.SectorNamePt,
-                        sectorNameJp = machine.SectorNameJp,
-                        localId = machine.LocalId,
-                        localNamePt = machine.LocalNamePt,
-                        localNameJp = machine.LocalNameJp,
-                        statusCode = machine.StatusCode,
-                        displayCode = machine.DisplayCode,
-                        statusText = machine.StatusText,
-                        recipeName = machine.RecipeName,
-                        lotNo = machine.LotNo,
-                        lastUpdate = machine.LastUpdate?.ToString("yyyy-MM-dd HH:mm:ss"),
-                        runningMinutes = machine.RunningMinutes,
-                        stoppedMinutes = machine.StoppedMinutes,
-                        inactiveMinutes = machine.InactiveMinutes,
-                        errorMinutes = machine.ErrorMinutes,
-                        totalMinutes = machine.TotalMinutes,
-                        productionPercent = machine.ProductionPercent,
-                        scheduledOperatorsPt = machine.ScheduledOperatorsPt,
-                        scheduledOperatorsJp = machine.ScheduledOperatorsJp
-                    }),
-                    ranking = dashboard.Ranking.Select(item => new
-                    {
-                        localId = item.LocalId,
-                        localNamePt = item.LocalNamePt,
-                        localNameJp = item.LocalNameJp,
-                        machineCode = item.MachineCode,
-                        machineNamePt = item.MachineNamePt,
-                        machineNameJp = item.MachineNameJp,
-                        stopMinutes = item.StopMinutes,
-                        errorMinutes = item.ErrorMinutes,
-                        totalImpactMinutes = item.TotalImpactMinutes
-                    }),
-                    timeline = dashboard.Timeline.Select(row => new
-                    {
-                        localId = row.LocalId,
-                        sectorId = row.SectorId,
-                        localNamePt = row.LocalNamePt,
-                        localNameJp = row.LocalNameJp,
-                        machineCode = row.MachineCode,
-                        lineCode = row.LineCode,
-                        machineNamePt = row.MachineNamePt,
-                        machineNameJp = row.MachineNameJp,
-                        cells = row.Cells.Select(cell => new
+                        locale = Program.CurrentLocale,
+                        dateIso = filter.Date.ToString("yyyy-MM-dd"),
+                        shiftId = filter.ShiftId,
+                        sectorId = filter.SectorId,
+                        localId = filter.LocalId,
+                        machineId = filter.MachineId,
+                        machineCode = filter.MachineCode,
+                        periodStart = dashboard.Period.Start.ToString("yyyy-MM-dd HH:mm:ss"),
+                        periodEnd = dashboard.Period.End.ToString("yyyy-MM-dd HH:mm:ss"),
+                        productionPercent = dashboard.ProductionPercent,
+                        machinesRunning = dashboard.MachinesRunning,
+                        machinesStopped = dashboard.MachinesStopped,
+                        errorMinutes = dashboard.ErrorMinutes,
+                        inactiveMinutes = dashboard.InactiveMinutes,
+                        machines = dashboard.Machines.Select(machine => new
                         {
-                            timeLabel = cell.TimeLabel,
-                            dateTime = cell.DateTime.ToString("yyyy-MM-dd HH:mm:ss"),
-                            statusCode = cell.StatusCode,
-                            displayCode = cell.DisplayCode,
-                            cssClass = cell.CssClass
-                        })
-                    }),
-                    areas = dashboard.Areas.Select(area => new
-                    {
-                        localId = area.LocalId,
-                        sectorId = area.SectorId,
-                        localNamePt = area.LocalNamePt,
-                        localNameJp = area.LocalNameJp,
-                        sectorNamePt = area.SectorNamePt,
-                        sectorNameJp = area.SectorNameJp,
-                        machineCount = area.MachineCount,
-                        machinesRunning = area.MachinesRunning,
-                        machinesStopped = area.MachinesStopped,
-                        runningMinutes = area.RunningMinutes,
-                        stoppedMinutes = area.StoppedMinutes,
-                        inactiveMinutes = area.InactiveMinutes,
-                        errorMinutes = area.ErrorMinutes,
-                        totalMinutes = area.TotalMinutes,
-                        productionPercent = area.ProductionPercent,
-                        lastUpdate = area.LastUpdate?.ToString("yyyy-MM-dd HH:mm:ss"),
-                        scheduledOperatorsPt = area.ScheduledOperatorsPt,
-                        scheduledOperatorsJp = area.ScheduledOperatorsJp
-                    }),
-                    shiftComparisons = dashboard.ShiftComparisons.Select(item => new
-                    {
-                        shiftId = item.ShiftId,
-                        shiftNamePt = item.ShiftNamePt,
-                        shiftNameJp = item.ShiftNameJp,
-                        start = item.Start.ToString("yyyy-MM-dd HH:mm:ss"),
-                        end = item.End.ToString("yyyy-MM-dd HH:mm:ss"),
-                        productionPercent = item.ProductionPercent,
-                        runningMinutes = item.RunningMinutes,
-                        stoppedMinutes = item.StoppedMinutes,
-                        inactiveMinutes = item.InactiveMinutes,
-                        errorMinutes = item.ErrorMinutes,
-                        machineCount = item.MachineCount
-                    }),
-                    dailyTrend = dashboard.DailyTrend.Select(item => new
-                    {
-                        date = item.Date.ToString("yyyy-MM-dd"),
-                        label = item.Label,
-                        shiftId = item.ShiftId,
-                        shiftNamePt = item.ShiftNamePt,
-                        shiftNameJp = item.ShiftNameJp,
-                        productionPercent = item.ProductionPercent,
-                        runningMinutes = item.RunningMinutes,
-                        stoppedMinutes = item.StoppedMinutes,
-                        inactiveMinutes = item.InactiveMinutes,
-                        errorMinutes = item.ErrorMinutes
-                    }),
-                    areaHistory = dashboard.AreaHistory.Select(item => new
-                    {
-                        localId = item.LocalId,
-                        localNamePt = item.LocalNamePt,
-                        localNameJp = item.LocalNameJp,
-                        days = item.Days.Select(day => new
+                            machineId = machine.MachineId,
+                            machineCode = machine.MachineCode,
+                            lineCode = machine.LineCode,
+                            machineNamePt = machine.MachineNamePt,
+                            machineNameJp = machine.MachineNameJp,
+                            sectorId = machine.SectorId,
+                            sectorNamePt = machine.SectorNamePt,
+                            sectorNameJp = machine.SectorNameJp,
+                            localId = machine.LocalId,
+                            localNamePt = machine.LocalNamePt,
+                            localNameJp = machine.LocalNameJp,
+                            statusCode = machine.StatusCode,
+                            displayCode = machine.DisplayCode,
+                            statusText = machine.StatusText,
+                            recipeName = machine.RecipeName,
+                            lotNo = machine.LotNo,
+                            lastUpdate = machine.LastUpdate?.ToString("yyyy-MM-dd HH:mm:ss"),
+                            runningMinutes = machine.RunningMinutes,
+                            stoppedMinutes = machine.StoppedMinutes,
+                            inactiveMinutes = machine.InactiveMinutes,
+                            errorMinutes = machine.ErrorMinutes,
+                            totalMinutes = machine.TotalMinutes,
+                            productionPercent = machine.ProductionPercent,
+                            scheduledOperatorsPt = machine.ScheduledOperatorsPt,
+                            scheduledOperatorsJp = machine.ScheduledOperatorsJp
+                        }),
+                        ranking = dashboard.Ranking.Select(item => new
                         {
-                            date = day.Date.ToString("yyyy-MM-dd"),
-                            label = day.Label,
-                            productionPercent = day.ProductionPercent,
-                            runningMinutes = day.RunningMinutes,
-                            stoppedMinutes = day.StoppedMinutes,
-                            inactiveMinutes = day.InactiveMinutes,
-                            errorMinutes = day.ErrorMinutes
-                        })
-                    }),
-                     operatorRanking = dashboard.OperatorRanking.Select(item => new
-                     {
-                         operatorCodigoFJ = item.OperatorCodigoFJ,
-                        operatorNamePt = item.OperatorNamePt,
-                        operatorNameJp = item.OperatorNameJp,
-                        estimatedRunningMinutes = item.EstimatedRunningMinutes,
-                        estimatedKadouritsuPercent = item.EstimatedKadouritsuPercent,
-                        localNamesPt = item.LocalNamesPt,
-                         localNamesJp = item.LocalNamesJp
-                     }),
-                     statuses = LoadStatuses()
-                 }
-             });
+                            localId = item.LocalId,
+                            localNamePt = item.LocalNamePt,
+                            localNameJp = item.LocalNameJp,
+                            machineCode = item.MachineCode,
+                            machineNamePt = item.MachineNamePt,
+                            machineNameJp = item.MachineNameJp,
+                            stopMinutes = item.StopMinutes,
+                            errorMinutes = item.ErrorMinutes,
+                            totalImpactMinutes = item.TotalImpactMinutes
+                        }),
+                        timeline = dashboard.Timeline.Select(row => new
+                        {
+                            localId = row.LocalId,
+                            sectorId = row.SectorId,
+                            localNamePt = row.LocalNamePt,
+                            localNameJp = row.LocalNameJp,
+                            machineCode = row.MachineCode,
+                            lineCode = row.LineCode,
+                            machineNamePt = row.MachineNamePt,
+                            machineNameJp = row.MachineNameJp,
+                            cells = row.Cells.Select(cell => new
+                            {
+                                timeLabel = cell.TimeLabel,
+                                dateTime = cell.DateTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                                statusCode = cell.StatusCode,
+                                displayCode = cell.DisplayCode,
+                                cssClass = cell.CssClass
+                            })
+                        }),
+                        areas = dashboard.Areas.Select(area => new
+                        {
+                            localId = area.LocalId,
+                            sectorId = area.SectorId,
+                            localNamePt = area.LocalNamePt,
+                            localNameJp = area.LocalNameJp,
+                            sectorNamePt = area.SectorNamePt,
+                            sectorNameJp = area.SectorNameJp,
+                            machineCount = area.MachineCount,
+                            machinesRunning = area.MachinesRunning,
+                            machinesStopped = area.MachinesStopped,
+                            runningMinutes = area.RunningMinutes,
+                            stoppedMinutes = area.StoppedMinutes,
+                            inactiveMinutes = area.InactiveMinutes,
+                            errorMinutes = area.ErrorMinutes,
+                            totalMinutes = area.TotalMinutes,
+                            productionPercent = area.ProductionPercent,
+                            lastUpdate = area.LastUpdate?.ToString("yyyy-MM-dd HH:mm:ss"),
+                            scheduledOperatorsPt = area.ScheduledOperatorsPt,
+                            scheduledOperatorsJp = area.ScheduledOperatorsJp
+                        }),
+                        shiftComparisons = dashboard.ShiftComparisons.Select(item => new
+                        {
+                            shiftId = item.ShiftId,
+                            shiftNamePt = item.ShiftNamePt,
+                            shiftNameJp = item.ShiftNameJp,
+                            start = item.Start.ToString("yyyy-MM-dd HH:mm:ss"),
+                            end = item.End.ToString("yyyy-MM-dd HH:mm:ss"),
+                            productionPercent = item.ProductionPercent,
+                            runningMinutes = item.RunningMinutes,
+                            stoppedMinutes = item.StoppedMinutes,
+                            inactiveMinutes = item.InactiveMinutes,
+                            errorMinutes = item.ErrorMinutes,
+                            machineCount = item.MachineCount
+                        }),
+                        dailyTrend = dashboard.DailyTrend.Select(item => new
+                        {
+                            date = item.Date.ToString("yyyy-MM-dd"),
+                            label = item.Label,
+                            shiftId = item.ShiftId,
+                            shiftNamePt = item.ShiftNamePt,
+                            shiftNameJp = item.ShiftNameJp,
+                            productionPercent = item.ProductionPercent,
+                            runningMinutes = item.RunningMinutes,
+                            stoppedMinutes = item.StoppedMinutes,
+                            inactiveMinutes = item.InactiveMinutes,
+                            errorMinutes = item.ErrorMinutes
+                        }),
+                        areaHistory = dashboard.AreaHistory.Select(item => new
+                        {
+                            localId = item.LocalId,
+                            localNamePt = item.LocalNamePt,
+                            localNameJp = item.LocalNameJp,
+                            days = item.Days.Select(day => new
+                            {
+                                date = day.Date.ToString("yyyy-MM-dd"),
+                                label = day.Label,
+                                productionPercent = day.ProductionPercent,
+                                runningMinutes = day.RunningMinutes,
+                                stoppedMinutes = day.StoppedMinutes,
+                                inactiveMinutes = day.InactiveMinutes,
+                                errorMinutes = day.ErrorMinutes
+                            })
+                        }),
+                        operatorRanking = dashboard.OperatorRanking.Select(item => new
+                        {
+                            operatorCodigoFJ = item.OperatorCodigoFJ,
+                            operatorNamePt = item.OperatorNamePt,
+                            operatorNameJp = item.OperatorNameJp,
+                            estimatedRunningMinutes = item.EstimatedRunningMinutes,
+                            estimatedKadouritsuPercent = item.EstimatedKadouritsuPercent,
+                            localNamesPt = item.LocalNamesPt,
+                            localNamesJp = item.LocalNamesJp
+                        }),
+                        statuses = LoadStatuses()
+                    }
+                });
+            }
+            finally
+            {
+                _databaseOperationGate.Release();
+            }
         }
 
         private async Task ImportAndRefreshAsync(ProductionDashboardFilter filter)
         {
+            if (_isImportingProduction)
+            {
+                return;
+            }
+
+            _isImportingProduction = true;
             try
             {
-                var result = await Task.Run(() => _fileImporter.ImportLatest());
+                await _databaseOperationGate.WaitAsync();
+                ProductionImportResult result;
+                try
+                {
+                    result = await Task.Run(() => _fileImporter.ImportLatest());
+                }
+                finally
+                {
+                    _databaseOperationGate.Release();
+                }
 
                 PostJson(new
                 {
@@ -396,6 +439,10 @@ namespace TeamOps.UI.Forms
                     message = ex.Message
                 });
             }
+            finally
+            {
+                _isImportingProduction = false;
+            }
         }
 
         private async Task SendMachineDetailAsync(int machineId)
@@ -416,90 +463,106 @@ namespace TeamOps.UI.Forms
                 return;
             }
 
-            var rows = await Task.Run(() =>
+            await _databaseOperationGate.WaitAsync();
+            try
             {
-                using var conn = _factory.CreateOpenConnection();
-                ProductionSchemaMigrator.Ensure(conn);
-
-                return conn.Query(
-                    @"
-                        SELECT
-                            e.MachineId AS machineId,
-                            e.SectorId AS sectorId,
-                            e.MachineCode AS machineCode,
-                            COALESCE(e.LineCode, '') AS lineCode,
-                            COALESCE(m.NamePt, e.MachineCode) AS machineNamePt,
-                            COALESCE(NULLIF(m.NameJp, ''), m.NamePt, e.MachineCode) AS machineNameJp,
-                            substr(e.EventDateTime, 1, 16) AS eventDateTime,
-                            e.StatusCode AS statusCode,
-                            COALESCE(e.StatusText, '') AS statusText,
-                            COALESCE(e.RecipeName, '') AS recipeName,
-                            COALESCE(e.LotNo, '') AS lotNo,
-                            COALESCE(e.SourceFile, '') AS sourceFile
-                        FROM MachineEvents e
-                        LEFT JOIN Machines m ON m.Id = e.MachineId
-                        WHERE e.MachineId = @machineId
-                        ORDER BY e.EventDateTime DESC, e.Id DESC
-                        LIMIT 80;",
-                    new
-                    {
-                        machineId
-                    }
-                ).ToList();
-            });
-
-            PostJson(new
-            {
-                type = "machine_detail",
-                data = new
+                var rows = await Task.Run(() =>
                 {
-                    machineId,
-                    machineCode = rows.FirstOrDefault()?.machineCode ?? string.Empty,
-                    lineCode = rows.FirstOrDefault()?.lineCode ?? string.Empty,
-                    events = rows
-                }
-            });
+                    using var conn = _factory.CreateOpenConnection();
+                    ProductionSchemaMigrator.Ensure(conn);
+
+                    return conn.Query(
+                        @"
+                            SELECT
+                                e.MachineId AS machineId,
+                                e.SectorId AS sectorId,
+                                e.MachineCode AS machineCode,
+                                COALESCE(e.LineCode, '') AS lineCode,
+                                COALESCE(m.NamePt, e.MachineCode) AS machineNamePt,
+                                COALESCE(NULLIF(m.NameJp, ''), m.NamePt, e.MachineCode) AS machineNameJp,
+                                substr(e.EventDateTime, 1, 16) AS eventDateTime,
+                                e.StatusCode AS statusCode,
+                                COALESCE(e.StatusText, '') AS statusText,
+                                COALESCE(e.RecipeName, '') AS recipeName,
+                                COALESCE(e.LotNo, '') AS lotNo,
+                                COALESCE(e.SourceFile, '') AS sourceFile
+                            FROM MachineEvents e
+                            LEFT JOIN Machines m ON m.Id = e.MachineId
+                            WHERE e.MachineId = @machineId
+                            ORDER BY e.EventDateTime DESC, e.Id DESC
+                            LIMIT 80;",
+                        new
+                        {
+                            machineId
+                        }
+                    ).ToList();
+                });
+
+                PostJson(new
+                {
+                    type = "machine_detail",
+                    data = new
+                    {
+                        machineId,
+                        machineCode = rows.FirstOrDefault()?.machineCode ?? string.Empty,
+                        lineCode = rows.FirstOrDefault()?.lineCode ?? string.Empty,
+                        events = rows
+                    }
+                });
+            }
+            finally
+            {
+                _databaseOperationGate.Release();
+            }
         }
 
         private async Task SendOperatorDetailAsync(ProductionDashboardFilter filter, string operatorCodigoFJ)
         {
-            var detail = await Task.Run(() => _analyticsService.GetOperatorDetail(filter, operatorCodigoFJ));
-
-            PostJson(new
+            await _databaseOperationGate.WaitAsync();
+            try
             {
-                type = "operator_detail",
-                data = new
+                var detail = await Task.Run(() => _analyticsService.GetOperatorDetail(filter, operatorCodigoFJ));
+
+                PostJson(new
                 {
-                    operatorCodigoFJ = detail.OperatorCodigoFJ,
-                    operatorNamePt = detail.OperatorNamePt,
-                    operatorNameJp = detail.OperatorNameJp,
-                    shiftNamePt = detail.ShiftNamePt,
-                    shiftNameJp = detail.ShiftNameJp,
-                    averageKadouritsuPercent = detail.AverageKadouritsuPercent,
-                    totalRunningMinutes = detail.TotalRunningMinutes,
-                    assignedAreaCount = detail.AssignedAreaCount,
-                    localNamesPt = detail.LocalNamesPt,
-                    localNamesJp = detail.LocalNamesJp,
-                    entries = detail.Entries.Select(entry => new
+                    type = "operator_detail",
+                    data = new
                     {
-                        date = entry.Date.ToString("yyyy-MM-dd"),
-                        label = entry.Label,
-                        localId = entry.LocalId,
-                        localNamePt = entry.LocalNamePt,
-                        localNameJp = entry.LocalNameJp,
-                        runningMinutes = entry.RunningMinutes,
-                        stoppedMinutes = entry.StoppedMinutes,
-                        inactiveMinutes = entry.InactiveMinutes,
-                        errorMinutes = entry.ErrorMinutes,
-                        eligibleMinutes = entry.EligibleMinutes,
-                        kadouritsuPercent = entry.KadouritsuPercent,
-                        coverageMode = entry.CoverageMode,
-                        isPartialCoverage = entry.IsPartialCoverage,
-                        effectiveMinutes = entry.EffectiveMinutes,
-                        plannedMinutes = entry.PlannedMinutes
-                    })
-                }
-            });
+                        operatorCodigoFJ = detail.OperatorCodigoFJ,
+                        operatorNamePt = detail.OperatorNamePt,
+                        operatorNameJp = detail.OperatorNameJp,
+                        shiftNamePt = detail.ShiftNamePt,
+                        shiftNameJp = detail.ShiftNameJp,
+                        averageKadouritsuPercent = detail.AverageKadouritsuPercent,
+                        totalRunningMinutes = detail.TotalRunningMinutes,
+                        assignedAreaCount = detail.AssignedAreaCount,
+                        localNamesPt = detail.LocalNamesPt,
+                        localNamesJp = detail.LocalNamesJp,
+                        entries = detail.Entries.Select(entry => new
+                        {
+                            date = entry.Date.ToString("yyyy-MM-dd"),
+                            label = entry.Label,
+                            localId = entry.LocalId,
+                            localNamePt = entry.LocalNamePt,
+                            localNameJp = entry.LocalNameJp,
+                            runningMinutes = entry.RunningMinutes,
+                            stoppedMinutes = entry.StoppedMinutes,
+                            inactiveMinutes = entry.InactiveMinutes,
+                            errorMinutes = entry.ErrorMinutes,
+                            eligibleMinutes = entry.EligibleMinutes,
+                            kadouritsuPercent = entry.KadouritsuPercent,
+                            coverageMode = entry.CoverageMode,
+                            isPartialCoverage = entry.IsPartialCoverage,
+                            effectiveMinutes = entry.EffectiveMinutes,
+                            plannedMinutes = entry.PlannedMinutes
+                        })
+                    }
+                });
+            }
+            finally
+            {
+                _databaseOperationGate.Release();
+            }
         }
 
         private static string BuildImportMessage(ProductionImportResult result)
