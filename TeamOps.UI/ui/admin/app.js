@@ -435,6 +435,15 @@ function resolveRowClass(entity, row) {
 function formatCellValue(row, column) {
     const value = displayValue(row, column);
 
+    if (column.key === "colorHex" || column.key === "textColorHex") {
+        const rawColor = String(value ?? "").trim();
+        if (/^#[0-9a-fA-F]{6}$/.test(rawColor)) {
+            return `<span class="color-swatch" style="--swatch:${escapeHtmlAttr(rawColor)}" title="${escapeHtmlAttr(rawColor)}" aria-label="${escapeHtmlAttr(rawColor)}"></span>`;
+        }
+
+        return "-";
+    }
+
     if (typeof value === "string" && value.trim().toUpperCase() === "OK") {
         return `<span class="cell-badge is-ok">${escapeHtml(value)}</span>`;
     }

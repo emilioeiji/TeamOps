@@ -14,6 +14,11 @@ namespace TeamOps.UI.Forms
 {
     public sealed class HTMLFormPrClReport : Form
     {
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
         private readonly SqliteConnectionFactory _factory;
         private readonly bool _isPr;
         private readonly Microsoft.Web.WebView2.WinForms.WebView2 _webView;
@@ -208,7 +213,7 @@ namespace TeamOps.UI.Forms
 
         private void PostJson(object payload)
         {
-            var json = JsonSerializer.Serialize(payload);
+            var json = JsonSerializer.Serialize(payload, JsonOptions);
             if (InvokeRequired)
             {
                 BeginInvoke(new Action(() => _webView.CoreWebView2?.PostWebMessageAsJson(json)));
