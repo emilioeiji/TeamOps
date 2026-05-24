@@ -213,6 +213,9 @@ function hydrateDashboard(data) {
     if (data.statuses) {
         state.statuses = normalizeStatuses(data.statuses);
     }
+    if (data.dateIso) {
+        document.getElementById("datePicker").value = data.dateIso;
+    }
     state.selectedAreaId = resolveSelectedAreaId(data);
 
     setText("lblPeriod", `${formatDateTime(data.periodStart)} - ${formatDateTime(data.periodEnd)}`);

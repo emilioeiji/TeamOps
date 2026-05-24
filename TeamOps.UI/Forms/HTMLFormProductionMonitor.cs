@@ -429,7 +429,7 @@ namespace TeamOps.UI.Forms
                     }
                 });
 
-                await SendDashboardAsync(filter);
+                await SendDashboardAsync(ResolvePostImportDashboardFilter(filter));
             }
             catch (Exception ex)
             {
@@ -589,6 +589,42 @@ namespace TeamOps.UI.Forms
             }
 
             return message;
+        }
+
+        private ProductionDashboardFilter ResolvePostImportDashboardFilter(ProductionDashboardFilter filter)
+        {
+            using var conn = _factory.CreateOpenConnection();
+            ProductionSchemaMigrator.Ensure(conn);
+
+            var selectedDateHasEvents = conn.ExecuteScalar<int>(
+                @"
+                    SELECT COUNT(1)
+                    FROM MachineEvents
+                    WHERE EventDateTime >= @start
+                      AND EventDateTime < @end;",
+                new
+                {
+                    start = filter.Date.Date.ToString("yyyy-MM-dd HH:mm:ss"),
+                    end = filter.Date.Date.AddDays(1).ToString("yyyy-MM-dd HH:mm:ss")
+                }) > 0;
+
+            if (selectedDateHasEvents)
+            {
+                return filter;
+            }
+
+            var latestEventDate = conn.ExecuteScalar<string>(
+                @"
+                    SELECT substr(MAX(EventDateTime), 1, 10)
+                    FROM MachineEvents;"
+            );
+
+            if (DateTime.TryParse(latestEventDate, out var parsedLatestDate))
+            {
+                filter.Date = parsedLatestDate.Date;
+            }
+
+            return filter;
         }
 
         private object LoadStatuses()

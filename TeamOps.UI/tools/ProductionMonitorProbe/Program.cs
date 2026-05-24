@@ -44,6 +44,10 @@ switch (command)
         RunSchemaValidation(repair: true);
         break;
 
+    case "production-diagnostics":
+        RunProductionDiagnostics();
+        break;
+
     case "demo":
     default:
         RunImport();
@@ -125,6 +129,7 @@ void RunSchemaValidation(bool repair)
     if (repair)
     {
         ProductionSchemaMigrator.Ensure(conn);
+        RepairProductionStatusSeeds(conn);
     }
 
     var after = repair
@@ -350,10 +355,163 @@ ProductionSchemaInspection InspectProductionSchema(System.Data.IDbConnection con
     );
     if (dadNoCountCount < 4)
     {
-        issues.Add($"BAD_DAD_STOP_NO_COUNT_SEEDS: found {dadNoCountCount}/4");
+        var dadNoCountRows = conn.Query<StatusDefinitionProbeRow>(
+            @"
+                SELECT
+                    SectorId,
+                    StatusCode,
+                    DisplayCode,
+                    COALESCE(Classification, '') AS Classification,
+                    COALESCE(NamePt, '') AS NamePt,
+                    COALESCE(NameJp, '') AS NameJp,
+                    COALESCE(ColorHex, '') AS ColorHex
+                FROM MachineStatuses
+                WHERE SectorId = @DadSectorId
+                  AND StatusCode IN (3, 17, 18, 19)
+                ORDER BY StatusCode;",
+            new
+            {
+                DadSectorId
+            })
+            .Select(row => $"{row.StatusCode}:{row.Classification}")
+            .DefaultIfEmpty("(none)");
+
+        issues.Add($"BAD_DAD_STOP_NO_COUNT_SEEDS: found {dadNoCountCount}/4 [{string.Join(", ", dadNoCountRows)}]");
     }
 
     return new ProductionSchemaInspection(journalMode, quickCheck, issues);
+}
+
+void RepairProductionStatusSeeds(System.Data.IDbConnection conn)
+{
+    conn.Execute(
+        @"
+            INSERT OR IGNORE INTO MachineStatuses
+            (SectorId, StatusCode, DisplayCode, Classification, NamePt, NameJp, ColorHex, TextColorHex, SortOrder, IsActive)
+            VALUES
+            (@DadSectorId, 0, 0, 'Running', 'Rodando', 'Rodando', '#5B88E8', '#FFFFFF', 0, 1),
+            (@DadSectorId, 1, 3, 'StopCounts', 'Parado DAD', 'Parado DAD', '#F2CB58', '#4A3200', 1, 1),
+            (@DadSectorId, 3, 3, 'StopNoCount', 'Limpeza programada', 'Limpeza programada', '#8EC5A8', '#123524', 3, 1),
+            (@DadSectorId, 4, 4, 'Error', 'Erro', 'Erro', '#FFFFFF', '#516174', 4, 1),
+            (@DadSectorId, 17, 1, 'StopNoCount', 'Intervalo', 'Intervalo', '#8EC5A8', '#123524', 17, 1),
+            (@DadSectorId, 18, 1, 'StopNoCount', 'Limpeza programada', 'Limpeza programada', '#8EC5A8', '#123524', 18, 1),
+            (@DadSectorId, 19, 1, 'StopNoCount', 'Amostra', 'Amostra', '#8EC5A8', '#123524', 19, 1);
+
+            UPDATE MachineStatuses
+            SET DisplayCode = 0, Classification = 'Running', IsActive = 1
+            WHERE SectorId = @DadSectorId AND StatusCode = 0;
+
+            UPDATE MachineStatuses
+            SET DisplayCode = 3, Classification = 'StopCounts', IsActive = 1
+            WHERE SectorId = @DadSectorId AND StatusCode = 1;
+
+            UPDATE MachineStatuses
+            SET DisplayCode = 3, Classification = 'StopNoCount', IsActive = 1
+            WHERE SectorId = @DadSectorId AND StatusCode = 3;
+
+            UPDATE MachineStatuses
+            SET DisplayCode = 4, Classification = 'Error', IsActive = 1
+            WHERE SectorId = @DadSectorId AND StatusCode = 4;
+
+            UPDATE MachineStatuses
+            SET DisplayCode = 1, Classification = 'StopNoCount', IsActive = 1
+            WHERE SectorId = @DadSectorId AND StatusCode IN (17, 18, 19);",
+        new
+        {
+            DadSectorId
+        });
+}
+
+void RunProductionDiagnostics()
+{
+    using var conn = factory.CreateOpenConnection();
+    ProductionSchemaMigrator.Ensure(conn);
+
+    var eventCount = conn.ExecuteScalar<long>("SELECT COUNT(1) FROM MachineEvents;");
+    var currentCount = conn.ExecuteScalar<long>("SELECT COUNT(1) FROM MachineCurrentStatus;");
+    var statusCount = conn.ExecuteScalar<long>("SELECT COUNT(1) FROM MachineStatuses;");
+    var machineCount = conn.ExecuteScalar<long>("SELECT COUNT(1) FROM Machines WHERE COALESCE(IsActive, 1) = 1;");
+    var minEvent = conn.ExecuteScalar<string>("SELECT MIN(EventDateTime) FROM MachineEvents;") ?? string.Empty;
+    var maxEvent = conn.ExecuteScalar<string>("SELECT MAX(EventDateTime) FROM MachineEvents;") ?? string.Empty;
+
+    Console.WriteLine("=== PRODUCTION DIAGNOSTICS ===");
+    Console.WriteLine($"Database={settings.DatabasePath}");
+    Console.WriteLine($"MachineEvents={eventCount}");
+    Console.WriteLine($"MachineCurrentStatus={currentCount}");
+    Console.WriteLine($"MachineStatuses={statusCount}");
+    Console.WriteLine($"ActiveMachines={machineCount}");
+    Console.WriteLine($"FirstEvent={minEvent}");
+    Console.WriteLine($"LastEvent={maxEvent}");
+
+    Console.WriteLine();
+    Console.WriteLine("EventsByDate:");
+    foreach (var row in conn.Query<EventDateCountRow>(
+        @"
+            SELECT substr(EventDateTime, 1, 10) AS Day, COUNT(1) AS Total
+            FROM MachineEvents
+            GROUP BY substr(EventDateTime, 1, 10)
+            ORDER BY Day DESC
+            LIMIT 10;"))
+    {
+        Console.WriteLine($"  {row.Day}: {row.Total}");
+    }
+
+    Console.WriteLine();
+    Console.WriteLine("DadStatuses:");
+    foreach (var row in conn.Query<StatusDefinitionProbeRow>(
+        @"
+            SELECT
+                SectorId,
+                StatusCode,
+                DisplayCode,
+                COALESCE(Classification, '') AS Classification,
+                COALESCE(NamePt, '') AS NamePt,
+                COALESCE(NameJp, '') AS NameJp,
+                COALESCE(ColorHex, '') AS ColorHex
+            FROM MachineStatuses
+            WHERE SectorId = @DadSectorId
+            ORDER BY StatusCode;",
+        new
+        {
+            DadSectorId
+        }))
+    {
+        Console.WriteLine($"  Sector={row.SectorId} Code={row.StatusCode} Display={row.DisplayCode} Classification={row.Classification} Name={row.NamePt}");
+    }
+
+    var latestDate = conn.ExecuteScalar<string>("SELECT substr(MAX(EventDateTime), 1, 10) FROM MachineEvents;") ?? string.Empty;
+    if (!DateTime.TryParse(latestDate, out var dashboardDate))
+    {
+        Console.WriteLine();
+        Console.WriteLine("DashboardLatestDate=none");
+        return;
+    }
+
+    var shift = conn.QueryFirstOrDefault<ShiftRow>(
+        @"
+            SELECT Id, COALESCE(NamePt, '') AS NamePt, COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp
+            FROM Shifts
+            ORDER BY Id;");
+    if (shift == null)
+    {
+        Console.WriteLine("DashboardLatestDate=no-shift");
+        return;
+    }
+
+    var dashboard = analytics.BuildDashboard(new ProductionDashboardFilter
+    {
+        Date = dashboardDate.Date,
+        ShiftId = shift.Id
+    });
+
+    Console.WriteLine();
+    Console.WriteLine($"DashboardLatestDate={dashboardDate:yyyy-MM-dd}");
+    Console.WriteLine($"DashboardShift={shift.Id} {shift.NamePt}");
+    Console.WriteLine($"DashboardMachines={dashboard.Machines.Count}");
+    Console.WriteLine($"DashboardAreas={dashboard.Areas.Count}");
+    Console.WriteLine($"DashboardKadouritsu={dashboard.ProductionPercent:F1}");
+    Console.WriteLine($"DashboardRunning={dashboard.MachinesRunning}");
+    Console.WriteLine($"DashboardStopped={dashboard.MachinesStopped}");
 }
 
 static void RequireTable(System.Data.IDbConnection conn, string tableName, List<string> issues)
@@ -864,6 +1022,12 @@ sealed class StatusDefinitionProbeRow
     public string NamePt { get; set; } = string.Empty;
     public string NameJp { get; set; } = string.Empty;
     public string ColorHex { get; set; } = string.Empty;
+}
+
+sealed class EventDateCountRow
+{
+    public string Day { get; set; } = string.Empty;
+    public long Total { get; set; }
 }
 
 sealed class StatusEventProbeRow
