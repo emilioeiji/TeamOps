@@ -298,6 +298,7 @@ namespace TeamOps.Data.Db
                     ALTER TABLE MachineStatuses_SectorMigration
                     RENAME TO MachineStatuses;"
             );
+
         }
 
         private static void DropLegacyMachineStatusCodeIndex(IDbConnection conn)
@@ -409,6 +410,63 @@ namespace TeamOps.Data.Db
                     (2, 17, 1, 'StopNoCount', 'Intervalo', 'レス処理', '#8EC5A8', '#123524', 17, 1),
                     (2, 18, 1, 'StopNoCount', 'Limpeza programada', '吸引時間', '#8EC5A8', '#123524', 18, 1),
                     (2, 19, 1, 'StopNoCount', 'Amostra', 'サンプル', '#8EC5A8', '#123524', 19, 1);"
+            );
+
+            NormalizeDadMachineStatusSeeds(conn);
+        }
+
+        private static void NormalizeDadMachineStatusSeeds(IDbConnection conn)
+        {
+            conn.Execute(
+                @"
+                    UPDATE MachineStatuses
+                    SET
+                        DisplayCode = 0,
+                        Classification = 'Running',
+                        NamePt = CASE WHEN trim(COALESCE(NamePt, '')) = '' THEN 'Rodando' ELSE NamePt END,
+                        ColorHex = CASE WHEN trim(COALESCE(ColorHex, '')) = '' THEN '#5B88E8' ELSE ColorHex END,
+                        TextColorHex = CASE WHEN trim(COALESCE(TextColorHex, '')) = '' THEN '#FFFFFF' ELSE TextColorHex END,
+                        IsActive = 1
+                    WHERE SectorId = 2 AND StatusCode = 0;
+
+                    UPDATE MachineStatuses
+                    SET
+                        DisplayCode = 3,
+                        Classification = 'StopCounts',
+                        NamePt = CASE WHEN trim(COALESCE(NamePt, '')) = '' THEN 'Parado DAD' ELSE NamePt END,
+                        ColorHex = CASE WHEN trim(COALESCE(ColorHex, '')) = '' THEN '#F2CB58' ELSE ColorHex END,
+                        TextColorHex = CASE WHEN trim(COALESCE(TextColorHex, '')) = '' THEN '#4A3200' ELSE TextColorHex END,
+                        IsActive = 1
+                    WHERE SectorId = 2 AND StatusCode = 1;
+
+                    UPDATE MachineStatuses
+                    SET
+                        DisplayCode = 3,
+                        Classification = 'StopNoCount',
+                        NamePt = CASE WHEN trim(COALESCE(NamePt, '')) = '' THEN 'Limpeza programada' ELSE NamePt END,
+                        ColorHex = CASE WHEN trim(COALESCE(ColorHex, '')) = '' THEN '#8EC5A8' ELSE ColorHex END,
+                        TextColorHex = CASE WHEN trim(COALESCE(TextColorHex, '')) = '' THEN '#123524' ELSE TextColorHex END,
+                        IsActive = 1
+                    WHERE SectorId = 2 AND StatusCode = 3;
+
+                    UPDATE MachineStatuses
+                    SET
+                        DisplayCode = 4,
+                        Classification = 'Error',
+                        NamePt = CASE WHEN trim(COALESCE(NamePt, '')) = '' THEN 'Erro' ELSE NamePt END,
+                        ColorHex = CASE WHEN trim(COALESCE(ColorHex, '')) = '' THEN '#FFFFFF' ELSE ColorHex END,
+                        TextColorHex = CASE WHEN trim(COALESCE(TextColorHex, '')) = '' THEN '#516174' ELSE TextColorHex END,
+                        IsActive = 1
+                    WHERE SectorId = 2 AND StatusCode = 4;
+
+                    UPDATE MachineStatuses
+                    SET
+                        DisplayCode = 1,
+                        Classification = 'StopNoCount',
+                        ColorHex = CASE WHEN trim(COALESCE(ColorHex, '')) = '' THEN '#8EC5A8' ELSE ColorHex END,
+                        TextColorHex = CASE WHEN trim(COALESCE(TextColorHex, '')) = '' THEN '#123524' ELSE TextColorHex END,
+                        IsActive = 1
+                    WHERE SectorId = 2 AND StatusCode IN (17, 18, 19);"
             );
         }
     }
