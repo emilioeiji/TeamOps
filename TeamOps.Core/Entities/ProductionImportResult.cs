@@ -13,6 +13,7 @@ namespace TeamOps.Core.Entities
         public int PlanRowsImported { get; set; }
         public int PlanRowsIgnored { get; set; }
         public List<string> Errors { get; } = new();
+        public Dictionary<string, long> PerformanceMs { get; } = new();
         public bool BatchExecuted { get; set; }
         public string BatchMessage { get; set; } = string.Empty;
     }

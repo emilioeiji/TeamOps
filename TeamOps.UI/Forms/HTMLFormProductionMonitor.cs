@@ -1,6 +1,7 @@
 using Dapper;
 using Microsoft.Web.WebView2.Core;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -413,6 +414,11 @@ namespace TeamOps.UI.Forms
                     _databaseOperationGate.Release();
                 }
 
+                var dashboardRefreshWatch = Stopwatch.StartNew();
+                await SendDashboardAsync(ResolvePostImportDashboardFilter(filter));
+                dashboardRefreshWatch.Stop();
+                result.PerformanceMs["DashboardRefresh"] = dashboardRefreshWatch.ElapsedMilliseconds;
+
                 PostJson(new
                 {
                     type = "import_result",
@@ -425,11 +431,10 @@ namespace TeamOps.UI.Forms
                         imported = result.Imported,
                         ignored = result.Ignored,
                         machinesCreated = result.MachinesCreated,
+                        performanceMs = result.PerformanceMs,
                         errors = result.Errors
                     }
                 });
-
-                await SendDashboardAsync(ResolvePostImportDashboardFilter(filter));
             }
             catch (Exception ex)
             {
@@ -586,6 +591,15 @@ namespace TeamOps.UI.Forms
             if (result.BatchExecuted && !string.IsNullOrWhiteSpace(result.BatchMessage))
             {
                 message += $" | BAT: {result.BatchMessage}";
+            }
+
+            if (result.PerformanceMs.Count > 0)
+            {
+                message += " | Perf: " + string.Join(
+                    ", ",
+                    result.PerformanceMs
+                        .Where(item => item.Key is "Batch" or "DiscoverFiles" or "ReadFiles" or "Parse" or "OpenConnection" or "EnsureSchema" or "LoadMachines" or "LoadStatuses" or "DuplicateCheck" or "InsertEvents" or "Commit" or "DashboardRefresh" or "Total")
+                        .Select(item => $"{item.Key}={item.Value}ms"));
             }
 
             return message;

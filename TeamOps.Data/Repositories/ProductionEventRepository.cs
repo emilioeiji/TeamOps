@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using Dapper;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Db;
@@ -71,6 +73,62 @@ namespace TeamOps.Data.Repositories
             );
 
             return affected > 0;
+        }
+
+        public int InsertOrIgnoreMany(IDbConnection conn, IDbTransaction? tx, IEnumerable<MachineEvent> machineEvents)
+        {
+            return conn.Execute(
+                @"
+                    INSERT OR IGNORE INTO MachineEvents
+                    (
+                        MachineId,
+                        MachineCode,
+                        LineCode,
+                        LocalId,
+                        SectorId,
+                        RecipeName,
+                        LotNo,
+                        StatusCode,
+                        StatusText,
+                        InternalState,
+                        EventDateTime,
+                        SourceFile,
+                        ImportedAt
+                    )
+                    VALUES
+                    (
+                        @MachineId,
+                        @MachineCode,
+                        @LineCode,
+                        @LocalId,
+                        @SectorId,
+                        @RecipeName,
+                        @LotNo,
+                        @StatusCode,
+                        @StatusText,
+                        @InternalState,
+                        @EventDateTime,
+                        @SourceFile,
+                        @ImportedAt
+                    );",
+                machineEvents.Select(machineEvent => new
+                {
+                    machineEvent.MachineId,
+                    machineEvent.MachineCode,
+                    machineEvent.LineCode,
+                    machineEvent.LocalId,
+                    machineEvent.SectorId,
+                    machineEvent.RecipeName,
+                    machineEvent.LotNo,
+                    machineEvent.StatusCode,
+                    machineEvent.StatusText,
+                    machineEvent.InternalState,
+                    EventDateTime = machineEvent.EventDateTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                    machineEvent.SourceFile,
+                    ImportedAt = machineEvent.ImportedAt.ToString("yyyy-MM-dd HH:mm:ss")
+                }),
+                tx
+            );
         }
 
         public void RefreshCurrentStatus(IDbConnection conn, IDbTransaction? tx, int machineId)

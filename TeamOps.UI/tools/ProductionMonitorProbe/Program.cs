@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Diagnostics;
 using Dapper;
 using TeamOps.Config;
 using TeamOps.Data.Db;
@@ -22,6 +23,14 @@ switch (command)
 {
     case "import":
         RunImport();
+        break;
+
+    case "import-profile":
+        RunImportProfile(args.Skip(1).ToArray());
+        break;
+
+    case "db-index-check":
+        RunDbIndexCheck();
         break;
 
     case "dashboard":
@@ -68,6 +77,7 @@ void RunImport()
     Console.WriteLine($"MachinesCreated={result.MachinesCreated}");
     Console.WriteLine($"BatchExecuted={result.BatchExecuted}");
     Console.WriteLine($"BatchMessage={result.BatchMessage}");
+    PrintImportPerformance(result);
 
     if (result.Errors.Count > 0)
     {
@@ -118,6 +128,115 @@ void ShowDashboards()
         }
 
         ShowDashboard("DEFAULT", new DateTime(2026, 4, 29), fallbackShift.Id);
+    }
+}
+
+void RunImportProfile(string[] profileArgs)
+{
+    var options = ImportProfileOptions.Parse(profileArgs);
+    var totalWatch = Stopwatch.StartNew();
+    var result = importer.ImportLatest();
+    totalWatch.Stop();
+
+    Console.WriteLine("=== IMPORT PROFILE ===");
+    Console.WriteLine($"Database={settings.DatabasePath}");
+    Console.WriteLine($"FilesRead={result.FilesRead}");
+    Console.WriteLine($"LinesRead={result.LinesRead}");
+    Console.WriteLine($"Imported={result.Imported}");
+    Console.WriteLine($"Ignored={result.Ignored}");
+    Console.WriteLine($"MachinesCreated={result.MachinesCreated}");
+    Console.WriteLine($"ProbeTotal={totalWatch.ElapsedMilliseconds}ms");
+    PrintImportPerformance(result);
+
+    if (options.Date.HasValue)
+    {
+        var analyticsWatch = Stopwatch.StartNew();
+        var dashboard = analytics.BuildDashboard(new ProductionDashboardFilter
+        {
+            Date = options.Date.Value.Date,
+            SectorId = options.SectorId
+        });
+        analyticsWatch.Stop();
+
+        Console.WriteLine();
+        Console.WriteLine("=== POST IMPORT ANALYTICS PROFILE ===");
+        Console.WriteLine($"Date={options.Date.Value:yyyy-MM-dd}");
+        Console.WriteLine($"Sector={options.SectorLabel}");
+        Console.WriteLine($"Analytics={analyticsWatch.ElapsedMilliseconds}ms");
+        Console.WriteLine($"Machines={dashboard.Machines.Count}");
+        Console.WriteLine($"Areas={dashboard.Areas.Count}");
+        Console.WriteLine($"Kadouritsu={dashboard.ProductionPercent:F1}");
+        Console.WriteLine($"Running={dashboard.MachinesRunning}");
+        Console.WriteLine($"Stopped={dashboard.MachinesStopped}");
+    }
+
+    if (result.Errors.Count > 0)
+    {
+        Console.WriteLine();
+        Console.WriteLine("Errors:");
+        foreach (var error in result.Errors)
+        {
+            Console.WriteLine($" - {error}");
+        }
+    }
+}
+
+void PrintImportPerformance(TeamOps.Core.Entities.ProductionImportResult result)
+{
+    if (result.PerformanceMs.Count == 0)
+    {
+        return;
+    }
+
+    Console.WriteLine("Import performance:");
+    foreach (var item in result.PerformanceMs.OrderBy(item => item.Key.Equals("Total", StringComparison.OrdinalIgnoreCase) ? 1 : 0).ThenBy(item => item.Key))
+    {
+        Console.WriteLine($"{item.Key}={item.Value}ms");
+    }
+}
+
+void RunDbIndexCheck()
+{
+    using var conn = factory.CreateOpenConnection();
+    ProductionSchemaMigrator.Ensure(conn);
+
+    var requiredIndexes = new[]
+    {
+        "IX_MachineStatuses_Sector_StatusCode",
+        "IX_MachineStatuses_SectorId",
+        "IX_MachineStatuses_StatusCode",
+        "IX_MachineEvents_UniqueEvent",
+        "IX_MachineEvents_UniqueRawEvent",
+        "IX_MachineEvents_EventDateTime",
+        "IX_MachineEvents_Machine_EventTime",
+        "IX_Machines_MachineKey_Unique",
+        "IX_Machines_MachineCode_LineCode"
+    };
+
+    var indexes = conn.Query<IndexProbeRow>(
+            @"
+                SELECT
+                    name AS Name,
+                    tbl_name AS TableName,
+                    COALESCE(sql, '') AS Sql
+                FROM sqlite_master
+                WHERE type = 'index'
+                  AND name NOT LIKE 'sqlite_autoindex%'
+                ORDER BY tbl_name, name;")
+        .ToList();
+
+    Console.WriteLine("=== DB INDEX CHECK ===");
+    Console.WriteLine($"Database={settings.DatabasePath}");
+    foreach (var indexName in requiredIndexes)
+    {
+        Console.WriteLine($"{indexName}={(indexes.Any(item => item.Name.Equals(indexName, StringComparison.OrdinalIgnoreCase)) ? "OK" : "MISSING")}");
+    }
+
+    Console.WriteLine();
+    Console.WriteLine("Indexes:");
+    foreach (var index in indexes)
+    {
+        Console.WriteLine($"{index.TableName}.{index.Name}: {index.Sql}");
     }
 }
 
@@ -1011,6 +1130,50 @@ sealed class StatusReportOptions
             CsvPath = csvPath
         };
     }
+}
+
+sealed class ImportProfileOptions
+{
+    public DateTime? Date { get; private init; }
+    public int SectorId { get; private init; }
+    public string SectorLabel => SectorId <= 0 ? "(all)" : SectorId == 2 ? "dad" : SectorId == 1 ? "gbareru" : SectorId.ToString(CultureInfo.InvariantCulture);
+
+    public static ImportProfileOptions Parse(string[] args)
+    {
+        DateTime? date = null;
+        var sectorId = 0;
+
+        for (var index = 0; index < args.Length; index++)
+        {
+            var arg = args[index].Trim();
+            if (arg.Equals("--date", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+            {
+                date = DateTime.Parse(args[++index], CultureInfo.InvariantCulture);
+            }
+            else if (arg.Equals("--sector", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+            {
+                var sectorValue = args[++index].Trim();
+                sectorId = sectorValue.Equals("dad", StringComparison.OrdinalIgnoreCase)
+                    ? 2
+                    : sectorValue.Equals("gbareru", StringComparison.OrdinalIgnoreCase) || sectorValue.Equals("g-bareru", StringComparison.OrdinalIgnoreCase)
+                        ? 1
+                        : int.Parse(sectorValue, CultureInfo.InvariantCulture);
+            }
+        }
+
+        return new ImportProfileOptions
+        {
+            Date = date,
+            SectorId = sectorId
+        };
+    }
+}
+
+sealed class IndexProbeRow
+{
+    public string Name { get; set; } = string.Empty;
+    public string TableName { get; set; } = string.Empty;
+    public string Sql { get; set; } = string.Empty;
 }
 
 sealed class StatusDefinitionProbeRow
