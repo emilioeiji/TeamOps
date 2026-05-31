@@ -2,9 +2,11 @@ using Microsoft.Web.WebView2.Core;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Db;
@@ -78,11 +80,13 @@ namespace TeamOps.UI.Forms
                 switch (action)
                 {
                     case "load":
-                        LoadInitialData();
+                        _ = RunBackgroundAsync(LoadInitialData);
                         break;
 
                     case "refresh":
-                        SendBoard(ReadDate(root, "date"), ReadInt(root, "shiftId"));
+                        var date = ReadDate(root, "date");
+                        var shiftId = ReadInt(root, "shiftId");
+                        _ = RunBackgroundAsync(() => SendBoard(date, shiftId));
                         break;
                 }
             }
@@ -145,6 +149,7 @@ namespace TeamOps.UI.Forms
             if (shiftId <= 0)
                 throw new InvalidOperationException(L("Selecione um turno valido.", "有効なシフトを選択してください。"));
 
+            var totalWatch = Stopwatch.StartNew();
             var operators = _operatorRepo.GetAll()
                 .GroupBy(op => op.CodigoFJ, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
@@ -177,6 +182,7 @@ namespace TeamOps.UI.Forms
                     return BuildSectorState(sector, sectorSchedule, sectorPresence, operators, locals);
                 })
                 .ToList();
+            totalWatch.Stop();
 
             PostJson(new
             {
@@ -198,7 +204,13 @@ namespace TeamOps.UI.Forms
                             extraCount = state.ExtraKeys.Count
                         },
                         locals = state.Locals
-                    })
+                    }),
+                    performance = new
+                    {
+                        totalMs = totalWatch.ElapsedMilliseconds,
+                        plannedCount = schedules.Count,
+                        presenceCount = sectorStates.Sum(state => state.ConfirmedKeys.Count + state.ExtraKeys.Count)
+                    }
                 }
             });
         }
@@ -419,6 +431,22 @@ namespace TeamOps.UI.Forms
 
             if (webViewPresenceLayout.CoreWebView2 != null)
                 webViewPresenceLayout.CoreWebView2.PostWebMessageAsJson(json);
+        }
+
+        private async Task RunBackgroundAsync(Action action)
+        {
+            try
+            {
+                await Task.Run(action);
+            }
+            catch (Exception ex)
+            {
+                PostJson(new
+                {
+                    type = "error",
+                    message = ex.Message
+                });
+            }
         }
 
         private static string ReadString(JsonElement root, string propertyName)

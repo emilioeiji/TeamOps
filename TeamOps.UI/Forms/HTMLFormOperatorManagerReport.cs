@@ -18,14 +18,20 @@ namespace TeamOps.UI.Forms
         private readonly Operator _currentOperator;
         private readonly OperatorManagerReportService _service;
         private readonly Microsoft.Web.WebView2.WinForms.WebView2 _webView;
+        private readonly string _initialCodigoFJ;
+        private readonly int _initialPeriodDays;
 
         public HTMLFormOperatorManagerReport(
             SqliteConnectionFactory factory,
-            Operator currentOperator)
+            Operator currentOperator,
+            string initialCodigoFJ = "",
+            int initialPeriodDays = 90)
         {
             _factory = factory;
             _currentOperator = currentOperator;
             _service = new OperatorManagerReportService(factory);
+            _initialCodigoFJ = initialCodigoFJ?.Trim() ?? string.Empty;
+            _initialPeriodDays = initialPeriodDays > 0 ? initialPeriodDays : 90;
 
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             Text = L("Relatorio Gerencial de Operadores", "Operator Management Report");
@@ -93,6 +99,10 @@ namespace TeamOps.UI.Forms
                     case "open_follow_history":
                         OpenFollowHistory(ReadString(root, "codigoFJ"));
                         break;
+
+                    case "print":
+                        PrintReport();
+                        break;
                 }
             }
             catch (Exception ex)
@@ -119,8 +129,10 @@ namespace TeamOps.UI.Forms
                     {
                         shiftId = init.DefaultShiftId,
                         sectorId = init.DefaultSectorId,
-                        periodDays = init.DefaultPeriodDays,
-                        groupId = 0
+                        periodDays = _initialPeriodDays,
+                        groupId = 0,
+                        search = _initialCodigoFJ,
+                        selectedCodigoFJ = _initialCodigoFJ
                     },
                     shifts = init.Shifts.Select(item => new { id = item.Id, name = item.Name }),
                     sectors = init.Sectors.Select(item => new { id = item.Id, name = item.Name }),
@@ -290,6 +302,14 @@ namespace TeamOps.UI.Forms
 
                 form.ShowDialog(this);
             }));
+        }
+
+        private async void PrintReport()
+        {
+            if (_webView.CoreWebView2 != null)
+            {
+                await _webView.CoreWebView2.ExecuteScriptAsync("window.print();");
+            }
         }
 
         private void PostJson(object payload)

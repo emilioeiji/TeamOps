@@ -34,6 +34,12 @@
     <None Update="Migrations\ProductionMonitor_StatusBySector.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Migrations\ProductionMonitor_GBareruCapacityForecast.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Migrations\Presence_PerformanceIndexes.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Sql\Hikitsugui\delete_attachments_by_hikitsugui.sql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

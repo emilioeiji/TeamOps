@@ -1,9 +1,11 @@
 using Microsoft.Web.WebView2.Core;
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Db;
@@ -13,12 +15,14 @@ namespace TeamOps.UI.Forms
 {
     public sealed class HTMLFormPresenceReport : Form
     {
+        private readonly SqliteConnectionFactory _factory;
         private readonly Operator _currentOperator;
         private readonly OperatorManagerReportService _service;
         private readonly Microsoft.Web.WebView2.WinForms.WebView2 _webView;
 
         public HTMLFormPresenceReport(SqliteConnectionFactory factory, Operator currentOperator)
         {
+            _factory = factory;
             _currentOperator = currentOperator;
             _service = new OperatorManagerReportService(factory);
 
@@ -67,18 +71,26 @@ namespace TeamOps.UI.Forms
                 switch (action)
                 {
                     case "load":
-                        SendInit();
+                        _ = RunBackgroundAsync(SendInit);
                         break;
 
                     case "apply_filters":
-                        SendReport(new OperatorPresenceReportFilter(
+                        var filter = new OperatorPresenceReportFilter(
                             ReadString(root, "startDateIso"),
                             ReadString(root, "endDateIso"),
                             ReadInt(root, "shiftId"),
                             ReadInt(root, "sectorId"),
                             ReadInt(root, "groupId"),
                             ReadString(root, "status"),
-                            ReadString(root, "search")));
+                            ReadString(root, "search"));
+                        _ = RunBackgroundAsync(() => SendReport(filter));
+                        break;
+
+                    case "open_operator_report":
+                        OpenOperatorReport(
+                            ReadString(root, "codigoFJ"),
+                            ReadString(root, "startDateIso"),
+                            ReadString(root, "endDateIso"));
                         break;
                 }
             }
@@ -122,7 +134,9 @@ namespace TeamOps.UI.Forms
 
         private void SendReport(OperatorPresenceReportFilter filter)
         {
+            var watch = Stopwatch.StartNew();
             var report = _service.GetPresenceReport(filter);
+            watch.Stop();
 
             PostJson(new
             {
@@ -161,9 +175,52 @@ namespace TeamOps.UI.Forms
                         lastStatus = item.LastStatus,
                         lastDateIso = item.LastDateIso,
                         lastArea = item.LastArea
-                    })
+                    }),
+                    performance = new
+                    {
+                        queryMs = watch.ElapsedMilliseconds,
+                        rowCount = report.Rows.Count
+                    }
                 }
             });
+        }
+
+        private void OpenOperatorReport(string codigoFJ, string startDateIso, string endDateIso)
+        {
+            if (string.IsNullOrWhiteSpace(codigoFJ))
+            {
+                throw new InvalidOperationException(L("Selecione um operador para abrir o relatorio.", "Choose an operator to open the report."));
+            }
+
+            var periodDays = CalculatePeriodDays(startDateIso, endDateIso);
+
+            BeginInvoke(new Action(() =>
+            {
+                if (IsDisposed)
+                {
+                    return;
+                }
+
+                using var form = new HTMLFormOperatorManagerReport(
+                    _factory,
+                    _currentOperator,
+                    codigoFJ.Trim(),
+                    periodDays);
+
+                form.ShowDialog(this);
+            }));
+        }
+
+        private static int CalculatePeriodDays(string startDateIso, string endDateIso)
+        {
+            if (DateTime.TryParse(startDateIso, out var startDate)
+                && DateTime.TryParse(endDateIso, out var endDate))
+            {
+                var days = (endDate.Date - startDate.Date).Days + 1;
+                return Math.Clamp(days, 1, 365);
+            }
+
+            return 90;
         }
 
         private void PostJson(object payload)
@@ -185,6 +242,22 @@ namespace TeamOps.UI.Forms
             if (_webView.CoreWebView2 != null)
             {
                 _webView.CoreWebView2.PostWebMessageAsJson(json);
+            }
+        }
+
+        private async Task RunBackgroundAsync(Action action)
+        {
+            try
+            {
+                await Task.Run(action);
+            }
+            catch (Exception ex)
+            {
+                PostJson(new
+                {
+                    type = "error",
+                    message = ex.Message
+                });
             }
         }
 

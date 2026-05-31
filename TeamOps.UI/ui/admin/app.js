@@ -453,7 +453,8 @@ function formatCellValue(row, column) {
     }
 
     if (column.key === "activeLabelPt") {
-        return `<span class="cell-badge ${String(value).toLowerCase().includes("ativa") || String(value).includes("稼働") ? "is-ok" : "is-muted"}">${escapeHtml(value || "-")}</span>`;
+        const normalized = String(value).toLowerCase();
+        return `<span class="cell-badge ${normalized.includes("ativa") || normalized.includes("ativo") || String(value).includes("稼働") ? "is-ok" : "is-muted"}">${escapeHtml(value || "-")}</span>`;
     }
 
     return escapeHtml(value);
@@ -540,6 +541,15 @@ function renderField(entity, field, row) {
             <label class="form-field">
                 <span>${escapeHtml(label)} ${requiredBadge}</span>
                 <input class="input" type="number" step="1" data-field="${field.key}" value="${escapeHtmlAttr(value)}">
+            </label>
+        `;
+    }
+
+    if (field.type === "decimal") {
+        return `
+            <label class="form-field">
+                <span>${escapeHtml(label)} ${requiredBadge}</span>
+                <input class="input" type="number" step="0.1" min="0" data-field="${field.key}" value="${escapeHtmlAttr(value)}">
             </label>
         `;
     }

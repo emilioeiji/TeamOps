@@ -336,6 +336,8 @@ namespace TeamOps.UI.Forms
                 CreateMachineEntity(),
                 CreateMachineAuditEntity(),
                 CreateMachineStatusEntity(),
+                CreatePartCodeStyleEntity(),
+                CreateProductionProcedureTimeEntity(),
                 CreateNameEntity(
                     "category", "production",
                     "Categorias", "\u30ab\u30c6\u30b4\u30ea",
@@ -357,6 +359,251 @@ namespace TeamOps.UI.Forms
                 CreateShainEntity(),
                 CreateSystemLogEntity()
             }.ToDictionary(item => item.Key, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static AdminEntityDefinition CreatePartCodeStyleEntity()
+        {
+            return new AdminEntityDefinition
+            {
+                Key = "part_code_style",
+                Group = "production",
+                TitlePt = "Codigos da Producao",
+                TitleJp = "Production Codes",
+                DescriptionPt = "Legenda visual dos codigos destacados na tela de producao.",
+                DescriptionJp = "Visual legend for highlighted production codes.",
+                Fields =
+                {
+                    new AdminFieldDefinition("partCode", "Codigo", "Code", "text", true),
+                    new AdminFieldDefinition("colorHex", "Cor", "Color", "color", true),
+                    new AdminFieldDefinition("textColorHex", "Cor do Texto", "Text Color", "color", true),
+                    new AdminFieldDefinition("description", "Descricao", "Description", "text", false),
+                    new AdminFieldDefinition("isActive", "Ativo", "Active", "checkbox", false)
+                },
+                Columns =
+                {
+                    new AdminColumnDefinition("partCode", null, "Codigo", "Code"),
+                    new AdminColumnDefinition("colorHex", null, "Cor", "Color"),
+                    new AdminColumnDefinition("textColorHex", null, "Texto", "Text"),
+                    new AdminColumnDefinition("description", null, "Descricao", "Description"),
+                    new AdminColumnDefinition("activeLabelPt", "activeLabelJp", "Status", "Status")
+                },
+                QueryRows = conn => conn.Query(
+                    @"
+                        SELECT
+                            rowid AS id,
+                            COALESCE(PartCode, '') AS partCode,
+                            COALESCE(ColorHex, '#D93F3F') AS colorHex,
+                            COALESCE(TextColorHex, '#FFFFFF') AS textColorHex,
+                            COALESCE(Description, '') AS description,
+                            COALESCE(IsActive, 1) AS isActive,
+                            CASE COALESCE(IsActive, 1)
+                                WHEN 1 THEN 'Ativo'
+                                ELSE 'Inativo'
+                            END AS activeLabelPt,
+                            CASE COALESCE(IsActive, 1)
+                                WHEN 1 THEN 'Active'
+                                ELSE 'Inactive'
+                            END AS activeLabelJp
+                        FROM ProductionPartCodeStyles
+                        ORDER BY COALESCE(IsActive, 1) DESC, PartCode;"
+                ),
+                InsertSql = @"
+                    INSERT INTO ProductionPartCodeStyles
+                    (
+                        PartCode,
+                        ColorHex,
+                        TextColorHex,
+                        Description,
+                        IsActive,
+                        UpdatedAt
+                    )
+                    VALUES
+                    (
+                        @partCode,
+                        @colorHex,
+                        @textColorHex,
+                        @description,
+                        @isActive,
+                        CURRENT_TIMESTAMP
+                    );",
+                UpdateSql = @"
+                    UPDATE ProductionPartCodeStyles
+                    SET
+                        PartCode = @partCode,
+                        ColorHex = @colorHex,
+                        TextColorHex = @textColorHex,
+                        Description = @description,
+                        IsActive = @isActive,
+                        UpdatedAt = CURRENT_TIMESTAMP
+                    WHERE rowid = @id;",
+                DeleteSql = "DELETE FROM ProductionPartCodeStyles WHERE rowid = @id;",
+                BuildParameters = (conn, values, currentId) =>
+                {
+                    var partCode = ReadString(values, "partCode").Trim().ToUpperInvariant();
+                    var colorHex = NormalizeHexColor(ReadString(values, "colorHex"));
+                    var textColorHex = NormalizeHexColor(ReadString(values, "textColorHex"));
+                    var description = ReadString(values, "description").Trim();
+                    var isActive = ReadBool(values, "isActive", true);
+
+                    if (string.IsNullOrWhiteSpace(partCode))
+                        throw new InvalidOperationException(L("Informe o codigo de producao.", "Invalid production code."));
+
+                    var duplicate = conn.ExecuteScalar<int>(
+                        @"
+                            SELECT COUNT(1)
+                            FROM ProductionPartCodeStyles
+                            WHERE upper(trim(PartCode)) = upper(trim(@partCode))
+                              AND (@currentId IS NULL OR rowid <> @currentId);",
+                        new
+                        {
+                            partCode,
+                            currentId
+                        }) > 0;
+
+                    if (duplicate)
+                        throw new InvalidOperationException(L("Ja existe um codigo de producao com este valor.", "Production code already exists."));
+
+                    var parameters = new DynamicParameters();
+                    parameters.Add("@partCode", partCode);
+                    parameters.Add("@colorHex", colorHex);
+                    parameters.Add("@textColorHex", textColorHex);
+                    parameters.Add("@description", string.IsNullOrWhiteSpace(description) ? null : description);
+                    parameters.Add("@isActive", isActive ? 1 : 0);
+                    if (currentId.HasValue)
+                    {
+                        parameters.Add("@id", currentId.Value);
+                    }
+
+                    return parameters;
+                }
+            };
+        }
+
+        private static AdminEntityDefinition CreateProductionProcedureTimeEntity()
+        {
+            return new AdminEntityDefinition
+            {
+                Key = "production_procedure_time",
+                Group = "production",
+                TitlePt = "Tempos de Procedimento",
+                TitleJp = "Procedure Times",
+                DescriptionPt = "Tempos padrao usados apenas na previsao de capacidade do G-Bareru.",
+                DescriptionJp = "Standard times used only by G-Bareru capacity forecast.",
+                Fields =
+                {
+                    new AdminFieldDefinition("sectorId", "Setor", "Sector", "select", true, "sectors"),
+                    new AdminFieldDefinition("localId", "Area (opcional)", "Area (optional)", "select", false, "locals"),
+                    new AdminFieldDefinition("procedureCode", "Procedimento", "Procedure", "text", true),
+                    new AdminFieldDefinition("standardMinutes", "Tempo padrao (min)", "Standard minutes", "decimal", true),
+                    new AdminFieldDefinition("isActive", "Ativo", "Active", "checkbox", false)
+                },
+                Columns =
+                {
+                    new AdminColumnDefinition("id", null, "ID", "ID"),
+                    new AdminColumnDefinition("sectorNamePt", "sectorNameJp", "Setor", "Sector"),
+                    new AdminColumnDefinition("localDisplayPt", "localDisplayJp", "Area", "Area"),
+                    new AdminColumnDefinition("procedureCode", null, "Procedimento", "Procedure"),
+                    new AdminColumnDefinition("standardMinutes", null, "Min", "Min"),
+                    new AdminColumnDefinition("activeLabelPt", "activeLabelJp", "Status", "Status")
+                },
+                QueryRows = conn => conn.Query(
+                    @"
+                        SELECT
+                            ppt.Id AS id,
+                            ppt.SectorId AS sectorId,
+                            COALESCE(ppt.LocalId, 0) AS localId,
+                            upper(trim(COALESCE(ppt.ProcedureCode, ''))) AS procedureCode,
+                            ppt.StandardMinutes AS standardMinutes,
+                            COALESCE(ppt.IsActive, 1) AS isActive,
+                            COALESCE(s.NamePt, '') AS sectorNamePt,
+                            COALESCE(NULLIF(s.NameJp, ''), s.NamePt, '') AS sectorNameJp,
+                            CASE
+                                WHEN COALESCE(l.Id, 0) = 0 THEN 'Global do setor'
+                                ELSE COALESCE(NULLIF(l.ShortCode, ''), NULLIF(l.NamePt, ''), NULLIF(l.NameJp, ''), 'L' || l.Id) || ' - ' || COALESCE(l.NamePt, '')
+                            END AS localDisplayPt,
+                            CASE
+                                WHEN COALESCE(l.Id, 0) = 0 THEN 'Sector global'
+                                ELSE COALESCE(NULLIF(l.ShortCode, ''), NULLIF(l.NamePt, ''), NULLIF(l.NameJp, ''), 'L' || l.Id) || ' - ' || COALESCE(NULLIF(l.NameJp, ''), l.NamePt, '')
+                            END AS localDisplayJp,
+                            CASE COALESCE(ppt.IsActive, 1)
+                                WHEN 1 THEN 'Ativo'
+                                ELSE 'Inativo'
+                            END AS activeLabelPt,
+                            CASE COALESCE(ppt.IsActive, 1)
+                                WHEN 1 THEN 'Active'
+                                ELSE 'Inactive'
+                            END AS activeLabelJp
+                        FROM ProductionProcedureTimes ppt
+                        LEFT JOIN Sectors s ON s.Id = ppt.SectorId
+                        LEFT JOIN Locals l ON l.Id = ppt.LocalId
+                        ORDER BY ppt.SectorId, COALESCE(ppt.LocalId, 0), ppt.ProcedureCode;"
+                ),
+                InsertSql = @"
+                    INSERT INTO ProductionProcedureTimes
+                    (SectorId, LocalId, ProcedureCode, StandardMinutes, IsActive, UpdatedAt)
+                    VALUES
+                    (@sectorId, @localId, @procedureCode, @standardMinutes, @isActive, CURRENT_TIMESTAMP);",
+                UpdateSql = @"
+                    UPDATE ProductionProcedureTimes
+                    SET
+                        SectorId = @sectorId,
+                        LocalId = @localId,
+                        ProcedureCode = @procedureCode,
+                        StandardMinutes = @standardMinutes,
+                        IsActive = @isActive,
+                        UpdatedAt = CURRENT_TIMESTAMP
+                    WHERE Id = @id;",
+                DeleteSql = "DELETE FROM ProductionProcedureTimes WHERE Id = @id;",
+                BuildParameters = (conn, values, currentId) =>
+                {
+                    var sectorId = ReadInt(values, "sectorId");
+                    var localId = ReadInt(values, "localId");
+                    var procedureCode = NormalizeProcedureCode(ReadString(values, "procedureCode"));
+                    var standardMinutes = ReadDouble(values, "standardMinutes");
+                    var isActive = ReadBool(values, "isActive", true);
+
+                    if (sectorId <= 0)
+                        throw new InvalidOperationException(L("Selecione um setor valido.", "Invalid sector."));
+
+                    if (string.IsNullOrWhiteSpace(procedureCode))
+                        throw new InvalidOperationException(L("Informe o procedimento.", "Invalid procedure."));
+
+                    if (standardMinutes <= 0)
+                        throw new InvalidOperationException(L("Informe um tempo maior que zero.", "Time must be greater than zero."));
+
+                    var duplicate = conn.ExecuteScalar<int>(
+                        @"
+                            SELECT COUNT(1)
+                            FROM ProductionProcedureTimes
+                            WHERE SectorId = @sectorId
+                              AND COALESCE(LocalId, 0) = @localId
+                              AND upper(trim(ProcedureCode)) = @procedureCode
+                              AND (@currentId IS NULL OR Id <> @currentId);",
+                        new
+                        {
+                            sectorId,
+                            localId,
+                            procedureCode,
+                            currentId
+                        }) > 0;
+
+                    if (duplicate)
+                        throw new InvalidOperationException(L("Ja existe tempo para este procedimento neste setor/area.", "Procedure time already exists."));
+
+                    var parameters = new DynamicParameters();
+                    parameters.Add("@sectorId", sectorId);
+                    parameters.Add("@localId", localId > 0 ? localId : null);
+                    parameters.Add("@procedureCode", procedureCode);
+                    parameters.Add("@standardMinutes", standardMinutes);
+                    parameters.Add("@isActive", isActive ? 1 : 0);
+                    if (currentId.HasValue)
+                    {
+                        parameters.Add("@id", currentId.Value);
+                    }
+
+                    return parameters;
+                }
+            };
         }
 
         private static AdminEntityDefinition CreateNameEntity(
@@ -1040,6 +1287,20 @@ namespace TeamOps.UI.Forms
             };
         }
 
+        private static double ReadDouble(JsonElement root, string propertyName)
+        {
+            if (!root.TryGetProperty(propertyName, out var prop))
+                return 0;
+
+            return prop.ValueKind switch
+            {
+                JsonValueKind.Number => prop.GetDouble(),
+                JsonValueKind.String when double.TryParse(prop.GetString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsed) => parsed,
+                JsonValueKind.String when double.TryParse(prop.GetString(), out var parsedLocal) => parsedLocal,
+                _ => 0
+            };
+        }
+
         private static string L(string pt, string jp)
         {
             return string.Equals(Program.CurrentLocale, "ja-JP", StringComparison.OrdinalIgnoreCase)
@@ -1078,6 +1339,24 @@ namespace TeamOps.UI.Forms
             throw new InvalidOperationException(L(
                 "Informe uma regra de eficiencia valida: Running, StopCounts, StopNoCount ou Error.",
                 "Invalid efficiency rule: Running, StopCounts, StopNoCount or Error."));
+        }
+
+        private static string NormalizeProcedureCode(string value)
+        {
+            var normalized = (value ?? string.Empty).Trim().ToUpperInvariant();
+
+            if (normalized.Equals("ECII", StringComparison.OrdinalIgnoreCase))
+                return "ECII";
+
+            if (normalized.Equals("BUNKATSU", StringComparison.OrdinalIgnoreCase))
+                return "BUNKATSU";
+
+            if (normalized.Equals("DCS", StringComparison.OrdinalIgnoreCase))
+                return "DCS";
+
+            throw new InvalidOperationException(L(
+                "Informe um procedimento valido: ECII, BUNKATSU ou DCS.",
+                "Invalid procedure: ECII, BUNKATSU or DCS."));
         }
 
         private sealed class AdminEntityDefinition

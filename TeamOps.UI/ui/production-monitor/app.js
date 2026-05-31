@@ -21,14 +21,31 @@ const I18N = {
         metricProduction: "% Kadouritsu",
         metricRunning: "Rodando",
         metricStopped: "Paradas",
+        metricIgnored: "Desconsideradas",
+        metricAvgOperating: "Media operando",
         metricError: "Min. erro",
         metricInactive: "Min. inativo",
+        forecastTitle: "Previsao G-Bareru",
+        forecastSubtitle: "Simulacao de capacidade com base em ECII, Bunkatsu, DCS e escala Haidai.",
+        forecastReal: "Real",
+        forecastPredicted: "Previsto",
+        forecastDifference: "Diferenca",
+        forecastPeople: "Pessoas",
+        forecastCycle: "Ciclo previsto",
+        forecastCapacity: "Capacidade",
+        forecastUnavailable: "Previsao indisponivel",
+        forecastBottleneck: "Gargalo",
+        forecastBlock1: "ECII+Bunkatsu",
+        forecastBlock2: "DCS",
+        partLegendTitle: "Codigos parametrizados",
+        partLegendSubtitle: "Legenda visual dos codigos destacados na producao.",
+        noPartLegend: "Nenhum codigo parametrizado.",
         areaBoardTitle: "Painel por area",
         areaBoardSubtitle: "A lista principal fica resumida por area para nao crescer demais com todas as maquinas.",
         areaDetailTitle: "Detalhe da area",
         areaDetailSubtitle: "Clique em uma area para listar as maquinas e os operadores previstos naquele local.",
         areaFocusLabel: "Area em foco",
-        areaSummaryTemplate: "{machines} maquinas, {running} rodando, {stopped} paradas, {operators} operadores previstos.",
+        areaSummaryTemplate: "{machines} maquinas, {running} rodando, {stopped} paradas, {ignored} desconsideradas, {operators} operadores previstos.",
         areaMachineCount: "Maquinas",
         areaKadouritsu: "Kadouritsu",
         areaRunningMinutes: "Min. rodando",
@@ -125,6 +142,7 @@ const state = {
     locals: [],
     machines: [],
     statuses: {},
+    partCodeStyles: [],
     dashboard: null,
     selectedAreaId: 0,
     selectedMachineId: 0,
@@ -213,6 +231,7 @@ function hydrateDashboard(data) {
     if (data.statuses) {
         state.statuses = normalizeStatuses(data.statuses);
     }
+    state.partCodeStyles = data.partCodeStyles || state.partCodeStyles || [];
     if (data.dateIso) {
         document.getElementById("datePicker").value = data.dateIso;
     }
@@ -222,6 +241,8 @@ function hydrateDashboard(data) {
     setText("lblProductionPercent", `${toFixed(data.productionPercent)}%`);
     setText("lblMachinesRunning", data.machinesRunning ?? 0);
     setText("lblMachinesStopped", data.machinesStopped ?? 0);
+    setText("lblMachinesIgnored", data.machinesIgnored ?? 0);
+    setText("lblAverageOperatingProcessMinutes", `${toFixed(data.averageOperatingProcessMinutes)} ${t("minutesLabel")}`);
     setText("lblErrorMinutes", toFixed(data.errorMinutes));
     setText("lblInactiveMinutes", toFixed(data.inactiveMinutes));
 
@@ -231,6 +252,8 @@ function hydrateDashboard(data) {
     renderDailyTrend(data.dailyTrend || []);
     renderAreaHistory(data.areaHistory || []);
     renderOperatorRanking(data.operatorRanking || []);
+    renderPartCodeLegend(state.partCodeStyles);
+    renderGBareruForecast(data.gBareruCapacityForecast || null);
 
     if (!state.pinnedNotice) {
         hideNotice();
@@ -244,6 +267,44 @@ function refreshDashboard() {
 
     state.pinnedNotice = false;
     send("production_load_dashboard", buildFilterPayload());
+}
+
+function renderGBareruForecast(forecast) {
+    const card = document.getElementById("gBareruForecastCard");
+    if (!card) {
+        return;
+    }
+
+    card.classList.remove("hidden");
+
+    if (!forecast?.isAvailable) {
+        setText("lblForecastMode", t("forecastUnavailable"));
+        setText("lblForecastReal", "-");
+        setText("lblForecastPredicted", "-");
+        setText("lblForecastDifference", "-");
+        setText("lblForecastPeople", "-");
+        setText("lblForecastCycle", "-");
+        setText("lblForecastCapacity", "-");
+        document.getElementById("forecastDetails").innerHTML = `<div class="forecast-warning">${escapeHtml(forecast?.message || t("forecastUnavailable"))}</div>`;
+        return;
+    }
+
+    setText("lblForecastMode", forecast.cycleMode || "-");
+    setText("lblForecastReal", `${toFixed(forecast.realKadouritsuPercent)}%`);
+    setText("lblForecastPredicted", `${toFixed(forecast.forecastKadouritsuPercent)}%`);
+    setText("lblForecastDifference", `${formatSignedPercent(forecast.differencePercent)}`);
+    setText("lblForecastPeople", forecast.peopleCount ?? 0);
+    setText("lblForecastCycle", `${toFixed(forecast.cycleMinutes)} ${t("minutesLabel")}`);
+    setText("lblForecastCapacity", toFixed(forecast.forecastCapacity));
+
+    document.getElementById("forecastDetails").innerHTML = `
+        <span>${escapeHtml(t("forecastBlock1"))}: <strong>${toFixed(forecast.block1Minutes)} ${escapeHtml(t("minutesLabel"))}</strong></span>
+        <span>${escapeHtml(t("forecastBlock2"))}: <strong>${toFixed(forecast.block2Minutes)} ${escapeHtml(t("minutesLabel"))}</strong></span>
+        <span>${escapeHtml(t("forecastBottleneck"))}: <strong>${escapeHtml(forecast.bottleneck || "-")}</strong></span>
+        <span>ECII: <strong>${toFixed(forecast.eciiMinutes)}</strong></span>
+        <span>Bunkatsu: <strong>${toFixed(forecast.bunkatsuMinutes)}</strong></span>
+        <span>DCS: <strong>${toFixed(forecast.dcsMinutes)}</strong></span>
+    `;
 }
 
 function importProduction() {
@@ -398,6 +459,10 @@ function renderAreaBoard(areas) {
                                 <strong>${area.machinesStopped || 0}</strong>
                             </div>
                             <div class="stat-chip">
+                                <span>${escapeHtml(t("metricIgnored"))}</span>
+                                <strong>${area.machinesIgnored || 0}</strong>
+                            </div>
+                            <div class="stat-chip">
                                 <span>${escapeHtml(t("metricError"))}</span>
                                 <strong>${toFixed(area.errorMinutes)}</strong>
                             </div>
@@ -487,7 +552,7 @@ function renderMachineTable(rows) {
                     <small>${escapeHtml(formatMachineMinutesSummary(row))}</small>
                 </div>
             </td>
-            <td>${escapeHtml(row.recipeName || "-")}</td>
+            <td>${renderPartCodeCell(row)}</td>
             <td>${escapeHtml(row.lotNo || "-")}</td>
             <td>${escapeHtml(getOperatorsLabel(row))}</td>
             <td>
@@ -513,6 +578,40 @@ function renderMachineTable(rows) {
             send("production_machine_detail", { machineId: state.selectedMachineId });
         });
     });
+}
+
+function renderPartCodeCell(row) {
+    const code = row.ec2PartCode || row.recipeName || "";
+    if (!code) {
+        return "-";
+    }
+
+    const colorHex = row.ec2PartColorHex || "";
+    const textColorHex = row.ec2PartTextColorHex || "";
+    if (!colorHex) {
+        return escapeHtml(code);
+    }
+
+    return `<span class="part-code-badge" style="${escapeHtmlAttr(`background:${colorHex};color:${textColorHex || "#FFFFFF"};`)}">${escapeHtml(code)}</span>`;
+}
+
+function renderPartCodeLegend(items) {
+    const wrap = document.getElementById("partCodeLegend");
+    if (!wrap) {
+        return;
+    }
+
+    if (!items || !items.length) {
+        wrap.innerHTML = `<div class="empty-card">${escapeHtml(t("noPartLegend"))}</div>`;
+        return;
+    }
+
+    wrap.innerHTML = items.map(item => `
+        <span class="part-code-badge" style="${escapeHtmlAttr(`background:${item.colorHex || "#D93F3F"};color:${item.textColorHex || "#FFFFFF"};`)}">
+            ${escapeHtml(item.partCode || "-")}
+            ${item.description ? `<small>${escapeHtml(item.description)}</small>` : ""}
+        </span>
+    `).join("");
 }
 
 function renderRanking(items) {
@@ -815,8 +914,20 @@ function applyLocale() {
     setText("txtMetricProduction", t("metricProduction"));
     setText("txtMetricRunning", t("metricRunning"));
     setText("txtMetricStopped", t("metricStopped"));
+    setText("txtMetricIgnored", t("metricIgnored"));
+    setText("txtMetricAvgOperating", t("metricAvgOperating"));
     setText("txtMetricError", t("metricError"));
     setText("txtMetricInactive", t("metricInactive"));
+    setText("txtForecastTitle", t("forecastTitle"));
+    setText("txtForecastSubtitle", t("forecastSubtitle"));
+    setText("txtForecastReal", t("forecastReal"));
+    setText("txtForecastPredicted", t("forecastPredicted"));
+    setText("txtForecastDifference", t("forecastDifference"));
+    setText("txtForecastPeople", t("forecastPeople"));
+    setText("txtForecastCycle", t("forecastCycle"));
+    setText("txtForecastCapacity", t("forecastCapacity"));
+    setText("txtPartLegendTitle", t("partLegendTitle"));
+    setText("txtPartLegendSubtitle", t("partLegendSubtitle"));
     setText("txtAreaBoardTitle", t("areaBoardTitle"));
     setText("txtAreaBoardSubtitle", t("areaBoardSubtitle"));
     setText("txtAreaDetailTitle", t("areaDetailTitle"));
@@ -1007,6 +1118,7 @@ function buildAreaSummaryLine(area) {
         .replace("{machines}", String(area.machineCount || 0))
         .replace("{running}", String(area.machinesRunning || 0))
         .replace("{stopped}", String(area.machinesStopped || 0))
+        .replace("{ignored}", String(area.machinesIgnored || 0))
         .replace("{operators}", String(getAreaOperators(area).length));
 }
 
@@ -1349,6 +1461,11 @@ function hideNotice() {
 
 function toFixed(value) {
     return Number(value || 0).toFixed(1);
+}
+
+function formatSignedPercent(value) {
+    const number = Number(value || 0);
+    return `${number > 0 ? "+" : ""}${number.toFixed(1)}%`;
 }
 
 function clampPercent(value) {

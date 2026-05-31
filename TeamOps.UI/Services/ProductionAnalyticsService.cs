@@ -267,9 +267,12 @@ namespace TeamOps.Services
                     WHERE COALESCE(IsActive, 1) = 1;"
             ).ToDictionary(row => BuildStatusKey(row.SectorId, row.StatusCode), StringComparer.OrdinalIgnoreCase);
 
+            var ec2States = LoadEc2States(conn, machineIds);
+
             var latestKnownEventCandidates = statusRows.Values
                 .Select(item => item.EventDateTime)
                 .Concat(events.Select(item => item.EventDateTime))
+                .Concat(ec2States.Values.Select(item => item.SnapshotAt))
                 .ToList();
 
             DateTime? latestKnownEventTime = latestKnownEventCandidates.Count == 0
@@ -284,6 +287,7 @@ namespace TeamOps.Services
                 statusRows,
                 eventsByMachine,
                 operatorsByLocal,
+                ec2States,
                 statusDefinitions,
                 period);
 
@@ -293,6 +297,9 @@ namespace TeamOps.Services
             dashboard.ProductionPercent = aggregate.ProductionPercent;
             dashboard.MachinesRunning = aggregate.MachinesRunning;
             dashboard.MachinesStopped = aggregate.MachinesStopped;
+            dashboard.MachinesIgnored = aggregate.MachinesIgnored;
+            dashboard.MachinesTotal = machineSummaries.Count;
+            dashboard.AverageOperatingProcessMinutes = aggregate.AverageOperatingProcessMinutes;
             dashboard.ErrorMinutes = aggregate.ErrorMinutes;
             dashboard.InactiveMinutes = aggregate.InactiveMinutes;
 
@@ -362,6 +369,7 @@ namespace TeamOps.Services
                     statusRows,
                     eventsByMachine,
                     new Dictionary<int, List<ScheduleRow>>(),
+                    ec2States,
                     statusDefinitions,
                     comparisonPeriod);
 
@@ -395,6 +403,7 @@ namespace TeamOps.Services
                         statusRows,
                         eventsByMachine,
                         new Dictionary<int, List<ScheduleRow>>(),
+                        ec2States,
                         statusDefinitions,
                         dayPeriod);
 
@@ -440,6 +449,7 @@ namespace TeamOps.Services
                         statusRows,
                         eventsByMachine,
                         new Dictionary<int, List<ScheduleRow>>(),
+                        ec2States,
                         statusDefinitions,
                         dayPeriod);
 
@@ -831,6 +841,7 @@ namespace TeamOps.Services
                     statusRows,
                     eventsByMachine,
                     new Dictionary<int, List<ScheduleRow>>(),
+                    new Dictionary<int, Ec2StateRow>(),
                     statusDefinitions,
                     period);
 
@@ -897,11 +908,60 @@ namespace TeamOps.Services
             return string.IsNullOrWhiteSpace(combined) ? "hirukin" : combined;
         }
 
+        private static Dictionary<int, Ec2StateRow> LoadEc2States(System.Data.IDbConnection conn, IReadOnlyCollection<int> machineIds)
+        {
+            if (machineIds.Count == 0)
+            {
+                return new Dictionary<int, Ec2StateRow>();
+            }
+
+            return conn.Query<Ec2StateRow>(
+                    @"
+                        SELECT
+                            ecs.MachineId,
+                            ecs.SectorId,
+                            ecs.LocalId,
+                            COALESCE(ecs.AreaLabel, '') AS AreaLabel,
+                            COALESCE(ecs.MachineCode, '') AS MachineCode,
+                            COALESCE(ecs.MachineName, '') AS MachineName,
+                            COALESCE(ecs.StatusText, '') AS StatusText,
+                            COALESCE(ecs.IsRunning, 0) AS IsRunning,
+                            COALESCE(ecs.IsIgnored, 0) AS IsIgnored,
+                            COALESCE(ecs.IgnoreReason, '') AS IgnoreReason,
+                            COALESCE(ecs.PartCode, '') AS PartCode,
+                            ecs.PlannedProcessMinutes,
+                            COALESCE(ecs.CapabilityType, '') AS CapabilityType,
+                            ecs.OperationRate,
+                            ecs.CurrentDifference,
+                            COALESCE(ecs.LotNo, '') AS LotNo,
+                            ecs.PlannedEndAt,
+                            ecs.ProcessMinutes,
+                            ecs.DailyProduction,
+                            ecs.SnapshotAt,
+                            COALESCE(style.ColorHex, '') AS PartColorHex,
+                            COALESCE(style.TextColorHex, '') AS PartTextColorHex,
+                            COALESCE(style.Description, '') AS PartDescription
+                        FROM Ec2MachineCurrentState ecs
+                        LEFT JOIN ProductionPartCodeStyles style
+                          ON style.PartCode = ecs.PartCode
+                         AND COALESCE(style.IsActive, 1) = 1
+                        WHERE ecs.MachineId IN @machineIds;",
+                    new
+                    {
+                        machineIds
+                    })
+                .ToList()
+                .Where(row => row.MachineId.HasValue)
+                .GroupBy(row => row.MachineId!.Value)
+                .ToDictionary(group => group.Key, group => group.First());
+        }
+
         private static List<ProductionMachineSummaryDto> BuildMachineSummaries(
             IReadOnlyCollection<MachineRow> machines,
             IReadOnlyDictionary<int, StatusRow> statusRows,
             IReadOnlyDictionary<int, List<EventRow>> eventsByMachine,
             IReadOnlyDictionary<int, List<ScheduleRow>> operatorsByLocal,
+            IReadOnlyDictionary<int, Ec2StateRow> ec2States,
             IReadOnlyDictionary<string, StatusDefinitionRow> statusDefinitions,
             ProductionShiftPeriod period)
         {
@@ -926,6 +986,7 @@ namespace TeamOps.Services
                 var rawStatusCode = currentStatus?.StatusCode ?? 1;
                 var statusSectorId = currentStatus?.SectorId ?? machine.SectorId;
                 var displayCode = NormalizeStatusCode(statusSectorId, rawStatusCode, statusDefinitions);
+                ec2States.TryGetValue(machine.Id, out var ec2State);
 
                 var summary = new ProductionMachineSummaryDto
                 {
@@ -947,6 +1008,16 @@ namespace TeamOps.Services
                         : currentStatus!.StatusText,
                     RecipeName = currentStatus?.RecipeName ?? string.Empty,
                     LotNo = currentStatus?.LotNo ?? string.Empty,
+                    Ec2StatusText = ec2State?.StatusText ?? string.Empty,
+                    Ec2PartCode = ec2State?.PartCode ?? string.Empty,
+                    Ec2PartColorHex = ec2State?.PartColorHex ?? string.Empty,
+                    Ec2PartTextColorHex = ec2State?.PartTextColorHex ?? string.Empty,
+                    Ec2IgnoreReason = ec2State?.IgnoreReason ?? string.Empty,
+                    IsEc2Running = ec2State?.IsRunning == 1,
+                    IsEc2Ignored = ec2State?.IsIgnored == 1,
+                    Ec2ProcessMinutes = ec2State?.ProcessMinutes,
+                    Ec2OperationRate = ec2State?.OperationRate,
+                    Ec2SnapshotAt = ec2State?.SnapshotAt,
                     LastUpdate = currentStatus?.EventDateTime,
                     RunningMinutes = metrics.RunningMinutes,
                     StoppedMinutes = metrics.StoppedMinutes,
@@ -957,6 +1028,35 @@ namespace TeamOps.Services
                         ? 0
                         : Math.Round((metrics.RunningMinutes / metrics.TotalMinutes) * 100d, 1)
                 };
+
+                if (ec2State != null)
+                {
+                    summary.StatusText = string.IsNullOrWhiteSpace(ec2State.StatusText)
+                        ? summary.StatusText
+                        : ec2State.StatusText;
+                    summary.RecipeName = string.IsNullOrWhiteSpace(ec2State.PartCode)
+                        ? summary.RecipeName
+                        : ec2State.PartCode;
+                    summary.LotNo = string.IsNullOrWhiteSpace(ec2State.LotNo)
+                        ? summary.LotNo
+                        : ec2State.LotNo;
+                    summary.LastUpdate = ec2State.SnapshotAt;
+
+                    if (ec2State.IsIgnored == 1)
+                    {
+                        summary.DisplayCode = 1;
+                        summary.RunningMinutes = 0;
+                        summary.StoppedMinutes = 0;
+                        summary.InactiveMinutes = 0;
+                        summary.ErrorMinutes = 0;
+                        summary.TotalMinutes = 0;
+                        summary.ProductionPercent = 0;
+                    }
+                    else if (ec2State.IsRunning == 0)
+                    {
+                        summary.DisplayCode = 3;
+                    }
+                }
 
                 if (machine.LocalId.HasValue && operatorsByLocal.TryGetValue(machine.LocalId.Value, out var assignedOperators))
                 {
@@ -1002,6 +1102,8 @@ namespace TeamOps.Services
                         MachineCount = machineList.Count,
                         MachinesRunning = aggregate.MachinesRunning,
                         MachinesStopped = aggregate.MachinesStopped,
+                        MachinesIgnored = aggregate.MachinesIgnored,
+                        AverageOperatingProcessMinutes = aggregate.AverageOperatingProcessMinutes,
                         RunningMinutes = aggregate.RunningMinutes,
                         StoppedMinutes = aggregate.StoppedMinutes,
                         InactiveMinutes = aggregate.InactiveMinutes,
@@ -1041,6 +1143,9 @@ namespace TeamOps.Services
             var machineList = machines.ToList();
             var totalMinutes = machineList.Sum(machine => machine.TotalMinutes);
             var runningMinutes = machineList.Sum(machine => machine.RunningMinutes);
+            var operatingMachines = machineList
+                .Where(machine => !machine.IsEc2Ignored && machine.IsEc2Running && machine.Ec2ProcessMinutes.HasValue)
+                .ToList();
 
             return new SummaryAggregate(
                 RunningMinutes: Math.Round(runningMinutes, 1),
@@ -1052,7 +1157,11 @@ namespace TeamOps.Services
                     ? 0
                     : Math.Round((runningMinutes / totalMinutes) * 100d, 1),
                 MachinesRunning: machineList.Count(machine => machine.DisplayCode == 0),
-                MachinesStopped: machineList.Count(machine => machine.DisplayCode == 3));
+                MachinesStopped: machineList.Count(machine => machine.DisplayCode == 3),
+                MachinesIgnored: machineList.Count(machine => machine.IsEc2Ignored),
+                AverageOperatingProcessMinutes: operatingMachines.Count == 0
+                    ? 0
+                    : Math.Round(operatingMachines.Average(machine => machine.Ec2ProcessMinutes!.Value), 1));
         }
 
         private static List<DateTime> BuildTimelineMoments(ProductionShiftPeriod period)
@@ -1627,6 +1736,33 @@ namespace TeamOps.Services
         {
         }
 
+        private sealed class Ec2StateRow
+        {
+            public int? MachineId { get; set; }
+            public int? SectorId { get; set; }
+            public int? LocalId { get; set; }
+            public string AreaLabel { get; set; } = string.Empty;
+            public string MachineCode { get; set; } = string.Empty;
+            public string MachineName { get; set; } = string.Empty;
+            public string StatusText { get; set; } = string.Empty;
+            public int IsRunning { get; set; }
+            public int IsIgnored { get; set; }
+            public string IgnoreReason { get; set; } = string.Empty;
+            public string PartCode { get; set; } = string.Empty;
+            public double? PlannedProcessMinutes { get; set; }
+            public string CapabilityType { get; set; } = string.Empty;
+            public double? OperationRate { get; set; }
+            public double? CurrentDifference { get; set; }
+            public string LotNo { get; set; } = string.Empty;
+            public DateTime? PlannedEndAt { get; set; }
+            public double? ProcessMinutes { get; set; }
+            public double? DailyProduction { get; set; }
+            public DateTime SnapshotAt { get; set; }
+            public string PartColorHex { get; set; } = string.Empty;
+            public string PartTextColorHex { get; set; } = string.Empty;
+            public string PartDescription { get; set; } = string.Empty;
+        }
+
         private sealed class ScheduleRow
         {
             public DateTime ScheduleDate { get; set; }
@@ -1675,7 +1811,9 @@ namespace TeamOps.Services
             double TotalMinutes,
             double ProductionPercent,
             int MachinesRunning,
-            int MachinesStopped);
+            int MachinesStopped,
+            int MachinesIgnored,
+            double AverageOperatingProcessMinutes);
 
         private readonly record struct ProductionMetrics(
             double RunningMinutes,

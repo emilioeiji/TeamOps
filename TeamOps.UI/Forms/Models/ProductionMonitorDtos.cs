@@ -25,6 +25,9 @@ namespace TeamOps.UI.Forms.Models
         public double ProductionPercent { get; set; }
         public int MachinesRunning { get; set; }
         public int MachinesStopped { get; set; }
+        public int MachinesIgnored { get; set; }
+        public int MachinesTotal { get; set; }
+        public double AverageOperatingProcessMinutes { get; set; }
         public double ErrorMinutes { get; set; }
         public double InactiveMinutes { get; set; }
         public List<ProductionMachineSummaryDto> Machines { get; } = new();
@@ -35,6 +38,43 @@ namespace TeamOps.UI.Forms.Models
         public List<ProductionDailyTrendDto> DailyTrend { get; } = new();
         public List<ProductionAreaHistoryDto> AreaHistory { get; } = new();
         public List<ProductionOperatorRankingDto> OperatorRanking { get; } = new();
+        public GBareruCapacityForecastDto GBareruCapacityForecast { get; set; } = new();
+    }
+
+    public sealed class GBareruCapacityForecastDto
+    {
+        public bool IsAvailable { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public double EciiMinutes { get; set; }
+        public double BunkatsuMinutes { get; set; }
+        public double DcsMinutes { get; set; }
+        public int PeopleCount { get; set; }
+        public string CycleMode { get; set; } = string.Empty;
+        public double CycleMinutes { get; set; }
+        public double Block1Minutes { get; set; }
+        public double Block2Minutes { get; set; }
+        public string Bottleneck { get; set; } = string.Empty;
+        public double AvailableMinutes { get; set; }
+        public double ForecastCapacity { get; set; }
+        public double ForecastKadouritsuPercent { get; set; }
+        public double RealKadouritsuPercent { get; set; }
+        public double DifferencePercent { get; set; }
+        public long CalculationMs { get; set; }
+        public List<GBareruCapacityAreaForecastDto> Areas { get; } = new();
+    }
+
+    public sealed class GBareruCapacityAreaForecastDto
+    {
+        public int? LocalId { get; set; }
+        public string LocalNamePt { get; set; } = string.Empty;
+        public string LocalNameJp { get; set; } = string.Empty;
+        public int PeopleCount { get; set; }
+        public string CycleMode { get; set; } = string.Empty;
+        public double CycleMinutes { get; set; }
+        public double ForecastCapacity { get; set; }
+        public double ForecastKadouritsuPercent { get; set; }
+        public double RealKadouritsuPercent { get; set; }
+        public string Message { get; set; } = string.Empty;
     }
 
     public sealed class ProductionOperatorDetailDto
@@ -72,6 +112,16 @@ namespace TeamOps.UI.Forms.Models
         public string StatusText { get; set; } = string.Empty;
         public string RecipeName { get; set; } = string.Empty;
         public string LotNo { get; set; } = string.Empty;
+        public string Ec2StatusText { get; set; } = string.Empty;
+        public string Ec2PartCode { get; set; } = string.Empty;
+        public string Ec2PartColorHex { get; set; } = string.Empty;
+        public string Ec2PartTextColorHex { get; set; } = string.Empty;
+        public string Ec2IgnoreReason { get; set; } = string.Empty;
+        public bool IsEc2Running { get; set; }
+        public bool IsEc2Ignored { get; set; }
+        public double? Ec2ProcessMinutes { get; set; }
+        public double? Ec2OperationRate { get; set; }
+        public DateTime? Ec2SnapshotAt { get; set; }
         public DateTime? LastUpdate { get; set; }
         public double RunningMinutes { get; set; }
         public double StoppedMinutes { get; set; }
@@ -129,6 +179,8 @@ namespace TeamOps.UI.Forms.Models
         public int MachineCount { get; set; }
         public int MachinesRunning { get; set; }
         public int MachinesStopped { get; set; }
+        public int MachinesIgnored { get; set; }
+        public double AverageOperatingProcessMinutes { get; set; }
         public double RunningMinutes { get; set; }
         public double StoppedMinutes { get; set; }
         public double InactiveMinutes { get; set; }

@@ -8,6 +8,7 @@ const state = {
         search: ""
     },
     directory: [],
+    initialSelectedCodigoFJ: "",
     selectedCodigoFJ: "",
     report: null,
     window: {
@@ -47,6 +48,7 @@ const I18N = {
         noHistory: "Nenhum historico encontrado no periodo.",
         noFollowUps: "Nenhum follow-up registrado no periodo.",
         btnFollowHistory: "Abrir historico detalhado",
+        btnPrintGuidance: "Imprimir orientacao",
         masterCards: "MasterCards",
         presence: "Presenca",
         production: "Producao",
@@ -130,6 +132,7 @@ const I18N = {
         noHistory: "No history found in this period.",
         noFollowUps: "No follow-up records in this period.",
         btnFollowHistory: "Open detailed history",
+        btnPrintGuidance: "Print guidance",
         masterCards: "MasterCards",
         presence: "Attendance",
         production: "Production",
@@ -244,11 +247,15 @@ function hydrateInit(data) {
     state.filters.sectorId = Number(data.defaults?.sectorId || 0);
     state.filters.groupId = Number(data.defaults?.groupId || 0);
     state.filters.periodDays = Number(data.defaults?.periodDays || 90);
+    state.filters.search = data.defaults?.search || "";
+    state.initialSelectedCodigoFJ = data.defaults?.selectedCodigoFJ || "";
+    state.selectedCodigoFJ = state.initialSelectedCodigoFJ;
 
     document.getElementById("shiftId").value = String(state.filters.shiftId);
     document.getElementById("sectorId").value = String(state.filters.sectorId);
     document.getElementById("groupId").value = String(state.filters.groupId);
     document.getElementById("periodDays").value = String(state.filters.periodDays);
+    document.getElementById("searchInput").value = state.filters.search;
 
     requestDirectory();
 }
@@ -327,6 +334,12 @@ function renderDirectory(data) {
         return;
     }
 
+    if (state.initialSelectedCodigoFJ
+        && state.directory.some(item => item.codigoFJ === state.initialSelectedCodigoFJ)) {
+        state.selectedCodigoFJ = state.initialSelectedCodigoFJ;
+        state.initialSelectedCodigoFJ = "";
+    }
+
     if (!state.directory.some(item => item.codigoFJ === state.selectedCodigoFJ)) {
         state.selectedCodigoFJ = state.directory[0].codigoFJ;
     }
@@ -393,7 +406,10 @@ function renderReport(data) {
                 <small>${escapeHtml(t("started"))}: ${escapeHtml(formatDateOnly(data.startDateIso))}</small>
             </div>
 
-            <button id="btnFollowHistory" class="ghost-button" type="button">${escapeHtml(t("btnFollowHistory"))}</button>
+            <div class="operator-actions">
+                <button id="btnPrintGuidance" class="ghost-button" type="button">${escapeHtml(t("btnPrintGuidance"))}</button>
+                <button id="btnFollowHistory" class="ghost-button" type="button">${escapeHtml(t("btnFollowHistory"))}</button>
+            </div>
         </section>
 
         <section class="metric-grid">
@@ -498,6 +514,10 @@ function renderReport(data) {
             action: "open_follow_history",
             codigoFJ: state.selectedCodigoFJ
         });
+    });
+
+    document.getElementById("btnPrintGuidance").addEventListener("click", () => {
+        post({ action: "print" });
     });
 }
 
@@ -746,6 +766,10 @@ function escapeHtml(value) {
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
         .replaceAll("\"", "&quot;");
+}
+
+function escapeHtmlAttr(value) {
+    return escapeHtml(value);
 }
 
 function debounce(callback, delay) {

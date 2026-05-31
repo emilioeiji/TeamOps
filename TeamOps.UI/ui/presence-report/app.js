@@ -1,6 +1,7 @@
 const state = {
     locale: "pt-BR",
-    rows: []
+    rows: [],
+    activeView: "manager"
 };
 
 const toast = {
@@ -45,6 +46,12 @@ const I18N = {
         early: "Saida antecipada",
         avgPresence: "Media presenca",
         pending: "Todoke pendente",
+        managerSummary: "Resumo Gerencial",
+        details: "Detalhamento",
+        byGroup: "Resumo por grupo",
+        bySector: "Resumo por area",
+        byShift: "Resumo por turno",
+        absenceRate: "Taxa ausencia",
         statusPresent: "Presenca",
         statusIssue: "Ocorrencias",
         statusLate: "Atraso",
@@ -85,6 +92,12 @@ const I18N = {
         early: "Early leave",
         avgPresence: "Avg attendance",
         pending: "Pending Todoke",
+        managerSummary: "Management Summary",
+        details: "Details",
+        byGroup: "By group",
+        bySector: "By area",
+        byShift: "By shift",
+        absenceRate: "Absence rate",
         statusPresent: "Attendance",
         statusIssue: "Issues",
         statusLate: "Late",
@@ -121,6 +134,9 @@ window.chrome?.webview?.addEventListener("message", event => {
 
 function bindEvents() {
     document.getElementById("btnApply").addEventListener("click", requestReport);
+    document.querySelectorAll("[data-view]").forEach(button => {
+        button.addEventListener("click", () => switchView(button.dataset.view || "manager"));
+    });
     ["startDate", "endDate", "shiftId", "sectorId", "groupId", "status"].forEach(id => {
         document.getElementById(id).addEventListener("change", requestReport);
     });
@@ -160,6 +176,8 @@ function applyLocale() {
     setText("btnApply", t("apply"));
     setText("txtTableTitle", t("tableTitle"));
     setText("txtTableSubtitle", t("tableSubtitle"));
+    setText("tabManager", t("managerSummary"));
+    setText("tabDetails", t("details"));
     setText("thOperator", t("operator"));
     setText("thGroup", t("group"));
     setText("thScheduled", t("scheduled"));
@@ -175,6 +193,7 @@ function applyLocale() {
     setText("optStatusLate", t("statusLate"));
     setText("optStatusEarly", t("statusEarly"));
     setText("optStatusPending", t("pending"));
+    switchView(state.activeView);
 }
 
 function fillLookup(id, items) {
@@ -203,6 +222,7 @@ function renderReport(data) {
     setText("lblWindow", `${formatDate(data.startDateIso)} - ${formatDate(data.endDateIso)}`);
     setText("lblCount", state.rows.length);
     renderSummary(data.summary || {});
+    renderBreakdowns(state.rows);
     renderRows(state.rows);
 }
 
@@ -212,11 +232,78 @@ function renderSummary(summary) {
         summaryCard(t("scheduledDays"), summary.scheduledDays ?? 0),
         summaryCard(t("presentDays"), summary.presentDays ?? 0),
         summaryCard(t("avgPresence"), formatPercent(summary.presencePercent), "accent"),
+        summaryCard(t("absenceRate"), formatPercent(calculateAbsenceRate(summary)), "danger"),
         summaryCard(t("yukyu"), summary.yukyuDays ?? 0),
         summaryCard(t("falta"), summary.faltaDays ?? 0, "danger"),
         summaryCard(t("late"), summary.lateDays ?? 0, "warn"),
         summaryCard(t("early"), summary.earlyLeaveDays ?? 0, "warn")
     ].join("");
+}
+
+function renderBreakdowns(rows) {
+    const container = document.getElementById("managerBreakdowns");
+    container.innerHTML = [
+        breakdownCard(t("byGroup"), buildBreakdown(rows, "groupName")),
+        breakdownCard(t("bySector"), buildBreakdown(rows, "sectorName")),
+        breakdownCard(t("byShift"), buildBreakdown(rows, "shiftName"))
+    ].join("");
+}
+
+function buildBreakdown(rows, field) {
+    const map = new Map();
+    rows.forEach(row => {
+        const key = row[field] || "-";
+        const current = map.get(key) || { label: key, scheduled: 0, present: 0, issues: 0 };
+        current.scheduled += Number(row.scheduledDays || 0);
+        current.present += Number(row.presentDays || 0);
+        current.issues += Number(row.yukyuDays || 0) + Number(row.faltaDays || 0)
+            + Number(row.lateDays || 0) + Number(row.earlyLeaveDays || 0);
+        map.set(key, current);
+    });
+
+    return Array.from(map.values())
+        .sort((a, b) => b.scheduled - a.scheduled || a.label.localeCompare(b.label))
+        .slice(0, 8);
+}
+
+function breakdownCard(title, items) {
+    const rows = items.length
+        ? items.map(item => {
+            const percent = item.scheduled > 0 ? (item.present / item.scheduled) * 100 : 0;
+            return `
+                <div class="breakdown-row">
+                    <span>${escapeHtml(item.label)}</span>
+                    <strong>${escapeHtml(formatPercent(percent))}</strong>
+                    <small>${item.present}/${item.scheduled} | ${escapeHtml(t("issues"))}: ${item.issues}</small>
+                </div>
+            `;
+        }).join("")
+        : `<p class="breakdown-empty">${escapeHtml(t("empty"))}</p>`;
+
+    return `
+        <article class="breakdown-card">
+            <h2>${escapeHtml(title)}</h2>
+            ${rows}
+        </article>
+    `;
+}
+
+function calculateAbsenceRate(summary) {
+    const scheduled = Number(summary.scheduledDays || 0);
+    if (scheduled <= 0) {
+        return 0;
+    }
+
+    const present = Number(summary.presentDays || 0);
+    return Math.max(0, ((scheduled - present) / scheduled) * 100);
+}
+
+function switchView(view) {
+    state.activeView = view === "details" ? "details" : "manager";
+    document.getElementById("managerPanel")?.classList.toggle("hidden", state.activeView !== "manager");
+    document.getElementById("detailsPanel")?.classList.toggle("hidden", state.activeView !== "details");
+    document.getElementById("tabManager")?.classList.toggle("active", state.activeView === "manager");
+    document.getElementById("tabDetails")?.classList.toggle("active", state.activeView === "details");
 }
 
 function renderRows(rows) {
@@ -239,7 +326,9 @@ function renderRows(rows) {
             <tr>
                 <td>
                     <div class="operator-cell">
-                        <strong>${escapeHtml(localizedName(row.name, row.nameJp))}</strong>
+                        <button class="operator-link" type="button" data-open-operator="${escapeHtmlAttr(row.codigoFJ)}">
+                            ${escapeHtml(localizedName(row.name, row.nameJp))}
+                        </button>
                         <span>${escapeHtml(row.codigoFJ)} | ${escapeHtml(row.shiftName || "-")} | ${escapeHtml(row.sectorName || "-")}</span>
                     </div>
                 </td>
@@ -252,6 +341,17 @@ function renderRows(rows) {
             </tr>
         `;
     }).join("");
+
+    body.querySelectorAll("[data-open-operator]").forEach(button => {
+        button.addEventListener("click", () => {
+            post({
+                action: "open_operator_report",
+                codigoFJ: button.dataset.openOperator || "",
+                startDateIso: document.getElementById("startDate").value,
+                endDateIso: document.getElementById("endDate").value
+            });
+        });
+    });
 }
 
 function setRowsLoading() {
@@ -317,6 +417,10 @@ function escapeHtml(value) {
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
         .replaceAll("\"", "&quot;");
+}
+
+function escapeHtmlAttr(value) {
+    return escapeHtml(value);
 }
 
 function debounce(callback, delay) {

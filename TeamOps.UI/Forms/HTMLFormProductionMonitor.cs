@@ -13,6 +13,7 @@ using TeamOps.Data.Db;
 using TeamOps.Data.Repositories;
 using TeamOps.Services;
 using TeamOps.UI.Forms.Models;
+using TeamOps.UI.Services;
 
 namespace TeamOps.UI.Forms
 {
@@ -22,6 +23,7 @@ namespace TeamOps.UI.Forms
         private readonly User _currentUser;
         private readonly Operator _currentOperator;
         private readonly ProductionAnalyticsService _analyticsService;
+        private readonly GBareruCapacityForecastService _forecastService;
         private readonly ProductionFileImporter _fileImporter;
         private readonly SemaphoreSlim _databaseOperationGate = new(1, 1);
         private volatile bool _isImportingProduction;
@@ -42,6 +44,7 @@ namespace TeamOps.UI.Forms
             var eventRepository = new ProductionEventRepository(factory);
 
             _analyticsService = new ProductionAnalyticsService(factory);
+            _forecastService = new GBareruCapacityForecastService(factory);
             _fileImporter = new ProductionFileImporter(factory, machineRepository, eventRepository);
 
             InitializeWebView();
@@ -229,7 +232,12 @@ namespace TeamOps.UI.Forms
             await _databaseOperationGate.WaitAsync();
             try
             {
-                var dashboard = await Task.Run(() => _analyticsService.BuildDashboard(filter));
+                var dashboard = await Task.Run(() =>
+                {
+                    var builtDashboard = _analyticsService.BuildDashboard(filter);
+                    builtDashboard.GBareruCapacityForecast = _forecastService.BuildForecast(filter, builtDashboard);
+                    return builtDashboard;
+                });
 
                 PostJson(new
                 {
@@ -248,6 +256,9 @@ namespace TeamOps.UI.Forms
                         productionPercent = dashboard.ProductionPercent,
                         machinesRunning = dashboard.MachinesRunning,
                         machinesStopped = dashboard.MachinesStopped,
+                        machinesIgnored = dashboard.MachinesIgnored,
+                        machinesTotal = dashboard.MachinesTotal,
+                        averageOperatingProcessMinutes = dashboard.AverageOperatingProcessMinutes,
                         errorMinutes = dashboard.ErrorMinutes,
                         inactiveMinutes = dashboard.InactiveMinutes,
                         machines = dashboard.Machines.Select(machine => new
@@ -268,6 +279,16 @@ namespace TeamOps.UI.Forms
                             statusText = machine.StatusText,
                             recipeName = machine.RecipeName,
                             lotNo = machine.LotNo,
+                            ec2StatusText = machine.Ec2StatusText,
+                            ec2PartCode = machine.Ec2PartCode,
+                            ec2PartColorHex = machine.Ec2PartColorHex,
+                            ec2PartTextColorHex = machine.Ec2PartTextColorHex,
+                            ec2IgnoreReason = machine.Ec2IgnoreReason,
+                            isEc2Running = machine.IsEc2Running,
+                            isEc2Ignored = machine.IsEc2Ignored,
+                            ec2ProcessMinutes = machine.Ec2ProcessMinutes,
+                            ec2OperationRate = machine.Ec2OperationRate,
+                            ec2SnapshotAt = machine.Ec2SnapshotAt?.ToString("yyyy-MM-dd HH:mm:ss"),
                             lastUpdate = machine.LastUpdate?.ToString("yyyy-MM-dd HH:mm:ss"),
                             runningMinutes = machine.RunningMinutes,
                             stoppedMinutes = machine.StoppedMinutes,
@@ -320,6 +341,8 @@ namespace TeamOps.UI.Forms
                             machineCount = area.MachineCount,
                             machinesRunning = area.MachinesRunning,
                             machinesStopped = area.MachinesStopped,
+                            machinesIgnored = area.MachinesIgnored,
+                            averageOperatingProcessMinutes = area.AverageOperatingProcessMinutes,
                             runningMinutes = area.RunningMinutes,
                             stoppedMinutes = area.StoppedMinutes,
                             inactiveMinutes = area.InactiveMinutes,
@@ -383,7 +406,9 @@ namespace TeamOps.UI.Forms
                             localNamesPt = item.LocalNamesPt,
                             localNamesJp = item.LocalNamesJp
                         }),
-                        statuses = LoadStatuses()
+                        gBareruCapacityForecast = MapForecast(dashboard.GBareruCapacityForecast),
+                        statuses = LoadStatuses(),
+                        partCodeStyles = LoadPartCodeStyles()
                     }
                 });
             }
@@ -431,6 +456,12 @@ namespace TeamOps.UI.Forms
                         imported = result.Imported,
                         ignored = result.Ignored,
                         machinesCreated = result.MachinesCreated,
+                        ec2ImportAttempted = result.Ec2ImportAttempted,
+                        ec2ImportSkipped = result.Ec2ImportSkipped,
+                        ec2ImportMessage = result.Ec2ImportMessage,
+                        ec2RowsRead = result.Ec2RowsRead,
+                        ec2RowsImported = result.Ec2RowsImported,
+                        ec2RowsIgnored = result.Ec2RowsIgnored,
                         performanceMs = result.PerformanceMs,
                         errors = result.Errors
                     }
@@ -593,12 +624,21 @@ namespace TeamOps.UI.Forms
                 message += $" | BAT: {result.BatchMessage}";
             }
 
+            if (result.Ec2ImportAttempted || !string.IsNullOrWhiteSpace(result.Ec2ImportMessage))
+            {
+                message += $" | {result.Ec2ImportMessage}";
+                if (result.Ec2RowsRead > 0)
+                {
+                    message += $" ({result.Ec2RowsImported}/{result.Ec2RowsRead})";
+                }
+            }
+
             if (result.PerformanceMs.Count > 0)
             {
                 message += " | Perf: " + string.Join(
                     ", ",
                     result.PerformanceMs
-                        .Where(item => item.Key is "Batch" or "DiscoverFiles" or "ReadFiles" or "Parse" or "OpenConnection" or "EnsureSchema" or "LoadMachines" or "LoadStatuses" or "DuplicateCheck" or "InsertEvents" or "Commit" or "DashboardRefresh" or "Total")
+                        .Where(item => item.Key is "Batch" or "DiscoverFiles" or "ReadFiles" or "Parse" or "OpenConnection" or "EnsureSchema" or "LoadMachines" or "LoadStatuses" or "DuplicateCheck" or "InsertEvents" or "Commit" or "Ec2Import" or "Ec2Total" or "DashboardRefresh" or "Total")
                         .Select(item => $"{item.Key}={item.Value}ms"));
             }
 
@@ -647,6 +687,61 @@ namespace TeamOps.UI.Forms
             ProductionSchemaMigrator.Ensure(conn);
 
             return LoadStatuses(conn);
+        }
+
+        private object LoadPartCodeStyles()
+        {
+            using var conn = _factory.CreateOpenConnection();
+            ProductionSchemaMigrator.Ensure(conn);
+
+            return conn.Query(
+                @"
+                    SELECT
+                        PartCode AS partCode,
+                        COALESCE(ColorHex, '#D93F3F') AS colorHex,
+                        COALESCE(TextColorHex, '#FFFFFF') AS textColorHex,
+                        COALESCE(Description, '') AS description
+                    FROM ProductionPartCodeStyles
+                    WHERE COALESCE(IsActive, 1) = 1
+                    ORDER BY PartCode;"
+            ).ToList();
+        }
+
+        private static object MapForecast(GBareruCapacityForecastDto forecast)
+        {
+            return new
+            {
+                isAvailable = forecast.IsAvailable,
+                message = forecast.Message,
+                eciiMinutes = forecast.EciiMinutes,
+                bunkatsuMinutes = forecast.BunkatsuMinutes,
+                dcsMinutes = forecast.DcsMinutes,
+                peopleCount = forecast.PeopleCount,
+                cycleMode = forecast.CycleMode,
+                cycleMinutes = forecast.CycleMinutes,
+                block1Minutes = forecast.Block1Minutes,
+                block2Minutes = forecast.Block2Minutes,
+                bottleneck = forecast.Bottleneck,
+                availableMinutes = forecast.AvailableMinutes,
+                forecastCapacity = forecast.ForecastCapacity,
+                forecastKadouritsuPercent = forecast.ForecastKadouritsuPercent,
+                realKadouritsuPercent = forecast.RealKadouritsuPercent,
+                differencePercent = forecast.DifferencePercent,
+                calculationMs = forecast.CalculationMs,
+                areas = forecast.Areas.Select(area => new
+                {
+                    localId = area.LocalId,
+                    localNamePt = area.LocalNamePt,
+                    localNameJp = area.LocalNameJp,
+                    peopleCount = area.PeopleCount,
+                    cycleMode = area.CycleMode,
+                    cycleMinutes = area.CycleMinutes,
+                    forecastCapacity = area.ForecastCapacity,
+                    forecastKadouritsuPercent = area.ForecastKadouritsuPercent,
+                    realKadouritsuPercent = area.RealKadouritsuPercent,
+                    message = area.Message
+                })
+            };
         }
 
         private static object LoadStatuses(System.Data.IDbConnection conn)

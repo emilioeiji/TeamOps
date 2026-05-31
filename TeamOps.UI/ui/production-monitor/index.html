@@ -84,6 +84,14 @@
                 <strong id="lblMachinesStopped">0</strong>
             </article>
             <article class="metric-card">
+                <span id="txtMetricIgnored" class="metric-label">Desconsideradas</span>
+                <strong id="lblMachinesIgnored">0</strong>
+            </article>
+            <article class="metric-card">
+                <span id="txtMetricAvgOperating" class="metric-label">Media operando</span>
+                <strong id="lblAverageOperatingProcessMinutes">0</strong>
+            </article>
+            <article class="metric-card">
                 <span id="txtMetricError" class="metric-label">Min. erro</span>
                 <strong id="lblErrorMinutes">0</strong>
             </article>
@@ -91,6 +99,53 @@
                 <span id="txtMetricInactive" class="metric-label">Min. inativo</span>
                 <strong id="lblInactiveMinutes">0</strong>
             </article>
+        </section>
+
+        <section id="gBareruForecastCard" class="forecast-card hidden">
+            <div class="section-head">
+                <div>
+                    <h3 id="txtForecastTitle">Previsao G-Bareru</h3>
+                    <p id="txtForecastSubtitle">Simulacao de capacidade com base em ECII, Bunkatsu, DCS e escala Haidai.</p>
+                </div>
+                <span id="lblForecastMode" class="forecast-mode">-</span>
+            </div>
+            <div class="forecast-grid">
+                <div class="forecast-metric">
+                    <span id="txtForecastReal">Real</span>
+                    <strong id="lblForecastReal">0%</strong>
+                </div>
+                <div class="forecast-metric">
+                    <span id="txtForecastPredicted">Previsto</span>
+                    <strong id="lblForecastPredicted">0%</strong>
+                </div>
+                <div class="forecast-metric">
+                    <span id="txtForecastDifference">Diferenca</span>
+                    <strong id="lblForecastDifference">0%</strong>
+                </div>
+                <div class="forecast-metric">
+                    <span id="txtForecastPeople">Pessoas</span>
+                    <strong id="lblForecastPeople">0</strong>
+                </div>
+                <div class="forecast-metric">
+                    <span id="txtForecastCycle">Ciclo previsto</span>
+                    <strong id="lblForecastCycle">0 min</strong>
+                </div>
+                <div class="forecast-metric">
+                    <span id="txtForecastCapacity">Capacidade</span>
+                    <strong id="lblForecastCapacity">0</strong>
+                </div>
+            </div>
+            <div id="forecastDetails" class="forecast-details"></div>
+        </section>
+
+        <section class="part-legend-card">
+            <div class="section-head">
+                <div>
+                    <h3 id="txtPartLegendTitle">Codigos parametrizados</h3>
+                    <p id="txtPartLegendSubtitle">Legenda visual dos codigos destacados na producao.</p>
+                </div>
+            </div>
+            <div id="partCodeLegend" class="part-code-legend"></div>
         </section>
 
         <section class="area-board-card">

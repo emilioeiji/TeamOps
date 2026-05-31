@@ -22,6 +22,7 @@ namespace TeamOps.Services
         private readonly ProductionMachineRepository _machineRepository;
         private readonly ProductionEventRepository _eventRepository;
         private readonly ProductionPlanDatImporter _planImporter;
+        private readonly Ec2AdministratorImporter _ec2Importer;
 
         public ProductionFileImporter(
             SqliteConnectionFactory factory,
@@ -32,6 +33,7 @@ namespace TeamOps.Services
             _machineRepository = machineRepository;
             _eventRepository = eventRepository;
             _planImporter = new ProductionPlanDatImporter();
+            _ec2Importer = new Ec2AdministratorImporter(factory, machineRepository);
         }
 
         public ProductionImportResult ImportLatest()
@@ -236,6 +238,11 @@ namespace TeamOps.Services
             var commitWatch = Stopwatch.StartNew();
             tx.Commit();
             Record(result, "Commit", commitWatch);
+
+            var ec2Watch = Stopwatch.StartNew();
+            _ec2Importer.ImportIfConfigured(result);
+            AddElapsed(result, "Ec2Import", ec2Watch);
+
             Record(result, "Total", totalWatch);
             return result;
         }

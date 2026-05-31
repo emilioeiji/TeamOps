@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System;
 using Microsoft.Data.Sqlite;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Db;
@@ -7,6 +8,9 @@ namespace TeamOps.Data.Repositories
 {
     public sealed class OperatorPresenceRepository
     {
+        private static readonly object SchemaLock = new();
+        private static bool _indexesEnsured;
+
         private readonly SqliteConnectionFactory _factory;
 
         public OperatorPresenceRepository(SqliteConnectionFactory factory)
@@ -17,6 +21,7 @@ namespace TeamOps.Data.Repositories
         public void RegisterPresence(string codigoFJ, int sectorId, int localId, int shiftId, DateTime date)
         {
             using var conn = _factory.CreateOpenConnection();
+            EnsureIndexes(conn);
             using var cmd = conn.CreateCommand();
 
             cmd.CommandText = @"
@@ -39,23 +44,38 @@ namespace TeamOps.Data.Repositories
             var list = new List<OperatorPresence>();
 
             using var conn = _factory.CreateOpenConnection();
+            EnsureIndexes(conn);
             using var cmd = conn.CreateCommand();
 
             cmd.CommandText = @"
-                SELECT 
+                SELECT
                     p.CodigoFJ,
                     p.SectorId,
                     p.LocalId,
                     p.ShiftId,
-                    MAX(p.Date) AS LastPresence,
+                    p.Date AS LastPresence,
                     o.NameRomanji,
                     o.NameNihongo
-                FROM OperatorPresence p
+                FROM (
+                    SELECT
+                        p.Id,
+                        p.CodigoFJ,
+                        p.SectorId,
+                        p.LocalId,
+                        p.ShiftId,
+                        p.Date,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY p.CodigoFJ
+                            ORDER BY datetime(p.Date) DESC, p.Id DESC
+                        ) AS RowNumber
+                    FROM OperatorPresence p
+                    WHERE date(p.Date) = date(@date)
+                      AND p.SectorId = @sector
+                      AND p.ShiftId = @shift
+                ) p
                 JOIN Operators o ON o.CodigoFJ = p.CodigoFJ
-                WHERE DATE(p.Date) = DATE(@date)
-                  AND p.SectorId = @sector
-                  AND p.ShiftId = @shift
-                GROUP BY p.CodigoFJ;
+                WHERE p.RowNumber = 1
+                ORDER BY o.NameRomanji, p.CodigoFJ;
             ";
 
             cmd.Parameters.AddWithValue("@date", date);
@@ -85,6 +105,7 @@ namespace TeamOps.Data.Repositories
             var list = new List<OperatorPresence>();
 
             using var conn = _factory.CreateOpenConnection();
+            EnsureIndexes(conn);
             using var cmd = conn.CreateCommand();
 
             cmd.CommandText = @"
@@ -126,6 +147,33 @@ namespace TeamOps.Data.Repositories
             }
 
             return list;
+        }
+
+        private static void EnsureIndexes(SqliteConnection conn)
+        {
+            if (_indexesEnsured)
+            {
+                return;
+            }
+
+            lock (SchemaLock)
+            {
+                if (_indexesEnsured)
+                {
+                    return;
+                }
+
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = @"
+                    CREATE INDEX IF NOT EXISTS IX_OperatorPresence_DaySectorShiftOperator
+                    ON OperatorPresence(date(Date), SectorId, ShiftId, CodigoFJ, Date);
+
+                    CREATE INDEX IF NOT EXISTS IX_OperatorPresence_OperatorDay
+                    ON OperatorPresence(CodigoFJ, date(Date), Date);";
+                cmd.ExecuteNonQuery();
+
+                _indexesEnsured = true;
+            }
         }
     }
 }

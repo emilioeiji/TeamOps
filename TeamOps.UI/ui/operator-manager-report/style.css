@@ -181,6 +181,13 @@ select {
     cursor: pointer;
 }
 
+.operator-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
 .workspace {
     display: grid;
     grid-template-columns: 360px minmax(0, 1fr);
@@ -647,6 +654,48 @@ tbody tr:nth-child(even) {
         min-height: auto;
     }
 
+    .metric-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media print {
+    body {
+        background: #ffffff;
+    }
+
+    .hero,
+    .toolbar-card,
+    .directory-card,
+    .operator-actions,
+    .toast {
+        display: none !important;
+    }
+
+    .page-shell,
+    .workspace,
+    .report-card,
+    .report-host {
+        display: block;
+        padding: 0;
+        margin: 0;
+        box-shadow: none;
+        border: 0;
+    }
+
+    .workspace {
+        min-height: 0;
+    }
+
+    .report-card,
+    .panel-card,
+    .metric-card,
+    .follow-card {
+        break-inside: avoid;
+        box-shadow: none;
+    }
+
+    .content-grid,
     .metric-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }

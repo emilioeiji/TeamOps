@@ -61,9 +61,17 @@
             <button id="btnApply" class="primary-button" type="button">Aplicar</button>
         </section>
 
-        <section id="summary" class="summary-grid"></section>
+        <section class="tabs" role="tablist" aria-label="Visoes do relatorio">
+            <button id="tabManager" class="tab-button active" type="button" data-view="manager">Resumo Gerencial</button>
+            <button id="tabDetails" class="tab-button" type="button" data-view="details">Detalhamento</button>
+        </section>
 
-        <section class="table-card">
+        <section id="managerPanel" class="view-panel">
+            <section id="summary" class="summary-grid"></section>
+            <section class="breakdown-grid" id="managerBreakdowns"></section>
+        </section>
+
+        <section id="detailsPanel" class="table-card view-panel hidden">
             <div class="table-head">
                 <div>
                     <h2 id="txtTableTitle">Operadores</h2>

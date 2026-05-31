@@ -100,6 +100,8 @@ select {
 .detail-card,
 .timeline-card,
 .metric-card,
+.forecast-card,
+.part-legend-card,
 .area-board-card,
 .compare-card,
 .operator-card,
@@ -116,12 +118,38 @@ select {
 .ranking-card,
 .detail-card,
 .timeline-card,
+.forecast-card,
+.part-legend-card,
 .area-board-card,
 .compare-card,
 .operator-card,
 .trend-card,
 .history-card {
     padding: 22px;
+}
+
+.part-code-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.part-code-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.part-code-badge small {
+    font-size: 11px;
+    font-weight: 600;
+    opacity: 0.88;
 }
 
 .access-badge {
@@ -227,7 +255,7 @@ select {
 
 .summary-grid {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 16px;
 }
 
@@ -249,6 +277,73 @@ select {
 
 .metric-card strong {
     font-size: 34px;
+}
+
+.forecast-card {
+    padding: 22px;
+    border-left: 5px solid #174b98;
+}
+
+.forecast-mode {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: #eef5ff;
+    color: #174b98;
+    font-weight: 800;
+}
+
+.forecast-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(120px, 1fr));
+    gap: 12px;
+}
+
+.forecast-metric {
+    min-height: 88px;
+    padding: 14px;
+    border: 1px solid #d9e3ef;
+    border-radius: 12px;
+    background: #f8fbff;
+}
+
+.forecast-metric span {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.forecast-metric strong {
+    font-size: 26px;
+}
+
+.forecast-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.forecast-details span,
+.forecast-warning {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: #eef3f8;
+    color: #334155;
+    font-weight: 700;
+}
+
+.forecast-warning {
+    background: #fff4e5;
+    color: #9a5b00;
 }
 
 .section-head {
@@ -1274,6 +1369,10 @@ tbody td {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
+    .forecast-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .area-hero-card {
         grid-template-columns: minmax(0, 1fr);
     }
@@ -1302,6 +1401,7 @@ tbody td {
     .header-meta,
     .toolbar-grid,
     .summary-grid,
+    .forecast-grid,
     .compare-grid,
     .area-meta-grid {
         grid-template-columns: 1fr;

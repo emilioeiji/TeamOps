@@ -159,9 +159,40 @@ select:focus {
     background: var(--primary-dark);
 }
 
+.tabs {
+    display: inline-flex;
+    width: fit-content;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+}
+
+.tab-button {
+    width: auto;
+    min-width: 160px;
+    min-height: 42px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-weight: 850;
+}
+
+.tab-button.active {
+    background: var(--primary);
+    color: #ffffff;
+}
+
+.view-panel {
+    display: grid;
+    gap: 18px;
+}
+
 .summary-grid {
     display: grid;
-    grid-template-columns: repeat(8, minmax(110px, 1fr));
+    grid-template-columns: repeat(9, minmax(100px, 1fr));
     gap: 10px;
 }
 
@@ -199,6 +230,57 @@ select:focus {
 
 .summary-card-warn {
     border-left-color: var(--warn);
+}
+
+.breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.breakdown-card {
+    min-height: 220px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+}
+
+.breakdown-card h2 {
+    margin-bottom: 12px;
+    font-size: 17px;
+}
+
+.breakdown-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 10px;
+    padding: 9px 0;
+    border-top: 1px solid #e5edf3;
+}
+
+.breakdown-row span {
+    overflow: hidden;
+    color: var(--text);
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.breakdown-row strong {
+    color: var(--primary);
+}
+
+.breakdown-row small {
+    grid-column: 1 / -1;
+    color: var(--muted);
+    font-weight: 650;
+}
+
+.breakdown-empty {
+    color: var(--muted);
+    font-weight: 700;
 }
 
 .table-card {
@@ -298,8 +380,22 @@ td:nth-child(7) {
     gap: 4px;
 }
 
-.operator-cell strong {
+.operator-link {
+    width: fit-content;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--primary);
+    cursor: pointer;
     font-size: 15px;
+    font-weight: 850;
+    text-align: left;
+}
+
+.operator-link:hover {
+    text-decoration: underline;
 }
 
 .operator-cell span,
@@ -360,6 +456,10 @@ td small {
 
     .summary-grid {
         grid-template-columns: repeat(4, minmax(150px, 1fr));
+    }
+
+    .breakdown-grid {
+        grid-template-columns: 1fr;
     }
 
     .primary-button {
