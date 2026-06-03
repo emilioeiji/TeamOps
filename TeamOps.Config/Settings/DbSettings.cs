@@ -18,10 +18,11 @@ namespace TeamOps.Config
             DatabasePath = AppPaths.GetDatabasePath(PortableMode);
 
             // Flags úteis:
-            // - Cache=Shared: melhor para múltiplas conexões dentro do processo
             // - Mode=ReadWriteCreate: cria se não existir
+            // - Pooling=True: reaproveita conexões abertas pelo app
+            // - Default Timeout: dá tempo para importações e telas concorrentes liberarem locks curtos
             // - Foreign Keys: será habilitado por PRAGMA após abrir conexão
-            ConnectionString = $"Data Source={DatabasePath};Cache=Shared;Mode=ReadWriteCreate";
+            ConnectionString = $"Data Source={DatabasePath};Mode=ReadWriteCreate;Pooling=True;Default Timeout=30";
         }
 
         public override string ToString() => $"DB: {DatabasePath} | Portable: {PortableMode}";

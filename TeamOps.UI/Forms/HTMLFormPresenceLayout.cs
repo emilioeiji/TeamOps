@@ -170,6 +170,10 @@ namespace TeamOps.UI.Forms
                 })
                 .ToList();
 
+            var presenceBySector = _presenceRepo.GetLatestByDateShift(date, shiftId)
+                .GroupBy(item => item.SectorId)
+                .ToDictionary(group => group.Key, group => (IReadOnlyCollection<OperatorPresence>)group.ToList());
+
             var sectorStates = SectorDefinitions
                 .Select(sector =>
                 {
@@ -177,7 +181,9 @@ namespace TeamOps.UI.Forms
                         .Where(item => item.SectorId == sector.Id)
                         .ToList();
 
-                    var sectorPresence = _presenceRepo.GetLatestByDateSectorShift(date, sector.Id, shiftId);
+                    var sectorPresence = presenceBySector.TryGetValue(sector.Id, out var values)
+                        ? values
+                        : Array.Empty<OperatorPresence>();
 
                     return BuildSectorState(sector, sectorSchedule, sectorPresence, operators, locals);
                 })

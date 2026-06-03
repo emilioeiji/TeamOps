@@ -128,7 +128,11 @@ const I18N = {
         machineMinutesStopped: "parado",
         machineMinutesError: "erro",
         impactLabel: "Impacto",
-        rankingMinutesSuffix: "min de impacto"
+        rankingMinutesSuffix: "min de impacto",
+        machineProcessLabel: "Tempo EC2",
+        machineIgnoredLabel: "Ignorado pelo EC2",
+        machineInvalidTimeLabel: "Sem tempo EC2 valido",
+        machineStoppedTimeLabel: "Maquina parada no EC2"
     },
     "ja-JP": {}
 };
@@ -149,6 +153,8 @@ const state = {
     pinnedNotice: false,
     isImportingProduction: false
 };
+
+let dashboardRefreshTimer = 0;
 
 document.addEventListener("DOMContentLoaded", () => {
     bindEvents();
@@ -190,8 +196,11 @@ window.chrome?.webview?.addEventListener("message", event => {
 function bindEvents() {
     document.getElementById("btnRefresh").addEventListener("click", refreshDashboard);
     document.getElementById("btnImport").addEventListener("click", importProduction);
+    document.getElementById("datePicker").addEventListener("change", scheduleDashboardRefresh);
+    document.getElementById("shiftPicker").addEventListener("change", scheduleDashboardRefresh);
     document.getElementById("sectorPicker").addEventListener("change", onSectorChanged);
     document.getElementById("localPicker").addEventListener("change", onLocalChanged);
+    document.getElementById("machinePicker").addEventListener("change", scheduleDashboardRefresh);
     document.getElementById("btnCloseOperatorModal").addEventListener("click", closeOperatorModal);
     document.getElementById("operatorModal").addEventListener("click", event => {
         if (event.target.id === "operatorModal") {
@@ -266,7 +275,17 @@ function refreshDashboard() {
     }
 
     state.pinnedNotice = false;
+    showLoading();
     send("production_load_dashboard", buildFilterPayload());
+}
+
+function scheduleDashboardRefresh() {
+    if (state.isImportingProduction) {
+        return;
+    }
+
+    window.clearTimeout(dashboardRefreshTimer);
+    dashboardRefreshTimer = window.setTimeout(refreshDashboard, 160);
 }
 
 function renderGBareruForecast(forecast) {
@@ -338,6 +357,7 @@ function onSectorChanged() {
 
     fillLocalOptions();
     fillMachineOptions();
+    scheduleDashboardRefresh();
 }
 
 function onLocalChanged() {
@@ -346,6 +366,7 @@ function onLocalChanged() {
     }
 
     fillMachineOptions();
+    scheduleDashboardRefresh();
 }
 
 function fillShiftOptions(selectedValue) {
@@ -486,12 +507,14 @@ function renderAreaBoard(areas) {
 function renderSelectedArea() {
     const area = getSelectedArea();
     const areaMachines = getSelectedAreaMachines();
+    const areaAverage = calculateAreaAverage(areaMachines);
 
     setText("lblSelectedArea", area ? getAreaLabel(area) : t("currentAreaFallback"));
     setText("lblSelectedAreaMeta", area ? getAreaSectorLabel(area) : "-");
     setText("lblAreaPill", t("areaFocusLabel"));
     setText("lblAreaHeadline", area ? getAreaLabel(area) : t("currentAreaFallback"));
     setText("lblAreaSummaryLead", buildAreaSummaryLine(area));
+    setText("lblAreaAverageLead", buildAreaAverageLine(area, areaAverage));
     setText("lblAreaHeroPercent", `${toFixed(area?.productionPercent)}%`);
     setText("lblAreaMachineCount", area?.machineCount ?? 0);
     setText("lblAreaKadouritsu", `${toFixed(area?.productionPercent)}%`);
@@ -502,6 +525,7 @@ function renderSelectedArea() {
     setText("lblAreaOperatorCount", operators.length);
     renderOperatorPills(operators);
     renderMachineTable(areaMachines);
+    logSelectedAreaDiagnostics(area, areaMachines, areaAverage);
     renderRanking(getSelectedAreaRanking());
     renderTimeline(getSelectedAreaTimeline());
 
@@ -532,38 +556,44 @@ function renderOperatorPills(operators) {
 
 function renderMachineTable(rows) {
     const body = document.getElementById("machineTableBody");
+    const renderRows = rows
+        .slice()
+        .sort(compareMachineRows)
+        .map(buildMachineRenderModel);
 
-    if (!rows.length) {
+    logMachineTableRender(renderRows);
+
+    if (!renderRows.length) {
         body.innerHTML = `<tr><td colspan="7" class="empty-cell">${escapeHtml(t("noRows"))}</td></tr>`;
         return;
     }
 
-    body.innerHTML = rows.map(row => `
-        <tr class="machine-row ${Number(row.machineId || 0) === Number(state.selectedMachineId) ? "is-selected" : ""}" data-machine-id="${row.machineId || 0}">
+    body.innerHTML = renderRows.map(model => `
+        <tr class="machine-row ${Number(model.machineId || 0) === Number(state.selectedMachineId) ? "is-selected" : ""}" data-machine-id="${model.machineId || 0}">
             <td>
                 <div class="machine-main">
-                    <strong>${escapeHtml(getMachineLabel(row))}</strong>
-                    <small>${escapeHtml(getMachineCodeLineLabel(row))}</small>
+                    <strong>${escapeHtml(model.equipmentLabel)}</strong>
+                    <small>${escapeHtml(model.equipmentMeta)}</small>
                 </div>
             </td>
             <td>
                 <div class="machine-status-stack">
-                    <span class="status-badge" style="${escapeHtmlAttr(getStatusBadgeStyle(row.statusCode, row.displayCode, row.sectorId))}">${escapeHtml(getStatusLabel(row))}</span>
-                    <small>${escapeHtml(formatMachineMinutesSummary(row))}</small>
+                    <span class="status-badge" style="${escapeHtmlAttr(model.statusBadgeStyle)}">${escapeHtml(model.ec2StatusLabel || model.statusLabel)}</span>
+                    <small>${escapeHtml(model.timeLabel)}</small>
                 </div>
             </td>
-            <td>${renderPartCodeCell(row)}</td>
-            <td>${escapeHtml(row.lotNo || "-")}</td>
-            <td>${escapeHtml(getOperatorsLabel(row))}</td>
+            <td>${renderPartCodeCell(model.partCode, model.partCodeStyle)}</td>
+            <td>${escapeHtml(model.lotLabel)}</td>
+            <td>${escapeHtml(model.operatorsLabel)}</td>
             <td>
                 <div class="machine-kadouritsu-cell">
-                    <strong>${toFixed(row.productionPercent)}%</strong>
+                    <strong>${escapeHtml(model.percentLabel)}</strong>
                     <div class="machine-progress-track">
-                        <div class="machine-progress-fill" style="width:${clampPercent(row.productionPercent)}%"></div>
+                        <div class="machine-progress-fill" style="width:${model.percentValue}%"></div>
                     </div>
                 </div>
             </td>
-            <td>${escapeHtml(formatDateTime(row.lastUpdate))}</td>
+            <td>${escapeHtml(model.updatedLabel)}</td>
         </tr>
     `).join("");
 
@@ -574,25 +604,66 @@ function renderMachineTable(rows) {
             }
 
             state.selectedMachineId = Number(row.dataset.machineId || 0);
-            renderMachineTable(rows);
+            renderMachineTable(renderRows.map(item => item.row));
             send("production_machine_detail", { machineId: state.selectedMachineId });
         });
     });
 }
 
-function renderPartCodeCell(row) {
-    const code = row.ec2PartCode || row.recipeName || "";
+function buildMachineRenderModel(row) {
+    const partCode = row.partCode || row.ec2PartCode || row.recipeName || "";
+    const partCodeStyle = resolvePartCodeStyle(row, partCode);
+    return {
+        row,
+        machineId: Number(row.machineId || 0),
+        equipmentLabel: getMachineLabel(row),
+        equipmentMeta: [getMachineCodeLineLabel(row), row.area || row.localNamePt || row.localNameJp || ""].filter(Boolean).join(" · "),
+        statusLabel: getStatusLabel(row),
+        ec2StatusLabel: row.ec2Status || row.ec2StatusText || row.statusText || "-",
+        statusBadgeStyle: getStatusBadgeStyle(row.statusCode, row.displayCode, row.sectorId),
+        areaLabel: row.area || row.localNamePt || row.localNameJp || "",
+        partCode,
+        partCodeStyle,
+        lotLabel: row.lotNo || "-",
+        operatorsLabel: getOperatorsLabel(row),
+        timeLabel: buildMachineProcessLabel(row),
+        ec2SettingRate: row.ec2SettingRate ?? row.ec2OperationRate ?? null,
+        partCodeDescription: row.partCodeDescription || "",
+        percentLabel: `${toFixed(row.productionPercent)}%`,
+        percentValue: clampPercent(row.productionPercent),
+        updatedLabel: formatDateTime(row.lastUpdate),
+        enteredAreaAverage: Boolean(row.enteredAreaAverage),
+        areaAverageReason: row.areaAverageReason || ""
+    };
+}
+
+function logMachineTableRender(rows) {
+    console.debug("[ProductionMonitor][MachineTableRender]", rows.map(item => ({
+        machineId: item.machineId,
+        equipamento: item.equipmentMeta,
+        area: item.areaLabel,
+        status: item.ec2StatusLabel,
+        lote: item.lotLabel,
+        codigo: item.partCode || "-",
+        tempo: item.timeLabel,
+        percentual: item.percentLabel,
+        styleMatched: Boolean(item.partCodeStyle),
+        enteredAreaAverage: item.enteredAreaAverage,
+        reason: item.areaAverageReason || "-"
+    })));
+}
+
+function renderPartCodeCell(code, style) {
     if (!code) {
         return "-";
     }
 
-    const colorHex = row.ec2PartColorHex || "";
-    const textColorHex = row.ec2PartTextColorHex || "";
-    if (!colorHex) {
+    if (!style) {
         return escapeHtml(code);
     }
 
-    return `<span class="part-code-badge" style="${escapeHtmlAttr(`background:${colorHex};color:${textColorHex || "#FFFFFF"};`)}">${escapeHtml(code)}</span>`;
+    const title = style.description ? `${code} - ${style.description}` : code;
+    return `<span class="part-code-badge" title="${escapeHtmlAttr(title)}" style="${escapeHtmlAttr(buildPartCodeBadgeStyle(style.colorHex, style.textColorHex))}">${escapeHtml(code)}</span>`;
 }
 
 function renderPartCodeLegend(items) {
@@ -607,7 +678,7 @@ function renderPartCodeLegend(items) {
     }
 
     wrap.innerHTML = items.map(item => `
-        <span class="part-code-badge" style="${escapeHtmlAttr(`background:${item.colorHex || "#D93F3F"};color:${item.textColorHex || "#FFFFFF"};`)}">
+        <span class="part-code-badge" style="${escapeHtmlAttr(buildPartCodeBadgeStyle(item.colorHex || "#D93F3F", item.textColorHex || "#FFFFFF"))}">
             ${escapeHtml(item.partCode || "-")}
             ${item.description ? `<small>${escapeHtml(item.description)}</small>` : ""}
         </span>
@@ -997,7 +1068,10 @@ function getSelectedAreaMachines() {
     const machines = state.dashboard?.machines || [];
     const area = getSelectedArea();
     if (!area) return machines;
-    return machines.filter(machine => Number(machine.localId || 0) === Number(area.localId || 0));
+    return machines
+        .filter(machine => Number(machine.localId || 0) === Number(area.localId || 0))
+        .slice()
+        .sort(compareMachineRows);
 }
 
 function getSelectedAreaRanking() {
@@ -1122,8 +1196,173 @@ function buildAreaSummaryLine(area) {
         .replace("{operators}", String(getAreaOperators(area).length));
 }
 
+function buildAreaAverageLine(area, areaAverage) {
+    if (!area) {
+        return t("currentAreaFallback");
+    }
+
+    return `Média da área: ${toFixed(areaAverage.average)} ${t("minutesLabel")} · Máquinas consideradas: ${areaAverage.considered} · Paradas/ignoradas: ${areaAverage.excluded}`;
+}
+
+function calculateAreaAverage(rows) {
+    const diagnostics = rows.map(row => {
+        const style = resolvePartCodeStyle(row, row.partCode || row.ec2PartCode || row.recipeName || "");
+        const include = Boolean(row.enteredAreaAverage)
+            && isValidEc2ProcessMinutes(row.ec2ProcessMinutes);
+        return {
+            machine: row.machineCode || "-",
+            area: row.area || row.localNamePt || "-",
+            ec2Status: row.ec2Status || row.ec2StatusText || row.statusText || "-",
+            partCode: row.partCode || row.ec2PartCode || row.recipeName || "-",
+            lotNo: row.lotNo || "-",
+            timeRaw: row.ec2ProcessMinutes ?? null,
+            timeConverted: isValidEc2ProcessMinutes(row.ec2ProcessMinutes) ? Number(row.ec2ProcessMinutes) : null,
+            styleMatched: Boolean(style),
+            enteredAreaAverage: include,
+            reason: include ? "ok" : (row.areaAverageReason || "not_eligible")
+        };
+    });
+
+    const eligible = diagnostics.filter(item => item.enteredAreaAverage);
+    const average = eligible.length
+        ? eligible.reduce((sum, item) => sum + Number(item.timeConverted || 0), 0) / eligible.length
+        : 0;
+
+    return {
+        average: Math.round(average * 10) / 10,
+        considered: eligible.length,
+        excluded: diagnostics.length - eligible.length,
+        diagnostics
+    };
+}
+
+function logSelectedAreaDiagnostics(area, rows, areaAverage) {
+    console.debug("[ProductionMonitor][AreaSelection]", {
+        area: area ? getAreaLabel(area) : t("currentAreaFallback"),
+        localId: Number(area?.localId || 0),
+        average: areaAverage.average,
+        considered: areaAverage.considered,
+        excluded: areaAverage.excluded
+    });
+
+    console.debug("[ProductionMonitor][AreaSelectionRows]", areaAverage.diagnostics.map(item => ({
+        Area: item.area,
+        Machine: item.machine,
+        Ec2Status: item.ec2Status,
+        PartCode: item.partCode,
+        LotNo: item.lotNo,
+        TimeRaw: item.timeRaw,
+        TimeConverted: item.timeConverted,
+        StyleMatched: item.styleMatched,
+        EnteredAreaAverage: item.enteredAreaAverage,
+        Reason: item.reason
+    })));
+
+    console.debug("[ProductionMonitor][AreaAverage]", {
+        AreaAverageSum: areaAverage.diagnostics
+            .filter(item => item.enteredAreaAverage)
+            .reduce((sum, item) => sum + Number(item.timeConverted || 0), 0),
+        AreaAverageCount: areaAverage.considered,
+        AreaAverage: areaAverage.average
+    });
+}
+
 function formatMachineMinutesSummary(row) {
     return `${toFixed(row.runningMinutes)} ${t("machineMinutesRunning")} · ${toFixed(row.stoppedMinutes)} ${t("machineMinutesStopped")} · ${toFixed(row.errorMinutes)} ${t("machineMinutesError")}`;
+}
+
+function buildMachineProcessLabel(row) {
+    if (row.isEc2Ignored) {
+        return `${t("machineIgnoredLabel")}: ${row.ec2IgnoreReason || "-"}`;
+    }
+
+    if (isValidEc2ProcessMinutes(row.ec2ProcessMinutes)) {
+        return `${t("machineProcessLabel")}: ${toFixed(row.ec2ProcessMinutes)} ${t("minutesLabel")}`;
+    }
+
+    if (row.isEc2Running) {
+        return `${t("machineProcessLabel")}: ${t("machineInvalidTimeLabel")}`;
+    }
+
+    if (row.ec2StatusText) {
+        return `${t("machineProcessLabel")}: ${t("machineStoppedTimeLabel")}`;
+    }
+
+    return formatMachineMinutesSummary(row);
+}
+
+function isValidEc2ProcessMinutes(value) {
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0;
+}
+
+function compareMachineRows(left, right) {
+    return compareText(left.lineCode, right.lineCode)
+        || compareText(left.machineCode, right.machineCode)
+        || compareText(left.machineNamePt, right.machineNamePt)
+        || Number(left.machineId || 0) - Number(right.machineId || 0);
+}
+
+function compareText(left, right) {
+    return String(left || "").localeCompare(String(right || ""), undefined, {
+        numeric: true,
+        sensitivity: "base"
+    });
+}
+
+function resolvePartCodeStyle(row, partCode) {
+    if (row.partCodeColorHex || row.ec2PartColorHex) {
+        return {
+            colorHex: row.partCodeColorHex || row.ec2PartColorHex,
+            textColorHex: row.partCodeTextColorHex || row.ec2PartTextColorHex || "#FFFFFF",
+            description: row.partCodeDescription || ""
+        };
+    }
+
+    const configured = findPartCodeStyle(partCode);
+    if (!configured) {
+        return null;
+    }
+
+    return {
+        colorHex: configured.colorHex || "#D93F3F",
+        textColorHex: configured.textColorHex || "#FFFFFF"
+    };
+}
+
+function findPartCodeStyle(partCode) {
+    const normalizedCode = normalizePartCode(partCode);
+    if (!normalizedCode) {
+        return null;
+    }
+
+    return (state.partCodeStyles || []).find(item => normalizePartCode(item.partCode) === normalizedCode) || null;
+}
+
+function normalizePartCode(value) {
+    return String(value || "").trim().toUpperCase();
+}
+
+function buildPartCodeBadgeStyle(colorHex, textColorHex) {
+    const background = colorHex || "#D93F3F";
+    const foreground = textColorHex || "#FFFFFF";
+    const border = isLightHex(background)
+        ? "border:1px solid #D8E0EA;"
+        : "";
+    return `background:${background};color:${foreground};${border}`;
+}
+
+function isLightHex(value) {
+    const normalized = String(value || "").trim().replace("#", "");
+    if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
+        return false;
+    }
+
+    const red = Number.parseInt(normalized.slice(0, 2), 16);
+    const green = Number.parseInt(normalized.slice(2, 4), 16);
+    const blue = Number.parseInt(normalized.slice(4, 6), 16);
+    const brightness = ((red * 299) + (green * 587) + (blue * 114)) / 1000;
+    return brightness >= 186;
 }
 
 function formatOperatorCoverageSummary(item) {

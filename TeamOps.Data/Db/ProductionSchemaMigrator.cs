@@ -111,6 +111,7 @@ namespace TeamOps.Data.Db
 
                     CREATE TABLE IF NOT EXISTS Ec2AdministratorImports (
                         Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        SourceType TEXT NOT NULL DEFAULT 'Administrator',
                         SourceFile TEXT NOT NULL,
                         FileLastWriteTime TEXT,
                         FileLength INTEGER NOT NULL DEFAULT 0,
@@ -154,6 +155,9 @@ namespace TeamOps.Data.Db
 
                     CREATE TABLE IF NOT EXISTS Ec2MachineCurrentState (
                         MachineCode TEXT PRIMARY KEY,
+                        ImportId INTEGER,
+                        SourceType TEXT NOT NULL DEFAULT 'Administrator',
+                        IsStale INTEGER NOT NULL DEFAULT 0,
                         MachineId INTEGER,
                         SectorId INTEGER,
                         LocalId INTEGER,
@@ -177,6 +181,7 @@ namespace TeamOps.Data.Db
                         ImportedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         LastSeenAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         StoppedSinceAt TEXT,
+                        FOREIGN KEY (ImportId) REFERENCES Ec2AdministratorImports(Id),
                         FOREIGN KEY (MachineId) REFERENCES Machines(Id),
                         FOREIGN KEY (SectorId) REFERENCES Sectors(Id),
                         FOREIGN KEY (LocalId) REFERENCES Locals(Id)
@@ -230,6 +235,12 @@ namespace TeamOps.Data.Db
                     CREATE INDEX IF NOT EXISTS IX_MachineEvents_Machine_EventTime
                     ON MachineEvents(MachineId, EventDateTime);
 
+                    CREATE INDEX IF NOT EXISTS IX_MachineEvents_SectorLocal_EventTime
+                    ON MachineEvents(SectorId, LocalId, EventDateTime);
+
+                    CREATE INDEX IF NOT EXISTS IX_MachineCurrentStatus_LocalSector
+                    ON MachineCurrentStatus(LocalId, SectorId);
+
                     DROP INDEX IF EXISTS IX_MachineEvents_Sector_EventTime;
                     DROP INDEX IF EXISTS IX_MachineEvents_StatusCode_EventTime;
                     DROP INDEX IF EXISTS IX_MachineEvents_Sector_Status_EventTime;
@@ -248,6 +259,12 @@ namespace TeamOps.Data.Db
 
                     CREATE INDEX IF NOT EXISTS IX_Machines_SectorId
                     ON Machines(SectorId);
+
+                    CREATE INDEX IF NOT EXISTS IX_Locals_Sector_Name
+                    ON Locals(SectorId, NamePt, Id);
+
+                    CREATE INDEX IF NOT EXISTS IX_Operators_Status_Shift_Sector_Name
+                    ON Operators(Status, ShiftId, SectorId, NameRomanji);
 
                     CREATE UNIQUE INDEX IF NOT EXISTS IX_ProductionPlanSnapshots_SourceFile_ExportedAt
                     ON ProductionPlanSnapshots(SourceFile, ExportedAt);
@@ -309,7 +326,13 @@ namespace TeamOps.Data.Db
                     ON MachineStatuses(SectorId);
 
                     CREATE INDEX IF NOT EXISTS IX_MachineStatuses_StatusCode
-                    ON MachineStatuses(StatusCode);"
+                    ON MachineStatuses(StatusCode);
+
+                    CREATE INDEX IF NOT EXISTS IX_Ec2MachineCurrentState_ImportId
+                    ON Ec2MachineCurrentState(ImportId);
+
+                    CREATE INDEX IF NOT EXISTS IX_Ec2MachineCurrentState_SourceType_Stale
+                    ON Ec2MachineCurrentState(SourceType, IsStale);"
                 );
 
                 SeedMachineStatuses(conn);
@@ -358,6 +381,20 @@ namespace TeamOps.Data.Db
         private static void EnsureEc2Columns(IDbConnection conn)
         {
             EnsureColumn(conn, "Ec2MachineCurrentState", "StoppedSinceAt", "TEXT");
+            EnsureColumn(conn, "Ec2AdministratorImports", "SourceType", "TEXT NOT NULL DEFAULT 'Administrator'");
+            EnsureColumn(conn, "Ec2MachineCurrentState", "ImportId", "INTEGER");
+            EnsureColumn(conn, "Ec2MachineCurrentState", "SourceType", "TEXT NOT NULL DEFAULT 'Administrator'");
+            EnsureColumn(conn, "Ec2MachineCurrentState", "IsStale", "INTEGER NOT NULL DEFAULT 0");
+
+            conn.Execute(
+                @"
+                    UPDATE Ec2AdministratorImports
+                    SET SourceType = 'Administrator'
+                    WHERE trim(COALESCE(SourceType, '')) = '';
+
+                    UPDATE Ec2MachineCurrentState
+                    SET SourceType = 'Administrator'
+                    WHERE trim(COALESCE(SourceType, '')) = '';");
         }
 
         private static void RebuildMachineStatusesForSectorScope(IDbConnection conn)

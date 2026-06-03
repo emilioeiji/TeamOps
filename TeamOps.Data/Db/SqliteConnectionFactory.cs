@@ -39,6 +39,7 @@ namespace TeamOps.Data.Db
                     PRAGMA synchronous = NORMAL;    -- bom balanço entre segurança e velocidade
                     PRAGMA busy_timeout = 30000;    -- aguarda locks transitórios em importação/telas concorrentes
                     PRAGMA temp_store = MEMORY;     -- reduz I/O temporário em consultas maiores
+                    PRAGMA cache_size = -20000;     -- cerca de 20 MB de cache por conexão
                 ";
                 cmd.ExecuteNonQuery();
             }
@@ -59,7 +60,11 @@ namespace TeamOps.Data.Db
                 cmd.CommandTimeout = 30;
                 // DELETE avoids persistent .wal/.shm sidecar files and is more compatible
                 // with external SQLite tools used to inspect the production database.
-                cmd.CommandText = "PRAGMA journal_mode = DELETE;";
+                cmd.CommandText = @"
+                    PRAGMA wal_checkpoint(TRUNCATE);
+                    PRAGMA journal_mode = DELETE;
+                    PRAGMA journal_size_limit = 67108864;
+                ";
                 cmd.ExecuteNonQuery();
                 _journalConfigured = true;
             }

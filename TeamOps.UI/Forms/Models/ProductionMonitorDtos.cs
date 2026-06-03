@@ -98,6 +98,7 @@ namespace TeamOps.UI.Forms.Models
     {
         public int MachineId { get; set; }
         public string MachineCode { get; set; } = string.Empty;
+        public string Machine { get; set; } = string.Empty;
         public string LineCode { get; set; } = string.Empty;
         public string MachineNamePt { get; set; } = string.Empty;
         public string MachineNameJp { get; set; } = string.Empty;
@@ -105,6 +106,7 @@ namespace TeamOps.UI.Forms.Models
         public string SectorNamePt { get; set; } = string.Empty;
         public string SectorNameJp { get; set; } = string.Empty;
         public int? LocalId { get; set; }
+        public string Area { get; set; } = string.Empty;
         public string LocalNamePt { get; set; } = string.Empty;
         public string LocalNameJp { get; set; } = string.Empty;
         public int StatusCode { get; set; }
@@ -113,16 +115,24 @@ namespace TeamOps.UI.Forms.Models
         public string RecipeName { get; set; } = string.Empty;
         public string LotNo { get; set; } = string.Empty;
         public string Ec2StatusText { get; set; } = string.Empty;
+        public string Ec2Status { get; set; } = string.Empty;
         public string Ec2PartCode { get; set; } = string.Empty;
+        public string PartCode { get; set; } = string.Empty;
         public string Ec2PartColorHex { get; set; } = string.Empty;
+        public string PartCodeColorHex { get; set; } = string.Empty;
         public string Ec2PartTextColorHex { get; set; } = string.Empty;
+        public string PartCodeTextColorHex { get; set; } = string.Empty;
+        public string PartCodeDescription { get; set; } = string.Empty;
         public string Ec2IgnoreReason { get; set; } = string.Empty;
         public bool IsEc2Running { get; set; }
         public bool IsEc2Ignored { get; set; }
         public double? Ec2ProcessMinutes { get; set; }
+        public double? Ec2SettingRate { get; set; }
         public double? Ec2OperationRate { get; set; }
         public DateTime? Ec2SnapshotAt { get; set; }
         public DateTime? LastUpdate { get; set; }
+        public bool EnteredAreaAverage { get; set; }
+        public string AreaAverageReason { get; set; } = string.Empty;
         public double RunningMinutes { get; set; }
         public double StoppedMinutes { get; set; }
         public double InactiveMinutes { get; set; }

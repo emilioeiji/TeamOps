@@ -239,6 +239,8 @@ namespace TeamOps.UI.Forms
                     return builtDashboard;
                 });
 
+                LogDashboardDiagnostics(dashboard);
+
                 PostJson(new
                 {
                     type = "dashboard",
@@ -265,6 +267,7 @@ namespace TeamOps.UI.Forms
                         {
                             machineId = machine.MachineId,
                             machineCode = machine.MachineCode,
+                            machine = machine.Machine,
                             lineCode = machine.LineCode,
                             machineNamePt = machine.MachineNamePt,
                             machineNameJp = machine.MachineNameJp,
@@ -272,6 +275,7 @@ namespace TeamOps.UI.Forms
                             sectorNamePt = machine.SectorNamePt,
                             sectorNameJp = machine.SectorNameJp,
                             localId = machine.LocalId,
+                            area = machine.Area,
                             localNamePt = machine.LocalNamePt,
                             localNameJp = machine.LocalNameJp,
                             statusCode = machine.StatusCode,
@@ -280,13 +284,19 @@ namespace TeamOps.UI.Forms
                             recipeName = machine.RecipeName,
                             lotNo = machine.LotNo,
                             ec2StatusText = machine.Ec2StatusText,
+                            ec2Status = machine.Ec2Status,
                             ec2PartCode = machine.Ec2PartCode,
+                            partCode = machine.PartCode,
                             ec2PartColorHex = machine.Ec2PartColorHex,
+                            partCodeColorHex = machine.PartCodeColorHex,
                             ec2PartTextColorHex = machine.Ec2PartTextColorHex,
+                            partCodeTextColorHex = machine.PartCodeTextColorHex,
+                            partCodeDescription = machine.PartCodeDescription,
                             ec2IgnoreReason = machine.Ec2IgnoreReason,
                             isEc2Running = machine.IsEc2Running,
                             isEc2Ignored = machine.IsEc2Ignored,
                             ec2ProcessMinutes = machine.Ec2ProcessMinutes,
+                            ec2SettingRate = machine.Ec2SettingRate,
                             ec2OperationRate = machine.Ec2OperationRate,
                             ec2SnapshotAt = machine.Ec2SnapshotAt?.ToString("yyyy-MM-dd HH:mm:ss"),
                             lastUpdate = machine.LastUpdate?.ToString("yyyy-MM-dd HH:mm:ss"),
@@ -296,6 +306,8 @@ namespace TeamOps.UI.Forms
                             errorMinutes = machine.ErrorMinutes,
                             totalMinutes = machine.TotalMinutes,
                             productionPercent = machine.ProductionPercent,
+                            enteredAreaAverage = machine.EnteredAreaAverage,
+                            areaAverageReason = machine.AreaAverageReason,
                             scheduledOperatorsPt = machine.ScheduledOperatorsPt,
                             scheduledOperatorsJp = machine.ScheduledOperatorsJp
                         }),
@@ -803,6 +815,40 @@ namespace TeamOps.UI.Forms
             return root.TryGetProperty(propertyName, out var prop) && prop.ValueKind == JsonValueKind.String
                 ? prop.GetString() ?? string.Empty
                 : string.Empty;
+        }
+
+        private static void LogDashboardDiagnostics(ProductionDashboardDto dashboard)
+        {
+            foreach (var machine in dashboard.Machines)
+            {
+                WriteDiagnostic(
+                    $"[ProductionMonitor][MachinePayload] Machine={machine.MachineCode} Equipment={machine.MachineNamePt} Lot={machine.LotNo} Code={machine.Ec2PartCode} Time={FormatNullableDouble(machine.Ec2ProcessMinutes)} Percent={machine.ProductionPercent.ToString("0.0")} Status={machine.StatusText} PartColor={machine.Ec2PartColorHex} TextColor={machine.Ec2PartTextColorHex}");
+            }
+        }
+
+        private static string FormatNullableDouble(double? value)
+        {
+            if (!value.HasValue)
+            {
+                return "null";
+            }
+
+            return double.IsFinite(value.Value)
+                ? value.Value.ToString("0.0")
+                : value.Value.ToString();
+        }
+
+        private static void WriteDiagnostic(string message)
+        {
+            Debug.WriteLine(message);
+
+            try
+            {
+                Console.WriteLine(message);
+            }
+            catch
+            {
+            }
         }
 
         private static int ReadInt(JsonElement root, string propertyName, int fallback = 0)

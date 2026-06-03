@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Windows.Forms;
 using TeamOps.Data.Db;
+using TeamOps.Data.Repositories;
 
 namespace TeamOps.UI.Forms
 {
@@ -189,6 +190,7 @@ namespace TeamOps.UI.Forms
         private static void EnsureAdminSchema(IDbConnection conn)
         {
             ProductionSchemaMigrator.Ensure(conn);
+            SystemLogRepository.EnsureSchema(conn);
             EnsureColumn(conn, "Locals", "ShortCode", "TEXT");
         }
 

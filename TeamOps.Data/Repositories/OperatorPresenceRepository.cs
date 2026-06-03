@@ -100,6 +100,65 @@ namespace TeamOps.Data.Repositories
             return list;
         }
 
+        public List<OperatorPresence> GetLatestByDateShift(DateTime date, int shiftId)
+        {
+            var list = new List<OperatorPresence>();
+
+            using var conn = _factory.CreateOpenConnection();
+            EnsureIndexes(conn);
+            using var cmd = conn.CreateCommand();
+
+            cmd.CommandText = @"
+                SELECT
+                    p.CodigoFJ,
+                    p.SectorId,
+                    p.LocalId,
+                    p.ShiftId,
+                    p.Date AS LastPresence,
+                    o.NameRomanji,
+                    o.NameNihongo
+                FROM (
+                    SELECT
+                        p.Id,
+                        p.CodigoFJ,
+                        p.SectorId,
+                        p.LocalId,
+                        p.ShiftId,
+                        p.Date,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY p.CodigoFJ
+                            ORDER BY datetime(p.Date) DESC, p.Id DESC
+                        ) AS RowNumber
+                    FROM OperatorPresence p
+                    WHERE date(p.Date) = date(@date)
+                      AND p.ShiftId = @shift
+                ) p
+                JOIN Operators o ON o.CodigoFJ = p.CodigoFJ
+                WHERE p.RowNumber = 1
+                ORDER BY p.SectorId, o.NameRomanji, p.CodigoFJ;
+            ";
+
+            cmd.Parameters.AddWithValue("@date", date);
+            cmd.Parameters.AddWithValue("@shift", shiftId);
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add(new OperatorPresence
+                {
+                    CodigoFJ = reader.GetString(0),
+                    SectorId = reader.GetInt32(1),
+                    LocalId = reader.GetInt32(2),
+                    ShiftId = reader.GetInt32(3),
+                    Date = reader.GetDateTime(4),
+                    NameRomanji = reader.IsDBNull(5) ? "" : reader.GetString(5),
+                    NameNihongo = reader.IsDBNull(6) ? "" : reader.GetString(6)
+                });
+            }
+
+            return list;
+        }
+
         public List<OperatorPresence> GetByDateSectorShift(DateTime date, int sectorId, int shiftId)
         {
             var list = new List<OperatorPresence>();

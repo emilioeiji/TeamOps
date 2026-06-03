@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Diagnostics;
+using System.Configuration;
 using Dapper;
 using TeamOps.Config;
 using TeamOps.Data.Db;
@@ -35,6 +36,10 @@ switch (command)
 
     case "ec2-diagnostics":
         RunEc2Diagnostics();
+        break;
+
+    case "ec2-reset-latest":
+        RunEc2ResetLatest();
         break;
 
     case "dashboard":
@@ -96,6 +101,7 @@ void RunImport()
 
 void ShowDashboards()
 {
+    PrintRuntimeConfigDiagnostics();
     using var conn = factory.CreateOpenConnection();
     ProductionSchemaMigrator.Ensure(conn);
 
@@ -140,6 +146,7 @@ void RunImportProfile(string[] profileArgs)
 {
     var options = ImportProfileOptions.Parse(profileArgs);
     var totalWatch = Stopwatch.StartNew();
+    PrintRuntimeConfigDiagnostics();
     var result = importer.ImportLatest();
     totalWatch.Stop();
 
@@ -157,10 +164,35 @@ void RunImportProfile(string[] profileArgs)
     if (options.Date.HasValue)
     {
         var analyticsWatch = Stopwatch.StartNew();
+        using var conn = factory.CreateOpenConnection();
+        ProductionSchemaMigrator.Ensure(conn);
+
+        var shifts = conn.Query<ShiftRow>(
+            @"
+                SELECT
+                    Id,
+                    COALESCE(NamePt, '') AS NamePt,
+                    COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp
+                FROM Shifts
+                ORDER BY Id;")
+            .ToList();
+
+        var dayShift = shifts.FirstOrDefault(shift => MatchesShift(shift, "hiru", "day", "dia"));
+        var nightShift = shifts.FirstOrDefault(shift => MatchesShift(shift, "yakin", "night", "noite", "夜"));
+        var selectedShift = dayShift ?? nightShift ?? shifts.FirstOrDefault();
+        if (selectedShift == null)
+        {
+            Console.WriteLine("=== POST IMPORT ANALYTICS PROFILE ===");
+            Console.WriteLine("Shift=none");
+            Console.WriteLine("Reason=no-shift-found");
+            return;
+        }
+
         var dashboard = analytics.BuildDashboard(new ProductionDashboardFilter
         {
             Date = options.Date.Value.Date,
-            SectorId = options.SectorId
+            SectorId = options.SectorId,
+            ShiftId = selectedShift.Id
         });
         analyticsWatch.Stop();
 
@@ -168,6 +200,7 @@ void RunImportProfile(string[] profileArgs)
         Console.WriteLine("=== POST IMPORT ANALYTICS PROFILE ===");
         Console.WriteLine($"Date={options.Date.Value:yyyy-MM-dd}");
         Console.WriteLine($"Sector={options.SectorLabel}");
+        Console.WriteLine($"Shift={selectedShift.Id} {selectedShift.NamePt}");
         Console.WriteLine($"Analytics={analyticsWatch.ElapsedMilliseconds}ms");
         Console.WriteLine($"Machines={dashboard.Machines.Count}");
         Console.WriteLine($"Areas={dashboard.Areas.Count}");
@@ -205,6 +238,7 @@ void PrintEc2ImportResult(TeamOps.Core.Entities.ProductionImportResult result)
 
 void RunEc2Diagnostics()
 {
+    PrintRuntimeConfigDiagnostics();
     using var conn = factory.CreateOpenConnection();
     ProductionSchemaMigrator.Ensure(conn);
 
@@ -212,6 +246,7 @@ void RunEc2Diagnostics()
         @"
             SELECT
                 Id,
+                COALESCE(SourceType, 'Administrator') AS SourceType,
                 COALESCE(SourceFile, '') AS SourceFile,
                 COALESCE(FileHash, '') AS FileHash,
                 COALESCE(FileLastWriteTime, '') AS FileLastWriteTime,
@@ -228,6 +263,9 @@ void RunEc2Diagnostics()
                 SELECT
                     COALESCE(AreaLabel, '') AS AreaLabel,
                     COALESCE(MachineCode, '') AS MachineCode,
+                    COALESCE(ImportId, 0) AS ImportId,
+                    COALESCE(SourceType, 'Administrator') AS SourceType,
+                    COALESCE(IsStale, 0) AS IsStale,
                     COALESCE(StatusText, '') AS StatusText,
                     COALESCE(IsRunning, 0) AS IsRunning,
                     COALESCE(IsIgnored, 0) AS IsIgnored,
@@ -236,9 +274,23 @@ void RunEc2Diagnostics()
                     ProcessMinutes,
                     COALESCE(LotNo, '') AS LotNo,
                     COALESCE(SnapshotAt, '') AS SnapshotAt,
+                    COALESCE(LastSeenAt, '') AS LastSeenAt,
                     COALESCE(StoppedSinceAt, '') AS StoppedSinceAt
                 FROM Ec2MachineCurrentState
                 ORDER BY AreaLabel, MachineCode;")
+        .ToList();
+    var latestImportId = latestImport?.Id ?? 0;
+    var latestMachineCodes = latestImportId <= 0
+        ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        : conn.Query<string>(
+                "SELECT upper(trim(MachineCode)) FROM Ec2MachineSnapshots WHERE ImportId = @importId;",
+                new { importId = latestImportId })
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var lastImportMachines = latestMachineCodes.Count;
+    var staleRows = current
+        .Where(row => row.SourceType.Equals("Administrator", StringComparison.OrdinalIgnoreCase))
+        .Where(row => latestImportId > 0 && !latestMachineCodes.Contains(NormalizeProbeCode(row.MachineCode)))
         .ToList();
 
     var areaCount = current
@@ -249,16 +301,32 @@ void RunEc2Diagnostics()
     var running = current.Count(row => row.IsRunning == 1);
     var ignored = current.Count(row => row.IsIgnored == 1);
     var stopped = Math.Max(0, current.Count - running);
-    var operatingProcessRows = current
-        .Where(row => row.IsRunning == 1 && row.IsIgnored == 0 && row.ProcessMinutes.HasValue)
+    var auditRows = current
+        .Select(row => BuildEc2AverageAuditRow(row, latestMachineCodes, latestImportId))
         .ToList();
+    var operatingProcessRows = auditRows
+        .Where(row => row.EnteredAverage)
+        .ToList();
+    var operatingProcessSum = operatingProcessRows.Sum(row => row.TimeRead!.Value);
     var averageProcess = operatingProcessRows.Count == 0
         ? 0d
-        : Math.Round(operatingProcessRows.Average(row => row.ProcessMinutes!.Value), 1);
+        : Math.Round(operatingProcessSum / operatingProcessRows.Count, 1);
+    var currentStateStrictRows = current
+        .Where(row => row.IsRunning == 1
+            && row.IsIgnored == 0
+            && row.ProcessMinutes.HasValue
+            && double.IsFinite(row.ProcessMinutes.Value)
+            && row.ProcessMinutes.Value > 0)
+        .ToList();
+    var currentStateStrictSum = currentStateStrictRows.Sum(row => row.ProcessMinutes!.Value);
+    var currentStateStrictAverage = currentStateStrictRows.Count == 0
+        ? 0d
+        : Math.Round(currentStateStrictSum / currentStateStrictRows.Count, 1);
 
     Console.WriteLine("=== EC2 ADMINISTRATOR DIAGNOSTICS ===");
     Console.WriteLine($"Database={settings.DatabasePath}");
     Console.WriteLine($"LastImportId={latestImport?.Id.ToString(CultureInfo.InvariantCulture) ?? "(none)"}");
+    Console.WriteLine($"LastImportSourceType={latestImport?.SourceType ?? "(none)"}");
     Console.WriteLine($"LastFile={latestImport?.SourceFile ?? "(none)"}");
     Console.WriteLine($"LastHash={latestImport?.FileHash ?? "(none)"}");
     Console.WriteLine($"LastFileWriteTime={latestImport?.FileLastWriteTime ?? "(none)"}");
@@ -266,18 +334,52 @@ void RunEc2Diagnostics()
     Console.WriteLine($"RowsRead={latestImport?.RowsRead ?? 0}");
     Console.WriteLine($"RowsImported={latestImport?.RowsImported ?? 0}");
     Console.WriteLine($"RowsIgnored={latestImport?.RowsIgnored ?? 0}");
+    Console.WriteLine($"CurrentStateTotalMachines={current.Count}");
+    Console.WriteLine($"LastImportMachines={lastImportMachines}");
+    Console.WriteLine($"StaleMachinesFromOlderImports={staleRows.Count}");
     Console.WriteLine($"Areas={areaCount}");
     Console.WriteLine($"Machines={current.Count}");
     Console.WriteLine($"Running={running}");
     Console.WriteLine($"Stopped={stopped}");
     Console.WriteLine($"Ignored={ignored}");
     Console.WriteLine($"AverageOperatingProcessMinutes={averageProcess:F1}");
+    Console.WriteLine("AverageRule=IsRunning=1 AND IsIgnored=0 AND ProcessMinutes>0 AND finite AND PresentInLastAdministratorImport");
+    Console.WriteLine($"Sum={operatingProcessSum:F1}");
+    Console.WriteLine($"Count={operatingProcessRows.Count}");
+    Console.WriteLine($"Excluded={auditRows.Count - operatingProcessRows.Count}");
+    Console.WriteLine($"AverageCurrentStateStrict={currentStateStrictAverage:F1}");
+    Console.WriteLine($"CurrentStateStrictSum={currentStateStrictSum:F1}");
+    Console.WriteLine($"CurrentStateStrictCount={currentStateStrictRows.Count}");
+
+    Console.WriteLine();
+    Console.WriteLine("AverageAuditRows:");
+    foreach (var row in auditRows)
+    {
+        Console.WriteLine($"  Machine={row.MachineCode} Status={row.StatusText} TimeRead={row.TimeRead?.ToString("0.0", CultureInfo.InvariantCulture) ?? "null"} EnteredAverage={(row.EnteredAverage ? "sim" : "nao")} Reason={row.Reason}");
+    }
+
+    Console.WriteLine();
+    Console.WriteLine("StaleMachines:");
+    if (staleRows.Count == 0)
+    {
+        Console.WriteLine("  (none)");
+    }
+    else
+    {
+        foreach (var row in staleRows)
+        {
+            var sourceFile = conn.ExecuteScalar<string>(
+                    "SELECT COALESCE(SourceFile, '') FROM Ec2AdministratorImports WHERE Id = @importId;",
+                    new { importId = row.ImportId }) ?? string.Empty;
+            Console.WriteLine($"  Machine={row.MachineCode} ImportId={(row.ImportId <= 0 ? "(unknown)" : row.ImportId.ToString(CultureInfo.InvariantCulture))} SourceFile={(string.IsNullOrWhiteSpace(sourceFile) ? "(unknown)" : sourceFile)} LastSeenAt={row.LastSeenAt}");
+        }
+    }
 
     Console.WriteLine();
     Console.WriteLine("CurrentStateSample:");
     foreach (var row in current.Take(20))
     {
-        Console.WriteLine($"  Area={row.AreaLabel} Machine={row.MachineCode} Status={row.StatusText} Running={row.IsRunning} Ignored={row.IsIgnored} Part={row.PartCode} Lot={row.LotNo} Process={row.ProcessMinutes?.ToString("0.0", CultureInfo.InvariantCulture) ?? ""} Snapshot={row.SnapshotAt} Reason={row.IgnoreReason}");
+        Console.WriteLine($"  Area={row.AreaLabel} Machine={row.MachineCode} ImportId={(row.ImportId <= 0 ? "(unknown)" : row.ImportId.ToString(CultureInfo.InvariantCulture))} Stale={row.IsStale} Status={row.StatusText} Running={row.IsRunning} Ignored={row.IsIgnored} Part={row.PartCode} Lot={row.LotNo} Process={row.ProcessMinutes?.ToString("0.0", CultureInfo.InvariantCulture) ?? ""} Snapshot={row.SnapshotAt} Reason={row.IgnoreReason}");
     }
 
     Console.WriteLine();
@@ -295,6 +397,115 @@ void RunEc2Diagnostics()
     {
         Console.WriteLine($"  {style.PartCode}: {style.ColorHex}/{style.TextColorHex} Active={style.IsActive} {style.Description}");
     }
+}
+
+static Ec2AverageAuditProbeRow BuildEc2AverageAuditRow(
+    Ec2CurrentProbeRow row,
+    IReadOnlySet<string> latestMachineCodes,
+    long latestImportId)
+{
+    var normalizedMachine = NormalizeProbeCode(row.MachineCode);
+    var presentInLatestImport = latestImportId <= 0 || latestMachineCodes.Contains(normalizedMachine);
+
+    if (!presentInLatestImport)
+    {
+        return new Ec2AverageAuditProbeRow(row.MachineCode, row.StatusText, row.ProcessMinutes, false, "stale_from_older_import");
+    }
+
+    if (row.IsStale == 1)
+    {
+        return new Ec2AverageAuditProbeRow(row.MachineCode, row.StatusText, row.ProcessMinutes, false, "stale_current_state");
+    }
+
+    if (row.IsIgnored == 1)
+    {
+        var reason = string.IsNullOrWhiteSpace(row.IgnoreReason) ? "no_reason" : row.IgnoreReason;
+        return new Ec2AverageAuditProbeRow(row.MachineCode, row.StatusText, row.ProcessMinutes, false, $"ec2_ignored:{reason}");
+    }
+
+    if (row.IsRunning != 1)
+    {
+        return new Ec2AverageAuditProbeRow(row.MachineCode, row.StatusText, row.ProcessMinutes, false, "machine_not_running");
+    }
+
+    if (!row.ProcessMinutes.HasValue)
+    {
+        return new Ec2AverageAuditProbeRow(row.MachineCode, row.StatusText, row.ProcessMinutes, false, "process_time_null");
+    }
+
+    var processMinutes = row.ProcessMinutes.Value;
+    if (!double.IsFinite(processMinutes))
+    {
+        return new Ec2AverageAuditProbeRow(row.MachineCode, row.StatusText, row.ProcessMinutes, false, "process_time_not_finite");
+    }
+
+    if (processMinutes <= 0)
+    {
+        return new Ec2AverageAuditProbeRow(row.MachineCode, row.StatusText, row.ProcessMinutes, false, "process_time_not_positive");
+    }
+
+    return new Ec2AverageAuditProbeRow(row.MachineCode, row.StatusText, row.ProcessMinutes, true, "ok");
+}
+
+static string NormalizeProbeCode(string value)
+{
+    return string.IsNullOrWhiteSpace(value)
+        ? string.Empty
+        : value.Trim().ToUpperInvariant();
+}
+
+void RunEc2ResetLatest()
+{
+    PrintRuntimeConfigDiagnostics();
+
+    var ec2FilePath = ConfigurationManager.AppSettings["Ec2AdministratorFilePath"] ?? string.Empty;
+    if (string.IsNullOrWhiteSpace(ec2FilePath))
+    {
+        Console.WriteLine("Ec2AdministratorFilePath vazio; nada para limpar.");
+        return;
+    }
+
+    using var conn = factory.CreateOpenConnection();
+    ProductionSchemaMigrator.Ensure(conn);
+
+    var latest = conn.QueryFirstOrDefault<Ec2ImportProbeRow>(
+        @"
+            SELECT
+                Id,
+                COALESCE(SourceType, 'Administrator') AS SourceType,
+                COALESCE(SourceFile, '') AS SourceFile,
+                COALESCE(FileHash, '') AS FileHash,
+                COALESCE(FileLastWriteTime, '') AS FileLastWriteTime,
+                COALESCE(ImportedAt, '') AS ImportedAt,
+                RowsRead,
+                RowsImported,
+                RowsIgnored
+            FROM Ec2AdministratorImports
+            WHERE SourceFile = @sourceFile
+            ORDER BY datetime(ImportedAt) DESC, Id DESC
+            LIMIT 1;",
+        new
+        {
+            sourceFile = ec2FilePath
+        });
+
+    if (latest == null)
+    {
+        Console.WriteLine($"Nenhum import EC2 encontrado para {ec2FilePath}.");
+        return;
+    }
+
+    using var tx = conn.BeginTransaction();
+    var snapshotsDeleted = conn.Execute("DELETE FROM Ec2MachineSnapshots WHERE ImportId = @importId;", new { importId = latest.Id }, tx);
+    var importsDeleted = conn.Execute("DELETE FROM Ec2AdministratorImports WHERE Id = @importId;", new { importId = latest.Id }, tx);
+    tx.Commit();
+
+    Console.WriteLine("=== EC2 RESET LATEST ===");
+    Console.WriteLine($"SourceFile={latest.SourceFile}");
+    Console.WriteLine($"ImportId={latest.Id}");
+    Console.WriteLine($"FileHash={latest.FileHash}");
+    Console.WriteLine($"SnapshotsDeleted={snapshotsDeleted}");
+    Console.WriteLine($"ImportsDeleted={importsDeleted}");
 }
 
 void PrintImportPerformance(TeamOps.Core.Entities.ProductionImportResult result)
@@ -518,6 +729,10 @@ ProductionSchemaInspection InspectProductionSchema(System.Data.IDbConnection con
     RequireColumn(conn, "MachineStatuses", "DisplayCode", issues);
     RequireColumn(conn, "MachineStatuses", "Classification", issues);
     RequireColumn(conn, "Ec2MachineCurrentState", "MachineCode", issues);
+    RequireColumn(conn, "Ec2AdministratorImports", "SourceType", issues);
+    RequireColumn(conn, "Ec2MachineCurrentState", "ImportId", issues);
+    RequireColumn(conn, "Ec2MachineCurrentState", "SourceType", issues);
+    RequireColumn(conn, "Ec2MachineCurrentState", "IsStale", issues);
     RequireColumn(conn, "Ec2MachineCurrentState", "MachineId", issues);
     RequireColumn(conn, "Ec2MachineCurrentState", "StatusText", issues);
     RequireColumn(conn, "Ec2MachineCurrentState", "IsRunning", issues);
@@ -944,6 +1159,24 @@ void ShowDashboard(string label, DateTime date, int shiftId)
     }
 }
 
+void PrintRuntimeConfigDiagnostics()
+{
+    var configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None).FilePath;
+    var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+    var ec2FilePath = ConfigurationManager.AppSettings["Ec2AdministratorFilePath"] ?? string.Empty;
+    var ignoreAfter = ConfigurationManager.AppSettings["MachineStoppedIgnoreAfterMinutes"] ?? string.Empty;
+    var runningKeywords = ConfigurationManager.AppSettings["Ec2AdministratorRunningStatusKeywords"] ?? string.Empty;
+
+    Console.WriteLine("=== RUNTIME CONFIG DIAGNOSTICS ===");
+    Console.WriteLine($"BaseDirectory={baseDir}");
+    Console.WriteLine($"ConfigurationFile={configFile}");
+    Console.WriteLine($"Ec2AdministratorFilePath={ec2FilePath}");
+    Console.WriteLine($"Ec2AdministratorFileExists={(string.IsNullOrWhiteSpace(ec2FilePath) ? "no" : File.Exists(ec2FilePath) ? "yes" : "no")}");
+    Console.WriteLine($"MachineStoppedIgnoreAfterMinutes={ignoreAfter}");
+    Console.WriteLine($"Ec2AdministratorRunningStatusKeywords={runningKeywords}");
+    Console.WriteLine();
+}
+
 static bool MatchesShift(ShiftRow shift, params string[] keywords)
 {
     var values = new[] { shift.NamePt, shift.NameJp }
@@ -1317,6 +1550,7 @@ sealed class IndexProbeRow
 sealed class Ec2ImportProbeRow
 {
     public long Id { get; set; }
+    public string SourceType { get; set; } = string.Empty;
     public string SourceFile { get; set; } = string.Empty;
     public string FileHash { get; set; } = string.Empty;
     public string FileLastWriteTime { get; set; } = string.Empty;
@@ -1330,6 +1564,9 @@ sealed class Ec2CurrentProbeRow
 {
     public string AreaLabel { get; set; } = string.Empty;
     public string MachineCode { get; set; } = string.Empty;
+    public long ImportId { get; set; }
+    public string SourceType { get; set; } = string.Empty;
+    public int IsStale { get; set; }
     public string StatusText { get; set; } = string.Empty;
     public int IsRunning { get; set; }
     public int IsIgnored { get; set; }
@@ -1338,8 +1575,16 @@ sealed class Ec2CurrentProbeRow
     public double? ProcessMinutes { get; set; }
     public string LotNo { get; set; } = string.Empty;
     public string SnapshotAt { get; set; } = string.Empty;
+    public string LastSeenAt { get; set; } = string.Empty;
     public string StoppedSinceAt { get; set; } = string.Empty;
 }
+
+sealed record Ec2AverageAuditProbeRow(
+    string MachineCode,
+    string StatusText,
+    double? TimeRead,
+    bool EnteredAverage,
+    string Reason);
 
 sealed class PartCodeStyleProbeRow
 {

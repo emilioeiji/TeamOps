@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using Dapper;
 using TeamOps.Data.Db;
@@ -30,6 +31,7 @@ namespace TeamOps.UI.Services
             if (filter.SectorId > 0 && filter.SectorId != GBareruSectorId)
             {
                 result.Message = "Previsao disponivel apenas para G-Bareru.";
+                WriteDiagnostic(result.Message);
                 result.CalculationMs = watch.ElapsedMilliseconds;
                 return result;
             }
@@ -42,66 +44,59 @@ namespace TeamOps.UI.Services
             if (gBareruAreas.Count == 0)
             {
                 result.Message = "Sem area G-Bareru no filtro atual.";
+                WriteDiagnostic(result.Message);
                 result.CalculationMs = watch.ElapsedMilliseconds;
                 return result;
             }
 
-            var times = LoadProcedureTimes(filter.LocalId);
-            if (!times.TryGetValue(EciiCode, out var ecii)
-                || !times.TryGetValue(BunkatsuCode, out var bunkatsu)
-                || !times.TryGetValue(DcsCode, out var dcs)
-                || ecii <= 0
-                || bunkatsu <= 0
-                || dcs <= 0)
-            {
-                result.Message = "Sem dados suficientes: configure os tempos ECII, Bunkatsu e DCS.";
-                result.CalculationMs = watch.ElapsedMilliseconds;
-                return result;
-            }
-
-            result.EciiMinutes = ecii;
-            result.BunkatsuMinutes = bunkatsu;
-            result.DcsMinutes = dcs;
-            result.Block1Minutes = ecii + bunkatsu;
-            result.Block2Minutes = dcs;
+            var areaForecasts = new List<AreaForecastComputation>(gBareruAreas.Count);
 
             foreach (var area in gBareruAreas)
             {
-                var areaForecast = BuildAreaForecast(area, ecii, bunkatsu, dcs);
-                result.Areas.Add(areaForecast);
+                var times = LoadProcedureTimes(area.LocalId ?? 0);
+                var areaForecast = BuildAreaForecast(area, times);
+                areaForecasts.Add(areaForecast);
+                result.Areas.Add(areaForecast.Forecast);
             }
 
-            var availableAreas = result.Areas
-                .Where(area => string.IsNullOrWhiteSpace(area.Message))
+            var availableAreas = areaForecasts
+                .Where(area => string.IsNullOrWhiteSpace(area.Forecast.Message))
                 .ToList();
 
             if (availableAreas.Count == 0)
             {
-                result.Message = string.Join(" | ", result.Areas.Select(area => area.Message).Distinct());
+                result.Message = string.Join(
+                    " | ",
+                    areaForecasts
+                        .Select(area => area.Forecast.Message)
+                        .Where(message => !string.IsNullOrWhiteSpace(message))
+                        .Distinct(StringComparer.OrdinalIgnoreCase));
+                WriteDiagnostic($"[ProductionMonitor][ForecastSummary] Sem previsao: Motivo: {result.Message}");
                 result.CalculationMs = watch.ElapsedMilliseconds;
                 return result;
             }
 
-            var weightedMinutes = availableAreas.Sum(area =>
-            {
-                var source = gBareruAreas.FirstOrDefault(item => item.LocalId == area.LocalId);
-                return ResolveAvailableMinutes(source);
-            });
-
             result.IsAvailable = true;
-            result.PeopleCount = availableAreas.Sum(area => area.PeopleCount);
-            result.AvailableMinutes = Math.Round(weightedMinutes, 1);
-            result.ForecastCapacity = Math.Round(availableAreas.Sum(area => area.ForecastCapacity), 1);
-            result.ForecastKadouritsuPercent = Math.Round(availableAreas.Average(area => area.ForecastKadouritsuPercent), 1);
-            result.RealKadouritsuPercent = Math.Round(availableAreas.Average(area => area.RealKadouritsuPercent), 1);
+            result.PeopleCount = availableAreas.Sum(area => area.Forecast.PeopleCount);
+            result.AvailableMinutes = Math.Round(availableAreas.Sum(area => area.AvailableMinutes), 1);
+            result.ForecastCapacity = Math.Round(availableAreas.Sum(area => area.Forecast.ForecastCapacity), 1);
+            result.ForecastKadouritsuPercent = Math.Round(availableAreas.Average(area => area.Forecast.ForecastKadouritsuPercent), 1);
+            result.RealKadouritsuPercent = Math.Round(availableAreas.Average(area => area.Forecast.RealKadouritsuPercent), 1);
             result.DifferencePercent = Math.Round(result.RealKadouritsuPercent - result.ForecastKadouritsuPercent, 1);
+            result.EciiMinutes = ResolveAggregateMinutes(availableAreas.Select(area => area.EciiMinutes));
+            result.BunkatsuMinutes = ResolveAggregateMinutes(availableAreas.Select(area => area.BunkatsuMinutes));
+            result.DcsMinutes = ResolveAggregateMinutes(availableAreas.Select(area => area.DcsMinutes));
+            result.Block1Minutes = Math.Round(result.EciiMinutes + result.BunkatsuMinutes, 1);
+            result.Block2Minutes = result.DcsMinutes;
 
-            var first = availableAreas[0];
-            result.CycleMode = availableAreas.Select(area => area.CycleMode).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1
+            var first = availableAreas[0].Forecast;
+            result.CycleMode = availableAreas.Select(area => area.Forecast.CycleMode).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1
                 ? first.CycleMode
                 : "mixed";
-            result.CycleMinutes = Math.Round(availableAreas.Average(area => area.CycleMinutes), 1);
+            result.CycleMinutes = Math.Round(availableAreas.Average(area => area.Forecast.CycleMinutes), 1);
             result.Bottleneck = ResolveBottleneck(result.Block1Minutes, result.Block2Minutes);
+            WriteDiagnostic(
+                $"[ProductionMonitor][ForecastSummary] Local={(filter.LocalId > 0 ? filter.LocalId.ToString(CultureInfo.InvariantCulture) : "all")} Pessoas={result.PeopleCount} ECII={FormatMinutes(result.EciiMinutes)} BUNKATSU={FormatMinutes(result.BunkatsuMinutes)} DCS={FormatMinutes(result.DcsMinutes)} TempoDeCiclo={FormatMinutes(result.CycleMinutes)} CapacidadePrevista={FormatMinutes(result.ForecastCapacity)} KadouritsuPrevisto={FormatMinutes(result.ForecastKadouritsuPercent)}");
             result.CalculationMs = watch.ElapsedMilliseconds;
             return result;
         }
@@ -136,36 +131,52 @@ namespace TeamOps.UI.Services
                 .ToDictionary(group => group.Key, group => group.First().StandardMinutes, StringComparer.OrdinalIgnoreCase);
         }
 
-        private static GBareruCapacityAreaForecastDto BuildAreaForecast(
+        private static AreaForecastComputation BuildAreaForecast(
             ProductionAreaSummaryDto area,
-            double ecii,
-            double bunkatsu,
-            double dcs)
+            IReadOnlyDictionary<string, double> times)
         {
-            var peopleCount = area.ScheduledOperatorsPt
-                .Where(name => !string.IsNullOrWhiteSpace(name))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Count();
-
             var forecast = new GBareruCapacityAreaForecastDto
             {
                 LocalId = area.LocalId,
                 LocalNamePt = area.LocalNamePt,
                 LocalNameJp = area.LocalNameJp,
-                PeopleCount = peopleCount,
                 RealKadouritsuPercent = area.ProductionPercent
             };
 
+            var computation = new AreaForecastComputation
+            {
+                Forecast = forecast,
+                AvailableMinutes = ResolveAvailableMinutes(area)
+            };
+
+            var peopleCount = ResolvePeopleCount(area);
+            forecast.PeopleCount = peopleCount;
+
+            if (!TryResolveProcedureTime(times, EciiCode, out var ecii)
+                || !TryResolveProcedureTime(times, BunkatsuCode, out var bunkatsu)
+                || !TryResolveProcedureTime(times, DcsCode, out var dcs))
+            {
+                forecast.Message = BuildMissingTimesMessage(times);
+                LogAreaForecast(computation, area, forecast.Message);
+                return computation;
+            }
+
+            computation.EciiMinutes = ecii;
+            computation.BunkatsuMinutes = bunkatsu;
+            computation.DcsMinutes = dcs;
+
             if (peopleCount <= 0)
             {
-                forecast.Message = "Sem alocacao Haidai.";
-                return forecast;
+                forecast.Message = "Sem previsao: Motivo: nenhuma alocacao Haidai encontrada.";
+                LogAreaForecast(computation, area, forecast.Message);
+                return computation;
             }
 
             if (peopleCount > 2)
             {
-                forecast.Message = "Mais de 2 pessoas: regra nao assumida automaticamente.";
-                return forecast;
+                forecast.Message = "Sem previsao: Motivo: mais de 2 pessoas no local.";
+                LogAreaForecast(computation, area, forecast.Message);
+                return computation;
             }
 
             var block1 = ecii + bunkatsu;
@@ -174,7 +185,7 @@ namespace TeamOps.UI.Services
             var cycle = peopleCount == 1
                 ? totalWork
                 : Math.Max(block1, block2);
-            var available = ResolveAvailableMinutes(area);
+            var available = computation.AvailableMinutes;
 
             forecast.CycleMode = peopleCount == 1 ? "1 pessoa" : "2 pessoas";
             forecast.CycleMinutes = Math.Round(cycle, 1);
@@ -183,7 +194,8 @@ namespace TeamOps.UI.Services
                 ? 0
                 : Math.Round(Math.Min(100d, (totalWork / (cycle * peopleCount)) * 100d), 1);
 
-            return forecast;
+            LogAreaForecast(computation, area, string.Empty);
+            return computation;
         }
 
         private static double ResolveAvailableMinutes(ProductionAreaSummaryDto? area)
@@ -208,11 +220,132 @@ namespace TeamOps.UI.Services
             return block1 > block2 ? "ECII+Bunkatsu" : "DCS";
         }
 
+        private static bool TryResolveProcedureTime(
+            IReadOnlyDictionary<string, double> times,
+            string procedureCode,
+            out double minutes)
+        {
+            if (times.TryGetValue(procedureCode, out minutes)
+                && double.IsFinite(minutes)
+                && minutes > 0)
+            {
+                return true;
+            }
+
+            minutes = 0;
+            return false;
+        }
+
+        private static string BuildMissingTimesMessage(IReadOnlyDictionary<string, double> times)
+        {
+            var missing = new List<string>(3);
+            if (!TryResolveProcedureTime(times, EciiCode, out _))
+            {
+                missing.Add(EciiCode);
+            }
+
+            if (!TryResolveProcedureTime(times, BunkatsuCode, out _))
+            {
+                missing.Add(BunkatsuCode);
+            }
+
+            if (!TryResolveProcedureTime(times, DcsCode, out _))
+            {
+                missing.Add(DcsCode);
+            }
+
+            return missing.Count == 0
+                ? "Sem previsao: Motivo: tempos invalidos."
+                : $"Sem previsao: Motivo: nenhum tempo cadastrado valido para {string.Join(", ", missing)}.";
+        }
+
+        private static int ResolvePeopleCount(ProductionAreaSummaryDto area)
+        {
+            var names = area.ScheduledOperatorsPt
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .ToList();
+
+            if (names.Count == 0)
+            {
+                names = area.ScheduledOperatorsJp
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .ToList();
+            }
+
+            return names
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count();
+        }
+
+        private static double ResolveAggregateMinutes(IEnumerable<double> values)
+        {
+            var list = values
+                .Where(value => double.IsFinite(value) && value > 0)
+                .ToList();
+
+            if (list.Count == 0)
+            {
+                return 0;
+            }
+
+            var first = list[0];
+            return list.All(value => Math.Abs(value - first) < 0.01)
+                ? Math.Round(first, 1)
+                : Math.Round(list.Average(), 1);
+        }
+
+        private static string FormatMinutes(double value)
+        {
+            return value.ToString("0.0", CultureInfo.InvariantCulture);
+        }
+
+        private static void LogAreaForecast(
+            AreaForecastComputation computation,
+            ProductionAreaSummaryDto area,
+            string reason)
+        {
+            var localName = string.IsNullOrWhiteSpace(area.LocalNamePt)
+                ? area.LocalNameJp
+                : area.LocalNamePt;
+
+            if (!string.IsNullOrWhiteSpace(reason))
+            {
+                WriteDiagnostic(
+                    $"[ProductionMonitor][Forecast] Local={localName} Pessoas={computation.Forecast.PeopleCount} ECII={FormatMinutes(computation.EciiMinutes)} BUNKATSU={FormatMinutes(computation.BunkatsuMinutes)} DCS={FormatMinutes(computation.DcsMinutes)} TempoDeCiclo={FormatMinutes(computation.Forecast.CycleMinutes)} CapacidadePrevista={FormatMinutes(computation.Forecast.ForecastCapacity)} KadouritsuPrevisto={FormatMinutes(computation.Forecast.ForecastKadouritsuPercent)} {reason}");
+                return;
+            }
+
+            WriteDiagnostic(
+                $"[ProductionMonitor][Forecast] Local={localName} Pessoas={computation.Forecast.PeopleCount} ECII={FormatMinutes(computation.EciiMinutes)} BUNKATSU={FormatMinutes(computation.BunkatsuMinutes)} DCS={FormatMinutes(computation.DcsMinutes)} TempoDeCiclo={FormatMinutes(computation.Forecast.CycleMinutes)} CapacidadePrevista={FormatMinutes(computation.Forecast.ForecastCapacity)} KadouritsuPrevisto={FormatMinutes(computation.Forecast.ForecastKadouritsuPercent)}");
+        }
+
+        private static void WriteDiagnostic(string message)
+        {
+            Debug.WriteLine(message);
+
+            try
+            {
+                Console.WriteLine(message);
+            }
+            catch
+            {
+            }
+        }
+
         private sealed class ProcedureTimeRow
         {
             public string ProcedureCode { get; set; } = string.Empty;
             public double StandardMinutes { get; set; }
             public int LocalId { get; set; }
+        }
+
+        private sealed class AreaForecastComputation
+        {
+            public GBareruCapacityAreaForecastDto Forecast { get; set; } = new();
+            public double EciiMinutes { get; set; }
+            public double BunkatsuMinutes { get; set; }
+            public double DcsMinutes { get; set; }
+            public double AvailableMinutes { get; set; }
         }
     }
 }

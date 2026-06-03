@@ -557,6 +557,12 @@ select {
     line-height: 1.5;
 }
 
+#lblAreaAverageLead {
+    margin-top: 10px;
+    color: #f3f7ff;
+    font-weight: 700;
+}
+
 .area-hero-gauge {
     position: relative;
     z-index: 1;

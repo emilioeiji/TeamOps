@@ -330,4 +330,12 @@
     </None>
   </ItemGroup>
 
+  <Target Name="CopyExeConfig" AfterTargets="Build">
+    <PropertyGroup>
+      <GeneratedConfig>$(TargetDir)$(AssemblyName).dll.config</GeneratedConfig>
+      <ExeConfig>$(TargetDir)$(AssemblyName).exe.config</ExeConfig>
+    </PropertyGroup>
+    <Copy SourceFiles="$(GeneratedConfig)" DestinationFiles="$(ExeConfig)" Condition="Exists('$(GeneratedConfig)')" />
+  </Target>
+
 </Project>

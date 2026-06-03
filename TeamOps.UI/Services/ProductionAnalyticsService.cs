@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using Dapper;
@@ -293,7 +294,7 @@ namespace TeamOps.Services
 
             dashboard.Machines.AddRange(machineSummaries);
 
-            var aggregate = Summarize(machineSummaries);
+            var aggregate = Summarize(machineSummaries, "dashboard");
             dashboard.ProductionPercent = aggregate.ProductionPercent;
             dashboard.MachinesRunning = aggregate.MachinesRunning;
             dashboard.MachinesStopped = aggregate.MachinesStopped;
@@ -943,7 +944,7 @@ namespace TeamOps.Services
                             COALESCE(style.Description, '') AS PartDescription
                         FROM Ec2MachineCurrentState ecs
                         LEFT JOIN ProductionPartCodeStyles style
-                          ON style.PartCode = ecs.PartCode
+                          ON upper(trim(COALESCE(style.PartCode, ''))) = upper(trim(COALESCE(ecs.PartCode, '')))
                          AND COALESCE(style.IsActive, 1) = 1
                         WHERE ecs.MachineId IN @machineIds;",
                     new
@@ -992,6 +993,7 @@ namespace TeamOps.Services
                 {
                     MachineId = machine.Id,
                     MachineCode = machine.MachineCode,
+                    Machine = machine.MachineCode,
                     LineCode = machine.LineCode,
                     MachineNamePt = machine.MachineNamePt,
                     MachineNameJp = machine.MachineNameJp,
@@ -999,6 +1001,7 @@ namespace TeamOps.Services
                     SectorNamePt = machine.SectorNamePt,
                     SectorNameJp = machine.SectorNameJp,
                     LocalId = machine.LocalId,
+                    Area = machine.LocalNamePt,
                     LocalNamePt = machine.LocalNamePt,
                     LocalNameJp = machine.LocalNameJp,
                     StatusCode = rawStatusCode,
@@ -1009,13 +1012,19 @@ namespace TeamOps.Services
                     RecipeName = currentStatus?.RecipeName ?? string.Empty,
                     LotNo = currentStatus?.LotNo ?? string.Empty,
                     Ec2StatusText = ec2State?.StatusText ?? string.Empty,
+                    Ec2Status = ec2State?.StatusText ?? string.Empty,
                     Ec2PartCode = ec2State?.PartCode ?? string.Empty,
+                    PartCode = ec2State?.PartCode ?? string.Empty,
                     Ec2PartColorHex = ec2State?.PartColorHex ?? string.Empty,
+                    PartCodeColorHex = ec2State?.PartColorHex ?? string.Empty,
                     Ec2PartTextColorHex = ec2State?.PartTextColorHex ?? string.Empty,
+                    PartCodeTextColorHex = ec2State?.PartTextColorHex ?? string.Empty,
+                    PartCodeDescription = ec2State?.PartDescription ?? string.Empty,
                     Ec2IgnoreReason = ec2State?.IgnoreReason ?? string.Empty,
                     IsEc2Running = ec2State?.IsRunning == 1,
                     IsEc2Ignored = ec2State?.IsIgnored == 1,
                     Ec2ProcessMinutes = ec2State?.ProcessMinutes,
+                    Ec2SettingRate = ec2State?.OperationRate,
                     Ec2OperationRate = ec2State?.OperationRate,
                     Ec2SnapshotAt = ec2State?.SnapshotAt,
                     LastUpdate = currentStatus?.EventDateTime,
@@ -1058,6 +1067,10 @@ namespace TeamOps.Services
                     }
                 }
 
+                var includeInAreaAverage = ShouldIncludeInOperatingAverage(summary, out var areaAverageReason);
+                summary.EnteredAreaAverage = includeInAreaAverage;
+                summary.AreaAverageReason = includeInAreaAverage ? "ok" : areaAverageReason;
+
                 if (machine.LocalId.HasValue && operatorsByLocal.TryGetValue(machine.LocalId.Value, out var assignedOperators))
                 {
                     summary.ScheduledOperatorsPt.AddRange(
@@ -1089,7 +1102,9 @@ namespace TeamOps.Services
                 {
                     var machineList = group.ToList();
                     var first = machineList.First();
-                    var aggregate = Summarize(machineList);
+                    var aggregate = Summarize(
+                        machineList,
+                        $"area:{first.LocalId?.ToString(CultureInfo.InvariantCulture) ?? "0"}:{first.LocalNamePt}");
 
                     var area = new ProductionAreaSummaryDto
                     {
@@ -1138,14 +1153,45 @@ namespace TeamOps.Services
                 .ToList();
         }
 
-        private static SummaryAggregate Summarize(IEnumerable<ProductionMachineSummaryDto> machines)
+        private static SummaryAggregate Summarize(
+            IEnumerable<ProductionMachineSummaryDto> machines,
+            string? diagnosticsContext = null)
         {
             var machineList = machines.ToList();
             var totalMinutes = machineList.Sum(machine => machine.TotalMinutes);
             var runningMinutes = machineList.Sum(machine => machine.RunningMinutes);
-            var operatingMachines = machineList
-                .Where(machine => !machine.IsEc2Ignored && machine.IsEc2Running && machine.Ec2ProcessMinutes.HasValue)
-                .ToList();
+            var operatingProcessTotal = 0d;
+            var operatingProcessCount = 0;
+            List<string>? diagnostics = diagnosticsContext == null
+                ? null
+                : new List<string>(machineList.Count + 2);
+
+            foreach (var machine in machineList)
+            {
+                var includeInAverage = ShouldIncludeInOperatingAverage(machine, out var exclusionReason);
+                if (includeInAverage)
+                {
+                    operatingProcessTotal += machine.Ec2ProcessMinutes!.Value;
+                    operatingProcessCount++;
+                }
+
+                if (diagnostics != null)
+                {
+                    diagnostics.Add(
+                        $"Area={diagnosticsContext} Machine={machine.MachineCode} Ec2Status={ResolveDiagnosticStatus(machine)} PartCode={machine.Ec2PartCode} LotNo={machine.LotNo} TimeRaw={FormatEc2ProcessMinutes(machine.Ec2ProcessMinutes)} TimeConverted={FormatEc2ProcessMinutes(machine.Ec2ProcessMinutes)} StyleMatched={(string.IsNullOrWhiteSpace(machine.Ec2PartColorHex) ? "nao" : "sim")} EnteredAreaAverage={(includeInAverage ? "sim" : "nao")} Reason={(includeInAverage ? "ok" : exclusionReason)}");
+                }
+            }
+
+            var averageOperatingProcessMinutes = operatingProcessCount == 0
+                ? 0
+                : Math.Round(operatingProcessTotal / operatingProcessCount, 1);
+
+            if (diagnostics != null)
+            {
+                diagnostics.Add(
+                    $"AreaAverageSum={operatingProcessTotal.ToString("0.0", CultureInfo.InvariantCulture)} AreaAverageCount={operatingProcessCount} AreaAverage={averageOperatingProcessMinutes.ToString("0.0", CultureInfo.InvariantCulture)} Context={diagnosticsContext}");
+                WriteDiagnosticLines("AverageOperatingProcessMinutes", diagnostics);
+            }
 
             return new SummaryAggregate(
                 RunningMinutes: Math.Round(runningMinutes, 1),
@@ -1159,9 +1205,89 @@ namespace TeamOps.Services
                 MachinesRunning: machineList.Count(machine => machine.DisplayCode == 0),
                 MachinesStopped: machineList.Count(machine => machine.DisplayCode == 3),
                 MachinesIgnored: machineList.Count(machine => machine.IsEc2Ignored),
-                AverageOperatingProcessMinutes: operatingMachines.Count == 0
-                    ? 0
-                    : Math.Round(operatingMachines.Average(machine => machine.Ec2ProcessMinutes!.Value), 1));
+                AverageOperatingProcessMinutes: averageOperatingProcessMinutes);
+        }
+
+        private static bool ShouldIncludeInOperatingAverage(
+            ProductionMachineSummaryDto machine,
+            out string exclusionReason)
+        {
+            if (machine.IsEc2Ignored)
+            {
+                exclusionReason = $"ec2_ignored:{(string.IsNullOrWhiteSpace(machine.Ec2IgnoreReason) ? "no_reason" : machine.Ec2IgnoreReason)}";
+                return false;
+            }
+
+            if (!machine.IsEc2Running)
+            {
+                exclusionReason = "machine_not_running";
+                return false;
+            }
+
+            if (!machine.Ec2ProcessMinutes.HasValue)
+            {
+                exclusionReason = "process_time_null";
+                return false;
+            }
+
+            var processMinutes = machine.Ec2ProcessMinutes.Value;
+            if (!double.IsFinite(processMinutes))
+            {
+                exclusionReason = "process_time_not_finite";
+                return false;
+            }
+
+            if (processMinutes <= 0)
+            {
+                exclusionReason = "process_time_not_positive";
+                return false;
+            }
+
+            exclusionReason = "ok";
+            return true;
+        }
+
+        private static string FormatEc2ProcessMinutes(double? value)
+        {
+            if (!value.HasValue)
+            {
+                return "null";
+            }
+
+            return double.IsFinite(value.Value)
+                ? value.Value.ToString("0.0", CultureInfo.InvariantCulture)
+                : value.Value.ToString(CultureInfo.InvariantCulture);
+        }
+
+        private static string ResolveDiagnosticStatus(ProductionMachineSummaryDto machine)
+        {
+            var status = string.IsNullOrWhiteSpace(machine.Ec2StatusText)
+                ? machine.StatusText
+                : machine.Ec2StatusText;
+            return string.IsNullOrWhiteSpace(status)
+                ? "-"
+                : status;
+        }
+
+        private static void WriteDiagnosticLines(string scope, IEnumerable<string> lines)
+        {
+            foreach (var line in lines)
+            {
+                WriteDiagnostic($"[ProductionMonitor][{scope}] {line}");
+            }
+        }
+
+        private static void WriteDiagnostic(string message)
+        {
+            Debug.WriteLine(message);
+
+            try
+            {
+                Console.WriteLine(message);
+            }
+            catch
+            {
+            }
         }
 
         private static List<DateTime> BuildTimelineMoments(ProductionShiftPeriod period)
