@@ -66,6 +66,10 @@ switch (command)
         RunProductionDiagnostics();
         break;
 
+    case "machine-cleanup":
+        RunMachineCleanup(args.Skip(1).ToArray());
+        break;
+
     case "demo":
     default:
         RunImport();
@@ -227,13 +231,52 @@ void PrintEc2ImportResult(TeamOps.Core.Entities.ProductionImportResult result)
     Console.WriteLine($"Ec2Attempted={result.Ec2ImportAttempted}");
     Console.WriteLine($"Ec2Skipped={result.Ec2ImportSkipped}");
     Console.WriteLine($"Ec2Message={result.Ec2ImportMessage}");
+    Console.WriteLine($"Ec2AdministratorFilePath={result.Ec2FilePath}");
+    Console.WriteLine($"Ec2ResolvedFullPath={result.Ec2ResolvedFullPath}");
+    Console.WriteLine($"Ec2FileExists={result.Ec2FileExists}");
+    Console.WriteLine($"Ec2FileSize={result.Ec2FileSize}");
+    Console.WriteLine($"Ec2LastWriteTime={result.Ec2FileLastWriteTime}");
+    Console.WriteLine($"Ec2EncodingDetected={result.Ec2EncodingDetected}");
+    Console.WriteLine($"Ec2DelimiterDetected={result.Ec2DelimiterDetected}");
+    Console.WriteLine($"Ec2RawLinePreview={result.Ec2RawLinePreview}");
+    Console.WriteLine($"Ec2DecodedLinePreview={result.Ec2DecodedLinePreview}");
+    Console.WriteLine($"Ec2ContainsReplacementChar={result.Ec2ContainsReplacementChar}");
+    Console.WriteLine($"Ec2FirstLinePreview={result.Ec2FirstLinePreview}");
+    Console.WriteLine($"Ec2HeaderLinePreview={result.Ec2HeaderLinePreview}");
+    Console.WriteLine($"Ec2FirstDataLinePreview={result.Ec2FirstDataLinePreview}");
     Console.WriteLine($"Ec2RowsRead={result.Ec2RowsRead}");
+    Console.WriteLine($"Ec2RowsCandidate={result.Ec2RowsCandidate}");
     Console.WriteLine($"Ec2RowsImported={result.Ec2RowsImported}");
     Console.WriteLine($"Ec2RowsIgnored={result.Ec2RowsIgnored}");
+    Console.WriteLine($"Ec2IgnoredByEmptyLine={result.Ec2IgnoredByEmptyLine}");
+    Console.WriteLine($"Ec2IgnoredByNotAreaBlock={result.Ec2IgnoredByNotAreaBlock}");
+    Console.WriteLine($"Ec2IgnoredByTooFewColumns={result.Ec2IgnoredByTooFewColumns}");
+    Console.WriteLine($"Ec2IgnoredByMissingMachine={result.Ec2IgnoredByMissingMachine}");
+    Console.WriteLine($"Ec2IgnoredByInvalidStatus={result.Ec2IgnoredByInvalidStatus}");
+    Console.WriteLine($"Ec2IgnoredByInvalidTime={result.Ec2IgnoredByInvalidTime}");
+    Console.WriteLine($"Ec2IgnoredByUnknownFormat={result.Ec2IgnoredByUnknownFormat}");
     Console.WriteLine($"Ec2Areas={result.Ec2AreaCount}");
     Console.WriteLine($"Ec2Running={result.Ec2RunningCount}");
     Console.WriteLine($"Ec2Stopped={result.Ec2StoppedCount}");
     Console.WriteLine($"Ec2Ignored={result.Ec2IgnoredCount}");
+
+    if (result.Ec2DiscardSamples.Count > 0)
+    {
+        Console.WriteLine("Ec2DiscardSamples:");
+        foreach (var sample in result.Ec2DiscardSamples)
+        {
+            Console.WriteLine($" - {sample}");
+        }
+    }
+
+    if (result.Ec2ImportedSamples.Count > 0)
+    {
+        Console.WriteLine("Ec2ImportedSamples:");
+        foreach (var sample in result.Ec2ImportedSamples)
+        {
+            Console.WriteLine($" - {sample}");
+        }
+    }
 }
 
 void RunEc2Diagnostics()
@@ -1005,6 +1048,85 @@ static void RequireTable(System.Data.IDbConnection conn, string tableName, List<
     }
 }
 
+void RunMachineCleanup(string[] cleanupArgs)
+{
+    var apply = cleanupArgs.Any(arg => arg.Equals("--apply", StringComparison.OrdinalIgnoreCase));
+    using var conn = factory.CreateOpenConnection();
+    ProductionSchemaMigrator.Ensure(conn);
+
+    var rows = conn.Query<MachineCleanupProbeRow>(
+            @"
+                SELECT
+                    m.Id,
+                    COALESCE(m.MachineCode, '') AS MachineCode,
+                    COALESCE(m.MachineKey, '') AS MachineKey,
+                    COALESCE(m.LineCode, '') AS LineCode,
+                    COALESCE(m.NamePt, '') AS NamePt,
+                    COALESCE(m.NameJp, '') AS NameJp,
+                    COALESCE(m.IsActive, 1) AS IsActive,
+                    (
+                        SELECT COUNT(1)
+                        FROM MachineEvents e
+                        WHERE e.MachineId = m.Id
+                    ) AS EventCount,
+                    (
+                        SELECT COUNT(1)
+                        FROM MachineCurrentStatus cs
+                        WHERE cs.MachineId = m.Id
+                    ) AS CurrentStatusCount
+                FROM Machines m
+                WHERE COALESCE(m.IsActive, 1) = 1
+                  AND (
+                        trim(COALESCE(NULLIF(m.MachineCode, ''), m.NamePt, '')) = ''
+                        OR trim(COALESCE(NULLIF(m.MachineCode, ''), m.NamePt, '')) NOT GLOB '*[A-Za-z]*'
+                        OR trim(COALESCE(NULLIF(m.MachineCode, ''), m.NamePt, '')) GLOB '*.*'
+                        OR trim(COALESCE(NULLIF(m.MachineCode, ''), m.NamePt, '')) GLOB '*/*'
+                        OR trim(COALESCE(NULLIF(m.MachineCode, ''), m.NamePt, '')) GLOB '*,*'
+                  )
+                ORDER BY m.Id;")
+        .ToList();
+
+    Console.WriteLine("=== MACHINE CLEANUP ===");
+    Console.WriteLine($"Database={settings.DatabasePath}");
+    Console.WriteLine($"Mode={(apply ? "APPLY" : "DRY-RUN")}");
+    Console.WriteLine($"InvalidActiveMachines={rows.Count}");
+
+    foreach (var row in rows.Take(100))
+    {
+        Console.WriteLine($"  Id={row.Id} Code={row.MachineCode} Key={row.MachineKey} Line={row.LineCode} NamePt={row.NamePt} Active={row.IsActive} Events={row.EventCount} Current={row.CurrentStatusCount}");
+    }
+
+    if (rows.Count > 100)
+    {
+        Console.WriteLine($"  ... {rows.Count - 100} registros omitidos no console.");
+    }
+
+    if (!apply || rows.Count == 0)
+    {
+        Console.WriteLine(apply ? "OK: nada para inativar." : "DRY-RUN: rode com --apply para inativar as maquinas invalidas.");
+        return;
+    }
+
+    using var tx = conn.BeginTransaction();
+    var affected = conn.Execute(
+        @"
+            UPDATE Machines
+            SET IsActive = 0
+            WHERE COALESCE(IsActive, 1) = 1
+              AND (
+                    trim(COALESCE(NULLIF(MachineCode, ''), NamePt, '')) = ''
+                    OR trim(COALESCE(NULLIF(MachineCode, ''), NamePt, '')) NOT GLOB '*[A-Za-z]*'
+                    OR trim(COALESCE(NULLIF(MachineCode, ''), NamePt, '')) GLOB '*.*'
+                    OR trim(COALESCE(NULLIF(MachineCode, ''), NamePt, '')) GLOB '*/*'
+                    OR trim(COALESCE(NULLIF(MachineCode, ''), NamePt, '')) GLOB '*,*'
+              );",
+        transaction: tx);
+    tx.Commit();
+
+    Console.WriteLine($"InactiveMachines={affected}");
+    Console.WriteLine("OK: maquinas invalidas foram inativadas; eventos historicos foram preservados.");
+}
+
 static void RequireColumn(System.Data.IDbConnection conn, string tableName, string columnName, List<string> issues)
 {
     var exists = conn.ExecuteScalar<int>(
@@ -1171,7 +1293,18 @@ void PrintRuntimeConfigDiagnostics()
     Console.WriteLine($"BaseDirectory={baseDir}");
     Console.WriteLine($"ConfigurationFile={configFile}");
     Console.WriteLine($"Ec2AdministratorFilePath={ec2FilePath}");
-    Console.WriteLine($"Ec2AdministratorFileExists={(string.IsNullOrWhiteSpace(ec2FilePath) ? "no" : File.Exists(ec2FilePath) ? "yes" : "no")}");
+    var ec2ResolvedPath = string.IsNullOrWhiteSpace(ec2FilePath)
+        ? string.Empty
+        : Path.GetFullPath(ec2FilePath);
+    var ec2Exists = !string.IsNullOrWhiteSpace(ec2FilePath) && File.Exists(ec2FilePath);
+    Console.WriteLine($"Ec2AdministratorResolvedFullPath={ec2ResolvedPath}");
+    Console.WriteLine($"Ec2AdministratorFileExists={(ec2Exists ? "yes" : "no")}");
+    if (ec2Exists)
+    {
+        var fileInfo = new FileInfo(ec2ResolvedPath);
+        Console.WriteLine($"Ec2AdministratorFileSize={fileInfo.Length}");
+        Console.WriteLine($"Ec2AdministratorLastWriteTime={fileInfo.LastWriteTime:yyyy-MM-dd HH:mm:ss}");
+    }
     Console.WriteLine($"MachineStoppedIgnoreAfterMinutes={ignoreAfter}");
     Console.WriteLine($"Ec2AdministratorRunningStatusKeywords={runningKeywords}");
     Console.WriteLine();
@@ -1610,6 +1743,19 @@ sealed class EventDateCountRow
 {
     public string Day { get; set; } = string.Empty;
     public long Total { get; set; }
+}
+
+sealed class MachineCleanupProbeRow
+{
+    public int Id { get; set; }
+    public string MachineCode { get; set; } = string.Empty;
+    public string MachineKey { get; set; } = string.Empty;
+    public string LineCode { get; set; } = string.Empty;
+    public string NamePt { get; set; } = string.Empty;
+    public string NameJp { get; set; } = string.Empty;
+    public int IsActive { get; set; }
+    public long EventCount { get; set; }
+    public long CurrentStatusCount { get; set; }
 }
 
 sealed class StatusEventProbeRow

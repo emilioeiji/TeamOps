@@ -236,6 +236,7 @@ select {
 
 .toolbar-card {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     gap: 20px;
     align-items: flex-end;
@@ -257,6 +258,21 @@ select {
     display: flex;
     align-items: flex-end;
     gap: 12px;
+}
+
+.system-log-filters {
+    flex-basis: 100%;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+    gap: 12px;
+    align-items: end;
+    padding-top: 6px;
+    margin-top: 6px;
+    border-top: 1px solid var(--color-border);
+}
+
+.system-log-filters .btn-primary {
+    min-width: 140px;
 }
 
 .search-field {
@@ -561,6 +577,10 @@ tbody tr.row-warning td {
     .form-grid {
         grid-template-columns: 1fr;
         flex-direction: column;
+    }
+
+    .system-log-filters {
+        grid-template-columns: 1fr;
     }
 
     .input {

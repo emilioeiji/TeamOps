@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Kadouritsu / Machine Monitor</title>
+    <link rel="icon" href="../../Icon.ico">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -64,6 +65,7 @@
                 <div class="toolbar-actions">
                     <button id="btnRefresh" class="btn-secondary" type="button">Atualizar</button>
                     <button id="btnImport" class="btn-primary" type="button">Importar</button>
+                    <button id="btnReimport" class="btn-secondary" type="button">Reimportar</button>
                 </div>
             </div>
 
@@ -136,16 +138,6 @@
                 </div>
             </div>
             <div id="forecastDetails" class="forecast-details"></div>
-        </section>
-
-        <section class="part-legend-card">
-            <div class="section-head">
-                <div>
-                    <h3 id="txtPartLegendTitle">Codigos parametrizados</h3>
-                    <p id="txtPartLegendSubtitle">Legenda visual dos codigos destacados na producao.</p>
-                </div>
-            </div>
-            <div id="partCodeLegend" class="part-code-legend"></div>
         </section>
 
         <section class="area-board-card">
@@ -332,7 +324,7 @@
     <div id="loadingOverlay" class="loading-overlay hidden">
         <div class="loading-card">
             <div class="spinner"></div>
-            <strong id="txtLoading">Importando producao...</strong>
+            <strong id="txtLoading">Carregando...</strong>
         </div>
     </div>
 

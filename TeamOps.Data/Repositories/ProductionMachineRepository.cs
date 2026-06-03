@@ -1,11 +1,14 @@
 using Dapper;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Db;
+using System.Text.RegularExpressions;
 
 namespace TeamOps.Data.Repositories
 {
     public sealed class ProductionMachineRepository
     {
+        private static readonly Regex ValidMachineCodeRegex = new(@"^E[A-Z]?\d{1,3}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
         private readonly SqliteConnectionFactory _factory;
 
         public ProductionMachineRepository(SqliteConnectionFactory factory)
@@ -91,6 +94,11 @@ namespace TeamOps.Data.Repositories
         {
             var normalizedMachineCode = NormalizeCode(machineCode);
             var normalizedLineCode = NormalizeCode(lineCode);
+            if (!IsValidProductionMachineCode(normalizedMachineCode))
+            {
+                throw new ArgumentException($"Codigo de maquina invalido para producao: '{machineCode}'.", nameof(machineCode));
+            }
+
             var machineKey = BuildMachineKey(normalizedMachineCode, normalizedLineCode);
 
             var machine = GetByMachineKey(conn, normalizedMachineCode, normalizedLineCode);
@@ -198,6 +206,22 @@ namespace TeamOps.Data.Repositories
         private static string NormalizeCode(string value)
         {
             return (value ?? string.Empty).Trim().ToUpperInvariant();
+        }
+
+        public static bool IsValidProductionMachineCode(string value)
+        {
+            var normalized = NormalizeCode(value);
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                return false;
+            }
+
+            if (decimal.TryParse(normalized, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out _))
+            {
+                return false;
+            }
+
+            return ValidMachineCodeRegex.IsMatch(normalized);
         }
     }
 }

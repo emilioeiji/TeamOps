@@ -8,7 +8,8 @@ const state = {
     filteredRows: [],
     modalMode: "create",
     editingId: 0,
-    shortCodeTouched: false
+    shortCodeTouched: false,
+    systemLogFilters: null
 };
 
 const I18N = {
@@ -23,6 +24,12 @@ const I18N = {
         badge: "Configuracao do sistema",
         searchLabel: "Buscar",
         searchPlaceholder: "Buscar por codigo, nome, setor, local ou validacao...",
+        logFilterStart: "Data inicial",
+        logFilterEnd: "Data final",
+        logFilterUser: "Usuario",
+        logFilterModule: "Modulo",
+        logFilterAction: "Acao",
+        logFilterApply: "Atualizar",
         new: "Novo",
         tableTitle: "Registros",
         tableSubtitle: "Ajuste os dados direto na lista e use os indicadores para corrigir pendencias antes que afetem outras telas.",
@@ -122,6 +129,7 @@ window.addEventListener("DOMContentLoaded", () => {
 function bindEvents() {
     document.getElementById("searchInput").addEventListener("input", applySearch);
     document.getElementById("btnNew").addEventListener("click", () => openModal("create"));
+    document.getElementById("btnApplyLogFilters").addEventListener("click", applyLogFilters);
     document.getElementById("btnCancelModal").addEventListener("click", closeModal);
     document.getElementById("btnCloseModalX").addEventListener("click", closeModal);
     document.getElementById("modalBackdrop").addEventListener("click", closeModal);
@@ -183,10 +191,15 @@ function hydrateRows(data) {
         state.lookups = normalizeLookups(data.lookups);
     }
 
+    if (data.filters) {
+        state.systemLogFilters = normalizeSystemLogFilters(data.filters);
+    }
+
     state.currentEntity = data.entity || state.currentEntity;
     state.rows = Array.isArray(data.rows) ? data.rows : [];
     applyLocale();
     renderEntityList();
+    renderEntityControls();
     applySearch();
 }
 
@@ -235,7 +248,13 @@ function applyLocale() {
     setText("txtBadge", t("badge"));
     setText("txtSearchLabel", t("searchLabel"));
     document.getElementById("searchInput").placeholder = t("searchPlaceholder");
+    setText("lblLogDateStart", t("logFilterStart"));
+    setText("lblLogDateEnd", t("logFilterEnd"));
+    setText("lblLogUser", t("logFilterUser"));
+    setText("lblLogModule", t("logFilterModule"));
+    setText("lblLogAction", t("logFilterAction"));
     setText("btnNew", t("new"));
+    setText("btnApplyLogFilters", t("logFilterApply"));
     setText("txtTableTitle", t("tableTitle"));
     setText("btnCancelModal", t("cancel"));
 
@@ -253,6 +272,7 @@ function applyLocale() {
     btnNew.classList.toggle("hidden", !!entity?.readOnly);
     btnNew.disabled = !!entity?.readOnly;
 
+    renderEntityControls();
     renderMetrics();
 }
 
@@ -295,10 +315,12 @@ function renderEntityList() {
             state.currentEntity = key;
             state.rows = [];
             state.filteredRows = [];
+            state.systemLogFilters = key === "system_log" ? getDefaultSystemLogFilters() : null;
             applyLocale();
             renderEntityList();
+            renderEntityControls();
             renderTable();
-            send("load_entity", { entity: key });
+            sendLoadEntity(key);
         });
     });
 }
@@ -487,6 +509,83 @@ function applySearch() {
 
     renderTable();
     renderMetrics();
+}
+
+function renderEntityControls() {
+    const entity = currentEntity();
+    const container = document.getElementById("systemLogFilters");
+    if (!container) {
+        return;
+    }
+
+    const visible = entity?.key === "system_log";
+    container.classList.toggle("hidden", !visible);
+
+    if (!visible) {
+        return;
+    }
+
+    if (!state.systemLogFilters) {
+        state.systemLogFilters = getDefaultSystemLogFilters();
+    }
+
+    const filters = state.systemLogFilters;
+    document.getElementById("logDateStart").value = filters.dateStart || "";
+    document.getElementById("logDateEnd").value = filters.dateEnd || "";
+    document.getElementById("logUserFJ").value = filters.userFJ || "";
+    document.getElementById("logModule").value = filters.module || "";
+    document.getElementById("logAction").value = filters.action || "";
+}
+
+function applyLogFilters() {
+    const entity = currentEntity();
+    if (!entity || entity.key !== "system_log") {
+        return;
+    }
+
+    state.systemLogFilters = {
+        dateStart: document.getElementById("logDateStart").value || "",
+        dateEnd: document.getElementById("logDateEnd").value || "",
+        userFJ: document.getElementById("logUserFJ").value || "",
+        module: document.getElementById("logModule").value || "",
+        action: document.getElementById("logAction").value || ""
+    };
+
+    sendLoadEntity(entity.key);
+}
+
+function sendLoadEntity(entityKey) {
+    const payload = { entity: entityKey };
+    if (entityKey === "system_log") {
+        payload.filters = state.systemLogFilters || getDefaultSystemLogFilters();
+    }
+
+    send("load_entity", payload);
+}
+
+function getDefaultSystemLogFilters() {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 30);
+
+    return {
+        dateStart: formatDateForInput(start),
+        dateEnd: formatDateForInput(end),
+        userFJ: "",
+        module: "",
+        action: ""
+    };
+}
+
+function normalizeSystemLogFilters(filters) {
+    const defaults = getDefaultSystemLogFilters();
+    return {
+        dateStart: filters.dateStart || defaults.dateStart,
+        dateEnd: filters.dateEnd || defaults.dateEnd,
+        userFJ: filters.userFJ || "",
+        module: filters.module || "",
+        action: filters.action || ""
+    };
 }
 
 function openModal(mode, id = 0) {
@@ -780,6 +879,17 @@ function setText(id, value) {
     if (element) {
         element.textContent = value ?? "-";
     }
+}
+
+function formatDateForInput(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+        return "";
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
 }
 
 function t(key) {

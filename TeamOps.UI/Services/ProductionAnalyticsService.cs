@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -25,7 +25,7 @@ namespace TeamOps.Services
         {
             var normalized = (shiftName ?? string.Empty).Trim().ToLowerInvariant();
             var isNightShift = normalized.Contains("yakin", StringComparison.Ordinal)
-                               || normalized.Contains("å¤œå‹¤", StringComparison.Ordinal);
+                               || normalized.Contains("ﾃ･ﾂ､ﾅ禿･窶ｹﾂ､", StringComparison.Ordinal);
 
             return isNightShift
                 ? new ProductionShiftPeriod
@@ -42,20 +42,26 @@ namespace TeamOps.Services
 
         public ProductionDashboardDto BuildDashboard(ProductionDashboardFilter filter)
         {
+            var totalWatch = Stopwatch.StartNew();
+            long queryMachinesMs = 0;
+            long queryEventsMs = 0;
+            long queryEc2Ms = 0;
+            long buildMachinesMs = 0;
+            long buildAreasMs = 0;
+
             using var conn = _factory.CreateOpenConnection();
             ProductionSchemaMigrator.Ensure(conn);
             var haidaiService = new HaidaiModuleService(_factory);
             haidaiService.EnsureSchema();
 
-            var shifts = conn.Query<ShiftLookupRow>(
+            var shifts = Measure(() => conn.Query<ShiftLookupRow>(
                 @"
                     SELECT
                         Id,
                         COALESCE(NamePt, '') AS NamePt,
                         COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp
                     FROM Shifts
-                    ORDER BY Id;"
-            ).ToList();
+                    ORDER BY Id;").ToList(), out _);
 
             var shift = shifts.FirstOrDefault(item => item.Id == filter.ShiftId)
                 ?? throw new InvalidOperationException("Turno nao encontrado para o monitor de producao.");
@@ -66,7 +72,7 @@ namespace TeamOps.Services
                 Period = period
             };
 
-            var machines = conn.Query<MachineRow>(
+            var machines = Measure(() => conn.Query<MachineRow>(
                 @"
                     SELECT
                         m.Id,
@@ -93,16 +99,26 @@ namespace TeamOps.Services
                         COALESCE(m.LineCode, ''),
                         COALESCE(m.MachineCode, ''),
                         m.Id;",
-                new
-                {
-                    sectorId = filter.SectorId,
-                    localId = filter.LocalId,
-                    machineId = filter.MachineId
-                }
-            ).ToList();
+                    new
+                    {
+                        sectorId = filter.SectorId,
+                        localId = filter.LocalId,
+                        machineId = filter.MachineId
+                    }).ToList(), out queryMachinesMs);
 
             if (machines.Count == 0)
             {
+                WriteDashboardPerformanceLog(
+                    filter,
+                    totalWatch.ElapsedMilliseconds,
+                    queryMachinesMs,
+                    queryEventsMs,
+                    queryEc2Ms,
+                    buildMachinesMs,
+                    buildAreasMs,
+                    0,
+                    0,
+                    0);
                 return dashboard;
             }
 
@@ -129,7 +145,7 @@ namespace TeamOps.Services
                 }
             ).ToDictionary(row => row.MachineId);
 
-            var events = conn.Query<EventRow>(
+            var events = Measure(() => conn.Query<EventRow>(
                 @"
                     SELECT
                         SectorId,
@@ -150,13 +166,13 @@ namespace TeamOps.Services
                     rangeStart = rangeStart.ToString("yyyy-MM-dd HH:mm:ss"),
                     rangeEnd = rangeEnd.ToString("yyyy-MM-dd HH:mm:ss")
                 }
-            ).ToList();
+            ).ToList(), out queryEventsMs);
 
             var eventsByMachine = events
                 .GroupBy(row => row.MachineId)
                 .ToDictionary(group => group.Key, group => group.OrderBy(item => item.EventDateTime).ToList());
 
-            var scheduleCurrentRows = conn.Query<ScheduleRow>(
+            var scheduleCurrentRows = Measure(() => conn.Query<ScheduleRow>(
                 @"
                     SELECT
                         ha.ScheduleDate,
@@ -175,9 +191,9 @@ namespace TeamOps.Services
                     scheduleDate = filter.Date.ToString("yyyy-MM-dd"),
                     shiftId = filter.ShiftId
                 }
-            ).ToList();
+            ).ToList(), out _);
 
-            var scheduleHistoryRows = conn.Query<ScheduleRow>(
+            var scheduleHistoryRows = Measure(() => conn.Query<ScheduleRow>(
                 @"
                     SELECT
                         ha.ScheduleDate,
@@ -197,7 +213,7 @@ namespace TeamOps.Services
                     endDate = filter.Date.ToString("yyyy-MM-dd"),
                     shiftId = filter.ShiftId
                 }
-            ).ToList();
+            ).ToList(), out _);
 
             var scheduleOperatorCodes = scheduleHistoryRows
                 .Select(row => row.OperatorCodigoFJ)
@@ -207,7 +223,7 @@ namespace TeamOps.Services
 
             var movementRows = scheduleOperatorCodes.Length == 0
                 ? new List<MovementWindowRow>()
-                : conn.Query<MovementWindowRow>(
+                : Measure(() => conn.Query<MovementWindowRow>(
                     @"
                     SELECT
                         date(ScheduleDate) AS Day,
@@ -226,8 +242,7 @@ namespace TeamOps.Services
                         OperatorCodes = scheduleOperatorCodes,
                         startDate = historyStartDate.ToString("yyyy-MM-dd"),
                         endDate = filter.Date.ToString("yyyy-MM-dd")
-                    })
-                .ToList();
+                    }).ToList(), out _);
 
             var latestMovementByOperatorDay = movementRows
                 .Where(item => string.IsNullOrWhiteSpace(item.ReplacementOperatorCodigoFJ))
@@ -268,7 +283,7 @@ namespace TeamOps.Services
                     WHERE COALESCE(IsActive, 1) = 1;"
             ).ToDictionary(row => BuildStatusKey(row.SectorId, row.StatusCode), StringComparer.OrdinalIgnoreCase);
 
-            var ec2States = LoadEc2States(conn, machineIds);
+            var ec2States = Measure(() => LoadEc2States(conn, machineIds), out queryEc2Ms);
 
             var latestKnownEventCandidates = statusRows.Values
                 .Select(item => item.EventDateTime)
@@ -283,14 +298,14 @@ namespace TeamOps.Services
             period = ResolveEffectivePeriod(period, latestKnownEventTime);
             dashboard.Period = period;
 
-            var machineSummaries = BuildMachineSummaries(
+            var machineSummaries = Measure(() => BuildMachineSummaries(
                 machines,
                 statusRows,
                 eventsByMachine,
                 operatorsByLocal,
                 ec2States,
                 statusDefinitions,
-                period);
+                period), out buildMachinesMs);
 
             dashboard.Machines.AddRange(machineSummaries);
 
@@ -304,6 +319,7 @@ namespace TeamOps.Services
             dashboard.ErrorMinutes = aggregate.ErrorMinutes;
             dashboard.InactiveMinutes = aggregate.InactiveMinutes;
 
+            var buildAreasWatch = Stopwatch.StartNew();
             dashboard.Areas.AddRange(BuildAreaSummaries(machineSummaries, operatorsByLocal));
 
             dashboard.Ranking.AddRange(
@@ -606,6 +622,29 @@ namespace TeamOps.Services
                     .ThenByDescending(item => item.EstimatedRunningMinutes)
                     .ThenBy(item => item.OperatorNamePt, StringComparer.OrdinalIgnoreCase)
             );
+            buildAreasWatch.Stop();
+            buildAreasMs = buildAreasWatch.ElapsedMilliseconds;
+
+            var rowsRead = machines.Count
+                + statusRows.Count
+                + events.Count
+                + scheduleCurrentRows.Count
+                + scheduleHistoryRows.Count
+                + movementRows.Count
+                + statusDefinitions.Count
+                + ec2States.Count;
+
+            WriteDashboardPerformanceLog(
+                filter,
+                totalWatch.ElapsedMilliseconds,
+                queryMachinesMs,
+                queryEventsMs,
+                queryEc2Ms,
+                buildMachinesMs,
+                buildAreasMs,
+                rowsRead,
+                dashboard.Machines.Count,
+                dashboard.Areas.Count);
 
             return dashboard;
         }
@@ -900,8 +939,8 @@ namespace TeamOps.Services
             if (normalizedPt.Contains("noite", StringComparison.OrdinalIgnoreCase)
                 || normalizedPt.Contains("night", StringComparison.OrdinalIgnoreCase)
                 || normalizedPt.Contains("yakin", StringComparison.OrdinalIgnoreCase)
-                || normalizedJp.Contains("夜", StringComparison.Ordinal)
-                || normalizedJp.Contains("夜勤", StringComparison.Ordinal))
+                || normalizedJp.Contains("\u591C", StringComparison.Ordinal)
+                || normalizedJp.Contains("\u591C\u52E4", StringComparison.Ordinal))
             {
                 return "yakin";
             }
@@ -1046,9 +1085,6 @@ namespace TeamOps.Services
                     summary.RecipeName = string.IsNullOrWhiteSpace(ec2State.PartCode)
                         ? summary.RecipeName
                         : ec2State.PartCode;
-                    summary.LotNo = string.IsNullOrWhiteSpace(ec2State.LotNo)
-                        ? summary.LotNo
-                        : ec2State.LotNo;
                     summary.LastUpdate = ec2State.SnapshotAt;
 
                     if (ec2State.IsIgnored == 1)
@@ -1275,6 +1311,46 @@ namespace TeamOps.Services
             {
                 WriteDiagnostic($"[ProductionMonitor][{scope}] {line}");
             }
+        }
+
+        private static void WriteDashboardPerformanceLog(
+            ProductionDashboardFilter filter,
+            long totalMs,
+            long queryMachinesMs,
+            long queryEventsMs,
+            long queryEc2Ms,
+            long buildMachinesMs,
+            long buildAreasMs,
+            int rowsRead,
+            int machinesCount,
+            int areasCount)
+        {
+            WriteDiagnostic(
+                "[ProductionMonitor][DashboardPerformance] " +
+                $"Action=BuildDashboard " +
+                $"Date={filter.Date:yyyy-MM-dd} " +
+                $"Shift={filter.ShiftId} " +
+                $"Sector={filter.SectorId} " +
+                $"Local={filter.LocalId} " +
+                $"Machine={filter.MachineId} " +
+                $"QueryMachinesMs={queryMachinesMs} " +
+                $"QueryEventsMs={queryEventsMs} " +
+                $"QueryEc2Ms={queryEc2Ms} " +
+                $"BuildMachinesMs={buildMachinesMs} " +
+                $"BuildAreasMs={buildAreasMs} " +
+                $"RowsRead={rowsRead} " +
+                $"MachinesCount={machinesCount} " +
+                $"AreasCount={areasCount} " +
+                $"TotalMs={totalMs}");
+        }
+
+        private static T Measure<T>(Func<T> action, out long elapsed)
+        {
+            var watch = Stopwatch.StartNew();
+            var result = action();
+            watch.Stop();
+            elapsed = watch.ElapsedMilliseconds;
+            return result;
         }
 
         private static void WriteDiagnostic(string message)
@@ -1620,28 +1696,23 @@ namespace TeamOps.Services
             {
                 return statusCode switch
                 {
-                    0 => "稼動中",
-                    1 => "停止",
-                    2 => "非稼動",
-                    3 => "異常",
+                    0 => "\u7A3C\u50CD\u4E2D",
+                    1 => "\u505C\u6B62",
+                    2 => "\u975E\u7A3C\u50CD",
+                    3 => "\u7570\u5E38",
                     _ => "-"
                 };
             }
 
-            return (statusCode, locale) switch
+            return statusCode switch
             {
-                (0, "ja-JP") => "ç¨¼å‹•ä¸­",
-                (1, "ja-JP") => "åœæ­¢",
-                (2, "ja-JP") => "éžç¨¼å‹•",
-                (3, "ja-JP") => "ç•°å¸¸",
-                (0, _) => "Rodando",
-                (1, _) => "Parado",
-                (2, _) => "Inativo",
-                (3, _) => "Erro",
+                0 => "Rodando",
+                1 => "Parado",
+                2 => "Inativo",
+                3 => "Erro",
                 _ => "-"
             };
         }
-
         public static string GetTimelineClass(int statusCode)
         {
             return statusCode switch
@@ -1686,10 +1757,10 @@ namespace TeamOps.Services
             {
                 return normalized switch
                 {
-                    0 => "稼動中",
-                    1 => "非稼働",
-                    3 => "停止",
-                    4 => "エラー",
+                    0 => "\u7A3C\u50CD\u4E2D",
+                    1 => "\u975E\u7A3C\u50CD",
+                    3 => "\u505C\u6B62",
+                    4 => "\u30A8\u30E9\u30FC",
                     _ => "-"
                 };
             }
@@ -1703,7 +1774,6 @@ namespace TeamOps.Services
                 _ => "-"
             };
         }
-
         private static string GetNormalizedTimelineClass(int statusCode)
         {
             return (statusCode switch

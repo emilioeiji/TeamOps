@@ -96,6 +96,10 @@ namespace TeamOps.UI.Forms
                         _ = ImportAndRefreshAsync(ReadFilter(root));
                         break;
 
+                    case "production_reimport":
+                        _ = ImportAndRefreshAsync(ReadFilter(root), cleanExistingEvents: true);
+                        break;
+
                     case "production_machine_detail":
                         if (!_isImportingProduction)
                         {
@@ -232,16 +236,19 @@ namespace TeamOps.UI.Forms
             await _databaseOperationGate.WaitAsync();
             try
             {
+                var buildWatch = Stopwatch.StartNew();
                 var dashboard = await Task.Run(() =>
                 {
                     var builtDashboard = _analyticsService.BuildDashboard(filter);
                     builtDashboard.GBareruCapacityForecast = _forecastService.BuildForecast(filter, builtDashboard);
                     return builtDashboard;
                 });
+                buildWatch.Stop();
 
                 LogDashboardDiagnostics(dashboard);
 
-                PostJson(new
+                var htmlOrJsonWatch = Stopwatch.StartNew();
+                var payload = new
                 {
                     type = "dashboard",
                     data = new
@@ -422,7 +429,12 @@ namespace TeamOps.UI.Forms
                         statuses = LoadStatuses(),
                         partCodeStyles = LoadPartCodeStyles()
                     }
-                });
+                };
+                var json = JsonSerializer.Serialize(payload);
+                htmlOrJsonWatch.Stop();
+
+                WriteDashboardPerformanceLog(filter, dashboard, buildWatch.ElapsedMilliseconds, htmlOrJsonWatch.ElapsedMilliseconds);
+                PostJsonRaw(json);
             }
             finally
             {
@@ -430,7 +442,7 @@ namespace TeamOps.UI.Forms
             }
         }
 
-        private async Task ImportAndRefreshAsync(ProductionDashboardFilter filter)
+        private async Task ImportAndRefreshAsync(ProductionDashboardFilter filter, bool cleanExistingEvents = false)
         {
             if (_isImportingProduction)
             {
@@ -444,7 +456,11 @@ namespace TeamOps.UI.Forms
                 ProductionImportResult result;
                 try
                 {
-                    result = await Task.Run(() => _fileImporter.ImportLatest());
+                    result = await Task.Run(() => _fileImporter.ImportLatest(new ProductionFileImporter.ProductionImportOptions
+                    {
+                        CleanExistingEvents = cleanExistingEvents,
+                        CleanupFilter = cleanExistingEvents ? filter : null
+                    }));
                 }
                 finally
                 {
@@ -468,6 +484,10 @@ namespace TeamOps.UI.Forms
                         imported = result.Imported,
                         ignored = result.Ignored,
                         machinesCreated = result.MachinesCreated,
+                        cleanupPerformed = result.CleanupPerformed,
+                        cleanupEventsDeleted = result.CleanupEventsDeleted,
+                        cleanupCurrentStatusesDeleted = result.CleanupCurrentStatusesDeleted,
+                        cleanupMessage = result.CleanupMessage,
                         ec2ImportAttempted = result.Ec2ImportAttempted,
                         ec2ImportSkipped = result.Ec2ImportSkipped,
                         ec2ImportMessage = result.Ec2ImportMessage,
@@ -631,6 +651,11 @@ namespace TeamOps.UI.Forms
                 }
             }
 
+            if (result.CleanupPerformed)
+            {
+                message += $" | Limpeza: {result.CleanupEventsDeleted} evento(s), {result.CleanupCurrentStatusesDeleted} status atual(is)";
+            }
+
             if (result.BatchExecuted && !string.IsNullOrWhiteSpace(result.BatchMessage))
             {
                 message += $" | BAT: {result.BatchMessage}";
@@ -650,7 +675,7 @@ namespace TeamOps.UI.Forms
                 message += " | Perf: " + string.Join(
                     ", ",
                     result.PerformanceMs
-                        .Where(item => item.Key is "Batch" or "DiscoverFiles" or "ReadFiles" or "Parse" or "OpenConnection" or "EnsureSchema" or "LoadMachines" or "LoadStatuses" or "DuplicateCheck" or "InsertEvents" or "Commit" or "Ec2Import" or "Ec2Total" or "DashboardRefresh" or "Total")
+                        .Where(item => item.Key is "Batch" or "DiscoverFiles" or "ReadFiles" or "Parse" or "OpenConnection" or "EnsureSchema" or "Cleanup" or "LoadMachines" or "LoadStatuses" or "DuplicateCheck" or "InsertEvents" or "Commit" or "Ec2Import" or "Ec2Total" or "DashboardRefresh" or "Total")
                         .Select(item => $"{item.Key}={item.Value}ms"));
             }
 
@@ -791,6 +816,15 @@ namespace TeamOps.UI.Forms
         private void PostJson(object payload)
         {
             var json = JsonSerializer.Serialize(payload);
+            PostJsonRaw(json);
+        }
+
+        private void PostJsonRaw(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return;
+            }
 
             if (InvokeRequired)
             {
@@ -824,6 +858,37 @@ namespace TeamOps.UI.Forms
                 WriteDiagnostic(
                     $"[ProductionMonitor][MachinePayload] Machine={machine.MachineCode} Equipment={machine.MachineNamePt} Lot={machine.LotNo} Code={machine.Ec2PartCode} Time={FormatNullableDouble(machine.Ec2ProcessMinutes)} Percent={machine.ProductionPercent.ToString("0.0")} Status={machine.StatusText} PartColor={machine.Ec2PartColorHex} TextColor={machine.Ec2PartTextColorHex}");
             }
+        }
+
+        private static void WriteDashboardPerformanceLog(
+            ProductionDashboardFilter filter,
+            ProductionDashboardDto dashboard,
+            long buildDashboardMs,
+            long buildHtmlOrJsonMs)
+        {
+            var rowsRead = dashboard.Machines.Count
+                + dashboard.Areas.Count
+                + dashboard.Ranking.Count
+                + dashboard.Timeline.Count
+                + dashboard.ShiftComparisons.Count
+                + dashboard.DailyTrend.Count
+                + dashboard.AreaHistory.Count
+                + dashboard.OperatorRanking.Count;
+
+            WriteDiagnostic(
+                "[ProductionMonitor][DashboardPerformance] " +
+                $"Action=BuildDashboard " +
+                $"Date={filter.Date:yyyy-MM-dd} " +
+                $"Shift={filter.ShiftId} " +
+                $"Sector={filter.SectorId} " +
+                $"Local={filter.LocalId} " +
+                $"Machine={filter.MachineId} " +
+                $"BuildDashboardMs={buildDashboardMs} " +
+                $"BuildHtmlOrJsonMs={buildHtmlOrJsonMs} " +
+                $"RowsRead={rowsRead} " +
+                $"MachinesCount={dashboard.Machines.Count} " +
+                $"AreasCount={dashboard.Areas.Count} " +
+                $"TotalMs={buildDashboardMs + buildHtmlOrJsonMs}");
         }
 
         private static string FormatNullableDouble(double? value)

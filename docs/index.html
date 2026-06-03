@@ -157,6 +157,7 @@
         <a href="#troubleshooting">Troubleshooting</a>
         <a href="#deployment">Deployment</a>
         <a href="#modulos">Modulos</a>
+        <a href="#production-monitor">Producao</a>
       </nav>
     </div>
   </header>
@@ -216,6 +217,17 @@
         <div class="card"><strong>Monitor nao atualiza</strong>Validar exportacao, pasta, cache do browser e data/hora do HTML.</div>
         <div class="card"><strong>Importacao falha</strong>Conferir BAT, TXT/DAT, encoding, nomes e arquivo <code>import.done</code>.</div>
         <div class="card"><strong>PR/CL falha</strong>Validar templates, pastas de saida e arquivos Excel bloqueados.</div>
+      </div>
+    </section>
+
+    <section id="production-monitor">
+      <h2>Monitor de producao e Probe</h2>
+      <p>O guia completo do Monitor de Producao esta em <code>docs/production-monitor-guide.md</code>. Ele documenta a tela Producao, EC2 Administrator, status por setor, previsao G-Bareru, prints sugeridos e todos os comandos do <code>ProductionMonitorProbe.exe</code>.</p>
+      <div class="grid">
+        <div class="card"><strong>Validacao rapida</strong><code>schema-check</code>, <code>db-index-check</code> e <code>production-diagnostics</code>.</div>
+        <div class="card"><strong>Importacao</strong><code>import</code> e <code>import-profile --date 2026-06-01 --sector dad</code>.</div>
+        <div class="card"><strong>Status por setor</strong><code>status-hardening</code> e <code>status-report --sector dad --csv dad-status.csv</code>.</div>
+        <div class="card"><strong>EC2 Administrator</strong><code>ec2-diagnostics</code> para conferir arquivo, hash, maquinas e media.</div>
       </div>
     </section>
 

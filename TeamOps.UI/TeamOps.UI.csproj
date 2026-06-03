@@ -17,6 +17,7 @@
     <None Remove="Assets\Publish.txt" />
     <None Remove="Icon.ico" />
     <None Remove="Logo.png" />
+    <None Remove="tools\ProductionMonitorProbe\Comandos.txt" />
     <None Remove="ui\presence\assets\default-operator.png" />
   </ItemGroup>
 
@@ -35,6 +36,9 @@
     </Content>
     <Content Include="Logo.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="tools\ProductionMonitorProbe\Comandos.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="ui\presence\assets\default-operator.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
@@ -34,10 +34,15 @@ namespace TeamOps.Services
         public void ImportIfConfigured(ProductionImportResult result)
         {
             var settings = LoadSettings();
+            result.Ec2FilePath = settings.FilePath;
+            result.Ec2ResolvedFullPath = ResolveFullPath(settings.FilePath);
+            result.Ec2FileExists = !string.IsNullOrWhiteSpace(settings.FilePath) && File.Exists(settings.FilePath);
+
             if (string.IsNullOrWhiteSpace(settings.FilePath))
             {
                 result.Ec2ImportSkipped = true;
                 result.Ec2ImportMessage = "EC2 Administrator nao configurado.";
+                LogFileDiagnostics(result);
                 return;
             }
 
@@ -47,6 +52,7 @@ namespace TeamOps.Services
             {
                 result.Ec2ImportSkipped = true;
                 result.Ec2ImportMessage = $"Arquivo EC2 Administrator nao encontrado: {settings.FilePath}";
+                LogFileDiagnostics(result);
                 return;
             }
 
@@ -84,11 +90,29 @@ namespace TeamOps.Services
         {
             var totalWatch = Stopwatch.StartNew();
             var fileInfo = new FileInfo(settings.FilePath);
+            result.Ec2FilePath = settings.FilePath;
+            result.Ec2ResolvedFullPath = fileInfo.FullName;
+            result.Ec2FileExists = fileInfo.Exists;
+            result.Ec2FileSize = fileInfo.Exists ? fileInfo.Length : 0;
+            result.Ec2FileLastWriteTime = fileInfo.Exists
+                ? fileInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)
+                : string.Empty;
 
             var readWatch = Stopwatch.StartNew();
             var bytes = File.ReadAllBytes(settings.FilePath);
             var fileHash = Convert.ToHexString(SHA256.HashData(bytes));
-            var lines = DecodeLines(bytes);
+            var decoded = DecodeLines(bytes);
+            var lines = decoded.Lines;
+            result.Ec2EncodingDetected = decoded.EncodingName;
+            result.Ec2DelimiterDetected = decoded.DelimiterLabel;
+            result.Ec2RawLinePreview = PreviewRawLine(bytes);
+            result.Ec2DecodedLinePreview = PreviewLine(FindFirstDataLine(lines) ?? lines.FirstOrDefault());
+            result.Ec2ContainsReplacementChar = decoded.ContainsReplacementChar;
+            result.Ec2FirstLinePreview = PreviewLine(lines.FirstOrDefault());
+            result.Ec2HeaderLinePreview = PreviewLine(FindHeaderLine(lines));
+            result.Ec2FirstDataLinePreview = PreviewLine(FindFirstDataLine(lines));
+            result.Ec2RowsRead = lines.Count;
+            LogFileDiagnostics(result);
             Record(result, "Ec2ReadFile", readWatch);
 
             if (LooksLikeProductionEventFile(fileInfo, lines))
@@ -120,23 +144,47 @@ namespace TeamOps.Services
             using var conn = _factory.CreateOpenConnection();
             ProductionSchemaMigrator.Ensure(conn);
 
-            var existingImportId = conn.ExecuteScalar<long?>(
-                "SELECT Id FROM Ec2AdministratorImports WHERE FileHash = @fileHash AND COALESCE(SourceType, 'Administrator') = 'Administrator' ORDER BY Id DESC LIMIT 1;",
+            var existingImport = conn.QueryFirstOrDefault<Ec2ExistingImportRow>(
+                @"
+                    SELECT
+                        Id,
+                        RowsImported
+                    FROM Ec2AdministratorImports
+                    WHERE FileHash = @fileHash
+                      AND COALESCE(SourceType, 'Administrator') = 'Administrator'
+                    ORDER BY Id DESC
+                    LIMIT 1;",
                 new
                 {
                     fileHash
                 });
 
-            if (existingImportId.HasValue)
+            var existingImportHasBrokenText = existingImport != null && ExistingImportHasBrokenText(conn, existingImport.Id);
+
+            if (existingImport != null && existingImport.RowsImported > 0 && !existingImportHasBrokenText)
             {
-                ReconcileCurrentStateForImport(conn, null, existingImportId.Value, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
+                ReconcileCurrentStateForImport(conn, null, existingImport.Id, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
                 result.Ec2ImportSkipped = true;
                 result.Ec2ImportMessage = "EC2 Administrator sem alteracao.";
                 return;
             }
 
+            if (existingImport != null && existingImport.RowsImported <= 0 && parsedRows.Count == 0)
+            {
+                result.Ec2ImportSkipped = true;
+                result.Ec2ImportMessage = "EC2 Administrator sem linhas validas; importacao anterior do mesmo arquivo tambem estava zerada.";
+                return;
+            }
+
             var dbWatch = Stopwatch.StartNew();
             using var tx = conn.BeginTransaction();
+
+            if (existingImport != null && (existingImport.RowsImported <= 0 || existingImportHasBrokenText) && parsedRows.Count > 0)
+            {
+                conn.Execute("DELETE FROM Ec2MachineSnapshots WHERE ImportId = @importId;", new { importId = existingImport.Id }, tx);
+                conn.Execute("DELETE FROM Ec2AdministratorImports WHERE Id = @importId;", new { importId = existingImport.Id }, tx);
+                Console.WriteLine($"[EC2 Administrator] Reprocessando hash ja registrado. PreviousImportId={existingImport.Id} RowsImported={existingImport.RowsImported} BrokenText={existingImportHasBrokenText}");
+            }
 
             var importId = conn.ExecuteScalar<long>(
                 @"
@@ -236,6 +284,10 @@ namespace TeamOps.Services
 
                 snapshots.Add(row);
                 currentStates.Add(row);
+
+                PushImportedSample(
+                    result,
+                    $"Machine={row.MachineCode} RawStatus={parsed.StatusText} DecodedStatus={row.StatusText} PartCode={row.PartCode} LotNo={(row.LotNo ?? string.Empty)} LotFromAdministratorIgnored=true ProcessMinutes={FormatNullable(row.ProcessMinutes)} EncodingUsed={result.Ec2EncodingDetected} Imported=yes IgnoreReason={row.IgnoreReason}");
             }
 
             if (snapshots.Count > 0)
@@ -466,11 +518,20 @@ namespace TeamOps.Services
         {
             conn.Execute(
                 @"
+                    UPDATE Ec2MachineSnapshots
+                    SET LotNo = NULL
+                    WHERE ImportId = @importId;",
+                new { importId },
+                tx);
+
+            conn.Execute(
+                @"
                     UPDATE Ec2MachineCurrentState
                     SET
                         ImportId = @importId,
                         SourceType = 'Administrator',
-                        IsStale = 0
+                        IsStale = 0,
+                        LotNo = NULL
                     WHERE EXISTS (
                         SELECT 1
                         FROM Ec2MachineSnapshots s
@@ -505,6 +566,7 @@ namespace TeamOps.Services
                         IsIgnored = 1,
                         IgnoreReason = 'NOT_PRESENT_IN_LATEST_ADMINISTRATOR_SNAPSHOT',
                         IsRunning = 0,
+                        LotNo = NULL,
                         ImportedAt = @importedAt
                     WHERE COALESCE(SourceType, 'Administrator') = 'Administrator'
                       AND NOT EXISTS (
@@ -540,85 +602,226 @@ namespace TeamOps.Services
                 && DateTime.TryParse(columns[1].Trim(), CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
         }
 
+        private static bool ExistingImportHasBrokenText(System.Data.IDbConnection conn, long importId)
+        {
+            var values = conn.Query<string>(
+                    @"
+                        SELECT COALESCE(StatusText, '')
+                        FROM Ec2MachineSnapshots
+                        WHERE ImportId = @importId
+                        UNION ALL
+                        SELECT COALESCE(AreaLabel, '')
+                        FROM Ec2MachineSnapshots
+                        WHERE ImportId = @importId;",
+                    new { importId })
+                .ToList();
+
+            return values.Any(ContainsBrokenEncoding);
+        }
+
         private static List<Ec2ParsedRow> ParseRows(
             IReadOnlyList<string> lines,
             DateTime snapshotAt,
             Ec2ImportSettings settings,
             ProductionImportResult result)
         {
-            var rows = new List<Ec2ParsedRow>();
-            var header = SplitCsvLine(lines[0]);
-            var hasHeader = LooksLikeHeader(header);
-            var map = hasHeader
-                ? BuildHeaderMap(header)
-                : new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            var startIndex = hasHeader ? 1 : 0;
+            return ParseAdministratorRowsFixed(lines, snapshotAt, settings, result);
+        }
 
-            for (var index = startIndex; index < lines.Count; index++)
+        private static List<Ec2ParsedRow> ParseAdministratorDatSampleRows(
+            IReadOnlyList<string> lines,
+            DateTime snapshotAt,
+            Ec2ImportSettings settings,
+            ProductionImportResult result)
+        {
+            return ParseAdministratorRowsFixed(lines, snapshotAt, settings, result);
+        }
+
+        private static List<Ec2ParsedRow> ParseAdministratorRowsFixed(
+            IReadOnlyList<string> lines,
+            DateTime snapshotAt,
+            Ec2ImportSettings settings,
+            ProductionImportResult result)
+        {
+            var rows = new List<Ec2ParsedRow>();
+            var currentArea = string.Empty;
+            var areaStats = new Dictionary<string, Ec2AreaParseStats>(StringComparer.OrdinalIgnoreCase);
+
+            for (var index = 0; index < lines.Count; index++)
             {
-                result.Ec2RowsRead++;
-                var columns = SplitCsvLine(lines[index]);
+                var rawLine = lines[index];
+                var line = (rawLine ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    IgnoreEc2Line(result, "EMPTY_LINE", index + 1, rawLine, null, currentArea);
+                    continue;
+                }
+
+                if (line.StartsWith("\u203B", StringComparison.Ordinal)
+                    || line.StartsWith("\u6700\u7D42", StringComparison.Ordinal))
+                {
+                    IgnoreEc2Line(result, "NOT_AREA_BLOCK", index + 1, rawLine, null, currentArea);
+                    continue;
+                }
+
+                var columns = SplitCsvLine(line);
                 if (columns.Count == 0 || columns.All(string.IsNullOrWhiteSpace))
                 {
-                    result.Ec2RowsIgnored++;
+                    IgnoreEc2Line(result, "EMPTY_LINE", index + 1, rawLine, columns, currentArea);
                     continue;
                 }
 
-                // Real EC2 layout used in production:
-                // 0=type, 1=date, 2=time, 3=line code, 4=machine code, 5=internal state,
-                // 7=event date, 8=event time, 9=status text, 10=recipe/area, 11=time value, 12=lot/code.
-                var machineCode = Pick(columns, map, 4, "equipment", "machine", "machinecode", "equipamento", "maquina", "machine code");
+                if (IsSummaryLine(columns))
+                {
+                    IgnoreEc2Line(result, "HEADER_OR_SUMMARY_LINE", index + 1, rawLine, columns, currentArea);
+                    GetAreaStats(areaStats, currentArea).IgnoredRows++;
+                    continue;
+                }
+
+                if (TryDetectArea(columns, out var detectedArea))
+                {
+                    currentArea = detectedArea;
+                    _ = GetAreaStats(areaStats, currentArea);
+                    continue;
+                }
+
+                if (LooksLikeHeader(columns))
+                {
+                    IgnoreEc2Line(result, "HEADER_OR_SUMMARY_LINE", index + 1, rawLine, columns, currentArea);
+                    GetAreaStats(areaStats, currentArea).IgnoredRows++;
+                    continue;
+                }
+
+                result.Ec2RowsCandidate++;
+                GetAreaStats(areaStats, currentArea).CandidateRows++;
+
+                if (columns.Count < 14)
+                {
+                    IgnoreEc2Line(result, "TOO_FEW_COLUMNS", index + 1, rawLine, columns, currentArea);
+                    GetAreaStats(areaStats, currentArea).IgnoredRows++;
+                    continue;
+                }
+
+                var layouts = new[]
+                {
+                    new { Name = "requested", MachineIndex = 2, StatusIndex = 3, PartCodeIndex = 7, ProcessIndex = 13 },
+                    new { Name = "sample_offset", MachineIndex = 1, StatusIndex = 2, PartCodeIndex = 3, ProcessIndex = 13 }
+                };
+
+                var selectedLayout = layouts.FirstOrDefault(layout =>
+                {
+                    var candidateMachine = GetColumn(columns, layout.MachineIndex);
+                    var candidateProcess = GetColumn(columns, layout.ProcessIndex);
+                    var parsedProcess = ParseDouble(candidateProcess);
+                    return ProductionMachineRepository.IsValidProductionMachineCode(candidateMachine)
+                        && parsedProcess.HasValue
+                        && double.IsFinite(parsedProcess.Value)
+                        && parsedProcess.Value > 0;
+                });
+
+                if (selectedLayout == null)
+                {
+                    selectedLayout = layouts[0];
+                }
+
+                var machineRaw = GetColumn(columns, selectedLayout.MachineIndex);
+                var statusRaw = GetColumn(columns, selectedLayout.StatusIndex);
+                var partCodeRaw = GetColumn(columns, selectedLayout.PartCodeIndex);
+                var processRaw = GetColumn(columns, selectedLayout.ProcessIndex);
+
+                var machineCode = machineRaw;
                 if (string.IsNullOrWhiteSpace(machineCode))
                 {
-                    result.Ec2RowsIgnored++;
-                    PushError(result, $"EC2 linha {index + 1}: equipamento vazio.");
+                    IgnoreEc2Line(result, "MISSING_MACHINE", index + 1, rawLine, columns, currentArea, machineCandidate: machineRaw, statusCandidate: statusRaw, partCodeCandidate: partCodeRaw, timeCandidate: processRaw);
+                    PushDiagnosticLine(index + 1, machineRaw, statusRaw, partCodeRaw, processRaw, string.Empty, string.Empty, string.Empty, string.Empty, false, "missing_machine", selectedLayout.Name);
+                    GetAreaStats(areaStats, currentArea).IgnoredRows++;
                     continue;
                 }
 
-                var statusText = Pick(columns, map, 9, "status", "machinestatus", "estado", "status text", "internal state");
-                var areaLabel = Pick(columns, map, 10, "area", "local", "recipe", "recipeName", "part", "partcode", "code", "codigo", "código", "instruction");
-                var partCode = Pick(columns, map, 10, "part", "partcode", "code", "codigo", "código", "instruction", "recipe", "recipeName");
-
-                rows.Add(new Ec2ParsedRow
+                if (!ProductionMachineRepository.IsValidProductionMachineCode(machineCode))
                 {
-                    AreaLabel = areaLabel,
+                    IgnoreEc2Line(result, "INVALID_MACHINE_CODE", index + 1, rawLine, columns, currentArea, machineCandidate: machineRaw, statusCandidate: statusRaw, partCodeCandidate: partCodeRaw, timeCandidate: processRaw);
+                    PushDiagnosticLine(index + 1, machineRaw, statusRaw, partCodeRaw, processRaw, machineCode, string.Empty, string.Empty, string.Empty, false, "invalid_machine_code", selectedLayout.Name);
+                    GetAreaStats(areaStats, currentArea).IgnoredRows++;
+                    continue;
+                }
+
+                var statusText = statusRaw;
+                var partCode = partCodeRaw;
+                var processMinutes = ParseDouble(processRaw);
+                var isRunning = IsRunningStatus(statusText, settings.RunningKeywords);
+                var importReason = "ok";
+
+                if (string.IsNullOrWhiteSpace(statusText) || ContainsBrokenEncoding(statusText))
+                {
+                    importReason = "invalid_status";
+                    IgnoreEc2Line(result, "INVALID_STATUS", index + 1, rawLine, columns, currentArea, machineCandidate: machineCode, statusCandidate: statusText, partCodeCandidate: partCode, timeCandidate: processRaw);
+                    PushDiagnosticLine(index + 1, machineRaw, statusRaw, partCodeRaw, processRaw, machineCode, statusText, partCode, FormatNullable(processMinutes), false, importReason, selectedLayout.Name, isRunning);
+                    GetAreaStats(areaStats, currentArea).IgnoredRows++;
+                    continue;
+                }
+
+                if (!processMinutes.HasValue || !double.IsFinite(processMinutes.Value) || processMinutes.Value <= 0)
+                {
+                    importReason = "invalid_process_minutes";
+                    IgnoreEc2Line(result, "invalid_process_minutes", index + 1, rawLine, columns, currentArea, machineCandidate: machineCode, statusCandidate: statusText, partCodeCandidate: partCode, timeCandidate: processRaw);
+                    PushDiagnosticLine(index + 1, machineRaw, statusRaw, partCodeRaw, processRaw, machineCode, statusText, partCode, FormatNullable(processMinutes), false, importReason, selectedLayout.Name, isRunning);
+                    GetAreaStats(areaStats, currentArea).IgnoredRows++;
+                    continue;
+                }
+
+                var parsedRow = new Ec2ParsedRow
+                {
+                    AreaLabel = currentArea,
                     MachineCode = machineCode,
                     MachineName = machineCode,
                     StatusText = statusText,
-                    IsRunning = IsRunningStatus(statusText, settings.RunningKeywords),
-                    SectorId = ResolveSectorId(areaLabel),
+                    IsRunning = isRunning,
+                    SectorId = ResolveSectorId(currentArea),
                     PartCode = partCode,
-                    PlannedProcessMinutes = ParseDouble(Pick(columns, map, 2, "plannedprocessminutes", "tempo previsto", "tempo")),
-                    CapabilityType = Pick(columns, map, 5, "capability", "capacity", "tipo"),
-                    OperationRate = ParseDouble(Pick(columns, map, 6, "operationrate", "taxa", "稼働率")),
-                    CurrentDifference = ParseDouble(Pick(columns, map, 6, "difference", "diferença", "差")),
-                    LotNo = Pick(columns, map, 12, "lot", "lotno", "lote", "ロット"),
-                    PlannedEndAt = ParseDateTime(Pick(columns, map, 7, "plannedend", "end", "termino", "término", "終了予定"), snapshotAt),
-                    ProcessMinutes = ParseDouble(Pick(columns, map, 11, "processminutes", "processingtime", "tempo processamento", "処理時間")),
-                    DailyProduction = ParseDouble(Pick(columns, map, 11, "dailyproduction", "produção diária", "daily")),
-                    RawColumns = BuildRawColumns(header, columns, hasHeader)
-                });
+                    PlannedProcessMinutes = processMinutes,
+                    CapabilityType = GetColumn(columns, 4),
+                    OperationRate = ParseDouble(GetColumn(columns, 8)),
+                    CurrentDifference = ParseDouble(GetColumn(columns, 9)),
+                    LotNo = null,
+                    PlannedEndAt = ParseDateTime(GetColumn(columns, 10), snapshotAt),
+                    ProcessMinutes = processMinutes,
+                    DailyProduction = ParseDouble(GetColumn(columns, 12)),
+                    RawColumns = BuildRawColumns(Array.Empty<string>(), columns, false)
+                };
+
+                GetAreaStats(areaStats, currentArea).ImportedRows++;
+                PushDiagnosticLine(index + 1, machineRaw, statusRaw, partCodeRaw, processRaw, machineCode, statusText, partCode, FormatNullable(processMinutes), true, importReason, selectedLayout.Name, isRunning);
+                rows.Add(parsedRow);
+            }
+
+            foreach (var stats in areaStats.Values)
+            {
+                Console.WriteLine($"[EC2 Administrator][Area] Area={stats.Area} HeaderDetected={stats.HeaderDetected} HeaderColumns={stats.HeaderColumns} CandidateRows={stats.CandidateRows} ImportedRows={stats.ImportedRows} IgnoredRows={stats.IgnoredRows}");
             }
 
             return rows;
         }
 
-        private static List<string> DecodeLines(byte[] bytes)
+        private static Ec2DecodeResult DecodeLines(byte[] bytes)
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
-            foreach (var encoding in new Encoding[] { new UTF8Encoding(false, true), Encoding.GetEncoding(932), Encoding.Default })
+            var candidates = new List<Ec2DecodedText>();
+            foreach (var item in new[]
+            {
+                new { Name = "cp932", Priority = 0, Encoding = Encoding.GetEncoding(932, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback) },
+                new { Name = "shift_jis", Priority = 1, Encoding = Encoding.GetEncoding("shift_jis", EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback) },
+                new { Name = "utf-8", Priority = 2, Encoding = (Encoding)new UTF8Encoding(false, true) },
+                new { Name = "ansi-default", Priority = 3, Encoding = Encoding.Default }
+            })
             {
                 try
                 {
-                    var text = encoding.GetString(bytes);
+                    var text = item.Encoding.GetString(bytes);
                     if (text.Contains(',') || text.Contains('\t') || text.Contains(';') || text.Contains('|'))
                     {
-                        return text
-                            .Replace("\r\n", "\n", StringComparison.Ordinal)
-                            .Replace('\r', '\n')
-                            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                            .ToList();
+                        candidates.Add(new Ec2DecodedText(item.Name, text, ScoreDecodedText(text), item.Name == "ansi-default" ? 3 : item.Priority));
                     }
                 }
                 catch (DecoderFallbackException)
@@ -627,9 +830,97 @@ namespace TeamOps.Services
                 }
             }
 
-            return new List<string>();
+            var best = candidates
+                .OrderByDescending(item => item.Score)
+                .ThenBy(item => item.Priority)
+                .FirstOrDefault();
+
+            if (best == null || ContainsBrokenEncoding(best.Text))
+            {
+                best = candidates
+                    .Where(item => !ContainsBrokenEncoding(item.Text))
+                    .OrderByDescending(item => item.Score)
+                    .ThenBy(item => item.Priority)
+                    .FirstOrDefault()
+                    ?? best;
+            }
+
+            if (best == null || string.IsNullOrEmpty(best.Text))
+            {
+                return new Ec2DecodeResult(new List<string>(), string.Empty, string.Empty, false);
+            }
+
+            var lines = best.Text
+                .Replace("\r\n", "\n", StringComparison.Ordinal)
+                .Replace('\r', '\n')
+                .Split('\n', StringSplitOptions.None)
+                .ToList();
+
+            return new Ec2DecodeResult(lines, best.EncodingName, DetectDelimiterLabel(best.Text), best.Text.Contains('\uFFFD', StringComparison.Ordinal));
         }
 
+        private static int ScoreDecodedText(string text)
+        {
+            var score = 0;
+            foreach (var token in new[]
+            {
+                "\u30A8\u30EA\u30A2",
+                "\u8A2D\u5099\u53F7\u6A5F",
+                "\u6307\u793A",
+                "\u8A2D\u5099\u72B6\u614B",
+                "\u52A0\u5DE5\u6642\u9593",
+                "\u7A3C\u50CD",
+                "\u904B\u8EE2",
+                "\u505C\u6B62"
+            })
+            {
+                if (text.Contains(token, StringComparison.Ordinal))
+                {
+                    score += 20;
+                }
+            }
+
+            score -= text.Count(ch => ch == '\uFFFD') * 10;
+            score -= Regex.Matches(text, "[ÃÂ�]").Count * 5;
+            score -= Regex.Matches(text, "[繧蜒蛯蟾謖逅邨譛]").Count;
+            return score;
+        }
+
+        private static bool ContainsBrokenEncoding(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return false;
+            }
+
+            return text.Contains('\uFFFD', StringComparison.Ordinal)
+                || text.Contains("ç¨¼å", StringComparison.Ordinal)
+                || text.Contains("é\u0081", StringComparison.Ordinal)
+                || text.Contains("����", StringComparison.Ordinal);
+        }
+
+        private static string DetectDelimiterLabel(string text)
+        {
+            var firstDataLine = text
+                .Replace("\r\n", "\n", StringComparison.Ordinal)
+                .Replace('\r', '\n')
+                .Split('\n')
+                .FirstOrDefault(line => !string.IsNullOrWhiteSpace(line))
+                ?? string.Empty;
+
+            var delimiters = new[]
+            {
+                new { Label = "tab", Count = firstDataLine.Count(ch => ch == '\t') },
+                new { Label = "pipe", Count = firstDataLine.Count(ch => ch == '|') },
+                new { Label = "semicolon", Count = firstDataLine.Count(ch => ch == ';') },
+                new { Label = "comma", Count = firstDataLine.Count(ch => ch == ',') }
+            };
+
+            return delimiters
+                .OrderByDescending(item => item.Count)
+                .FirstOrDefault(item => item.Count > 0)
+                ?.Label ?? "unknown";
+        }
         private static List<string> SplitCsvLine(string line)
         {
             var separator = line.Contains('\t')
@@ -677,15 +968,39 @@ namespace TeamOps.Services
         private static bool LooksLikeHeader(IReadOnlyList<string> columns)
         {
             var joined = string.Join(" ", columns).ToLowerInvariant();
-            return joined.Contains("area", StringComparison.Ordinal)
-                || joined.Contains("equipment", StringComparison.Ordinal)
+            var score = 0;
+            if (joined.Contains("equipment", StringComparison.Ordinal)
                 || joined.Contains("status", StringComparison.Ordinal)
                 || joined.Contains("maquina", StringComparison.Ordinal)
-                || joined.Contains("máquina", StringComparison.Ordinal)
-                || joined.Contains("設備", StringComparison.Ordinal)
-                || joined.Contains("状態", StringComparison.Ordinal);
-        }
+                || joined.Contains("m\u00E1quina", StringComparison.Ordinal)
+                || joined.Contains("\u8A2D\u5099\u53F7\u6A5F", StringComparison.Ordinal))
+            {
+                score++;
+            }
 
+            if (joined.Contains("\u6307\u793A", StringComparison.Ordinal)
+                || joined.Contains("\u8A2D\u5099\u72B6\u614B", StringComparison.Ordinal))
+            {
+                score++;
+            }
+
+            if (joined.Contains("\u914D\u5408\u6307\u793A", StringComparison.Ordinal)
+                || joined.Contains("\u80FD\u529B\u67A0", StringComparison.Ordinal)
+                || joined.Contains("recipe", StringComparison.Ordinal)
+                || joined.Contains("part", StringComparison.Ordinal))
+            {
+                score++;
+            }
+
+            if (joined.Contains("\u52A0\u5DE5\u6642\u9593", StringComparison.Ordinal)
+                || joined.Contains("\u4E88\u5B9A\u52A0\u5DE5\u6642\u9593", StringComparison.Ordinal)
+                || joined.Contains("process", StringComparison.Ordinal))
+            {
+                score++;
+            }
+
+            return score >= 2;
+        }
         private static Dictionary<string, int> BuildHeaderMap(IReadOnlyList<string> header)
         {
             var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -741,14 +1056,31 @@ namespace TeamOps.Services
 
         private static string NormalizeHeader(string value)
         {
-            return (value ?? string.Empty)
+            var normalized = (value ?? string.Empty)
                 .Trim()
                 .Replace(" ", string.Empty, StringComparison.Ordinal)
                 .Replace("_", string.Empty, StringComparison.Ordinal)
                 .Replace("-", string.Empty, StringComparison.Ordinal)
                 .ToLowerInvariant();
-        }
 
+            return normalized switch
+            {
+                "\u8A2D\u5099\u53F7\u6A5F" or "\u53F7\u6A5F" => "equipment",
+                "\u6307\u793A" or "\u7A3C\u50CD\u6307\u793A" or "\u904B\u8EE2\u6307\u793A" => "status",
+                "\u914D\u53F0\u6307\u793A" or "\u914D\u5408\u6307\u793A" => "recipe",
+                "\u4E88\u5B9A\u52A0\u5DE5\u6642\u9593" => "plannedprocessminutes",
+                "\u8A2D\u5099\u72B6\u614B" => "machinestatus",
+                "\u80FD\u529B\u67A0" => "capability",
+                "\u30BF\u30A4\u30D7" => "tipo",
+                "\u8A2D\u5B9A\u7A3C\u50CD\u7387" or "\u63A8\u5B9A\u7A3C\u50CD\u7387" => "operationrate",
+                "\u73FE\u72B6\u5DEE\u7570" => "difference",
+                "\u52A0\u5DE5\u30ED\u30C3\u30C8no." or "\u52A0\u5DE5\u30ED\u30C3\u30C8no" => "lot",
+                "\u30B5\u30A4\u30AF\u30EB\u7D42\u4E86\u4E88\u5B9A\u6642\u523B" => "plannedend",
+                "\u52A0\u5DE5\u6642\u9593" => "processminutes",
+                "day\u52A0\u5DE5\u53EF\u80FD\u6570\u91CF(k\u500B)" or "day\u751F\u7523\u6570\u91CF(k\u500B)" => "dailyproduction",
+                _ => normalized
+            };
+        }
         private static bool IsRunningStatus(string statusText, IReadOnlyCollection<string> runningKeywords)
         {
             var normalized = (statusText ?? string.Empty).Trim();
@@ -795,12 +1127,6 @@ namespace TeamOps.Services
         private static int? ResolveSectorId(string areaLabel)
         {
             var normalized = (areaLabel ?? string.Empty).Trim();
-            if (normalized.StartsWith("エリア", StringComparison.OrdinalIgnoreCase)
-                || normalized.StartsWith("AREA", StringComparison.OrdinalIgnoreCase))
-            {
-                return 2;
-            }
-
             if (normalized.Contains("DAD", StringComparison.OrdinalIgnoreCase)
                 || normalized.Contains("211D", StringComparison.OrdinalIgnoreCase))
             {
@@ -809,14 +1135,15 @@ namespace TeamOps.Services
 
             if (normalized.Contains("GBARERU", StringComparison.OrdinalIgnoreCase)
                 || normalized.Contains("G-BARERU", StringComparison.OrdinalIgnoreCase)
-                || normalized.Contains("2400", StringComparison.OrdinalIgnoreCase))
+                || normalized.Contains("G\u30D0\u30EC\u30EB", StringComparison.OrdinalIgnoreCase)
+                || normalized.Contains("2400", StringComparison.OrdinalIgnoreCase)
+                || normalized.StartsWith("\u30A8\u30EA\u30A2", StringComparison.OrdinalIgnoreCase))
             {
                 return 1;
             }
 
             return null;
         }
-
         private static string NormalizeCode(string value)
         {
             return (value ?? string.Empty).Trim().ToUpperInvariant();
@@ -836,6 +1163,233 @@ namespace TeamOps.Services
             }
         }
 
+        private static void PushImportedSample(ProductionImportResult result, string message)
+        {
+            if (!string.IsNullOrWhiteSpace(message) && result.Ec2ImportedSamples.Count < 10)
+            {
+                result.Ec2ImportedSamples.Add(message);
+            }
+        }
+
+        private static void IgnoreEc2Line(
+            ProductionImportResult result,
+            string reason,
+            int lineNumber,
+            string? rawLine,
+            IReadOnlyList<string>? columns = null,
+            string area = "",
+            string machineCandidate = "",
+            string statusCandidate = "",
+            string partCodeCandidate = "",
+            string timeCandidate = "")
+        {
+            result.Ec2RowsIgnored++;
+
+            switch (reason)
+            {
+                case "EMPTY_LINE":
+                    result.Ec2IgnoredByEmptyLine++;
+                    break;
+                case "NOT_AREA_BLOCK":
+                    result.Ec2IgnoredByNotAreaBlock++;
+                    break;
+                case "TOO_FEW_COLUMNS":
+                    result.Ec2IgnoredByTooFewColumns++;
+                    break;
+                case "MISSING_MACHINE":
+                    result.Ec2IgnoredByMissingMachine++;
+                    break;
+                case "INVALID_MACHINE_CODE":
+                    result.Ec2IgnoredByInvalidMachineCode++;
+                    break;
+                case "HEADER_OR_SUMMARY_LINE":
+                    result.Ec2IgnoredByHeaderOrSummaryLine++;
+                    break;
+                case "INVALID_STATUS":
+                    result.Ec2IgnoredByInvalidStatus++;
+                    break;
+                case "INVALID_TIME":
+                    result.Ec2IgnoredByInvalidTime++;
+                    break;
+                case "INVALID_PROCESS_MINUTES":
+                case "invalid_process_minutes":
+                    result.Ec2IgnoredByInvalidTime++;
+                    break;
+                default:
+                    result.Ec2IgnoredByUnknownFormat++;
+                    break;
+            }
+
+            if (result.Ec2DiscardSamples.Count >= 10)
+            {
+                return;
+            }
+
+            result.Ec2DiscardSamples.Add(
+                $"LineNumber={lineNumber} RawLine={PreviewLine(rawLine)} ColumnCount={(columns?.Count ?? 0)} DetectedArea={area} MachineCandidate={machineCandidate} StatusCandidate={statusCandidate} PartCodeCandidate={partCodeCandidate} TimeCandidate={timeCandidate} IgnoreReason={reason}");
+        }
+
+        private static void PushDiagnosticLine(
+            int lineNumber,
+            string machineRaw,
+            string statusRaw,
+            string partCodeRaw,
+            string processRaw,
+            string machineParsed,
+            string statusParsed,
+            string partCodeParsed,
+            string processMinutesParsed,
+            bool imported,
+            string ignoreReason,
+            string layoutUsed = "",
+            bool? isRunning = null)
+        {
+            Console.WriteLine(
+                $"[EC2 Administrator][Diagnostic] LineNumber={lineNumber} Column3_MachineRaw={machineRaw} Column4_ShijiRaw={statusRaw} Column8_PartCodeRaw={partCodeRaw} Column14_TimeRaw={processRaw} MachineParsed={machineParsed} StatusParsed={statusParsed} PartCodeParsed={partCodeParsed} ProcessMinutesParsed={processMinutesParsed} LotFromAdministratorIgnored=true Imported={(imported ? "true" : "false")} IgnoreReason={ignoreReason}{(string.IsNullOrWhiteSpace(layoutUsed) ? string.Empty : $" LayoutUsed={layoutUsed}")}{(isRunning.HasValue ? $" IsRunning={(isRunning.Value ? "true" : "false")}" : string.Empty)}");
+        }
+
+        private static string GetColumn(IReadOnlyList<string> columns, int zeroBasedIndex)
+        {
+            return zeroBasedIndex >= 0 && zeroBasedIndex < columns.Count
+                ? columns[zeroBasedIndex].Trim()
+                : string.Empty;
+        }
+
+        private static string ResolveFullPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                return Path.GetFullPath(path);
+            }
+            catch
+            {
+                return path;
+            }
+        }
+
+        private static string PreviewRawLine(byte[] bytes)
+        {
+            if (bytes == null || bytes.Length == 0)
+            {
+                return string.Empty;
+            }
+
+            var raw = Encoding.GetEncoding(28591).GetString(bytes);
+            raw = raw.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+            var line = raw.Split('\n', StringSplitOptions.None).FirstOrDefault() ?? string.Empty;
+            return PreviewLine(line);
+        }
+
+        private static string PreviewLine(string? value)
+        {
+            var line = (value ?? string.Empty).Trim();
+            if (line.Length <= 240)
+            {
+                return line;
+            }
+
+            return line[..240] + "...";
+        }
+
+        private static string? FindHeaderLine(IReadOnlyList<string> lines)
+        {
+            return lines.FirstOrDefault(line => LooksLikeHeader(SplitCsvLine(line)));
+        }
+
+        private static string? FindFirstDataLine(IReadOnlyList<string> lines)
+        {
+            foreach (var line in lines)
+            {
+                var columns = SplitCsvLine(line);
+                if (columns.Count >= 6
+                    && columns.Any(column => ProductionMachineRepository.IsValidProductionMachineCode(column)))
+                {
+                    return line;
+                }
+            }
+
+            return null;
+        }
+
+        private static void LogFileDiagnostics(ProductionImportResult result)
+        {
+            Console.WriteLine("[EC2 Administrator][File]");
+            Console.WriteLine($"Ec2AdministratorFilePath={result.Ec2FilePath}");
+            Console.WriteLine($"ResolvedFullPath={result.Ec2ResolvedFullPath}");
+            Console.WriteLine($"FileExists={result.Ec2FileExists}");
+            Console.WriteLine($"FileSize={result.Ec2FileSize}");
+            Console.WriteLine($"LastWriteTime={result.Ec2FileLastWriteTime}");
+            Console.WriteLine($"DetectedEncoding={result.Ec2EncodingDetected}");
+            Console.WriteLine($"DelimiterDetected={result.Ec2DelimiterDetected}");
+            Console.WriteLine($"RawLinePreview={result.Ec2RawLinePreview}");
+            Console.WriteLine($"DecodedLinePreview={result.Ec2DecodedLinePreview}");
+            Console.WriteLine($"ContainsReplacementChar={result.Ec2ContainsReplacementChar}");
+            Console.WriteLine($"FirstLinePreview={result.Ec2FirstLinePreview}");
+            Console.WriteLine($"HeaderLinePreview={result.Ec2HeaderLinePreview}");
+            Console.WriteLine($"FirstDataLinePreview={result.Ec2FirstDataLinePreview}");
+        }
+
+        private static string FormatNullable(double? value)
+        {
+            return value.HasValue
+                ? value.Value.ToString("0.###", CultureInfo.InvariantCulture)
+                : "null";
+        }
+
+        private static bool TryDetectArea(IReadOnlyList<string> columns, out string area)
+        {
+            foreach (var column in columns)
+            {
+                var value = (column ?? string.Empty).Trim();
+                if (Regex.IsMatch(value, @"^\u30A8\u30EA\u30A2\s*\d+", RegexOptions.IgnoreCase)
+                    || Regex.IsMatch(value, @"^area\s*\d+", RegexOptions.IgnoreCase))
+                {
+                    area = value;
+                    return true;
+                }
+            }
+
+            area = string.Empty;
+            return false;
+        }
+
+        private static bool IsSummaryLine(IReadOnlyList<string> columns)
+        {
+            var joined = string.Join(" ", columns.Where(value => !string.IsNullOrWhiteSpace(value))).Trim();
+            if (string.IsNullOrWhiteSpace(joined))
+            {
+                return true;
+            }
+
+            return joined.Contains("\u914D\u53F0\u6307\u793A\u30BF\u30AF\u30C8\u52A0\u91CD\u5E73\u5747", StringComparison.Ordinal)
+                || joined.Contains("\u5B9F\u914D\u53F0\u30BF\u30AF\u30C8\u52A0\u91CD\u5E73\u5747", StringComparison.Ordinal)
+                || joined.Contains("\u914D\u53F0 G/NG", StringComparison.OrdinalIgnoreCase)
+                || joined.Contains("\u63A8\u5B9A\u7A3C\u50CD\u7387", StringComparison.Ordinal)
+                || string.Equals(joined, "G", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static Ec2AreaParseStats GetAreaStats(
+            IDictionary<string, Ec2AreaParseStats> statsByArea,
+            string area)
+        {
+            var key = string.IsNullOrWhiteSpace(area) ? "(sem area)" : area;
+            if (!statsByArea.TryGetValue(key, out var stats))
+            {
+                stats = new Ec2AreaParseStats
+                {
+                    Area = key
+                };
+                statsByArea[key] = stats;
+            }
+
+            return stats;
+        }
+
         private static bool LooksLikeAdministratorDatSample(IReadOnlyList<string> lines)
         {
             foreach (var rawLine in lines)
@@ -846,16 +1400,20 @@ namespace TeamOps.Services
                     continue;
                 }
 
-                if (line.StartsWith("※", StringComparison.Ordinal)
-                    || line.StartsWith("最終", StringComparison.Ordinal)
-                    || line.StartsWith("エリア", StringComparison.OrdinalIgnoreCase)
+                if (line.StartsWith("\u203B", StringComparison.Ordinal)
+                    || line.StartsWith("\u6700\u7D42", StringComparison.Ordinal)
                     || line.StartsWith("AREA", StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
 
-                if (line.Contains("設備号機", StringComparison.Ordinal)
-                    && line.Contains("加工時間", StringComparison.Ordinal))
+                if (TryDetectArea(SplitCsvLine(line), out _))
+                {
+                    return true;
+                }
+
+                if (line.Contains("\u8A2D\u5099\u53F7\u6A5F", StringComparison.Ordinal)
+                    && line.Contains("\u52A0\u5DE5\u6642\u9593", StringComparison.Ordinal))
                 {
                     return true;
                 }
@@ -863,132 +1421,12 @@ namespace TeamOps.Services
 
             return false;
         }
-
-        private static List<Ec2ParsedRow> ParseAdministratorDatSampleRows(
-            IReadOnlyList<string> lines,
-            DateTime snapshotAt,
-            Ec2ImportSettings settings,
-            ProductionImportResult result)
-        {
-            var rows = new List<Ec2ParsedRow>();
-            var currentArea = string.Empty;
-            List<string> header = new();
-            Dictionary<string, int>? headerMap = null;
-
-            foreach (var rawLine in lines)
-            {
-                var line = (rawLine ?? string.Empty).Trim();
-                if (string.IsNullOrWhiteSpace(line))
-                {
-                    continue;
-                }
-
-                if (line.StartsWith("※", StringComparison.Ordinal) || line.StartsWith("最終", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                if (line.StartsWith("エリア", StringComparison.OrdinalIgnoreCase) || line.StartsWith("AREA", StringComparison.OrdinalIgnoreCase))
-                {
-                    currentArea = line;
-                    header = new List<string>();
-                    headerMap = null;
-                    continue;
-                }
-
-                var columns = SplitCsvLine(line);
-                if (columns.Count == 0 || columns.All(string.IsNullOrWhiteSpace))
-                {
-                    continue;
-                }
-
-                if (LooksLikeHeader(columns))
-                {
-                    header = columns.ToList();
-                    headerMap = BuildHeaderMap(header);
-                    continue;
-                }
-
-                if (headerMap == null || string.IsNullOrWhiteSpace(currentArea))
-                {
-                    continue;
-                }
-
-                result.Ec2RowsRead++;
-
-                var machineCode = Pick(columns, headerMap, 1, "設備号機", "equipment", "machine", "machinecode", "machine code", "号機");
-                if (string.IsNullOrWhiteSpace(machineCode))
-                {
-                    result.Ec2RowsIgnored++;
-                    PushError(result, $"EC2 linha {result.Ec2RowsRead}: equipamento vazio.");
-                    continue;
-                }
-
-                var statusText = Pick(columns, headerMap, 5, "設備状態", "status", "machinestatus", "状態", "稼働状態");
-                var partCode = Pick(columns, headerMap, 3, "配合指示", "指示", "recipe", "recipeName", "part", "partcode", "code");
-                var plannedProcessRaw = Pick(columns, headerMap, 4, "予定加工時間", "plannedprocessminutes", "planned process time");
-                var processRaw = Pick(columns, headerMap, 12, "加工時間", "processminutes", "processingtime", "tempo processamento");
-                var plannedProcessMinutes = ParseDouble(plannedProcessRaw);
-                var processMinutes = ParseDouble(processRaw);
-
-                if (!processMinutes.HasValue || processMinutes <= 0)
-                {
-                    processMinutes = plannedProcessMinutes;
-                }
-
-                var lotNo = Pick(columns, headerMap, 10, "加工ロットNo.", "lot", "lotno", "lote", "ロット");
-                var plannedEndText = Pick(columns, headerMap, 11, "サイクル終了予定時刻", "plannedend", "end", "termino", "término");
-                var dailyProduction = ParseDouble(Pick(columns, headerMap, 13, "day生産数量(K個)", "dailyproduction", "day"));
-                var operationRate = ParseDouble(Pick(columns, headerMap, 8, "設定稼働率", "operationrate", "稼働率"));
-                var currentDifference = ParseDouble(Pick(columns, headerMap, 9, "現状差異", "difference", "差"));
-                var isRunning = IsRunningStatus(statusText, settings.RunningKeywords);
-                var includeInAverage = isRunning
-                    && processMinutes.HasValue
-                    && double.IsFinite(processMinutes.Value)
-                    && processMinutes.Value > 0;
-                var exclusionReason = includeInAverage
-                    ? "ok"
-                    : !isRunning
-                        ? "machine_not_running"
-                        : !processMinutes.HasValue
-                            ? "process_time_null"
-                            : !double.IsFinite(processMinutes.Value)
-                                ? "process_time_not_finite"
-                                : "process_time_not_positive";
-
-                Console.WriteLine(
-                    $"[EC2 Administrator Sample] Machine={machineCode} Status={statusText} Code={partCode} Lot={lotNo} TimeRaw={(string.IsNullOrWhiteSpace(processRaw) ? plannedProcessRaw : processRaw)} TimeConverted={(processMinutes.HasValue ? processMinutes.Value.ToString("0.0", CultureInfo.InvariantCulture) : "null")} EnteredAverage={(includeInAverage ? "sim" : "nao")} Reason={(includeInAverage ? "ok" : exclusionReason)}");
-
-                rows.Add(new Ec2ParsedRow
-                {
-                    AreaLabel = currentArea,
-                    MachineCode = machineCode,
-                    MachineName = machineCode,
-                    StatusText = statusText,
-                    IsRunning = isRunning,
-                    SectorId = ResolveSectorId(currentArea),
-                    PartCode = partCode,
-                    PlannedProcessMinutes = plannedProcessMinutes,
-                    CapabilityType = Pick(columns, headerMap, 6, "能力枠", "capability", "capacity", "tipo"),
-                    OperationRate = operationRate,
-                    CurrentDifference = currentDifference,
-                    LotNo = lotNo,
-                    PlannedEndAt = ParseDateTime(plannedEndText, snapshotAt),
-                    ProcessMinutes = processMinutes,
-                    DailyProduction = dailyProduction,
-                    RawColumns = BuildRawColumns(header, columns, true)
-                });
-            }
-
-            return rows;
-        }
-
         private static Ec2ImportSettings LoadSettings()
         {
             var filePath = ConfigurationManager.AppSettings["Ec2AdministratorFilePath"] ?? string.Empty;
             var ignoreAfterText = ConfigurationManager.AppSettings["MachineStoppedIgnoreAfterMinutes"] ?? "0";
             var keywordsText = ConfigurationManager.AppSettings["Ec2AdministratorRunningStatusKeywords"]
-                ?? "operando,rodando,running,run,稼働,運転";
+                ?? "operando,rodando,running,run,\u7A3C\u50CD,\u904B\u8EE2,\u7A3C\u50CD\u4E2D,\u904B\u8EE2\u4E2D";
 
             if (!int.TryParse(ignoreAfterText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var ignoreAfter)
                 || ignoreAfter < 0)
@@ -1010,6 +1448,26 @@ namespace TeamOps.Services
             int StoppedIgnoreAfterMinutes,
             IReadOnlyCollection<string> RunningKeywords);
 
+        private sealed record Ec2DecodedText(string EncodingName, string Text, int Score, int Priority);
+
+        private sealed record Ec2DecodeResult(List<string> Lines, string EncodingName, string DelimiterLabel, bool ContainsReplacementChar);
+
+        private sealed class Ec2ExistingImportRow
+        {
+            public long Id { get; set; }
+            public int RowsImported { get; set; }
+        }
+
+        private sealed class Ec2AreaParseStats
+        {
+            public string Area { get; set; } = string.Empty;
+            public bool HeaderDetected { get; set; }
+            public string HeaderColumns { get; set; } = string.Empty;
+            public int CandidateRows { get; set; }
+            public int ImportedRows { get; set; }
+            public int IgnoredRows { get; set; }
+        }
+
         private sealed class Ec2ParsedRow
         {
             public string AreaLabel { get; set; } = string.Empty;
@@ -1023,7 +1481,7 @@ namespace TeamOps.Services
             public string CapabilityType { get; set; } = string.Empty;
             public double? OperationRate { get; set; }
             public double? CurrentDifference { get; set; }
-            public string LotNo { get; set; } = string.Empty;
+            public string? LotNo { get; set; }
             public DateTime? PlannedEndAt { get; set; }
             public double? ProcessMinutes { get; set; }
             public double? DailyProduction { get; set; }
@@ -1058,7 +1516,7 @@ namespace TeamOps.Services
             public string CapabilityType { get; set; } = string.Empty;
             public double? OperationRate { get; set; }
             public double? CurrentDifference { get; set; }
-            public string LotNo { get; set; } = string.Empty;
+            public string? LotNo { get; set; }
             public string? PlannedEndAt { get; set; }
             public double? ProcessMinutes { get; set; }
             public double? DailyProduction { get; set; }

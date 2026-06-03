@@ -34,6 +34,10 @@ Centralizar informacoes operacionais usadas no ambiente industrial, reduzindo de
 - Yukyu/paid leave tracking.
 - Administracao e controle de acesso.
 
+## Guias operacionais especificos
+
+- `docs/production-monitor-guide.md`: uso do Monitor de Producao, comandos do `ProductionMonitorProbe.exe`, validacao de banco, status por setor, EC2 Administrator, dashboard e orientacao para prints.
+
 ## Tecnologias utilizadas
 
 - C# e .NET 9.

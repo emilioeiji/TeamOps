@@ -590,7 +590,7 @@ namespace TeamOps.UI.Forms
                     h.AttachmentPath,
                     CASE WHEN r.Id IS NULL THEN 0 ELSE 1 END AS IsRead
                 FROM Hikitsugui h
-                JOIN Operators o ON o.CodigoFJ = h.CreatorCodigoFJ
+                LEFT JOIN Operators o ON o.CodigoFJ = h.CreatorCodigoFJ
                 LEFT JOIN Categories c ON c.Id = h.CategoryId
                 LEFT JOIN Equipments e ON e.Id = h.EquipmentId
                 LEFT JOIN Locals l ON l.Id = h.LocalId
@@ -697,45 +697,72 @@ namespace TeamOps.UI.Forms
                     h.Description,
                     h.AttachmentPath
                 FROM Hikitsugui h
-                JOIN Operators o ON o.CodigoFJ = h.CreatorCodigoFJ
+                LEFT JOIN Operators o ON o.CodigoFJ = h.CreatorCodigoFJ
                 LEFT JOIN Categories c ON c.Id = h.CategoryId
                 LEFT JOIN Equipments e ON e.Id = h.EquipmentId
                 LEFT JOIN Locals l ON l.Id = h.LocalId
                 LEFT JOIN Sectors s ON s.Id = h.SectorId
                 WHERE h.Id = @id;";
 
-            using var conn = _factory.CreateOpenConnection();
-            var row = conn.QueryFirstOrDefault(sql, new { id });
-            if (row == null)
-                return;
-
-            webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(
-                JsonSerializer.Serialize(new
+            try
+            {
+                using var conn = _factory.CreateOpenConnection();
+                var row = conn.QueryFirstOrDefault(sql, new { id });
+                if (row == null)
                 {
-                    type = "hikitsugui_by_id",
-                    data = new[]
-                    {
-                        new
+                    webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(
+                        JsonSerializer.Serialize(new
                         {
-                            row.Id,
-                            row.Date,
-                            row.OperatorNamePt,
-                            row.OperatorNameJp,
-                            row.CategoryPt,
-                            row.CategoryJp,
-                            row.EquipmentPt,
-                            row.EquipmentJp,
-                            row.LocalPt,
-                            row.LocalJp,
-                            row.SectorPt,
-                            row.SectorJp,
-                            row.Description,
-                            DescriptionHtml = row.Description ?? string.Empty,
-                            row.AttachmentPath
+                            type = "error",
+                            message = L("Hikitsugui não encontrado ou indisponível.", "Hikitsugui が見つかりません。")
+                        })
+                    );
+                    return;
+                }
+
+                var description = Convert.ToString(row.Description) ?? string.Empty;
+                Console.WriteLine($"[HikitsuguiLeaderRead][Preview] HikitsuguiId={id} DescriptionLength={description.Length} FieldNameUsed=Description DescriptionFromPayload={description}");
+
+                webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(
+                    JsonSerializer.Serialize(new
+                    {
+                        type = "hikitsugui_by_id",
+                        data = new[]
+                        {
+                            new
+                            {
+                                row.Id,
+                                row.Date,
+                                row.OperatorNamePt,
+                                row.OperatorNameJp,
+                                row.CategoryPt,
+                                row.CategoryJp,
+                                row.EquipmentPt,
+                                row.EquipmentJp,
+                                row.LocalPt,
+                                row.LocalJp,
+                                row.SectorPt,
+                                row.SectorJp,
+                                Description = description,
+                                DescriptionHtml = description,
+                                row.AttachmentPath
+                            }
                         }
-                    }
-                })
-            );
+                    })
+                );
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("HIKITSUGUI PREVIEW ERROR: " + ex);
+                webViewHikitsugui.CoreWebView2.PostWebMessageAsJson(
+                    JsonSerializer.Serialize(new
+                    {
+                        type = "error",
+                        message = ex.Message
+                    })
+                );
+                return;
+            }
         }
 
         private void SendReplies(int id)

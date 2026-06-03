@@ -73,6 +73,8 @@ Modulo para acompanhamento de itens em andamento e em follow-up. O dashboard mos
 
 Importa e apresenta eventos de maquinas. Usa arquivos TXT/DAT e pode executar um BAT de sincronizacao antes da importacao.
 
+Para detalhes de uso, validacao e comandos de suporte, consulte `docs/production-monitor-guide.md`.
+
 ### Hikitsugui
 
 Registro e leitura de passagem de informacao. Existem telas para criacao, leitura por lider e leitura por operador.

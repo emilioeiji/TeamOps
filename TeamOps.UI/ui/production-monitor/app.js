@@ -18,6 +18,7 @@ const I18N = {
         allMachines: "Todas as maquinas",
         refresh: "Atualizar",
         import: "Importar",
+        reimport: "Reimportar",
         metricProduction: "% Kadouritsu",
         metricRunning: "Rodando",
         metricStopped: "Paradas",
@@ -37,9 +38,6 @@ const I18N = {
         forecastBottleneck: "Gargalo",
         forecastBlock1: "ECII+Bunkatsu",
         forecastBlock2: "DCS",
-        partLegendTitle: "Codigos parametrizados",
-        partLegendSubtitle: "Legenda visual dos codigos destacados na producao.",
-        noPartLegend: "Nenhum codigo parametrizado.",
         areaBoardTitle: "Painel por area",
         areaBoardSubtitle: "A lista principal fica resumida por area para nao crescer demais com todas as maquinas.",
         areaDetailTitle: "Detalhe da area",
@@ -79,7 +77,11 @@ const I18N = {
         detailSource: "Arquivo",
         timelineTitle: "Timeline da area",
         timelineSubtitle: "Leitura visual de 5 em 5 minutos das maquinas da area selecionada.",
-        loading: "Importando producao...",
+        loadingDefault: "Carregando...",
+        loadingRefresh: "Atualizando dados...",
+        loadingImport: "Importando arquivos...",
+        loadingReimport: "Reimportando com limpeza...",
+        loadingDetail: "Carregando detalhes...",
         noRows: "Nenhuma maquina encontrada para a area selecionada.",
         noAreas: "Nenhuma area encontrada para o filtro selecionado.",
         noRanking: "Sem paradas registradas para esta area.",
@@ -174,6 +176,7 @@ window.chrome?.webview?.addEventListener("message", event => {
             hydrateDashboard(msg.data || {});
             break;
         case "machine_detail":
+            hideLoading();
             renderDetail(msg.data || {});
             break;
         case "operator_detail":
@@ -196,11 +199,12 @@ window.chrome?.webview?.addEventListener("message", event => {
 function bindEvents() {
     document.getElementById("btnRefresh").addEventListener("click", refreshDashboard);
     document.getElementById("btnImport").addEventListener("click", importProduction);
-    document.getElementById("datePicker").addEventListener("change", scheduleDashboardRefresh);
-    document.getElementById("shiftPicker").addEventListener("change", scheduleDashboardRefresh);
+    document.getElementById("btnReimport").addEventListener("click", reimportProduction);
+    document.getElementById("datePicker").addEventListener("change", onFilterChangedWithoutRefresh);
+    document.getElementById("shiftPicker").addEventListener("change", onFilterChangedWithoutRefresh);
     document.getElementById("sectorPicker").addEventListener("change", onSectorChanged);
     document.getElementById("localPicker").addEventListener("change", onLocalChanged);
-    document.getElementById("machinePicker").addEventListener("change", scheduleDashboardRefresh);
+    document.getElementById("machinePicker").addEventListener("change", onFilterChangedWithoutRefresh);
     document.getElementById("btnCloseOperatorModal").addEventListener("click", closeOperatorModal);
     document.getElementById("operatorModal").addEventListener("click", event => {
         if (event.target.id === "operatorModal") {
@@ -261,7 +265,6 @@ function hydrateDashboard(data) {
     renderDailyTrend(data.dailyTrend || []);
     renderAreaHistory(data.areaHistory || []);
     renderOperatorRanking(data.operatorRanking || []);
-    renderPartCodeLegend(state.partCodeStyles);
     renderGBareruForecast(data.gBareruCapacityForecast || null);
 
     if (!state.pinnedNotice) {
@@ -275,7 +278,7 @@ function refreshDashboard() {
     }
 
     state.pinnedNotice = false;
-    showLoading();
+    showLoading(t("loadingRefresh"));
     send("production_load_dashboard", buildFilterPayload());
 }
 
@@ -286,6 +289,12 @@ function scheduleDashboardRefresh() {
 
     window.clearTimeout(dashboardRefreshTimer);
     dashboardRefreshTimer = window.setTimeout(refreshDashboard, 160);
+}
+
+function onFilterChangedWithoutRefresh() {
+    if (state.isImportingProduction) {
+        return;
+    }
 }
 
 function renderGBareruForecast(forecast) {
@@ -333,8 +342,48 @@ function importProduction() {
 
     state.isImportingProduction = true;
     state.pinnedNotice = false;
-    showLoading();
+    showLoading(t("loadingImport"));
     send("production_import", buildFilterPayload());
+}
+
+function reimportProduction() {
+    if (state.isImportingProduction) {
+        return;
+    }
+
+    const filter = buildFilterPayload();
+    const todayIso = formatDateForInput(new Date());
+    const yesterdayIso = formatDateForInput(new Date(Date.now() - 24 * 60 * 60 * 1000));
+    if (filter.date !== todayIso && filter.date !== yesterdayIso) {
+        alert("Reimportar com limpeza so pode ser usado para hoje ou ontem, porque o importador trabalha com os arquivos mais recentes.");
+        return;
+    }
+
+    const scopeParts = [
+        `${t("date")}: ${filter.date || "-"}`,
+        filter.shiftId ? `${t("shift")}: ${getShiftLabelById(filter.shiftId)}` : null,
+        filter.sectorId ? `${t("sector")}: ${getLocalizedName(state.sectors.find(item => Number(item.id) === Number(filter.sectorId)) || { namePt: "-", nameJp: "-" })}` : null,
+        filter.localId ? `${t("local")}: ${getLocalizedName(state.locals.find(item => Number(item.id) === Number(filter.localId)) || { namePt: "-", nameJp: "-" })}` : null,
+        filter.machineId ? `${t("machine")}: ${getMachinePickerLabel(state.machines.find(item => Number(item.id) === Number(filter.machineId)) || { id: filter.machineId, machineCode: String(filter.machineId), lineCode: "" })}` : null
+    ].filter(Boolean);
+
+    const confirmMessage = [
+        "Reimportar vai apagar os eventos e o status atual do recorte selecionado antes de carregar tudo de novo.",
+        "",
+        "Escopo:",
+        ...scopeParts.map(part => `- ${part}`),
+        "",
+        "Use isso para corrigir dados baguncados ou importacoes antigas erradas. A importacao normal continua disponivel no botao Importar."
+    ].join("\n");
+
+    if (!window.confirm(confirmMessage)) {
+        return;
+    }
+
+    state.isImportingProduction = true;
+    state.pinnedNotice = false;
+    showLoading(t("loadingReimport"));
+    send("production_reimport", filter);
 }
 
 function buildFilterPayload() {
@@ -357,7 +406,6 @@ function onSectorChanged() {
 
     fillLocalOptions();
     fillMachineOptions();
-    scheduleDashboardRefresh();
 }
 
 function onLocalChanged() {
@@ -366,7 +414,6 @@ function onLocalChanged() {
     }
 
     fillMachineOptions();
-    scheduleDashboardRefresh();
 }
 
 function fillShiftOptions(selectedValue) {
@@ -666,25 +713,6 @@ function renderPartCodeCell(code, style) {
     return `<span class="part-code-badge" title="${escapeHtmlAttr(title)}" style="${escapeHtmlAttr(buildPartCodeBadgeStyle(style.colorHex, style.textColorHex))}">${escapeHtml(code)}</span>`;
 }
 
-function renderPartCodeLegend(items) {
-    const wrap = document.getElementById("partCodeLegend");
-    if (!wrap) {
-        return;
-    }
-
-    if (!items || !items.length) {
-        wrap.innerHTML = `<div class="empty-card">${escapeHtml(t("noPartLegend"))}</div>`;
-        return;
-    }
-
-    wrap.innerHTML = items.map(item => `
-        <span class="part-code-badge" style="${escapeHtmlAttr(buildPartCodeBadgeStyle(item.colorHex || "#D93F3F", item.textColorHex || "#FFFFFF"))}">
-            ${escapeHtml(item.partCode || "-")}
-            ${item.description ? `<small>${escapeHtml(item.description)}</small>` : ""}
-        </span>
-    `).join("");
-}
-
 function renderRanking(items) {
     const list = document.getElementById("rankingList");
 
@@ -847,7 +875,7 @@ function renderOperatorRanking(items) {
                 return;
             }
 
-            showLoading();
+            showLoading(t("loadingDetail"));
             send("production_operator_detail", {
                 ...buildFilterPayload(),
                 operatorCodigoFJ
@@ -914,7 +942,7 @@ function openOperatorDetail(operatorCodigoFJ) {
         return;
     }
 
-    showLoading();
+    showLoading(t("loadingDetail"));
     send("production_operator_detail", {
         ...buildFilterPayload(),
         operatorCodigoFJ
@@ -982,6 +1010,7 @@ function applyLocale() {
     setText("txtMachineLabel", t("machine"));
     setText("btnRefresh", t("refresh"));
     setText("btnImport", t("import"));
+    setText("btnReimport", t("reimport"));
     setText("txtMetricProduction", t("metricProduction"));
     setText("txtMetricRunning", t("metricRunning"));
     setText("txtMetricStopped", t("metricStopped"));
@@ -997,8 +1026,6 @@ function applyLocale() {
     setText("txtForecastPeople", t("forecastPeople"));
     setText("txtForecastCycle", t("forecastCycle"));
     setText("txtForecastCapacity", t("forecastCapacity"));
-    setText("txtPartLegendTitle", t("partLegendTitle"));
-    setText("txtPartLegendSubtitle", t("partLegendSubtitle"));
     setText("txtAreaBoardTitle", t("areaBoardTitle"));
     setText("txtAreaBoardSubtitle", t("areaBoardSubtitle"));
     setText("txtAreaDetailTitle", t("areaDetailTitle"));
@@ -1106,6 +1133,11 @@ function getShiftName(shift) {
     return state.locale === "ja-JP"
         ? (shift.nameJp || shift.namePt || `#${shift.id}`)
         : (shift.namePt || shift.nameJp || `#${shift.id}`);
+}
+
+function getShiftLabelById(shiftId) {
+    const shift = state.shifts.find(item => Number(item.id) === Number(shiftId));
+    return shift ? getShiftName(shift) : `#${shiftId}`;
 }
 
 function getMachineLabel(row) {
@@ -1326,7 +1358,8 @@ function resolvePartCodeStyle(row, partCode) {
 
     return {
         colorHex: configured.colorHex || "#D93F3F",
-        textColorHex: configured.textColorHex || "#FFFFFF"
+        textColorHex: configured.textColorHex || "#FFFFFF",
+        description: configured.description || ""
     };
 }
 
@@ -1670,16 +1703,20 @@ function formatDateOnly(value) {
     }).format(date);
 }
 
-function showLoading() {
+function showLoading(message) {
     document.getElementById("loadingOverlay").classList.remove("hidden");
+    setText("txtLoading", message || t("loadingDefault"));
     document.getElementById("btnImport").disabled = true;
     document.getElementById("btnRefresh").disabled = true;
+    document.getElementById("btnReimport").disabled = true;
 }
 
 function hideLoading() {
     document.getElementById("loadingOverlay").classList.add("hidden");
+    setText("txtLoading", t("loadingDefault"));
     document.getElementById("btnImport").disabled = false;
     document.getElementById("btnRefresh").disabled = false;
+    document.getElementById("btnReimport").disabled = false;
 }
 
 function closeOperatorModal() {

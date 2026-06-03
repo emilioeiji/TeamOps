@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
+using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using System.Windows.Forms;
@@ -65,7 +66,7 @@ namespace TeamOps.UI.Forms
                         break;
 
                     case "load_entity":
-                        SendEntityRows(ReadString(root, "entity"));
+                        SendEntityRows(ReadString(root, "entity"), root);
                         break;
 
                     case "save":
@@ -212,14 +213,16 @@ namespace TeamOps.UI.Forms
             }
         }
 
-        private void SendEntityRows(string entityKey)
+        private void SendEntityRows(string entityKey, JsonElement? root = null)
         {
             if (!_entities.TryGetValue(entityKey, out var entity))
                 throw new InvalidOperationException(L("Item administrativo invalido.", "\u7121\u52b9\u306a\u7ba1\u7406\u9805\u76ee\u3067\u3059\u3002"));
 
             using var conn = _factory.CreateOpenConnection();
             EnsureAdminSchema(conn);
-            var rows = entity.QueryRows(conn).ToList();
+            var rows = entityKey == "system_log"
+                ? LoadSystemLogRows(conn, root).ToList()
+                : entity.QueryRows(conn).ToList();
 
             PostJson(new
             {
@@ -228,9 +231,52 @@ namespace TeamOps.UI.Forms
                 {
                     entity = entityKey,
                     rows,
+                    filters = entityKey == "system_log" ? (root.HasValue ? ReadSystemLogFilters(root.Value) : GetDefaultSystemLogFilters()) : null,
                     lookups = BuildLookups()
                 }
             });
+        }
+
+        private static IEnumerable<object> LoadSystemLogRows(IDbConnection conn, JsonElement? root)
+        {
+            var filters = root.HasValue ? ReadSystemLogFilters(root.Value) : GetDefaultSystemLogFilters();
+            var startDate = ParseDateOrDefault(filters.DateStart, DateTime.Today.AddDays(-30));
+            var endDate = ParseDateOrDefault(filters.DateEnd, DateTime.Today);
+
+            if (endDate < startDate)
+            {
+                (startDate, endDate) = (endDate, startDate);
+            }
+
+            var user = (filters.UserFJ ?? string.Empty).Trim();
+            var module = (filters.Module ?? string.Empty).Trim();
+            var action = (filters.Action ?? string.Empty).Trim();
+
+            return conn.Query(
+                @"
+                    SELECT
+                        Id AS id,
+                        COALESCE(Timestamp, '') AS timestamp,
+                        COALESCE(UserFJ, '') AS userFJ,
+                        COALESCE(Module, '') AS module,
+                        COALESCE(Action, '') AS action,
+                        COALESCE(CAST(TargetId AS TEXT), '') AS targetId,
+                        COALESCE(Details, '') AS details
+                    FROM SystemLog
+                    WHERE date(Timestamp) BETWEEN date(@startDate) AND date(@endDate)
+                      AND (@user = '' OR UserFJ LIKE '%' || @user || '%')
+                      AND (@module = '' OR Module LIKE '%' || @module || '%')
+                      AND (@action = '' OR Action LIKE '%' || @action || '%')
+                    ORDER BY Timestamp DESC, Id DESC
+                    LIMIT 1000;",
+                new
+                {
+                    startDate = startDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    endDate = endDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    user,
+                    module,
+                    action
+                });
         }
 
         private void SaveEntity(string entityKey, JsonElement root)
@@ -1302,6 +1348,45 @@ namespace TeamOps.UI.Forms
                 _ => 0
             };
         }
+
+        private static SystemLogFilters ReadSystemLogFilters(JsonElement root)
+        {
+            if (!root.TryGetProperty("filters", out var filters) || filters.ValueKind != JsonValueKind.Object)
+            {
+                return GetDefaultSystemLogFilters();
+            }
+
+            return new SystemLogFilters(
+                ReadString(filters, "dateStart").Trim(),
+                ReadString(filters, "dateEnd").Trim(),
+                ReadString(filters, "userFJ").Trim(),
+                ReadString(filters, "module").Trim(),
+                ReadString(filters, "action").Trim());
+        }
+
+        private static SystemLogFilters GetDefaultSystemLogFilters()
+        {
+            return new SystemLogFilters(
+                (DateTime.Today.AddDays(-30)).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                string.Empty,
+                string.Empty,
+                string.Empty);
+        }
+
+        private static DateTime ParseDateOrDefault(string? value, DateTime fallback)
+        {
+            return DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
+                ? parsed.Date
+                : fallback.Date;
+        }
+
+        private sealed record SystemLogFilters(
+            string DateStart,
+            string DateEnd,
+            string UserFJ,
+            string Module,
+            string Action);
 
         private static string L(string pt, string jp)
         {

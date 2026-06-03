@@ -46,6 +46,29 @@
                     </label>
                     <button id="btnNew" type="button" class="btn-primary">Novo</button>
                 </div>
+                <div id="systemLogFilters" class="system-log-filters hidden">
+                    <label class="search-field">
+                        <span id="lblLogDateStart">Data inicial</span>
+                        <input id="logDateStart" type="date" class="input">
+                    </label>
+                    <label class="search-field">
+                        <span id="lblLogDateEnd">Data final</span>
+                        <input id="logDateEnd" type="date" class="input">
+                    </label>
+                    <label class="search-field">
+                        <span id="lblLogUser">Usuario</span>
+                        <input id="logUserFJ" type="text" class="input" placeholder="FJ">
+                    </label>
+                    <label class="search-field">
+                        <span id="lblLogModule">Modulo</span>
+                        <input id="logModule" type="text" class="input" placeholder="System">
+                    </label>
+                    <label class="search-field">
+                        <span id="lblLogAction">Acao</span>
+                        <input id="logAction" type="text" class="input" placeholder="LOAD">
+                    </label>
+                    <button id="btnApplyLogFilters" type="button" class="btn-primary">Atualizar</button>
+                </div>
             </section>
 
             <section id="entityMetrics" class="metrics-strip"></section>

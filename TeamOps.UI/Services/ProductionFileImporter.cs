@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Configuration;
 using System.Diagnostics;
 using System.Globalization;
@@ -10,6 +10,7 @@ using Dapper;
 using TeamOps.Core.Entities;
 using TeamOps.Data.Db;
 using TeamOps.Data.Repositories;
+using TeamOps.UI.Forms.Models;
 
 namespace TeamOps.Services
 {
@@ -36,7 +37,7 @@ namespace TeamOps.Services
             _ec2Importer = new Ec2AdministratorImporter(factory, machineRepository);
         }
 
-        public ProductionImportResult ImportLatest()
+        public ProductionImportResult ImportLatest(ProductionImportOptions? options = null)
         {
             var totalWatch = Stopwatch.StartNew();
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -94,6 +95,26 @@ namespace TeamOps.Services
             result.PerformanceMs["ReadFiles"] = readElapsed;
             result.PerformanceMs["Parse"] = parseElapsed;
 
+            if (options?.CleanExistingEvents == true)
+            {
+                if (options.CleanupFilter == null)
+                {
+                    throw new InvalidOperationException("Reimportacao com limpeza requer um filtro de recorte.");
+                }
+
+                if (parsedRows.Count == 0)
+                {
+                    throw new InvalidOperationException("Reimportacao com limpeza cancelada: nenhum registro valido foi encontrado para importar.");
+                }
+
+                var cleanupDate = options.CleanupFilter.Date.Date;
+                var safeDates = new[] { DateTime.Today.Date, DateTime.Today.AddDays(-1).Date };
+                if (!safeDates.Contains(cleanupDate))
+                {
+                    throw new InvalidOperationException("Reimportacao com limpeza so pode ser usada para hoje ou ontem.");
+                }
+            }
+
             var openWatch = Stopwatch.StartNew();
             using var conn = _factory.CreateOpenConnection();
             Record(result, "OpenConnection", openWatch);
@@ -105,6 +126,13 @@ namespace TeamOps.Services
             var txWatch = Stopwatch.StartNew();
             using var tx = conn.BeginTransaction();
             Record(result, "BeginTransaction", txWatch);
+
+            if (options?.CleanExistingEvents == true && options.CleanupFilter != null)
+            {
+                var cleanupWatch = Stopwatch.StartNew();
+                CleanupExistingEvents(conn, tx, options.CleanupFilter, result);
+                Record(result, "Cleanup", cleanupWatch);
+            }
 
             var loadMachinesWatch = Stopwatch.StartNew();
             var machineCache = conn.Query<Machine>(
@@ -365,6 +393,12 @@ namespace TeamOps.Services
                 return false;
             }
 
+            if (!ProductionMachineRepository.IsValidProductionMachineCode(machineCode))
+            {
+                ignoreReason = $"{Path.GetFileName(filePath)}: codigo de maquina invalido ({machineCode}).";
+                return false;
+            }
+
             if (!DateTime.TryParseExact(
                     $"{eventDate} {eventTime}",
                     "yyyy/MM/dd HH:mm:ss",
@@ -410,38 +444,36 @@ namespace TeamOps.Services
                 return 1;
             }
 
-            if (normalized.Contains("稼動中", StringComparison.Ordinal)
-                || normalized.Contains("運転", StringComparison.Ordinal)
+            if (normalized.Contains("\u7A3C\u50CD", StringComparison.Ordinal)
+                || normalized.Contains("\u904B\u8EE2", StringComparison.Ordinal)
                 || normalized.Contains("RUN", StringComparison.OrdinalIgnoreCase))
             {
                 return 0;
             }
 
-            if (normalized.Contains("停止中", StringComparison.Ordinal)
-                || normalized.Contains("停止", StringComparison.Ordinal)
+            if (normalized.Contains("\u505C\u6B62", StringComparison.Ordinal)
                 || normalized.Contains("STOP", StringComparison.OrdinalIgnoreCase))
             {
                 return 3;
             }
 
-            if (normalized.Contains("トラブル", StringComparison.Ordinal)
-                || normalized.Contains("異常", StringComparison.Ordinal)
+            if (normalized.Contains("\u7570\u5E38", StringComparison.Ordinal)
+                || normalized.Contains("\u30A8\u30E9\u30FC", StringComparison.Ordinal)
                 || normalized.Contains("ERROR", StringComparison.OrdinalIgnoreCase)
                 || normalized.Contains("ALARM", StringComparison.OrdinalIgnoreCase))
             {
                 return 4;
             }
 
-            if (normalized.Contains("サンプル", StringComparison.Ordinal)
-                || normalized.Contains("レス処理", StringComparison.Ordinal)
-                || normalized.Contains("吸引時間", StringComparison.Ordinal))
+            if (normalized.Contains("\u30B5\u30F3\u30D7\u30EB", StringComparison.Ordinal)
+                || normalized.Contains("\u30EC\u30B9\u51E6\u7406", StringComparison.Ordinal)
+                || normalized.Contains("\u5438\u5F15\u6642\u9593", StringComparison.Ordinal))
             {
                 return 1;
             }
 
             return 1;
         }
-
         private static int? ResolveSectorId(string lineCode)
         {
             if (TextComparer.Equals(lineCode, "211D"))
@@ -600,21 +632,38 @@ namespace TeamOps.Services
             }
 
             var normalized = (statusText ?? string.Empty).Trim();
-            if (normalized.Contains("稼働中", StringComparison.Ordinal)
-                || normalized.Contains("運転", StringComparison.Ordinal)
+            if (normalized.Contains("稼働", StringComparison.Ordinal)
+                || normalized.Contains("運転", StringComparison.Ordinal))
+            {
+                return 0;
+            }
+
+            if (normalized.Contains("停止", StringComparison.Ordinal))
+            {
+                return 3;
+            }
+
+            if (normalized.Contains("異常", StringComparison.Ordinal)
+                || normalized.Contains("エラー", StringComparison.Ordinal))
+            {
+                return 4;
+            }
+
+            if (normalized.Contains("遞ｼ蜒堺ｸｭ", StringComparison.Ordinal)
+                || normalized.Contains("驕玖ｻ｢", StringComparison.Ordinal)
                 || normalized.Contains("RUN", StringComparison.OrdinalIgnoreCase))
             {
                 return 0;
             }
 
-            if (normalized.Contains("停止", StringComparison.Ordinal)
+            if (normalized.Contains("蛛懈ｭ｢", StringComparison.Ordinal)
                 || normalized.Contains("STOP", StringComparison.OrdinalIgnoreCase))
             {
                 return 3;
             }
 
-            if (normalized.Contains("トラブル", StringComparison.Ordinal)
-                || normalized.Contains("エラー", StringComparison.Ordinal)
+            if (normalized.Contains("繝医Λ繝悶Ν", StringComparison.Ordinal)
+                || normalized.Contains("繧ｨ繝ｩ繝ｼ", StringComparison.Ordinal)
                 || normalized.Contains("ERROR", StringComparison.OrdinalIgnoreCase)
                 || normalized.Contains("ALARM", StringComparison.OrdinalIgnoreCase))
             {
@@ -738,6 +787,63 @@ namespace TeamOps.Services
             result.BatchMessage = "BAT executado com sucesso.";
         }
 
+        private static void CleanupExistingEvents(
+            System.Data.IDbConnection conn,
+            System.Data.IDbTransaction tx,
+            ProductionDashboardFilter filter,
+            ProductionImportResult result)
+        {
+            var start = filter.Date.Date.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+            var end = filter.Date.Date.AddDays(1).ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+
+            var conditions = new StringBuilder("WHERE EventDateTime >= @start AND EventDateTime < @end");
+            var parameters = new DynamicParameters();
+            parameters.Add("@start", start);
+            parameters.Add("@end", end);
+
+            if (filter.SectorId > 0)
+            {
+                conditions.Append(" AND SectorId = @sectorId");
+                parameters.Add("@sectorId", filter.SectorId);
+            }
+
+            if (filter.LocalId > 0)
+            {
+                conditions.Append(" AND LocalId = @localId");
+                parameters.Add("@localId", filter.LocalId);
+            }
+
+            if (filter.MachineId > 0)
+            {
+                conditions.Append(" AND MachineId = @machineId");
+                parameters.Add("@machineId", filter.MachineId);
+            }
+
+            var machineIds = conn.Query<int>(
+                    $@"SELECT DISTINCT MachineId FROM MachineEvents {conditions};",
+                    parameters,
+                    tx)
+                .Distinct()
+                .ToList();
+
+            var deletedEvents = conn.Execute(
+                $@"DELETE FROM MachineEvents {conditions};",
+                parameters,
+                tx);
+
+            var deletedCurrent = machineIds.Count == 0
+                ? 0
+                : conn.Execute(
+                    "DELETE FROM MachineCurrentStatus WHERE MachineId IN @machineIds;",
+                    new { machineIds },
+                    tx);
+
+            result.CleanupPerformed = true;
+            result.CleanupEventsDeleted = deletedEvents;
+            result.CleanupCurrentStatusesDeleted = deletedCurrent;
+            result.CleanupMessage = $"Limpeza executada: {deletedEvents} evento(s) e {deletedCurrent} status atual(is) removidos.";
+        }
+
         private readonly record struct ProductionImportSettings(
             string EventsDirectory,
             string BatchPath,
@@ -745,6 +851,12 @@ namespace TeamOps.Services
             string SourceEventsDirectory,
             string SourceDatDirectory,
             int TimeoutSeconds);
+
+        public sealed class ProductionImportOptions
+        {
+            public bool CleanExistingEvents { get; init; }
+            public ProductionDashboardFilter? CleanupFilter { get; init; }
+        }
 
         private struct ParsedLine
         {

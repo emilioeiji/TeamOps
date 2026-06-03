@@ -607,6 +607,9 @@ function markRead(id) {
 }
 
 function preview(id) {
+    console.debug("[HikitsuguiLeaderRead][PreviewClick]", {
+        HikitsuguiId: id
+    });
     send("preview", { id });
 }
 
@@ -620,6 +623,14 @@ function openModal(row) {
     const equipmentName = getLocalizedValue(row, "EquipmentPt", "EquipmentJp");
     const localName = getLocalizedValue(row, "LocalPt", "LocalJp");
     const sectorName = getLocalizedValue(row, "SectorPt", "SectorJp");
+    const descriptionInfo = resolveDescriptionField(row);
+
+    console.debug("[HikitsuguiLeaderRead][PreviewDescription]", {
+        HikitsuguiId: row.Id,
+        DescriptionFromPayload: descriptionInfo.value,
+        DescriptionLength: descriptionInfo.value.length,
+        FieldNameUsed: descriptionInfo.fieldName
+    });
 
     body.innerHTML = `
         <b>${escapeHtml(t("labelId"))}:</b> ${row.Id}<br>
@@ -631,7 +642,7 @@ function openModal(row) {
         <b>${escapeHtml(t("labelSector"))}:</b> ${escapeHtml(sectorName)}<br><br>
 
         <b>${escapeHtml(t("labelDescription"))}:</b><br>
-        <div id="descHtml"></div>
+        <div id="descHtml" class="description-box"></div>
         <br><br>
 
         <h3>${escapeHtml(t("repliesTitle"))}</h3>
@@ -641,7 +652,7 @@ function openModal(row) {
         <div id="attachmentList" class="mt-2"></div>
     `;
 
-    document.getElementById("descHtml").innerHTML = row.DescriptionHtml ?? "";
+    document.getElementById("descHtml").innerHTML = descriptionInfo.value;
 
     const replyEditor = document.getElementById("replyEditor");
     if (replyEditor) {
@@ -653,6 +664,31 @@ function openModal(row) {
         send("select_replies", { id: row.Id });
         send("select_attachments", { id: row.Id });
     }, 50);
+}
+
+function resolveDescriptionField(row) {
+    const candidates = [
+        ["DescriptionHtml", row.DescriptionHtml],
+        ["descriptionHtml", row.descriptionHtml],
+        ["Description", row.Description],
+        ["description", row.description],
+        ["Descricao", row.Descricao],
+        ["descricao", row.descricao]
+    ];
+
+    for (const [fieldName, value] of candidates) {
+        if (value !== undefined && value !== null && String(value).length > 0) {
+            return {
+                fieldName,
+                value: String(value)
+            };
+        }
+    }
+
+    return {
+        fieldName: "none",
+        value: ""
+    };
 }
 
 function openEditModal(row) {

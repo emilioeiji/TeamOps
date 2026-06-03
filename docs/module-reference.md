@@ -96,10 +96,11 @@
 
 - **Finalidade:** importar eventos de maquinas e apresentar status atual/historico.
 - **Arquivos principais:** `HTMLFormProductionMonitor.cs`, `ProductionFileImporter.cs`, `ProductionPlanDatImporter.cs`, `ProductionAnalyticsService.cs`, `ui/production-monitor/*`.
-- **Dependencias:** `Machines`, `MachineEvents`, `MachineCurrentStatus`, `MachineStatuses`, arquivos TXT/DAT, BAT.
+- **Dependencias:** `Machines`, `MachineEvents`, `MachineCurrentStatus`, `MachineStatuses`, arquivos TXT/DAT, BAT, EC2 Administrator e configuracoes em `App.config`.
 - **Inputs:** arquivos `yyMMdd_211D_E.txt`, `yyMMdd_2400_E.txt`, DATs de plano.
-- **Outputs:** eventos importados, maquinas criadas, status atual.
-- **Riscos:** layout/encoding inesperado, timeout do BAT, rede lenta.
+- **Outputs:** eventos importados, maquinas criadas, status atual, indicadores de kadouritsu, EC2, codigos parametrizados e previsao G-Bareru quando configurada.
+- **Probe:** comandos documentados em `docs/production-monitor-guide.md`.
+- **Riscos:** layout/encoding inesperado, timeout do BAT, rede lenta, status desconhecido sem classificacao setorial, config apontando para banco errado.
 
 ## Hikitsugui
 
