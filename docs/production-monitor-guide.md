@@ -28,7 +28,7 @@ Em producao, confirme que o `.config` do Probe aponta para o mesmo banco usado p
 | Comando | Exemplo | O que faz | Quando usar |
 | --- | --- | --- | --- |
 | `import` | `.\ProductionMonitorProbe.exe import` | Executa a importacao de producao usando as configuracoes atuais. Mostra arquivos lidos, linhas importadas/ignoradas, maquinas criadas, resultado do BAT, resultado EC2 e tempos de performance. | Validar se a importacao roda fora da tela principal. |
-| `import-profile` | `.\ProductionMonitorProbe.exe import-profile --date 2026-06-01 --sector dad` | Executa importacao e, se houver `--date`, mede tambem analytics pos-importacao para a data/setor informado. | Investigar lentidao, travamento ou divergencia depois de importar. |
+| `import-profile` | `.\ProductionMonitorProbe.exe import-profile --date 2026-06-01 --sector dad` | Executa importacao normal e, se houver `--date`, mede tambem analytics pos-importacao para a data/setor informado. Use `--reimport` para limpar e reprocessar a data informada. | Investigar lentidao, travamento ou divergencia depois de importar. |
 | `dashboard` | `.\ProductionMonitorProbe.exe dashboard` | Monta dashboards de exemplo pelo backend e imprime kadouritsu, maquinas, areas e ranking. | Conferir se o backend do dashboard consegue calcular dados sem abrir a UI. |
 | `db-index-check` | `.\ProductionMonitorProbe.exe db-index-check` | Lista os indices existentes e marca indices obrigatorios como `OK` ou `MISSING`. | Validar performance e migrations em producao/homologacao. |
 | `schema-check` | `.\ProductionMonitorProbe.exe schema-check` | Valida schema do monitor de producao, integridade SQLite, tabelas, colunas, indices e seeds principais. Nao altera dados. | Primeiro comando para checar banco em producao. |
@@ -53,6 +53,13 @@ Em producao, confirme que o `.config` do Probe aponta para o mesmo banco usado p
 - `--sector dad`: filtra o analytics para DAD.
 - `--sector gbareru` ou `--sector g-bareru`: filtra para G-Bareru.
 - `--sector 1`, `--sector 2`: aceita tambem o Id numerico do setor.
+- `--reimport`: opcional e destrutivo para o recorte informado; exige `--date`, limpa eventos/status do filtro e procura arquivos `YYMMDD_211D_E.txt` e `YYMMDD_2400_E.txt`.
+
+Exemplo de reprocessamento controlado por data:
+
+```powershell
+.\ProductionMonitorProbe.exe import-profile --date 2026-04-29 --sector dad --reimport
+```
 
 ### `status-report`
 
@@ -122,6 +129,90 @@ Se a lista estiver correta, aplicar:
 ```powershell
 .\ProductionMonitorProbe.exe import-profile --date 2026-06-01 --sector dad
 ```
+
+## Manutencao segura para dados antigos de producao
+
+Dados antigos nao conformes podem deixar a tela **Producao** mais pesada e tambem poluir seletores, listas de maquinas e diagnosticos. Exemplos comuns:
+
+- maquinas criadas por parser antigo com codigo invalido, como data no lugar da maquina;
+- estados EC2 antigos marcados como `NOT_PRESENT_IN_LATEST_ADMINISTRATOR_SNAPSHOT`;
+- eventos duplicados de testes antigos ou importacoes feitas com arquivo errado;
+- status com texto quebrado por encoding antigo.
+
+O procedimento recomendado para producao e sempre executar primeiro em modo diagnostico, revisar a saida e aplicar limpeza apenas quando o dry-run mostrar somente itens seguros.
+
+### Script pronto para producao
+
+O publish do `ProductionMonitorProbe` inclui o script:
+
+```powershell
+.\RunProductionMaintenance.ps1
+```
+
+Por padrao, ele **nao altera dados**. Ele faz:
+
+- identifica o banco pelo `.config` do probe;
+- cria backup do arquivo `.db` na pasta de saida;
+- roda `schema-check`;
+- roda `db-index-check`;
+- roda `production-diagnostics` antes da limpeza;
+- roda `machine-cleanup` em modo dry-run;
+- grava todas as saidas em arquivos `.out.txt` e `.err.txt`.
+
+Exemplo seguro para primeira execucao:
+
+```powershell
+cd C:\caminho\do\publish\ProductionMonitorProbe
+.\RunProductionMaintenance.ps1
+```
+
+Depois de revisar `04-machine-cleanup-dry-run.out.txt`, se a lista tiver apenas maquinas invalidas confirmadas, aplique:
+
+```powershell
+.\RunProductionMaintenance.ps1 -ApplyCleanup
+```
+
+Tambem e possivel informar o banco e a pasta de saida manualmente:
+
+```powershell
+.\RunProductionMaintenance.ps1 -DatabasePath C:\TeamOps\DB\teamops.db -OutputDirectory C:\TeamOps\Maintenance\production-20260604
+```
+
+### O que o `machine-cleanup --apply` faz
+
+O comando nao apaga historico de producao. Ele inativa maquinas ativas com codigo claramente invalido, por exemplo registros criados por importacao incorreta onde o codigo da maquina virou uma data ou numero quebrado.
+
+Use o modo apply somente depois de confirmar o dry-run:
+
+```powershell
+.\ProductionMonitorProbe.exe machine-cleanup
+.\ProductionMonitorProbe.exe machine-cleanup --apply
+```
+
+### Checklist antes de aplicar em producao
+
+1. Confirmar que `ProductionMonitorProbe.dll.config` aponta para o mesmo `DatabasePath` usado pela UI.
+2. Fechar a tela **Producao** e evitar importacao simultanea.
+3. Executar `.\RunProductionMaintenance.ps1` sem `-ApplyCleanup`.
+4. Conferir se o backup `.db` foi criado.
+5. Revisar `schema-check`, `db-index-check` e `production-diagnostics`.
+6. Revisar cada linha em `04-machine-cleanup-dry-run.out.txt`.
+7. Aplicar apenas se todos os itens listados forem realmente invalidos.
+8. Abrir o Production Monitor e validar filtros, troca de dia, lista de maquinas e importacao.
+
+### Quando nao aplicar
+
+Nao rode com `-ApplyCleanup` se:
+
+- aparecer maquina real na lista do dry-run;
+- o backup nao foi criado;
+- o `.config` estiver apontando para banco errado;
+- houver importacao em andamento;
+- o arquivo `.db` estiver em rede instavel ou sem permissao de escrita.
+
+### Sobre `.wal` e `.shm`
+
+O TeamOps configura SQLite com `journal_mode=DELETE`, para evitar arquivos persistentes `.wal` e `.shm`. Se algum `.wal` ou `.shm` aparecer, nao apague com o sistema aberto. Primeiro feche UI/probe/importacoes, confirme que nao ha processo usando o banco e entao investigue a configuracao do executavel que criou esses arquivos.
 
 ## Como interpretar warnings do `status-report`
 

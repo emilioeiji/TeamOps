@@ -1,0 +1,280 @@
+ProductionMonitorProbe - comandos atualizados
+=============================================
+
+Executar sempre na pasta publicada do probe:
+
+    cd C:\caminho\do\publish\ProductionMonitorProbe
+
+Confirmar antes de usar em producao:
+
+    ProductionMonitorProbe.dll.config deve apontar para o mesmo banco do TeamOps.UI.
+    Exemplo esperado:
+    DatabasePath = C:\TeamOps\DB\teamops.db
+
+
+VALIDACAO RAPIDA
+----------------
+
+1. Validar schema do banco:
+
+    .\ProductionMonitorProbe.exe schema-check
+
+2. Validar indices de performance:
+
+    .\ProductionMonitorProbe.exe db-index-check
+
+3. Diagnosticar base de producao:
+
+    .\ProductionMonitorProbe.exe production-diagnostics
+
+4. Diagnosticar EC2 Administrator:
+
+    .\ProductionMonitorProbe.exe ec2-diagnostics
+
+5. Montar dashboard pelo backend:
+
+    .\ProductionMonitorProbe.exe dashboard
+
+
+IMPORTACAO
+----------
+
+Importacao normal usando o App.config publicado:
+
+    .\ProductionMonitorProbe.exe import
+
+O comando executa:
+
+    - BAT configurado em ProductionImportBatchPath
+    - leitura de ProductionEventsDirectory
+    - importacao dos arquivos de eventos
+    - atualizacao de MachineCurrentStatus
+    - importacao EC2 Administrator se Ec2AdministratorFilePath estiver configurado
+    - estatisticas e tempos de performance
+
+
+PERFIL DE IMPORTACAO E ANALYTICS
+--------------------------------
+
+Medir importacao e analytics de uma data/setor, sem limpar dados:
+
+    .\ProductionMonitorProbe.exe import-profile --date 2026-06-03 --sector gbareru
+
+Setores aceitos:
+
+    --sector gbareru
+    --sector g-bareru
+    --sector dad
+    --sector 1
+    --sector 2
+
+Observacao importante:
+
+    --date sozinho NAO limpa eventos antigos.
+    Ele apenas informa a data usada na analise pos-importacao.
+
+
+REIMPORTACAO / REPROCESSAMENTO POR DATA
+---------------------------------------
+
+Modo controlado e destrutivo para reprocessar um dia:
+
+    .\ProductionMonitorProbe.exe import-profile --date 2026-04-29 --sector dad --reimport
+
+O --reimport faz:
+
+    - limpa eventos do recorte informado
+    - limpa MachineCurrentStatus das maquinas afetadas
+    - procura arquivos da data informada:
+        YYMMDD_211D_E.txt
+        YYMMDD_2400_E.txt
+    - importa novamente
+    - mede analytics depois da importacao
+
+Exemplo para 29/04/2026:
+
+    .\ProductionMonitorProbe.exe import-profile --date 2026-04-29 --reimport
+
+Use sem setor para reprocessar o dia inteiro.
+Use com setor para limitar o recorte:
+
+    .\ProductionMonitorProbe.exe import-profile --date 2026-04-29 --sector gbareru --reimport
+    .\ProductionMonitorProbe.exe import-profile --date 2026-04-29 --sector dad --reimport
+
+Nao usar --reimport se:
+
+    - os arquivos da data nao estiverem em ProductionEventsDirectory ou Source\Events
+    - a UI estiver importando ao mesmo tempo
+    - o .config apontar para banco diferente do TeamOps.UI
+    - nao houver backup recente do banco
+
+
+EC2 ADMINISTRATOR
+-----------------
+
+Diagnosticar arquivo, hash, maquinas, media e estados antigos:
+
+    .\ProductionMonitorProbe.exe ec2-diagnostics
+
+Forcar reimportacao do ultimo arquivo EC2 configurado:
+
+    .\ProductionMonitorProbe.exe ec2-reset-latest
+
+Uso restrito:
+
+    ec2-reset-latest remove a ultima importacao EC2 e snapshots ligados a ela.
+    Use somente com suporte tecnico e depois rode import/import-profile novamente.
+
+
+STATUS POR SETOR
+----------------
+
+Validar regras defensivas de status:
+
+    .\ProductionMonitorProbe.exe status-hardening
+
+Gerar relatorio de status encontrados:
+
+    .\ProductionMonitorProbe.exe status-report --start 2026-06-01 --end 2026-06-02 --sector dad
+
+Exportar CSV:
+
+    .\ProductionMonitorProbe.exe status-report --start 2026-06-01 --end 2026-06-02 --sector dad --csv dad-status.csv
+
+Warnings comuns:
+
+    UNKNOWN_DAD_STATUS
+        Codigo DAD fora da lista esperada.
+
+    FALLBACK_USED_FOR_DAD
+        Status setorial nao encontrado; usou regra global.
+
+    AUTO_CREATED_STATUS
+        Status criado automaticamente ou fora do seed esperado.
+
+    POSSIBLE_EFFICIENCY_IMPACT
+        Status nao rodando pode estar impactando kadouritsu.
+
+
+SCHEMA E REPARO
+---------------
+
+Validar sem alterar dados:
+
+    .\ProductionMonitorProbe.exe schema-check
+
+Reparar schema/seeds/indices quando necessario:
+
+    .\ProductionMonitorProbe.exe schema-repair
+
+Uso restrito:
+
+    schema-repair altera estrutura/seeds do banco.
+    Rodar somente com backup e suporte tecnico.
+
+
+LIMPEZA DE MAQUINAS INVALIDAS
+-----------------------------
+
+Simular limpeza sem alterar dados:
+
+    .\ProductionMonitorProbe.exe machine-cleanup
+
+Aplicar limpeza:
+
+    .\ProductionMonitorProbe.exe machine-cleanup --apply
+
+O apply inativa maquinas claramente invalidas, por exemplo codigo de maquina
+contendo data ou numero quebrado criado por importacao antiga incorreta.
+
+Nao apaga historico de eventos.
+
+
+MANUTENCAO SEGURA EM PRODUCAO
+-----------------------------
+
+Script recomendado para producao:
+
+    .\RunProductionMaintenance.ps1
+
+Por padrao NAO altera dados.
+
+Ele executa:
+
+    - backup do banco
+    - schema-check
+    - db-index-check
+    - production-diagnostics
+    - machine-cleanup em DRY RUN
+    - logs em maintenance-YYYYMMDD_HHMMSS
+
+Aplicar limpeza somente depois de revisar o dry-run:
+
+    .\RunProductionMaintenance.ps1 -ApplyCleanup
+
+Com banco e pasta de saida informados:
+
+    .\RunProductionMaintenance.ps1 -DatabasePath C:\TeamOps\DB\teamops.db -OutputDirectory C:\TeamOps\Maintenance\production-20260604
+
+
+DEMO
+----
+
+Executar importacao e dashboard:
+
+    .\ProductionMonitorProbe.exe demo
+
+Sem comando, o probe tambem executa o fluxo demo:
+
+    .\ProductionMonitorProbe.exe
+
+
+CONFIG MINIMO DO PROBE
+----------------------
+
+Chaves esperadas no ProductionMonitorProbe.dll.config:
+
+    DatabasePath
+    ProductionEventsDirectory
+    ProductionSourceEventsDirectory
+    ProductionSourceDatDirectory
+    ProductionImportBatchPath
+    ProductionImportCompletionFile
+    ProductionImportTimeoutSeconds
+    Ec2AdministratorFilePath
+    MachineStoppedIgnoreAfterMinutes
+    Ec2AdministratorRunningStatusKeywords
+
+
+ORDEM SUGERIDA EM PRODUCAO
+--------------------------
+
+1. Fechar a tela Producao se for aplicar limpeza ou reimportacao.
+2. Rodar:
+
+    .\ProductionMonitorProbe.exe schema-check
+    .\ProductionMonitorProbe.exe db-index-check
+    .\ProductionMonitorProbe.exe production-diagnostics
+    .\ProductionMonitorProbe.exe ec2-diagnostics
+    .\ProductionMonitorProbe.exe machine-cleanup
+
+3. Se precisar aplicar manutencao:
+
+    .\RunProductionMaintenance.ps1
+
+4. Revisar dry-run.
+5. Se aprovado:
+
+    .\RunProductionMaintenance.ps1 -ApplyCleanup
+
+6. Para reprocessar uma data especifica:
+
+    .\ProductionMonitorProbe.exe import-profile --date YYYY-MM-DD --sector dad --reimport
+
+7. Abrir o Production Monitor e validar:
+
+    - troca de dia
+    - lista de maquinas
+    - medias EC2
+    - destaque de codigo
+    - dashboard

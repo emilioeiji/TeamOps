@@ -339,6 +339,7 @@ namespace TeamOps.Data.Db
                 SeedDadMachineStatuses(conn);
                 SeedProductionPartCodeStyles(conn);
                 NormalizeProductionStatuses(conn);
+                NormalizeKnownMachineStatusLabels(conn);
                 _ensured = true;
             }
         }
@@ -553,6 +554,92 @@ namespace TeamOps.Data.Db
                         ELSE 'StopCounts'
                     END
                     WHERE trim(COALESCE(Classification, '')) = '';"
+            );
+        }
+
+        private static void NormalizeKnownMachineStatusLabels(IDbConnection conn)
+        {
+            conn.Execute(
+                @"
+                    UPDATE MachineStatuses
+                    SET NameJp = '稼働中', NamePt = 'Rodando', DisplayCode = 0, Classification = 'Running'
+                    WHERE (SectorId IS NULL OR SectorId = 1)
+                      AND StatusCode = 0;
+
+                    UPDATE MachineStatuses
+                    SET NameJp = '停止中'
+                    WHERE SectorId = 1
+                      AND StatusCode = 1;
+
+                    UPDATE MachineStatuses
+                    SET NameJp = 'レス処理'
+                    WHERE SectorId = 1
+                      AND StatusCode IN (2, 17);
+
+                    UPDATE MachineStatuses
+                    SET NameJp = '停止中', DisplayCode = 3
+                    WHERE SectorId = 1
+                      AND StatusCode = 3;
+
+                    UPDATE MachineStatuses
+                    SET NameJp = '吸引時間'
+                    WHERE SectorId = 1
+                      AND StatusCode = 18;
+
+                    UPDATE MachineStatuses
+                    SET NameJp = 'サンプル'
+                    WHERE SectorId = 1
+                      AND StatusCode = 19;
+
+                    UPDATE MachineStatuses
+                    SET NameJp = 'レス処理'
+                    WHERE SectorId IS NULL
+                      AND StatusCode = 17;
+
+                    UPDATE MachineStatuses
+                    SET NameJp = '吸引時間'
+                    WHERE SectorId IS NULL
+                      AND StatusCode = 18;
+
+                    UPDATE MachineStatuses
+                    SET NameJp = 'サンプル'
+                    WHERE SectorId IS NULL
+                      AND StatusCode = 19;
+
+                    UPDATE MachineStatuses
+                    SET NameJp = '運転'
+                    WHERE SectorId = 2
+                      AND StatusCode = 0;
+
+                    UPDATE MachineStatuses
+                    SET NameJp = '停止中'
+                    WHERE SectorId = 2
+                      AND StatusCode = 1;
+
+                    UPDATE MachineStatuses
+                    SET NameJp = '清掃'
+                    WHERE SectorId = 2
+                      AND StatusCode = 3;
+
+                    UPDATE MachineStatuses
+                    SET NameJp = '異常'
+                    WHERE SectorId = 2
+                      AND StatusCode = 4;
+
+                    UPDATE MachineStatuses
+                    SET NameJp = 'レス処理'
+                    WHERE SectorId = 2
+                      AND StatusCode = 17;
+
+                    UPDATE MachineStatuses
+                    SET NameJp = '吸引時間'
+                    WHERE SectorId = 2
+                      AND StatusCode = 18;
+
+                    UPDATE MachineStatuses
+                    SET NameJp = 'サンプル'
+                    WHERE SectorId = 2
+                      AND StatusCode = 19;"
             );
         }
 

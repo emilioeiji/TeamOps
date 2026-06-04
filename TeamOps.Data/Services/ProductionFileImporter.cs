@@ -50,11 +50,8 @@ namespace TeamOps.Services
             Record(result, "Batch", batchWatch);
 
             var discoverWatch = Stopwatch.StartNew();
-            var files = new[]
-                {
-                    DateTime.Today.AddDays(-1),
-                    DateTime.Today
-                }
+            var importDates = ResolveImportDates(options);
+            var files = importDates
                 .SelectMany(date => FileSuffixes.Select(suffix => Path.Combine(settings.EventsDirectory, $"{date:yyMMdd}_{suffix}_E.txt")))
                 .Where(File.Exists)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -108,10 +105,11 @@ namespace TeamOps.Services
                 }
 
                 var cleanupDate = options.CleanupFilter.Date.Date;
-                var safeDates = new[] { DateTime.Today.Date, DateTime.Today.AddDays(-1).Date };
-                if (!safeDates.Contains(cleanupDate))
+                var hasFileForCleanupDate = files.Any(path =>
+                    Path.GetFileName(path).StartsWith(cleanupDate.ToString("yyMMdd", CultureInfo.InvariantCulture), StringComparison.OrdinalIgnoreCase));
+                if (!hasFileForCleanupDate)
                 {
-                    throw new InvalidOperationException("Reimportacao com limpeza so pode ser usada para hoje ou ontem.");
+                    throw new InvalidOperationException($"Reimportacao cancelada: nenhum arquivo de eventos do dia {cleanupDate:yyyy-MM-dd} foi encontrado apos executar o BAT.");
                 }
             }
 
@@ -275,6 +273,20 @@ namespace TeamOps.Services
             return result;
         }
 
+        private static IReadOnlyList<DateTime> ResolveImportDates(ProductionImportOptions? options)
+        {
+            if (options?.CleanupFilter != null)
+            {
+                return new[] { options.CleanupFilter.Date.Date };
+            }
+
+            return new[]
+            {
+                DateTime.Today.AddDays(-1).Date,
+                DateTime.Today.Date
+            };
+        }
+
         private static List<MachineEvent> FilterDuplicateEvents(
             System.Data.IDbConnection conn,
             System.Data.IDbTransaction tx,
@@ -340,19 +352,39 @@ namespace TeamOps.Services
         {
             var raw = File.ReadAllBytes(filePath);
 
-            foreach (var encoding in new[] { Encoding.UTF8, Encoding.GetEncoding(932), Encoding.Default })
+            foreach (var encoding in new[]
             {
-                var text = encoding.GetString(raw);
-                if (text.Contains('|'))
+                new UTF8Encoding(false, true),
+                Encoding.GetEncoding(932, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback)
+            })
+            {
+                try
                 {
-                    return text
-                        .Replace("\r\n", "\n", StringComparison.Ordinal)
-                        .Replace('\r', '\n')
-                        .Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                    var text = encoding.GetString(raw);
+                    if (text.Contains('|') && !ContainsBrokenEncoding(text))
+                    {
+                        return text
+                            .Replace("\r\n", "\n", StringComparison.Ordinal)
+                            .Replace('\r', '\n')
+                            .Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                    }
+                }
+                catch (DecoderFallbackException)
+                {
+                    // Try the next expected production file encoding.
                 }
             }
 
             return Array.Empty<string>();
+        }
+
+        private static bool ContainsBrokenEncoding(string text)
+        {
+            return text.Contains('\uFFFD', StringComparison.Ordinal)
+                || text.Contains("ã", StringComparison.Ordinal)
+                || text.Contains("å", StringComparison.Ordinal)
+                || text.Contains("ç", StringComparison.Ordinal)
+                || text.Contains("æ", StringComparison.Ordinal);
         }
 
         private static bool TryParseLine(

@@ -967,6 +967,11 @@ namespace TeamOps.Services
 
         private static bool LooksLikeHeader(IReadOnlyList<string> columns)
         {
+            if (columns.Any(column => ProductionMachineRepository.IsValidProductionMachineCode(column)))
+            {
+                return false;
+            }
+
             var joined = string.Join(" ", columns).ToLowerInvariant();
             var score = 0;
             if (joined.Contains("equipment", StringComparison.Ordinal)
@@ -1360,6 +1365,11 @@ namespace TeamOps.Services
 
         private static bool IsSummaryLine(IReadOnlyList<string> columns)
         {
+            if (columns.Any(column => ProductionMachineRepository.IsValidProductionMachineCode(column)))
+            {
+                return false;
+            }
+
             var joined = string.Join(" ", columns.Where(value => !string.IsNullOrWhiteSpace(value))).Trim();
             if (string.IsNullOrWhiteSpace(joined))
             {

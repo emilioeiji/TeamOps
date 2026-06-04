@@ -352,10 +352,8 @@ function reimportProduction() {
     }
 
     const filter = buildFilterPayload();
-    const todayIso = formatDateForInput(new Date());
-    const yesterdayIso = formatDateForInput(new Date(Date.now() - 24 * 60 * 60 * 1000));
-    if (filter.date !== todayIso && filter.date !== yesterdayIso) {
-        alert("Reimportar com limpeza so pode ser usado para hoje ou ontem, porque o importador trabalha com os arquivos mais recentes.");
+    if (!filter.date) {
+        alert("Selecione a data que deseja reimportar.");
         return;
     }
 
@@ -369,6 +367,7 @@ function reimportProduction() {
 
     const confirmMessage = [
         "Reimportar vai apagar os eventos e o status atual do recorte selecionado antes de carregar tudo de novo.",
+        "O sistema vai procurar os arquivos dessa data, por exemplo YYMMDD_211D_E.txt e YYMMDD_2400_E.txt.",
         "",
         "Escopo:",
         ...scopeParts.map(part => `- ${part}`),

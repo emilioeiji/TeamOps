@@ -151,11 +151,25 @@ void RunImportProfile(string[] profileArgs)
     var options = ImportProfileOptions.Parse(profileArgs);
     var totalWatch = Stopwatch.StartNew();
     PrintRuntimeConfigDiagnostics();
-    var result = importer.ImportLatest();
+    var importOptions = options.Reimport && options.Date.HasValue
+        ? new ProductionFileImporter.ProductionImportOptions
+        {
+            CleanExistingEvents = true,
+            CleanupFilter = new ProductionDashboardFilter
+            {
+                Date = options.Date.Value.Date,
+                SectorId = options.SectorId
+            }
+        }
+        : null;
+    var result = importer.ImportLatest(importOptions);
     totalWatch.Stop();
 
     Console.WriteLine("=== IMPORT PROFILE ===");
     Console.WriteLine($"Database={settings.DatabasePath}");
+    Console.WriteLine($"ReimportDate={(options.Date.HasValue ? options.Date.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : "(none)")}");
+    Console.WriteLine($"ReimportSector={options.SectorLabel}");
+    Console.WriteLine($"ReimportMode={(options.Reimport ? "enabled" : "disabled")}");
     Console.WriteLine($"FilesRead={result.FilesRead}");
     Console.WriteLine($"LinesRead={result.LinesRead}");
     Console.WriteLine($"Imported={result.Imported}");
@@ -1640,12 +1654,14 @@ sealed class ImportProfileOptions
 {
     public DateTime? Date { get; private init; }
     public int SectorId { get; private init; }
+    public bool Reimport { get; private init; }
     public string SectorLabel => SectorId <= 0 ? "(all)" : SectorId == 2 ? "dad" : SectorId == 1 ? "gbareru" : SectorId.ToString(CultureInfo.InvariantCulture);
 
     public static ImportProfileOptions Parse(string[] args)
     {
         DateTime? date = null;
         var sectorId = 0;
+        var reimport = false;
 
         for (var index = 0; index < args.Length; index++)
         {
@@ -1663,12 +1679,17 @@ sealed class ImportProfileOptions
                         ? 1
                         : int.Parse(sectorValue, CultureInfo.InvariantCulture);
             }
+            else if (arg.Equals("--reimport", StringComparison.OrdinalIgnoreCase))
+            {
+                reimport = true;
+            }
         }
 
         return new ImportProfileOptions
         {
             Date = date,
-            SectorId = sectorId
+            SectorId = sectorId,
+            Reimport = reimport
         };
     }
 }
