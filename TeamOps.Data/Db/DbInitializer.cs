@@ -30,7 +30,16 @@ namespace TeamOps.Data.Db
                 {
                     conn.Open();
                     ApplyInitialSchema(conn);
+                    ProductionSchemaMigrator.Ensure(conn);
                 }
+
+                return;
+            }
+
+            using (var conn = new SqliteConnection(_settings.ConnectionString))
+            {
+                conn.Open();
+                ProductionSchemaMigrator.Ensure(conn);
             }
         }
 

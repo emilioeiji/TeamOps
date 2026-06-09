@@ -193,6 +193,18 @@ CREATE TABLE IF NOT EXISTS HikitsuguiAttachments (
     FOREIGN KEY (HikitsuguiId) REFERENCES Hikitsugui(Id)
 );
 
+CREATE INDEX IF NOT EXISTS IX_Hikitsugui_OperatorRead
+ON Hikitsugui(ForOperators, LocalId, Date);
+
+CREATE INDEX IF NOT EXISTS IX_HikitsuguiReads_Reader_Hikitsugui
+ON HikitsuguiReads(ReaderCodigoFJ, HikitsuguiId);
+
+CREATE INDEX IF NOT EXISTS IX_HikitsuguiReads_Hikitsugui
+ON HikitsuguiReads(HikitsuguiId);
+
+CREATE INDEX IF NOT EXISTS IX_HikitsuguiAttachments_Hikitsugui
+ON HikitsuguiAttachments(HikitsuguiId);
+
 CREATE TABLE IF NOT EXISTS SobraDePeca (
     Id INTEGER PRIMARY KEY AUTOINCREMENT,
     Data TEXT NOT NULL,
@@ -639,8 +651,8 @@ CREATE TABLE IF NOT EXISTS Ec2MachineSnapshots (
 );
 
 CREATE TABLE IF NOT EXISTS Ec2MachineCurrentState (
-    MachineCode TEXT PRIMARY KEY,
-    MachineId INTEGER,
+    MachineId INTEGER PRIMARY KEY,
+    MachineCode TEXT NOT NULL,
     SectorId INTEGER,
     LocalId INTEGER,
     AreaLabel TEXT,

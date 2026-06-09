@@ -154,11 +154,11 @@ namespace TeamOps.Data.Db
                     );
 
                     CREATE TABLE IF NOT EXISTS Ec2MachineCurrentState (
-                        MachineCode TEXT PRIMARY KEY,
+                        MachineId INTEGER PRIMARY KEY,
+                        MachineCode TEXT NOT NULL,
                         ImportId INTEGER,
                         SourceType TEXT NOT NULL DEFAULT 'Administrator',
                         IsStale INTEGER NOT NULL DEFAULT 0,
-                        MachineId INTEGER,
                         SectorId INTEGER,
                         LocalId INTEGER,
                         AreaLabel TEXT,
@@ -266,6 +266,18 @@ namespace TeamOps.Data.Db
                     CREATE INDEX IF NOT EXISTS IX_Operators_Status_Shift_Sector_Name
                     ON Operators(Status, ShiftId, SectorId, NameRomanji);
 
+                    CREATE INDEX IF NOT EXISTS IX_Hikitsugui_OperatorRead
+                    ON Hikitsugui(ForOperators, LocalId, Date);
+
+                    CREATE INDEX IF NOT EXISTS IX_HikitsuguiReads_Reader_Hikitsugui
+                    ON HikitsuguiReads(ReaderCodigoFJ, HikitsuguiId);
+
+                    CREATE INDEX IF NOT EXISTS IX_HikitsuguiReads_Hikitsugui
+                    ON HikitsuguiReads(HikitsuguiId);
+
+                    CREATE INDEX IF NOT EXISTS IX_HikitsuguiAttachments_Hikitsugui
+                    ON HikitsuguiAttachments(HikitsuguiId);
+
                     CREATE UNIQUE INDEX IF NOT EXISTS IX_ProductionPlanSnapshots_SourceFile_ExportedAt
                     ON ProductionPlanSnapshots(SourceFile, ExportedAt);
 
@@ -314,6 +326,7 @@ namespace TeamOps.Data.Db
 
                 EnsureMachineStatusColumns(conn);
                 EnsureEc2Columns(conn);
+                EnsureEc2CurrentStateMachineIdKey(conn);
                 RebuildMachineStatusesForSectorScope(conn);
                 DropLegacyMachineStatusCodeIndex(conn);
 
@@ -396,6 +409,141 @@ namespace TeamOps.Data.Db
                     UPDATE Ec2MachineCurrentState
                     SET SourceType = 'Administrator'
                     WHERE trim(COALESCE(SourceType, '')) = '';");
+        }
+
+        private static void EnsureEc2CurrentStateMachineIdKey(IDbConnection conn)
+        {
+            var machineCodePk = conn.ExecuteScalar<int>(
+                @"
+                    SELECT COUNT(1)
+                    FROM pragma_table_info('Ec2MachineCurrentState')
+                    WHERE name = 'MachineCode'
+                      AND pk > 0;") > 0;
+
+            if (!machineCodePk)
+            {
+                return;
+            }
+
+            conn.Execute(
+                @"
+                    DROP TABLE IF EXISTS Ec2MachineCurrentState_New;
+
+                    CREATE TABLE Ec2MachineCurrentState_New (
+                        MachineId INTEGER PRIMARY KEY,
+                        MachineCode TEXT NOT NULL,
+                        ImportId INTEGER,
+                        SourceType TEXT NOT NULL DEFAULT 'Administrator',
+                        IsStale INTEGER NOT NULL DEFAULT 0,
+                        SectorId INTEGER,
+                        LocalId INTEGER,
+                        AreaLabel TEXT,
+                        MachineName TEXT,
+                        StatusText TEXT,
+                        IsRunning INTEGER NOT NULL DEFAULT 0,
+                        IsIgnored INTEGER NOT NULL DEFAULT 0,
+                        IgnoreReason TEXT,
+                        PartCode TEXT,
+                        PlannedProcessMinutes REAL,
+                        CapabilityType TEXT,
+                        OperationRate REAL,
+                        CurrentDifference REAL,
+                        LotNo TEXT,
+                        PlannedEndAt TEXT,
+                        ProcessMinutes REAL,
+                        DailyProduction REAL,
+                        RawColumnsJson TEXT,
+                        SnapshotAt TEXT NOT NULL,
+                        ImportedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        LastSeenAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        StoppedSinceAt TEXT,
+                        FOREIGN KEY (ImportId) REFERENCES Ec2AdministratorImports(Id),
+                        FOREIGN KEY (MachineId) REFERENCES Machines(Id),
+                        FOREIGN KEY (SectorId) REFERENCES Sectors(Id),
+                        FOREIGN KEY (LocalId) REFERENCES Locals(Id)
+                    );
+
+                    INSERT OR REPLACE INTO Ec2MachineCurrentState_New
+                    (
+                        MachineId,
+                        MachineCode,
+                        ImportId,
+                        SourceType,
+                        IsStale,
+                        SectorId,
+                        LocalId,
+                        AreaLabel,
+                        MachineName,
+                        StatusText,
+                        IsRunning,
+                        IsIgnored,
+                        IgnoreReason,
+                        PartCode,
+                        PlannedProcessMinutes,
+                        CapabilityType,
+                        OperationRate,
+                        CurrentDifference,
+                        LotNo,
+                        PlannedEndAt,
+                        ProcessMinutes,
+                        DailyProduction,
+                        RawColumnsJson,
+                        SnapshotAt,
+                        ImportedAt,
+                        LastSeenAt,
+                        StoppedSinceAt
+                    )
+                    SELECT
+                        MachineId,
+                        MachineCode,
+                        ImportId,
+                        SourceType,
+                        IsStale,
+                        SectorId,
+                        LocalId,
+                        AreaLabel,
+                        MachineName,
+                        StatusText,
+                        IsRunning,
+                        IsIgnored,
+                        IgnoreReason,
+                        PartCode,
+                        PlannedProcessMinutes,
+                        CapabilityType,
+                        OperationRate,
+                        CurrentDifference,
+                        LotNo,
+                        PlannedEndAt,
+                        ProcessMinutes,
+                        DailyProduction,
+                        RawColumnsJson,
+                        SnapshotAt,
+                        ImportedAt,
+                        LastSeenAt,
+                        StoppedSinceAt
+                    FROM Ec2MachineCurrentState
+                    WHERE COALESCE(MachineId, 0) > 0;
+
+                    DROP TABLE Ec2MachineCurrentState;
+                    ALTER TABLE Ec2MachineCurrentState_New RENAME TO Ec2MachineCurrentState;
+
+                    CREATE INDEX IF NOT EXISTS IX_Ec2MachineCurrentState_Area
+                    ON Ec2MachineCurrentState(AreaLabel);
+
+                    CREATE INDEX IF NOT EXISTS IX_Ec2MachineCurrentState_MachineId
+                    ON Ec2MachineCurrentState(MachineId);
+
+                    CREATE INDEX IF NOT EXISTS IX_Ec2MachineCurrentState_Status
+                    ON Ec2MachineCurrentState(StatusText);
+
+                    CREATE INDEX IF NOT EXISTS IX_Ec2MachineCurrentState_PartCode
+                    ON Ec2MachineCurrentState(PartCode);
+
+                    CREATE INDEX IF NOT EXISTS IX_Ec2MachineCurrentState_ImportId
+                    ON Ec2MachineCurrentState(ImportId);
+
+                    CREATE INDEX IF NOT EXISTS IX_Ec2MachineCurrentState_SourceType_Stale
+                    ON Ec2MachineCurrentState(SourceType, IsStale);");
         }
 
         private static void RebuildMachineStatusesForSectorScope(IDbConnection conn)

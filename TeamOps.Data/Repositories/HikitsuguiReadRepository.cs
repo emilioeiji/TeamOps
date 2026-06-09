@@ -68,8 +68,13 @@ namespace TeamOps.Data.Repositories
             cmd.CommandText = @"
                 INSERT INTO HikitsuguiReads
                 (HikitsuguiId, ReaderCodigoFJ, ReadAt)
-                VALUES
-                (@h, @c, CURRENT_TIMESTAMP)";
+                SELECT @h, @c, CURRENT_TIMESTAMP
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM HikitsuguiReads
+                    WHERE HikitsuguiId = @h
+                      AND ReaderCodigoFJ = @c
+                );";
 
             cmd.Parameters.AddWithValue("@h", hikitsuguiId);
             cmd.Parameters.AddWithValue("@c", codigoFJ);

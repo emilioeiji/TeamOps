@@ -255,8 +255,8 @@ namespace TeamOps.UI.Services
             }
 
             return missing.Count == 0
-                ? "Sem previsao: Motivo: tempos invalidos."
-                : $"Sem previsao: Motivo: nenhum tempo cadastrado valido para {string.Join(", ", missing)}.";
+                ? "Sem previsao: Motivo: tempos invalidos em Admin > Tempos de Procedimento do setor G-Bareru."
+                : $"Sem previsao: Motivo: nenhum tempo cadastrado valido para {string.Join(", ", missing)} em Admin > Tempos de Procedimento do setor G-Bareru.";
         }
 
         private static int ResolvePeopleCount(ProductionAreaSummaryDto area)

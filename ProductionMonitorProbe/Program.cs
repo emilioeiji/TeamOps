@@ -18,10 +18,16 @@ const int DadSectorId = 2;
 
 var command = args.Length > 0
     ? args[0].Trim().ToLowerInvariant()
-    : "demo";
+    : "help";
 
 switch (command)
 {
+    case "help":
+    case "-h":
+    case "--help":
+        PrintHelp();
+        break;
+
     case "import":
         RunImport();
         break;
@@ -66,21 +72,67 @@ switch (command)
         RunProductionDiagnostics();
         break;
 
+    case "production-audit":
+        RunProductionAudit(args.Skip(1).ToArray());
+        break;
+
     case "machine-cleanup":
         RunMachineCleanup(args.Skip(1).ToArray());
         break;
 
     case "demo":
-    default:
         RunImport();
         Console.WriteLine();
         ShowDashboards();
         break;
+
+    default:
+        PrintHelp();
+        Environment.ExitCode = 1;
+        break;
+}
+
+void PrintHelp()
+{
+    Console.WriteLine("ProductionMonitorProbe - comandos");
+    Console.WriteLine();
+    Console.WriteLine("Uso:");
+    Console.WriteLine("  ProductionMonitorProbe.exe <comando> [opcoes]");
+    Console.WriteLine();
+    Console.WriteLine("Comandos seguros para diagnostico:");
+    Console.WriteLine("  schema-check");
+    Console.WriteLine("  db-index-check");
+    Console.WriteLine("  production-diagnostics");
+    Console.WriteLine("  production-audit --date yyyy-MM-dd [--sector dad|gbareru]");
+    Console.WriteLine("  ec2-diagnostics");
+    Console.WriteLine("  dashboard");
+    Console.WriteLine("  status-report --start yyyy-MM-dd --end yyyy-MM-dd --sector dad");
+    Console.WriteLine();
+    Console.WriteLine("Comandos que podem importar/alterar dados:");
+    Console.WriteLine("  import");
+    Console.WriteLine("  import-profile --date yyyy-MM-dd [--sector dad|gbareru] [--reimport]");
+    Console.WriteLine("  schema-repair");
+    Console.WriteLine("  ec2-reset-latest");
+    Console.WriteLine("  machine-cleanup [--apply]");
+    Console.WriteLine();
+    Console.WriteLine("Observacao:");
+    Console.WriteLine("  Abrir sem comando mostra esta ajuda. Use 'demo' apenas quando o BAT de importacao estiver configurado.");
 }
 
 void RunImport()
 {
-    var result = importer.ImportLatest();
+    TeamOps.Core.Entities.ProductionImportResult result;
+    try
+    {
+        result = importer.ImportLatest();
+    }
+    catch (FileNotFoundException ex)
+    {
+        Console.WriteLine("=== IMPORT FAILED ===");
+        Console.WriteLine(ex.Message);
+        Environment.ExitCode = 2;
+        return;
+    }
 
     Console.WriteLine("=== IMPORT RESULT ===");
     Console.WriteLine($"FilesRead={result.FilesRead}");
@@ -162,7 +214,23 @@ void RunImportProfile(string[] profileArgs)
             }
         }
         : null;
-    var result = importer.ImportLatest(importOptions);
+    TeamOps.Core.Entities.ProductionImportResult result;
+    try
+    {
+        result = importer.ImportLatest(importOptions);
+    }
+    catch (FileNotFoundException ex)
+    {
+        totalWatch.Stop();
+        Console.WriteLine("=== IMPORT PROFILE FAILED ===");
+        Console.WriteLine($"Database={settings.DatabasePath}");
+        Console.WriteLine($"ReimportDate={(options.Date.HasValue ? options.Date.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : "(none)")}");
+        Console.WriteLine($"ReimportSector={options.SectorLabel}");
+        Console.WriteLine(ex.Message);
+        Console.WriteLine($"ProbeTotal={totalWatch.ElapsedMilliseconds}ms");
+        Environment.ExitCode = 2;
+        return;
+    }
     totalWatch.Stop();
 
     Console.WriteLine("=== IMPORT PROFILE ===");
@@ -595,6 +663,9 @@ void RunDbIndexCheck()
         "IX_MachineEvents_Machine_EventTime",
         "IX_Machines_MachineKey_Unique",
         "IX_Machines_MachineCode_LineCode",
+        "IX_Hikitsugui_OperatorRead",
+        "IX_HikitsuguiReads_Reader_Hikitsugui",
+        "IX_HikitsuguiAttachments_Hikitsugui",
         "IX_Ec2AdministratorImports_FileHash",
         "IX_Ec2MachineSnapshots_Machine",
         "IX_Ec2MachineSnapshots_Area",
@@ -960,6 +1031,23 @@ void RunProductionDiagnostics()
     var currentCount = conn.ExecuteScalar<long>("SELECT COUNT(1) FROM MachineCurrentStatus;");
     var statusCount = conn.ExecuteScalar<long>("SELECT COUNT(1) FROM MachineStatuses;");
     var machineCount = conn.ExecuteScalar<long>("SELECT COUNT(1) FROM Machines WHERE COALESCE(IsActive, 1) = 1;");
+    var dadMachineCount = conn.ExecuteScalar<long>(
+        "SELECT COUNT(1) FROM Machines WHERE COALESCE(IsActive, 1) = 1 AND SectorId = @DadSectorId;",
+        new { DadSectorId });
+    var dadEventCount = conn.ExecuteScalar<long>(
+        @"
+            SELECT COUNT(1)
+            FROM MachineEvents me
+            JOIN Machines m ON m.Id = me.MachineId
+            WHERE m.SectorId = @DadSectorId;",
+        new { DadSectorId });
+    var gBareruProcedureTimeCount = conn.ExecuteScalar<long>(
+        @"
+            SELECT COUNT(DISTINCT upper(trim(ProcedureCode)))
+            FROM ProductionProcedureTimes
+            WHERE SectorId = 1
+              AND COALESCE(IsActive, 1) = 1
+              AND upper(trim(ProcedureCode)) IN ('ECII', 'BUNKATSU', 'DCS');");
     var minEvent = conn.ExecuteScalar<string>("SELECT MIN(EventDateTime) FROM MachineEvents;") ?? string.Empty;
     var maxEvent = conn.ExecuteScalar<string>("SELECT MAX(EventDateTime) FROM MachineEvents;") ?? string.Empty;
 
@@ -969,6 +1057,9 @@ void RunProductionDiagnostics()
     Console.WriteLine($"MachineCurrentStatus={currentCount}");
     Console.WriteLine($"MachineStatuses={statusCount}");
     Console.WriteLine($"ActiveMachines={machineCount}");
+    Console.WriteLine($"DadActiveMachines={dadMachineCount}");
+    Console.WriteLine($"DadEvents={dadEventCount}");
+    Console.WriteLine($"GBareruActiveProcedureTimes={gBareruProcedureTimeCount}/3");
     Console.WriteLine($"FirstEvent={minEvent}");
     Console.WriteLine($"LastEvent={maxEvent}");
 
@@ -1041,6 +1132,217 @@ void RunProductionDiagnostics()
     Console.WriteLine($"DashboardKadouritsu={dashboard.ProductionPercent:F1}");
     Console.WriteLine($"DashboardRunning={dashboard.MachinesRunning}");
     Console.WriteLine($"DashboardStopped={dashboard.MachinesStopped}");
+}
+
+void RunProductionAudit(string[] auditArgs)
+{
+    var date = DateTime.Today;
+    var sectorLabel = "all";
+    int? sectorId = null;
+    var machineFilter = string.Empty;
+
+    for (var i = 0; i < auditArgs.Length; i++)
+    {
+        var arg = auditArgs[i];
+        if (arg.Equals("--date", StringComparison.OrdinalIgnoreCase) && i + 1 < auditArgs.Length)
+        {
+            if (DateTime.TryParse(auditArgs[++i], CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var parsedDate))
+            {
+                date = parsedDate.Date;
+            }
+        }
+        else if (arg.Equals("--sector", StringComparison.OrdinalIgnoreCase) && i + 1 < auditArgs.Length)
+        {
+            sectorLabel = auditArgs[++i].Trim().ToLowerInvariant();
+            sectorId = sectorLabel switch
+            {
+                "gbareru" or "g-bareru" or "1" => 1,
+                "dad" or "2" => 2,
+                _ => null
+            };
+        }
+        else if (arg.Equals("--machine", StringComparison.OrdinalIgnoreCase) && i + 1 < auditArgs.Length)
+        {
+            machineFilter = auditArgs[++i].Trim().ToUpperInvariant();
+        }
+    }
+
+    using var conn = factory.CreateOpenConnection();
+    ProductionSchemaMigrator.Ensure(conn);
+
+    Console.WriteLine("=== PRODUCTION AUDIT ===");
+    Console.WriteLine($"Database={settings.DatabasePath}");
+    Console.WriteLine($"Date={date:yyyy-MM-dd}");
+    Console.WriteLine($"Sector={sectorLabel}");
+    Console.WriteLine($"Machine={(string.IsNullOrWhiteSpace(machineFilter) ? "all" : machineFilter)}");
+    Console.WriteLine("Ec2CurrentStateMatchKey=MachineId");
+
+    var statusRows = conn.Query(
+        @"
+            SELECT
+                COALESCE(SectorId, 0) AS SectorKey,
+                StatusCode,
+                DisplayCode,
+                COALESCE(Classification, '') AS Classification,
+                COALESCE(NamePt, '') AS NamePt
+            FROM MachineStatuses
+            WHERE COALESCE(IsActive, 1) = 1
+              AND (@sectorId IS NULL OR SectorId IS NULL OR SectorId = @sectorId)
+            ORDER BY COALESCE(SectorId, 0), StatusCode;",
+        new { sectorId }).ToList();
+
+    Console.WriteLine();
+    Console.WriteLine("StatusDefinitions:");
+    foreach (var row in statusRows)
+    {
+        Console.WriteLine($"  Sector={row.SectorKey} Code={row.StatusCode} Display={row.DisplayCode} Classification={row.Classification} Name={row.NamePt}");
+    }
+
+    var eventAudit = conn.Query(
+        @"
+            SELECT
+                me.StatusCode,
+                COALESCE(ms.DisplayCode, me.StatusCode) AS DisplayCode,
+                COALESCE(ms.Classification, '') AS Classification,
+                COUNT(1) AS Quantity
+            FROM MachineEvents me
+            JOIN Machines m ON m.Id = me.MachineId
+            LEFT JOIN MachineStatuses ms
+                ON ms.StatusCode = me.StatusCode
+               AND COALESCE(ms.SectorId, 0) = COALESCE(m.SectorId, 0)
+            WHERE date(me.EventDateTime) = date(@date)
+              AND (@sectorId IS NULL OR m.SectorId = @sectorId)
+            GROUP BY me.StatusCode, COALESCE(ms.DisplayCode, me.StatusCode), COALESCE(ms.Classification, '')
+            ORDER BY me.StatusCode;",
+        new
+        {
+            date = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            sectorId
+        }).ToList();
+
+    Console.WriteLine();
+    Console.WriteLine("EventsByStatus:");
+    if (eventAudit.Count == 0)
+    {
+        Console.WriteLine("  (none)");
+    }
+    foreach (var row in eventAudit)
+    {
+        Console.WriteLine($"  Status={row.StatusCode} Display={row.DisplayCode} Classification={row.Classification} Quantity={row.Quantity}");
+    }
+
+    var ec2Rows = conn.Query(
+        @"
+            SELECT
+                c.MachineCode,
+                c.MachineId,
+                c.SectorId,
+                c.LocalId,
+                c.AreaLabel,
+                c.IsRunning,
+                c.IsIgnored,
+                COALESCE(c.IgnoreReason, '') AS IgnoreReason,
+                COALESCE(m.MachineKey, '') AS MachineKey,
+                m.SectorId AS MachineSectorId,
+                m.LocalId AS MachineLocalId
+            FROM Ec2MachineCurrentState c
+            LEFT JOIN Machines m ON m.Id = c.MachineId
+            WHERE (@sectorId IS NULL OR c.SectorId = @sectorId)
+              AND (@machine = '' OR upper(trim(c.MachineCode)) = @machine)
+            ORDER BY c.MachineCode;",
+        new { sectorId, machine = machineFilter }).ToList();
+
+    Console.WriteLine();
+    Console.WriteLine("Ec2CurrentCross:");
+    if (ec2Rows.Count == 0)
+    {
+        Console.WriteLine("  (none)");
+    }
+    foreach (var row in ec2Rows)
+    {
+        Console.WriteLine($"  Machine={row.MachineCode} MachineId={row.MachineId} Sector={row.SectorId} Local={row.LocalId} Area={row.AreaLabel} MachineKey={row.MachineKey} MachineSector={row.MachineSectorId} MachineLocal={row.MachineLocalId} Running={row.IsRunning} Ignored={row.IsIgnored} Reason={row.IgnoreReason}");
+    }
+
+    var duplicateMachines = conn.Query(
+        @"
+            SELECT
+                MachineCode,
+                COUNT(1) AS Total,
+                GROUP_CONCAT(Id || ':' || COALESCE(SectorId, 'NULL') || ':' || COALESCE(LocalId, 'NULL') || ':' || COALESCE(MachineKey, ''), ' | ') AS Detail
+            FROM Machines
+            WHERE trim(COALESCE(MachineCode, '')) <> ''
+            GROUP BY MachineCode
+            HAVING COUNT(1) > 1
+            ORDER BY MachineCode;").ToList();
+
+    Console.WriteLine();
+    Console.WriteLine("DuplicateMachinesByCode:");
+    if (duplicateMachines.Count == 0)
+    {
+        Console.WriteLine("  (none)");
+    }
+    foreach (var row in duplicateMachines)
+    {
+        Console.WriteLine($"  Machine={row.MachineCode} Total={row.Total} Detail={row.Detail}");
+    }
+
+    var k09Rows = conn.Query(
+        @"
+            SELECT 'current' AS Source, MachineCode, MachineId, SectorId, LocalId, AreaLabel, IsIgnored, COALESCE(IgnoreReason, '') AS IgnoreReason
+            FROM Ec2MachineCurrentState
+            WHERE upper(trim(MachineCode)) = 'K09'
+              AND (@machine = '' OR upper(trim(MachineCode)) = @machine)
+            UNION ALL
+            SELECT 'snapshot' AS Source, MachineCode, MachineId, SectorId, LocalId, AreaLabel, IsIgnored, COALESCE(IgnoreReason, '') AS IgnoreReason
+            FROM Ec2MachineSnapshots
+            WHERE upper(trim(MachineCode)) = 'K09'
+              AND (@machine = '' OR upper(trim(MachineCode)) = @machine);",
+        new { machine = machineFilter }).ToList();
+
+    Console.WriteLine();
+    Console.WriteLine("K09:");
+    if (k09Rows.Count == 0)
+    {
+        Console.WriteLine("  (not found in Ec2MachineSnapshots or Ec2MachineCurrentState)");
+    }
+    foreach (var row in k09Rows)
+    {
+        Console.WriteLine($"  Source={row.Source} Machine={row.MachineCode} MachineId={row.MachineId} Sector={row.SectorId} Local={row.LocalId} Area={row.AreaLabel} Ignored={row.IsIgnored} Reason={row.IgnoreReason}");
+    }
+
+    var sobra = conn.QueryFirst(
+        @"
+            SELECT
+                COUNT(1) AS TotalRows,
+                COALESCE(SUM(Quantidade), 0) AS TotalQuantidade,
+                COALESCE(SUM(PesoGramas), 0) AS TotalPesoGramas,
+                COALESCE(MIN(Data), '') AS FirstDate,
+                COALESCE(MAX(Data), '') AS LastDate
+            FROM SobraDePeca;");
+
+    Console.WriteLine();
+    Console.WriteLine("SobraDePeca:");
+    Console.WriteLine($"  Rows={sobra.TotalRows} Quantidade={sobra.TotalQuantidade} PesoGramas={sobra.TotalPesoGramas} FirstDate={sobra.FirstDate} LastDate={sobra.LastDate}");
+
+    var hikitsuguiIndexes = conn.Query<string>(
+        @"
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'index'
+              AND tbl_name IN ('Hikitsugui', 'HikitsuguiReads', 'HikitsuguiAttachments')
+              AND name NOT LIKE 'sqlite_autoindex%'
+            ORDER BY name;").ToList();
+
+    Console.WriteLine();
+    Console.WriteLine("OperatorAppIndexes:");
+    if (hikitsuguiIndexes.Count == 0)
+    {
+        Console.WriteLine("  (none)");
+    }
+    foreach (var indexName in hikitsuguiIndexes)
+    {
+        Console.WriteLine($"  {indexName}=OK");
+    }
 }
 
 static void RequireTable(System.Data.IDbConnection conn, string tableName, List<string> issues)

@@ -289,10 +289,7 @@ namespace TeamOps.OperatorApp.Forms
 
         private void EnsureRead(int id, string fj)
         {
-            if (!_readRepo.HasRead(id, fj))
-            {
-                _readRepo.MarkAsRead(id, fj);
-            }
+            _readRepo.MarkAsRead(id, fj);
         }
 
         private List<TeamOps.Core.Entities.Local> GetAllowedLocals(TeamOps.Core.Entities.Operator op)

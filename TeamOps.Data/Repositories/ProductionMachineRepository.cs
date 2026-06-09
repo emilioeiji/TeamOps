@@ -7,7 +7,7 @@ namespace TeamOps.Data.Repositories
 {
     public sealed class ProductionMachineRepository
     {
-        private static readonly Regex ValidMachineCodeRegex = new(@"^E[A-Z]?\d{1,3}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex ValidMachineCodeRegex = new(@"^(?:E[A-Z]?\d{1,3}|[A-Z]\d{2,3})$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private readonly SqliteConnectionFactory _factory;
 
@@ -83,14 +83,14 @@ namespace TeamOps.Data.Repositories
             );
         }
 
-        public Machine EnsureMachine(string machineCode, string lineCode, int? sectorId = null)
+        public Machine EnsureMachine(string machineCode, string lineCode, int? sectorId = null, int? localId = null)
         {
             using var conn = _factory.CreateOpenConnection();
             ProductionSchemaMigrator.Ensure(conn);
-            return EnsureMachine(conn, machineCode, lineCode, sectorId);
+            return EnsureMachine(conn, machineCode, lineCode, sectorId, localId);
         }
 
-        public Machine EnsureMachine(System.Data.IDbConnection conn, string machineCode, string lineCode, int? sectorId = null)
+        public Machine EnsureMachine(System.Data.IDbConnection conn, string machineCode, string lineCode, int? sectorId = null, int? localId = null)
         {
             var normalizedMachineCode = NormalizeCode(machineCode);
             var normalizedLineCode = NormalizeCode(lineCode);
@@ -148,6 +148,23 @@ namespace TeamOps.Data.Repositories
                     machine.SectorId = sectorId.Value;
                 }
 
+                if (localId.HasValue && machine.LocalId != localId.Value)
+                {
+                    conn.Execute(
+                        @"
+                            UPDATE Machines
+                            SET LocalId = @localId
+                            WHERE Id = @id;",
+                        new
+                        {
+                            localId,
+                            id = machine.Id
+                        }
+                    );
+
+                    machine.LocalId = localId.Value;
+                }
+
                 return machine;
             }
 
@@ -160,6 +177,7 @@ namespace TeamOps.Data.Repositories
                         MachineCode,
                         MachineKey,
                         LineCode,
+                        LocalId,
                         SectorId,
                         IsActive
                     )
@@ -170,6 +188,7 @@ namespace TeamOps.Data.Repositories
                         @machineCode,
                         @machineKey,
                         @lineCode,
+                        @localId,
                         @sectorId,
                         1
                     );
@@ -181,6 +200,7 @@ namespace TeamOps.Data.Repositories
                     machineCode = normalizedMachineCode,
                     machineKey,
                     lineCode = normalizedLineCode,
+                    localId,
                     sectorId
                 }
             );
@@ -193,6 +213,7 @@ namespace TeamOps.Data.Repositories
                 MachineCode = normalizedMachineCode,
                 MachineKey = machineKey,
                 LineCode = normalizedLineCode,
+                LocalId = localId,
                 SectorId = sectorId,
                 IsActive = true
             };

@@ -228,13 +228,16 @@ namespace TeamOps.Services
             var existingStates = conn.Query<Ec2CurrentStateRow>(
                     @"
                         SELECT
+                            MachineId,
                             MachineCode,
                             IsRunning,
                             StoppedSinceAt,
                             SnapshotAt
                         FROM Ec2MachineCurrentState;",
                     transaction: tx)
-                .ToDictionary(row => NormalizeCode(row.MachineCode), StringComparer.OrdinalIgnoreCase);
+                .Where(row => row.MachineId > 0)
+                .GroupBy(row => row.MachineId)
+                .ToDictionary(group => group.Key, group => group.First());
 
             var snapshots = new List<Ec2WriteRow>();
             var currentStates = new List<Ec2WriteRow>();
@@ -242,11 +245,11 @@ namespace TeamOps.Services
 
             foreach (var parsed in parsedRows)
             {
-                var machine = _machineRepository.GetByMachineCode(conn, parsed.MachineCode)
-                    ?? _machineRepository.EnsureMachine(conn, parsed.MachineCode, "EC2", parsed.SectorId);
+                var lineCode = ResolveLineCode(parsed.AreaLabel, parsed.SectorId);
+                var machine = _machineRepository.EnsureMachine(conn, parsed.MachineCode, lineCode, parsed.SectorId, parsed.LocalId);
 
                 var machineCode = NormalizeCode(parsed.MachineCode);
-                existingStates.TryGetValue(machineCode, out var previousState);
+                existingStates.TryGetValue(machine.Id, out var previousState);
                 var stoppedSince = ResolveStoppedSince(parsed, previousState, snapshotAt);
                 var isIgnored = ShouldIgnore(parsed, stoppedSince, snapshotAt, settings.StoppedIgnoreAfterMinutes);
                 var ignoreReason = isIgnored
@@ -259,7 +262,7 @@ namespace TeamOps.Services
                     ImportId = importId,
                     MachineId = machine.Id,
                     SectorId = parsed.SectorId ?? machine.SectorId,
-                    LocalId = machine.LocalId,
+                    LocalId = parsed.LocalId ?? machine.LocalId,
                     AreaLabel = parsed.AreaLabel,
                     MachineCode = machineCode,
                     MachineName = parsed.MachineName,
@@ -353,11 +356,11 @@ namespace TeamOps.Services
                     @"
                         INSERT INTO Ec2MachineCurrentState
                         (
-                            MachineCode,
                             ImportId,
                             SourceType,
                             IsStale,
                             MachineId,
+                            MachineCode,
                             SectorId,
                             LocalId,
                             AreaLabel,
@@ -383,11 +386,11 @@ namespace TeamOps.Services
                         )
                         VALUES
                         (
-                            @MachineCode,
                             @ImportId,
                             @SourceType,
                             @IsStale,
                             @MachineId,
+                            @MachineCode,
                             @SectorId,
                             @LocalId,
                             @AreaLabel,
@@ -411,11 +414,11 @@ namespace TeamOps.Services
                             @SnapshotAt,
                             @StoppedSinceAt
                         )
-                        ON CONFLICT(MachineCode) DO UPDATE SET
+                        ON CONFLICT(MachineId) DO UPDATE SET
                             ImportId = excluded.ImportId,
                             SourceType = excluded.SourceType,
                             IsStale = excluded.IsStale,
-                            MachineId = excluded.MachineId,
+                            MachineCode = excluded.MachineCode,
                             SectorId = excluded.SectorId,
                             LocalId = excluded.LocalId,
                             AreaLabel = excluded.AreaLabel,
@@ -536,7 +539,7 @@ namespace TeamOps.Services
                         SELECT 1
                         FROM Ec2MachineSnapshots s
                         WHERE s.ImportId = @importId
-                          AND upper(trim(s.MachineCode)) = upper(trim(Ec2MachineCurrentState.MachineCode))
+                          AND s.MachineId = Ec2MachineCurrentState.MachineId
                     );",
                 new { importId },
                 tx);
@@ -557,7 +560,7 @@ namespace TeamOps.Services
                         ImportId = COALESCE((
                             SELECT s.ImportId
                             FROM Ec2MachineSnapshots s
-                            WHERE upper(trim(s.MachineCode)) = upper(trim(Ec2MachineCurrentState.MachineCode))
+                            WHERE s.MachineId = Ec2MachineCurrentState.MachineId
                             ORDER BY s.ImportId DESC
                             LIMIT 1
                         ), ImportId),
@@ -573,7 +576,7 @@ namespace TeamOps.Services
                           SELECT 1
                           FROM Ec2MachineSnapshots s
                           WHERE s.ImportId = @importId
-                            AND upper(trim(s.MachineCode)) = upper(trim(Ec2MachineCurrentState.MachineCode))
+                            AND s.MachineId = Ec2MachineCurrentState.MachineId
                       );",
                 new
                 {
@@ -778,6 +781,7 @@ namespace TeamOps.Services
                     StatusText = statusText,
                     IsRunning = isRunning,
                     SectorId = ResolveSectorId(currentArea),
+                    LocalId = ResolveLocalId(currentArea),
                     PartCode = partCode,
                     PlannedProcessMinutes = processMinutes,
                     CapabilityType = GetColumn(columns, 4),
@@ -1149,6 +1153,46 @@ namespace TeamOps.Services
 
             return null;
         }
+
+        private static int? ResolveLocalId(string areaLabel)
+        {
+            var areaNumber = ResolveAreaNumber(areaLabel);
+            if (!areaNumber.HasValue)
+            {
+                return null;
+            }
+
+            return areaNumber.Value == 1
+                ? 1
+                : areaNumber.Value + 1;
+        }
+
+        private static string ResolveLineCode(string areaLabel, int? sectorId)
+        {
+            if (sectorId == 2
+                || (areaLabel ?? string.Empty).Contains("211D", StringComparison.OrdinalIgnoreCase)
+                || (areaLabel ?? string.Empty).Contains("DAD", StringComparison.OrdinalIgnoreCase))
+            {
+                return "211D";
+            }
+
+            return "2400";
+        }
+
+        private static int? ResolveAreaNumber(string areaLabel)
+        {
+            var normalized = (areaLabel ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                return null;
+            }
+
+            var match = Regex.Match(normalized, @"(?:Area|エリア)\s*(\d{1,2})", RegexOptions.IgnoreCase);
+            return match.Success && int.TryParse(match.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var areaNumber)
+                ? areaNumber
+                : null;
+        }
+
         private static string NormalizeCode(string value)
         {
             return (value ?? string.Empty).Trim().ToUpperInvariant();
@@ -1486,6 +1530,7 @@ namespace TeamOps.Services
             public string StatusText { get; set; } = string.Empty;
             public bool IsRunning { get; set; }
             public int? SectorId { get; set; }
+            public int? LocalId { get; set; }
             public string PartCode { get; set; } = string.Empty;
             public double? PlannedProcessMinutes { get; set; }
             public string CapabilityType { get; set; } = string.Empty;
@@ -1500,6 +1545,7 @@ namespace TeamOps.Services
 
         private sealed class Ec2CurrentStateRow
         {
+            public int MachineId { get; set; }
             public string MachineCode { get; set; } = string.Empty;
             public int IsRunning { get; set; }
             public string StoppedSinceAt { get; set; } = string.Empty;

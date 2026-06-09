@@ -604,9 +604,9 @@ namespace TeamOps.Services
                         OperatorNamePt = item.OperatorNamePt,
                         OperatorNameJp = item.OperatorNameJp,
                         EstimatedRunningMinutes = Math.Round(item.EstimatedRunningMinutes, 1),
-                        EstimatedKadouritsuPercent = item.EligibleMinutes <= 0
+                        EstimatedKadouritsuPercent = item.EntryKadouritsuPercents.Count == 0
                             ? 0
-                            : Math.Round((item.EstimatedRunningMinutes / item.EligibleMinutes) * 100d, 1),
+                            : Math.Round(item.EntryKadouritsuPercents.Average(), 1),
                         FullCoverageDays = item.FullCoverageDays.Count,
                         PartialCoverageDays = item.PartialCoverageDays.Count,
                         LocalNamesPt = item.LocalNamesPt
