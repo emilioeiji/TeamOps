@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatorio de Sobra de Peca</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="header-bar">
+        <div>
+            <span id="txtBadge" class="badge">Sobra de Peca</span>
+            <h1 id="txtTitle">Relatorio de Sobra de Peca</h1>
+            <p id="txtSubtitle">Resumo gerencial, filtros e exportacao dos lancamentos.</p>
+        </div>
+        <div class="header-actions">
+            <button id="btnExport" class="btn-light" type="button">Exportar CSV</button>
+            <button id="btnPrint" class="btn-light" type="button">Imprimir</button>
+        </div>
+    </header>
+
+    <main class="page-shell">
+        <section class="metrics-grid">
+            <article class="metric-card">
+                <span id="txtMetricRows">Registros</span>
+                <strong id="metricRows">0</strong>
+            </article>
+            <article class="metric-card">
+                <span id="txtMetricQuantity">Quantidade</span>
+                <strong id="metricQuantity">0</strong>
+            </article>
+            <article class="metric-card">
+                <span id="txtMetricWeight">Peso (g)</span>
+                <strong id="metricWeight">0</strong>
+            </article>
+            <article class="metric-card">
+                <span id="txtMetricItems">Itens</span>
+                <strong id="metricItems">0</strong>
+            </article>
+        </section>
+
+        <section class="filter-card">
+            <label>
+                <span id="txtStart">Data inicial</span>
+                <input id="dtInicial" class="input" type="date">
+            </label>
+            <label>
+                <span id="txtEnd">Data final</span>
+                <input id="dtFinal" class="input" type="date">
+            </label>
+            <label>
+                <span id="txtShift">Turno</span>
+                <select id="cmbShift" class="input"></select>
+            </label>
+            <label>
+                <span id="txtMachine">Maquina</span>
+                <select id="cmbMachine" class="input"></select>
+            </label>
+            <label>
+                <span id="txtItem">Item</span>
+                <input id="txtItemInput" class="input" type="text" placeholder="RJ2A7">
+            </label>
+            <label class="wide">
+                <span id="txtSearch">Buscar</span>
+                <input id="txtSearchInput" class="input" type="text" placeholder="Lote, operador, shain, lider ou observacao">
+            </label>
+            <div class="filter-actions">
+                <button id="btnApply" class="btn-primary" type="button">Buscar</button>
+                <button id="btnClear" class="btn-ghost" type="button">Limpar</button>
+            </div>
+        </section>
+
+        <section class="table-card">
+            <div class="table-head">
+                <div>
+                    <h2 id="txtTableTitle">Lancamentos</h2>
+                    <p id="txtTableSubtitle">Conferencia com quantidade, peso, item e responsavel.</p>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th id="txtColDate">Data</th>
+                            <th id="txtColShift">Turno</th>
+                            <th id="txtColLot">Lote</th>
+                            <th id="txtColOperator">Operador</th>
+                            <th id="txtColItem">Item</th>
+                            <th id="txtColMachine">Maquina</th>
+                            <th id="txtColQuantity">Qtd</th>
+                            <th id="txtColWeight">Peso</th>
+                            <th id="txtColShain">Shain</th>
+                            <th id="txtColLeader">Lider</th>
+                            <th id="txtColCreated">Criado em</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tblBody">
+                        <tr><td colspan="12" class="empty-cell">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
