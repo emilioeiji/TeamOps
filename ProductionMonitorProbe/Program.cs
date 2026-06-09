@@ -76,6 +76,10 @@ switch (command)
         RunProductionAudit(args.Skip(1).ToArray());
         break;
 
+    case "validate-reports":
+        RunValidateReports(args.Skip(1).ToArray());
+        break;
+
     case "machine-cleanup":
         RunMachineCleanup(args.Skip(1).ToArray());
         break;
@@ -104,6 +108,7 @@ void PrintHelp()
     Console.WriteLine("  db-index-check");
     Console.WriteLine("  production-diagnostics");
     Console.WriteLine("  production-audit --date yyyy-MM-dd [--sector dad|gbareru]");
+    Console.WriteLine("  validate-reports --date yyyy-MM-dd --shift noite --sector gbareru [--area Area1] [--machine K09] [--operator all|FJ]");
     Console.WriteLine("  ec2-diagnostics");
     Console.WriteLine("  dashboard");
     Console.WriteLine("  status-report --start yyyy-MM-dd --end yyyy-MM-dd --sector dad");
@@ -1345,6 +1350,156 @@ void RunProductionAudit(string[] auditArgs)
     }
 }
 
+void RunValidateReports(string[] validateArgs)
+{
+    var options = ValidateReportsOptions.Parse(validateArgs);
+    using var conn = factory.CreateOpenConnection();
+    ProductionSchemaMigrator.Ensure(conn);
+    new TeamOps.UI.Services.HaidaiModuleService(factory).EnsureSchema();
+
+    var shift = ResolveValidateShift(conn, options.Shift);
+    var sectorId = ResolveValidateSector(options.Sector);
+    var localId = ResolveValidateLocal(conn, options.Area);
+    var machine = ResolveValidateMachine(conn, options.Machine, sectorId, localId);
+    var filter = new ProductionDashboardFilter
+    {
+        Date = options.Date.Date,
+        ShiftId = shift.Id,
+        SectorId = sectorId,
+        LocalId = localId,
+        MachineId = machine?.Id ?? 0,
+        MachineCode = machine?.MachineCode ?? string.Empty
+    };
+
+    var totalWatch = Stopwatch.StartNew();
+    var dashboardWatch = Stopwatch.StartNew();
+    var dashboard = analytics.BuildDashboard(filter);
+    if (sectorId <= 0 || sectorId == 1)
+    {
+        dashboard.GBareruCapacityForecast = new TeamOps.UI.Services.GBareruCapacityForecastService(factory)
+            .BuildForecast(filter, dashboard);
+    }
+    dashboardWatch.Stop();
+
+    Console.WriteLine("=== VALIDATE REPORTS ===");
+    Console.WriteLine($"Database={settings.DatabasePath}");
+    Console.WriteLine($"Date={filter.Date:yyyy-MM-dd}");
+    Console.WriteLine($"Shift={shift.Id} {shift.NamePt} {shift.NameJp}".Trim());
+    Console.WriteLine($"Sector={ResolveSectorLabel(sectorId, string.Empty, string.Empty)} ({sectorId})");
+    Console.WriteLine($"Area={(localId <= 0 ? "all" : localId.ToString(CultureInfo.InvariantCulture))}");
+    Console.WriteLine($"Machine={(machine == null ? "all" : $"{machine.Id}:{machine.MachineCode}:{machine.MachineKey}")}");
+    Console.WriteLine($"Operator={options.Operator}");
+    Console.WriteLine("ReferenceProductionScreen=ProductionAnalyticsService.BuildDashboard");
+    Console.WriteLine("ReferenceOperatorDetail=ProductionAnalyticsService.GetOperatorDetail");
+    Console.WriteLine("ReferencePresenceReport=OperatorManagerReportService logic: Operators + HaidaiAssignments + OperatorPresence + AcompYukyu/YukyuTodoke");
+    Console.WriteLine("Ec2CurrentStateMatchKey=MachineId");
+
+    Console.WriteLine();
+    Console.WriteLine("ProductionTotals:");
+    Console.WriteLine($"  Machines={dashboard.Machines.Count} Areas={dashboard.Areas.Count} TimelineRows={dashboard.Timeline.Count} OperatorRanking={dashboard.OperatorRanking.Count}");
+    Console.WriteLine($"  Kadouritsu={dashboard.ProductionPercent:F1} Running={dashboard.MachinesRunning} Stopped={dashboard.MachinesStopped} Ignored={dashboard.MachinesIgnored} Total={dashboard.MachinesTotal}");
+    Console.WriteLine($"  Minutes Running={dashboard.Machines.Sum(item => item.RunningMinutes):F1} Stop={dashboard.Machines.Sum(item => item.StoppedMinutes):F1} Error={dashboard.ErrorMinutes:F1} Inactive={dashboard.InactiveMinutes:F1}");
+    Console.WriteLine($"  GBareruForecastAvailable={dashboard.GBareruCapacityForecast.IsAvailable} Message={dashboard.GBareruCapacityForecast.Message}");
+
+    Console.WriteLine();
+    Console.WriteLine("MachineMetrics:");
+    if (dashboard.Machines.Count == 0)
+    {
+        Console.WriteLine("  (none) Reason=no active machine matched filters or production schema has no machines for this filter");
+    }
+    foreach (var item in dashboard.Machines)
+    {
+        Console.WriteLine($"  MachineId={item.MachineId} Code={item.MachineCode} Line={item.LineCode} Sector={item.SectorId} Local={item.LocalId} Area={item.Area} Status={item.StatusCode}/{item.DisplayCode} Text={item.StatusText} EC2={item.Ec2StatusText} Running={item.RunningMinutes:F1} Stop={item.StoppedMinutes:F1} Error={item.ErrorMinutes:F1} Inactive={item.InactiveMinutes:F1} Total={item.TotalMinutes:F1} Kadouritsu={item.ProductionPercent:F1} Ec2Ignored={item.IsEc2Ignored} IgnoreReason={item.Ec2IgnoreReason}");
+    }
+
+    var operatorWatch = Stopwatch.StartNew();
+    var rankingItems = dashboard.OperatorRanking
+        .Where(item => options.Operator.Equals("all", StringComparison.OrdinalIgnoreCase)
+            || item.OperatorCodigoFJ.Equals(options.Operator, StringComparison.OrdinalIgnoreCase))
+        .OrderBy(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    Console.WriteLine();
+    Console.WriteLine("OperatorRankingVsDetail:");
+    if (rankingItems.Count == 0)
+    {
+        Console.WriteLine("  (none) Reason=no operator ranking entries matched filters. Check HaidaiAssignments, MachineEvents and selected date/shift/sector.");
+    }
+    var rankingOperatorCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var item in rankingItems)
+    {
+        rankingOperatorCodes.Add(item.OperatorCodigoFJ);
+        var detail = analytics.GetOperatorDetail(filter, item.OperatorCodigoFJ);
+        var kadouritsuDiff = Math.Round(item.EstimatedKadouritsuPercent - detail.AverageKadouritsuPercent, 3);
+        var runningDiff = Math.Round(item.EstimatedRunningMinutes - detail.TotalRunningMinutes, 3);
+        var status = Math.Abs(kadouritsuDiff) <= 0.1d && Math.Abs(runningDiff) <= 0.1d
+            ? "OK"
+            : "DIVERGENCE";
+        var reason = status == "OK"
+            ? "same calculation as detail"
+            : "ranking aggregate differs from detail average/sum";
+
+        Console.WriteLine($"  Operator={item.OperatorCodigoFJ} RankingKadouritsu={item.EstimatedKadouritsuPercent:F1} DetailKadouritsu={detail.AverageKadouritsuPercent:F1} DiffKadouritsu={kadouritsuDiff:F3} RankingRunning={item.EstimatedRunningMinutes:F1} DetailRunning={detail.TotalRunningMinutes:F1} DiffRunning={runningDiff:F3} Entries={detail.Entries.Count} Status={status} Reason={reason}");
+    }
+    operatorWatch.Stop();
+
+    var presenceWatch = Stopwatch.StartNew();
+    var presenceAudit = BuildPresenceAudit(conn, filter, rankingOperatorCodes);
+    presenceWatch.Stop();
+
+    Console.WriteLine();
+    Console.WriteLine("PresenceHaidaiProduction:");
+    Console.WriteLine($"  HaidaiOperators={presenceAudit.HaidaiOperators.Count} PresenceOperators={presenceAudit.PresenceOperators.Count} RankingOperators={rankingOperatorCodes.Count}");
+    Console.WriteLine($"  HaidaiSemPresenca={presenceAudit.HaidaiWithoutPresence.Count} [{string.Join(",", presenceAudit.HaidaiWithoutPresence.Take(20))}]");
+    Console.WriteLine($"  PresencaSemHaidai={presenceAudit.PresenceWithoutHaidai.Count} [{string.Join(",", presenceAudit.PresenceWithoutHaidai.Take(20))}]");
+    Console.WriteLine($"  RankingSemPresenca={presenceAudit.RankingWithoutPresence.Count} [{string.Join(",", presenceAudit.RankingWithoutPresence.Take(20))}]");
+    Console.WriteLine($"  RankingSemHaidai={presenceAudit.RankingWithoutHaidai.Count} [{string.Join(",", presenceAudit.RankingWithoutHaidai.Take(20))}]");
+
+    var duplicateMachines = conn.Query<DuplicateMachineProbeRow>(
+        @"
+            SELECT
+                MachineCode,
+                COUNT(1) AS Total,
+                GROUP_CONCAT(Id || ':' || COALESCE(SectorId, 'NULL') || ':' || COALESCE(LocalId, 'NULL') || ':' || COALESCE(MachineKey, ''), ' | ') AS Detail
+            FROM Machines
+            WHERE trim(COALESCE(MachineCode, '')) <> ''
+            GROUP BY MachineCode
+            HAVING COUNT(1) > 1
+            ORDER BY MachineCode;").ToList();
+
+    Console.WriteLine();
+    Console.WriteLine("DuplicateMachinesByCode:");
+    if (duplicateMachines.Count == 0)
+    {
+        Console.WriteLine("  (none)");
+    }
+    foreach (var row in duplicateMachines)
+    {
+        Console.WriteLine($"  Machine={row.MachineCode} Total={row.Total} Detail={row.Detail}");
+    }
+
+    var machineCodeOnlyRisk = conn.QueryFirstOrDefault<int>(
+        @"
+            SELECT COUNT(1)
+            FROM Ec2MachineCurrentState c
+            JOIN Machines m ON upper(trim(m.MachineCode)) = upper(trim(c.MachineCode))
+            WHERE m.Id <> c.MachineId;") > 0;
+
+    Console.WriteLine();
+    Console.WriteLine("MachineJoinAudit:");
+    Console.WriteLine($"  Ec2CurrentStatePrimaryKey={ResolveEc2CurrentPrimaryKey(conn)}");
+    Console.WriteLine($"  Ec2MachineCodeMismatchRows={(machineCodeOnlyRisk ? "yes" : "no")}");
+    Console.WriteLine("  MachineCodeOnlyLegacyHelper=ProductionMachineRepository.GetByMachineCode still exists; EC2 current-state import/audit path uses MachineId.");
+
+    totalWatch.Stop();
+    Console.WriteLine();
+    Console.WriteLine("Performance:");
+    Console.WriteLine($"  BuildProductionMs={dashboardWatch.ElapsedMilliseconds}");
+    Console.WriteLine($"  BuildOperatorDetailsMs={operatorWatch.ElapsedMilliseconds}");
+    Console.WriteLine($"  BuildPresenceAuditMs={presenceWatch.ElapsedMilliseconds}");
+    Console.WriteLine($"  TotalMs={totalWatch.ElapsedMilliseconds}");
+}
+
 static void RequireTable(System.Data.IDbConnection conn, string tableName, List<string> issues)
 {
     var exists = conn.ExecuteScalar<int>(
@@ -1624,6 +1779,236 @@ void PrintRuntimeConfigDiagnostics()
     Console.WriteLine($"MachineStoppedIgnoreAfterMinutes={ignoreAfter}");
     Console.WriteLine($"Ec2AdministratorRunningStatusKeywords={runningKeywords}");
     Console.WriteLine();
+}
+
+static ShiftRow ResolveValidateShift(System.Data.IDbConnection conn, string shiftFilter)
+{
+    var shifts = conn.Query<ShiftRow>(
+        @"
+            SELECT
+                Id,
+                COALESCE(NamePt, '') AS NamePt,
+                COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp
+            FROM Shifts
+            ORDER BY Id;").ToList();
+
+    if (shifts.Count == 0)
+    {
+        throw new InvalidOperationException("Nenhum turno cadastrado.");
+    }
+
+    var normalized = (shiftFilter ?? string.Empty).Trim();
+    if (string.IsNullOrWhiteSpace(normalized))
+    {
+        return shifts[0];
+    }
+
+    if (int.TryParse(normalized, NumberStyles.Integer, CultureInfo.InvariantCulture, out var shiftId))
+    {
+        return shifts.FirstOrDefault(item => item.Id == shiftId)
+            ?? throw new InvalidOperationException($"Turno nao encontrado: {shiftFilter}");
+    }
+
+    var keywords = normalized.Equals("noite", StringComparison.OrdinalIgnoreCase)
+        || normalized.Equals("night", StringComparison.OrdinalIgnoreCase)
+        || normalized.Equals("yakin", StringComparison.OrdinalIgnoreCase)
+            ? new[] { "noite", "night", "yakin" }
+            : normalized.Equals("dia", StringComparison.OrdinalIgnoreCase)
+              || normalized.Equals("day", StringComparison.OrdinalIgnoreCase)
+              || normalized.Equals("hirukin", StringComparison.OrdinalIgnoreCase)
+              || normalized.Equals("hiru", StringComparison.OrdinalIgnoreCase)
+                ? new[] { "dia", "day", "hiru", "hirukin" }
+                : new[] { normalized };
+
+    return shifts.FirstOrDefault(item => MatchesShift(item, keywords))
+        ?? throw new InvalidOperationException($"Turno nao encontrado: {shiftFilter}");
+}
+
+static int ResolveValidateSector(string sectorFilter)
+{
+    var normalized = (sectorFilter ?? string.Empty).Trim();
+    if (string.IsNullOrWhiteSpace(normalized) || normalized.Equals("all", StringComparison.OrdinalIgnoreCase))
+    {
+        return 0;
+    }
+
+    if (normalized.Equals("gbareru", StringComparison.OrdinalIgnoreCase)
+        || normalized.Equals("g-bareru", StringComparison.OrdinalIgnoreCase))
+    {
+        return 1;
+    }
+
+    if (normalized.Equals("dad", StringComparison.OrdinalIgnoreCase))
+    {
+        return DadSectorId;
+    }
+
+    return int.Parse(normalized, CultureInfo.InvariantCulture);
+}
+
+static int ResolveValidateLocal(System.Data.IDbConnection conn, string areaFilter)
+{
+    var normalized = (areaFilter ?? string.Empty).Trim();
+    if (string.IsNullOrWhiteSpace(normalized) || normalized.Equals("all", StringComparison.OrdinalIgnoreCase))
+    {
+        return 0;
+    }
+
+    if (int.TryParse(normalized, NumberStyles.Integer, CultureInfo.InvariantCulture, out var localId))
+    {
+        return localId;
+    }
+
+    var row = conn.QueryFirstOrDefault<LocalLookupProbeRow>(
+        @"
+            SELECT Id, COALESCE(NamePt, '') AS NamePt, COALESCE(NameJp, '') AS NameJp, COALESCE(ShortCode, '') AS ShortCode
+            FROM Locals
+            WHERE lower(trim(COALESCE(NamePt, ''))) = lower(trim(@value))
+               OR lower(trim(COALESCE(NameJp, ''))) = lower(trim(@value))
+               OR lower(trim(COALESCE(ShortCode, ''))) = lower(trim(@value))
+            ORDER BY Id
+            LIMIT 1;",
+        new { value = normalized });
+
+    if (row != null)
+    {
+        return row.Id;
+    }
+
+    var digits = new string(normalized.Where(char.IsDigit).ToArray());
+    if (int.TryParse(digits, NumberStyles.Integer, CultureInfo.InvariantCulture, out var areaNumber))
+    {
+        return areaNumber == 1 ? 1 : areaNumber + 1;
+    }
+
+    throw new InvalidOperationException($"Area/local nao encontrado: {areaFilter}");
+}
+
+static MachineLookupProbeRow? ResolveValidateMachine(System.Data.IDbConnection conn, string machineFilter, int sectorId, int localId)
+{
+    var normalized = (machineFilter ?? string.Empty).Trim();
+    if (string.IsNullOrWhiteSpace(normalized) || normalized.Equals("all", StringComparison.OrdinalIgnoreCase))
+    {
+        return null;
+    }
+
+    List<MachineLookupProbeRow> rows;
+    if (int.TryParse(normalized, NumberStyles.Integer, CultureInfo.InvariantCulture, out var machineId))
+    {
+        rows = conn.Query<MachineLookupProbeRow>(
+            @"
+                SELECT Id, COALESCE(MachineCode, '') AS MachineCode, COALESCE(MachineKey, '') AS MachineKey, SectorId, LocalId
+                FROM Machines
+                WHERE Id = @machineId;",
+            new { machineId }).ToList();
+    }
+    else
+    {
+        rows = conn.Query<MachineLookupProbeRow>(
+            @"
+                SELECT Id, COALESCE(MachineCode, '') AS MachineCode, COALESCE(MachineKey, '') AS MachineKey, SectorId, LocalId
+                FROM Machines
+                WHERE upper(trim(COALESCE(MachineCode, ''))) = upper(trim(@machineCode))
+                  AND (@sectorId <= 0 OR SectorId = @sectorId)
+                  AND (@localId <= 0 OR LocalId = @localId)
+                ORDER BY Id;",
+            new
+            {
+                machineCode = normalized,
+                sectorId,
+                localId
+            }).ToList();
+
+        if (rows.Count == 0)
+        {
+            rows = conn.Query<MachineLookupProbeRow>(
+                @"
+                    SELECT Id, COALESCE(MachineCode, '') AS MachineCode, COALESCE(MachineKey, '') AS MachineKey, SectorId, LocalId
+                    FROM Machines
+                    WHERE upper(trim(COALESCE(MachineCode, ''))) = upper(trim(@machineCode))
+                    ORDER BY Id;",
+                new { machineCode = normalized }).ToList();
+        }
+    }
+
+    if (rows.Count == 0)
+    {
+        throw new InvalidOperationException($"Maquina nao encontrada: {machineFilter}");
+    }
+
+    if (rows.Count > 1)
+    {
+        Console.WriteLine($"MachineResolutionWarning=duplicate-code Matches={string.Join(" | ", rows.Select(item => $"{item.Id}:{item.MachineCode}:{item.MachineKey}:{item.SectorId}:{item.LocalId}"))}");
+    }
+
+    return rows[0];
+}
+
+static PresenceAuditProbeResult BuildPresenceAudit(
+    System.Data.IDbConnection conn,
+    ProductionDashboardFilter filter,
+    IReadOnlySet<string> rankingOperatorCodes)
+{
+    var parameters = new
+    {
+        date = filter.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+        shiftId = filter.ShiftId,
+        sectorId = filter.SectorId,
+        localId = filter.LocalId
+    };
+
+    var haidaiOperators = conn.Query<string>(
+        @"
+            SELECT DISTINCT COALESCE(ha.OperatorCodigoFJ, '') AS OperatorCodigoFJ
+            FROM HaidaiAssignments ha
+            WHERE date(ha.ScheduleDate) = date(@date)
+              AND ha.ShiftId = @shiftId
+              AND COALESCE(ha.IsLineupActive, 1) = 1
+              AND trim(COALESCE(ha.OperatorCodigoFJ, '')) <> ''
+              AND (@sectorId <= 0 OR ha.SectorId = @sectorId)
+              AND (@localId <= 0 OR ha.LocalId = @localId);",
+        parameters).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    var presenceOperators = conn.Query<string>(
+        @"
+            SELECT DISTINCT COALESCE(CodigoFJ, '') AS OperatorCodigoFJ
+            FROM OperatorPresence
+            WHERE date(Date) = date(@date)
+              AND ShiftId = @shiftId
+              AND trim(COALESCE(CodigoFJ, '')) <> ''
+              AND (@sectorId <= 0 OR SectorId = @sectorId);",
+        parameters).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    return new PresenceAuditProbeResult(
+        Sorted(haidaiOperators),
+        Sorted(presenceOperators),
+        Sorted(haidaiOperators.Except(presenceOperators, StringComparer.OrdinalIgnoreCase)),
+        Sorted(presenceOperators.Except(haidaiOperators, StringComparer.OrdinalIgnoreCase)),
+        Sorted(rankingOperatorCodes.Except(presenceOperators, StringComparer.OrdinalIgnoreCase)),
+        Sorted(rankingOperatorCodes.Except(haidaiOperators, StringComparer.OrdinalIgnoreCase)));
+}
+
+static string ResolveEc2CurrentPrimaryKey(System.Data.IDbConnection conn)
+{
+    var primaryKeys = conn.Query<string>(
+        @"
+            SELECT name
+            FROM pragma_table_info('Ec2MachineCurrentState')
+            WHERE pk > 0
+            ORDER BY pk;").ToList();
+
+    return primaryKeys.Count == 0
+        ? "(none)"
+        : string.Join(",", primaryKeys);
+}
+
+static List<string> Sorted(IEnumerable<string> values)
+{
+    return values
+        .Where(value => !string.IsNullOrWhiteSpace(value))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+        .ToList();
 }
 
 static bool MatchesShift(ShiftRow shift, params string[] keywords)
@@ -1952,6 +2337,65 @@ sealed class StatusReportOptions
     }
 }
 
+sealed class ValidateReportsOptions
+{
+    public DateTime Date { get; private init; } = DateTime.Today;
+    public string Shift { get; private init; } = "noite";
+    public string Sector { get; private init; } = "gbareru";
+    public string Area { get; private init; } = "all";
+    public string Machine { get; private init; } = "all";
+    public string Operator { get; private init; } = "all";
+
+    public static ValidateReportsOptions Parse(string[] args)
+    {
+        var date = DateTime.Today;
+        var shift = "noite";
+        var sector = "gbareru";
+        var area = "all";
+        var machine = "all";
+        var operatorCode = "all";
+
+        for (var index = 0; index < args.Length; index++)
+        {
+            var arg = args[index].Trim();
+            if (arg.Equals("--date", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+            {
+                date = DateTime.Parse(args[++index], CultureInfo.InvariantCulture).Date;
+            }
+            else if (arg.Equals("--shift", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+            {
+                shift = args[++index].Trim();
+            }
+            else if (arg.Equals("--sector", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+            {
+                sector = args[++index].Trim();
+            }
+            else if (arg.Equals("--area", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+            {
+                area = args[++index].Trim();
+            }
+            else if (arg.Equals("--machine", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+            {
+                machine = args[++index].Trim();
+            }
+            else if (arg.Equals("--operator", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+            {
+                operatorCode = args[++index].Trim();
+            }
+        }
+
+        return new ValidateReportsOptions
+        {
+            Date = date,
+            Shift = shift,
+            Sector = sector,
+            Area = area,
+            Machine = machine,
+            Operator = string.IsNullOrWhiteSpace(operatorCode) ? "all" : operatorCode
+        };
+    }
+}
+
 sealed class ImportProfileOptions
 {
     public DateTime? Date { get; private init; }
@@ -2080,6 +2524,38 @@ sealed class MachineCleanupProbeRow
     public long EventCount { get; set; }
     public long CurrentStatusCount { get; set; }
 }
+
+sealed class MachineLookupProbeRow
+{
+    public int Id { get; set; }
+    public string MachineCode { get; set; } = string.Empty;
+    public string MachineKey { get; set; } = string.Empty;
+    public int? SectorId { get; set; }
+    public int? LocalId { get; set; }
+}
+
+sealed class LocalLookupProbeRow
+{
+    public int Id { get; set; }
+    public string NamePt { get; set; } = string.Empty;
+    public string NameJp { get; set; } = string.Empty;
+    public string ShortCode { get; set; } = string.Empty;
+}
+
+sealed class DuplicateMachineProbeRow
+{
+    public string MachineCode { get; set; } = string.Empty;
+    public long Total { get; set; }
+    public string Detail { get; set; } = string.Empty;
+}
+
+sealed record PresenceAuditProbeResult(
+    IReadOnlyList<string> HaidaiOperators,
+    IReadOnlyList<string> PresenceOperators,
+    IReadOnlyList<string> HaidaiWithoutPresence,
+    IReadOnlyList<string> PresenceWithoutHaidai,
+    IReadOnlyList<string> RankingWithoutPresence,
+    IReadOnlyList<string> RankingWithoutHaidai);
 
 sealed class StatusEventProbeRow
 {
