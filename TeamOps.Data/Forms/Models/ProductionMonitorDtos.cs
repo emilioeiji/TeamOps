@@ -198,6 +198,7 @@ namespace TeamOps.UI.Forms.Models
         public double TotalMinutes { get; set; }
         public double ProductionPercent { get; set; }
         public DateTime? LastUpdate { get; set; }
+        public int ScheduledOperatorCount { get; set; }
         public List<string> ScheduledOperatorsPt { get; } = new();
         public List<string> ScheduledOperatorsJp { get; } = new();
     }

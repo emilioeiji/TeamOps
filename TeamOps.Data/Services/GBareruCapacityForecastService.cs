@@ -15,6 +15,7 @@ namespace TeamOps.UI.Services
         private const string EciiCode = "ECII";
         private const string BunkatsuCode = "BUNKATSU";
         private const string DcsCode = "DCS";
+        private static readonly string[] BreakCodes = { "KYUKEI", "BREAK", "INTERVALO", "休憩" };
 
         private readonly SqliteConnectionFactory _factory;
 
@@ -122,7 +123,7 @@ namespace TeamOps.UI.Services
                 {
                     SectorId = GBareruSectorId,
                     LocalId = localId,
-                    Codes = new[] { EciiCode, BunkatsuCode, DcsCode }
+                    Codes = new[] { EciiCode, BunkatsuCode, DcsCode }.Concat(BreakCodes).ToArray()
                 })
                 .ToList();
 
@@ -145,12 +146,13 @@ namespace TeamOps.UI.Services
 
             var computation = new AreaForecastComputation
             {
-                Forecast = forecast,
-                AvailableMinutes = ResolveAvailableMinutes(area)
+                Forecast = forecast
             };
 
             var peopleCount = ResolvePeopleCount(area);
             forecast.PeopleCount = peopleCount;
+            computation.BreakMinutes = ResolveBreakMinutes(times);
+            computation.AvailableMinutes = Math.Max(0, ResolveAvailableMinutes(area) - computation.BreakMinutes);
 
             if (!TryResolveProcedureTime(times, EciiCode, out var ecii)
                 || !TryResolveProcedureTime(times, BunkatsuCode, out var bunkatsu)
@@ -205,9 +207,10 @@ namespace TeamOps.UI.Services
                 return 0;
             }
 
-            return area.MachineCount <= 0
+            var countedMachines = Math.Max(0, area.MachineCount - area.MachinesIgnored);
+            return countedMachines <= 0
                 ? Math.Round(area.TotalMinutes, 1)
-                : Math.Round(area.TotalMinutes / area.MachineCount, 1);
+                : Math.Round(area.TotalMinutes / countedMachines, 1);
         }
 
         private static string ResolveBottleneck(double block1, double block2)
@@ -261,6 +264,11 @@ namespace TeamOps.UI.Services
 
         private static int ResolvePeopleCount(ProductionAreaSummaryDto area)
         {
+            if (area.ScheduledOperatorCount > 0)
+            {
+                return area.ScheduledOperatorCount;
+            }
+
             var names = area.ScheduledOperatorsPt
                 .Where(name => !string.IsNullOrWhiteSpace(name))
                 .ToList();
@@ -275,6 +283,19 @@ namespace TeamOps.UI.Services
             return names
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Count();
+        }
+
+        private static double ResolveBreakMinutes(IReadOnlyDictionary<string, double> times)
+        {
+            foreach (var code in BreakCodes)
+            {
+                if (TryResolveProcedureTime(times, code, out var minutes))
+                {
+                    return Math.Round(minutes, 1);
+                }
+            }
+
+            return 0;
         }
 
         private static double ResolveAggregateMinutes(IEnumerable<double> values)
@@ -311,12 +332,12 @@ namespace TeamOps.UI.Services
             if (!string.IsNullOrWhiteSpace(reason))
             {
                 WriteDiagnostic(
-                    $"[ProductionMonitor][Forecast] Local={localName} Pessoas={computation.Forecast.PeopleCount} ECII={FormatMinutes(computation.EciiMinutes)} BUNKATSU={FormatMinutes(computation.BunkatsuMinutes)} DCS={FormatMinutes(computation.DcsMinutes)} TempoDeCiclo={FormatMinutes(computation.Forecast.CycleMinutes)} CapacidadePrevista={FormatMinutes(computation.Forecast.ForecastCapacity)} KadouritsuPrevisto={FormatMinutes(computation.Forecast.ForecastKadouritsuPercent)} {reason}");
+                    $"[ProductionMonitor][Forecast] Local={localName} Pessoas={computation.Forecast.PeopleCount} ECII={FormatMinutes(computation.EciiMinutes)} BUNKATSU={FormatMinutes(computation.BunkatsuMinutes)} DCS={FormatMinutes(computation.DcsMinutes)} Kyukei={FormatMinutes(computation.BreakMinutes)} Disponivel={FormatMinutes(computation.AvailableMinutes)} TempoDeCiclo={FormatMinutes(computation.Forecast.CycleMinutes)} CapacidadePrevista={FormatMinutes(computation.Forecast.ForecastCapacity)} KadouritsuPrevisto={FormatMinutes(computation.Forecast.ForecastKadouritsuPercent)} {reason}");
                 return;
             }
 
             WriteDiagnostic(
-                $"[ProductionMonitor][Forecast] Local={localName} Pessoas={computation.Forecast.PeopleCount} ECII={FormatMinutes(computation.EciiMinutes)} BUNKATSU={FormatMinutes(computation.BunkatsuMinutes)} DCS={FormatMinutes(computation.DcsMinutes)} TempoDeCiclo={FormatMinutes(computation.Forecast.CycleMinutes)} CapacidadePrevista={FormatMinutes(computation.Forecast.ForecastCapacity)} KadouritsuPrevisto={FormatMinutes(computation.Forecast.ForecastKadouritsuPercent)}");
+                $"[ProductionMonitor][Forecast] Local={localName} Pessoas={computation.Forecast.PeopleCount} ECII={FormatMinutes(computation.EciiMinutes)} BUNKATSU={FormatMinutes(computation.BunkatsuMinutes)} DCS={FormatMinutes(computation.DcsMinutes)} Kyukei={FormatMinutes(computation.BreakMinutes)} Disponivel={FormatMinutes(computation.AvailableMinutes)} TempoDeCiclo={FormatMinutes(computation.Forecast.CycleMinutes)} CapacidadePrevista={FormatMinutes(computation.Forecast.ForecastCapacity)} KadouritsuPrevisto={FormatMinutes(computation.Forecast.ForecastKadouritsuPercent)}");
         }
 
         private static void WriteDiagnostic(string message)
@@ -345,6 +366,7 @@ namespace TeamOps.UI.Services
             public double EciiMinutes { get; set; }
             public double BunkatsuMinutes { get; set; }
             public double DcsMinutes { get; set; }
+            public double BreakMinutes { get; set; }
             public double AvailableMinutes { get; set; }
         }
     }

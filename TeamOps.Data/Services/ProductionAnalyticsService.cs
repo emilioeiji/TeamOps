@@ -679,6 +679,55 @@ namespace TeamOps.Services
             var rangeStart = historyStartDate.AddDays(-1);
             var rangeEnd = filter.Date.Date.AddDays(2);
 
+            var detail = new ProductionOperatorDetailDto
+            {
+                OperatorCodigoFJ = operatorCodigoFJ.Trim(),
+                ShiftNamePt = shift.NamePt,
+                ShiftNameJp = shift.NameJp
+            };
+
+            var scheduleRows = conn.Query<ScheduleRow>(
+                @"
+                    SELECT
+                        ha.ScheduleDate,
+                        ha.LocalId,
+                        COALESCE(ha.OperatorCodigoFJ, '') AS OperatorCodigoFJ,
+                        COALESCE(op.NameRomanji, ha.OperatorCodigoFJ) AS OperatorNamePt,
+                        COALESCE(NULLIF(op.NameNihongo, ''), op.NameRomanji, ha.OperatorCodigoFJ) AS OperatorNameJp
+                    FROM HaidaiAssignments ha
+                    LEFT JOIN Operators op ON op.CodigoFJ = ha.OperatorCodigoFJ
+                    WHERE date(ha.ScheduleDate) BETWEEN date(@startDate) AND date(@endDate)
+                      AND ha.ShiftId = @shiftId
+                      AND ha.OperatorCodigoFJ = @codigoFJ
+                      AND COALESCE(ha.IsLineupActive, 1) = 1
+                      AND COALESCE(ha.LocalId, 0) > 0
+                      AND (@localId <= 0 OR ha.LocalId = @localId)
+                    ORDER BY date(ha.ScheduleDate) DESC, ha.LocalId;",
+                new
+                {
+                    startDate = historyStartDate.ToString("yyyy-MM-dd"),
+                    endDate = filter.Date.ToString("yyyy-MM-dd"),
+                    shiftId = filter.ShiftId,
+                    codigoFJ = operatorCodigoFJ.Trim(),
+                    localId = filter.LocalId
+                }
+            ).ToList();
+
+            if (scheduleRows.Count == 0)
+            {
+                return detail;
+            }
+
+            var firstRow = scheduleRows[0];
+            detail.OperatorNamePt = firstRow.OperatorNamePt;
+            detail.OperatorNameJp = firstRow.OperatorNameJp;
+
+            var assignedLocalIds = scheduleRows
+                .Select(row => row.LocalId)
+                .Where(localId => localId > 0)
+                .Distinct()
+                .ToArray();
+
             var machines = conn.Query<MachineRow>(
                 @"
                     SELECT
@@ -699,20 +748,17 @@ namespace TeamOps.Services
                     WHERE COALESCE(m.IsActive, 1) = 1
                       AND (@sectorId <= 0 OR m.SectorId = @sectorId)
                       AND (@localId <= 0 OR m.LocalId = @localId)
+                      AND (@machineId <= 0 OR m.Id = @machineId)
+                      AND m.LocalId IN @assignedLocalIds
                     ORDER BY COALESCE(m.LocalId, 0), COALESCE(m.LineCode, ''), COALESCE(m.MachineCode, ''), m.Id;",
                 new
                 {
                     sectorId = filter.SectorId,
-                    localId = filter.LocalId
+                    localId = filter.LocalId,
+                    machineId = filter.MachineId,
+                    assignedLocalIds
                 }
             ).ToList();
-
-            var detail = new ProductionOperatorDetailDto
-            {
-                OperatorCodigoFJ = operatorCodigoFJ.Trim(),
-                ShiftNamePt = shift.NamePt,
-                ShiftNameJp = shift.NameJp
-            };
 
             if (machines.Count == 0)
             {
@@ -777,39 +823,17 @@ namespace TeamOps.Services
                     WHERE COALESCE(IsActive, 1) = 1;"
             ).ToDictionary(row => BuildStatusKey(row.SectorId, row.StatusCode), StringComparer.OrdinalIgnoreCase);
 
+            var ec2States = LoadEc2States(conn, machineIds);
+
             var latestKnownEventCandidates = statusRows.Values
                 .Select(item => item.EventDateTime)
                 .Concat(events.Select(item => item.EventDateTime))
+                .Concat(ec2States.Values.Select(item => item.SnapshotAt))
                 .ToList();
 
             DateTime? latestKnownEventTime = latestKnownEventCandidates.Count == 0
                 ? null
                 : latestKnownEventCandidates.Max();
-
-            var scheduleRows = conn.Query<ScheduleRow>(
-                @"
-                    SELECT
-                        ha.ScheduleDate,
-                        ha.LocalId,
-                        COALESCE(ha.OperatorCodigoFJ, '') AS OperatorCodigoFJ,
-                        COALESCE(op.NameRomanji, ha.OperatorCodigoFJ) AS OperatorNamePt,
-                        COALESCE(NULLIF(op.NameNihongo, ''), op.NameRomanji, ha.OperatorCodigoFJ) AS OperatorNameJp
-                    FROM HaidaiAssignments ha
-                    LEFT JOIN Operators op ON op.CodigoFJ = ha.OperatorCodigoFJ
-                    WHERE date(ha.ScheduleDate) BETWEEN date(@startDate) AND date(@endDate)
-                      AND ha.ShiftId = @shiftId
-                      AND ha.OperatorCodigoFJ = @codigoFJ
-                      AND COALESCE(ha.IsLineupActive, 1) = 1
-                      AND COALESCE(ha.LocalId, 0) > 0
-                    ORDER BY date(ha.ScheduleDate) DESC, ha.LocalId;",
-                new
-                {
-                    startDate = historyStartDate.ToString("yyyy-MM-dd"),
-                    endDate = filter.Date.ToString("yyyy-MM-dd"),
-                    shiftId = filter.ShiftId,
-                    codigoFJ = operatorCodigoFJ.Trim()
-                }
-            ).ToList();
 
             var operatorMovementRows = conn.Query<MovementWindowRow>(
                 @"
@@ -843,15 +867,6 @@ namespace TeamOps.Services
                 .GroupBy(item => item.Day, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
 
-            if (scheduleRows.Count == 0)
-            {
-                return detail;
-            }
-
-            var firstRow = scheduleRows[0];
-            detail.OperatorNamePt = firstRow.OperatorNamePt;
-            detail.OperatorNameJp = firstRow.OperatorNameJp;
-
             foreach (var scheduleRow in scheduleRows
                          .GroupBy(row => new { Day = row.ScheduleDate.Date, row.LocalId })
                          .Select(group => group.First())
@@ -867,9 +882,11 @@ namespace TeamOps.Services
                     continue;
                 }
 
-                var baselinePeriod = ResolveEffectivePeriod(
-                    GetShiftPeriod(scheduleRow.ScheduleDate.Date, selectedShiftHint),
-                    latestKnownEventTime);
+                var baselinePeriod = GetShiftPeriod(scheduleRow.ScheduleDate.Date, selectedShiftHint);
+                if (scheduleRow.ScheduleDate.Date == filter.Date.Date)
+                {
+                    baselinePeriod = ResolveEffectivePeriod(baselinePeriod, latestKnownEventTime);
+                }
                 var dayKey = scheduleRow.ScheduleDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
                 latestMovementByDay.TryGetValue(dayKey, out var movement);
                 latestReplacementMovementByDay.TryGetValue(dayKey, out var replacementMovement);
@@ -881,7 +898,7 @@ namespace TeamOps.Services
                     statusRows,
                     eventsByMachine,
                     new Dictionary<int, List<ScheduleRow>>(),
-                    new Dictionary<int, Ec2StateRow>(),
+                    ec2States,
                     statusDefinitions,
                     period);
 
@@ -1170,6 +1187,12 @@ namespace TeamOps.Services
 
                     if (first.LocalId.HasValue && operatorsByLocal.TryGetValue(first.LocalId.Value, out var localOperators))
                     {
+                        area.ScheduledOperatorCount = localOperators
+                            .Select(item => item.OperatorCodigoFJ)
+                            .Where(code => !string.IsNullOrWhiteSpace(code))
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .Count();
+
                         area.ScheduledOperatorsPt.AddRange(
                             localOperators
                                 .Select(item => item.OperatorNamePt)

@@ -1,6 +1,7 @@
 using Dapper;
 using Microsoft.Web.WebView2.Core;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -26,6 +27,8 @@ namespace TeamOps.UI.Forms
         private readonly GBareruCapacityForecastService _forecastService;
         private readonly ProductionFileImporter _fileImporter;
         private readonly SemaphoreSlim _databaseOperationGate = new(1, 1);
+        private readonly Dictionary<string, string> _operatorDetailJsonCache = new(StringComparer.OrdinalIgnoreCase);
+        private readonly object _operatorDetailCacheLock = new();
         private volatile bool _isImportingProduction;
 
         public HTMLFormProductionMonitor(
@@ -233,6 +236,7 @@ namespace TeamOps.UI.Forms
 
         private async Task SendDashboardAsync(ProductionDashboardFilter filter)
         {
+            ClearOperatorDetailCache();
             await _databaseOperationGate.WaitAsync();
             try
             {
@@ -369,6 +373,7 @@ namespace TeamOps.UI.Forms
                             totalMinutes = area.TotalMinutes,
                             productionPercent = area.ProductionPercent,
                             lastUpdate = area.LastUpdate?.ToString("yyyy-MM-dd HH:mm:ss"),
+                            scheduledOperatorCount = area.ScheduledOperatorCount,
                             scheduledOperatorsPt = area.ScheduledOperatorsPt,
                             scheduledOperatorsJp = area.ScheduledOperatorsJp
                         }),
@@ -422,6 +427,8 @@ namespace TeamOps.UI.Forms
                             operatorNameJp = item.OperatorNameJp,
                             estimatedRunningMinutes = item.EstimatedRunningMinutes,
                             estimatedKadouritsuPercent = item.EstimatedKadouritsuPercent,
+                            fullCoverageDays = item.FullCoverageDays,
+                            partialCoverageDays = item.PartialCoverageDays,
                             localNamesPt = item.LocalNamesPt,
                             localNamesJp = item.LocalNamesJp
                         }),
@@ -450,6 +457,7 @@ namespace TeamOps.UI.Forms
             }
 
             _isImportingProduction = true;
+            ClearOperatorDetailCache();
             try
             {
                 await _databaseOperationGate.WaitAsync();
@@ -586,12 +594,22 @@ namespace TeamOps.UI.Forms
 
         private async Task SendOperatorDetailAsync(ProductionDashboardFilter filter, string operatorCodigoFJ)
         {
+            var cacheKey = BuildOperatorDetailCacheKey(filter, operatorCodigoFJ);
+            lock (_operatorDetailCacheLock)
+            {
+                if (_operatorDetailJsonCache.TryGetValue(cacheKey, out var cachedJson))
+                {
+                    PostJsonRaw(cachedJson);
+                    return;
+                }
+            }
+
             await _databaseOperationGate.WaitAsync();
             try
             {
                 var detail = await Task.Run(() => _analyticsService.GetOperatorDetail(filter, operatorCodigoFJ));
 
-                PostJson(new
+                var payload = new
                 {
                     type = "operator_detail",
                     data = new
@@ -625,11 +643,40 @@ namespace TeamOps.UI.Forms
                             plannedMinutes = entry.PlannedMinutes
                         })
                     }
-                });
+                };
+                var json = JsonSerializer.Serialize(payload);
+
+                lock (_operatorDetailCacheLock)
+                {
+                    _operatorDetailJsonCache[cacheKey] = json;
+                }
+
+                PostJsonRaw(json);
             }
             finally
             {
                 _databaseOperationGate.Release();
+            }
+        }
+
+        private static string BuildOperatorDetailCacheKey(ProductionDashboardFilter filter, string operatorCodigoFJ)
+        {
+            return string.Join(
+                "|",
+                filter.Date.Date.ToString("yyyy-MM-dd"),
+                filter.ShiftId,
+                filter.SectorId,
+                filter.LocalId,
+                filter.MachineId,
+                filter.MachineCode?.Trim() ?? string.Empty,
+                operatorCodigoFJ?.Trim() ?? string.Empty);
+        }
+
+        private void ClearOperatorDetailCache()
+        {
+            lock (_operatorDetailCacheLock)
+            {
+                _operatorDetailJsonCache.Clear();
             }
         }
 
