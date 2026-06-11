@@ -96,6 +96,8 @@ namespace TeamOps.UI.Forms
                       COALESCE(NamePt, '') AS NamePt,
                       COALESCE(NULLIF(NameJp, ''), NamePt, '') AS NameJp
                   FROM Machines
+                  WHERE SectorId = 1
+                    AND COALESCE(IsActive, 1) = 1
                   ORDER BY NamePt"
             ).ToList();
 

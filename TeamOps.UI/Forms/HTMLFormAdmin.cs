@@ -535,8 +535,8 @@ namespace TeamOps.UI.Forms
                 Group = "production",
                 TitlePt = "Tempos de Procedimento",
                 TitleJp = "Procedure Times",
-                DescriptionPt = "Tempos padrao usados apenas na previsao de capacidade do G-Bareru.",
-                DescriptionJp = "Standard times used only by G-Bareru capacity forecast.",
+                DescriptionPt = "Tempos padrao usados apenas na previsao de capacidade do G-Bareru. Use KYUKEI para sobrescrever o descanso padrao de 65 min por turno.",
+                DescriptionJp = "Standard times used only by G-Bareru capacity forecast. Use KYUKEI to override the default 65 min break per shift.",
                 Fields =
                 {
                     new AdminFieldDefinition("sectorId", "Setor", "Sector", "select", true, "sectors"),

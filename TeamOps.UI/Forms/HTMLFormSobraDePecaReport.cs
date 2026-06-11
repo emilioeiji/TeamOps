@@ -90,7 +90,7 @@ namespace TeamOps.UI.Forms
                         shifts = conn.Query(
                             @"SELECT Id AS id, COALESCE(NamePt, '') AS namePt, COALESCE(NULLIF(NameJp, ''), NamePt, '') AS nameJp FROM Shifts ORDER BY Id;").ToList(),
                         machines = conn.Query(
-                            @"SELECT Id AS id, COALESCE(NamePt, '') AS namePt, COALESCE(NULLIF(NameJp, ''), NamePt, '') AS nameJp FROM Machines ORDER BY NamePt;").ToList()
+                            @"SELECT Id AS id, COALESCE(NamePt, '') AS namePt, COALESCE(NULLIF(NameJp, ''), NamePt, '') AS nameJp FROM Machines WHERE SectorId = 1 AND COALESCE(IsActive, 1) = 1 ORDER BY NamePt;").ToList()
                     },
                     defaults = new
                     {
@@ -144,6 +144,7 @@ namespace TeamOps.UI.Forms
                       AND date(s.Data) <= date(@end)
                       AND (@shiftId <= 0 OR s.TurnoId = @shiftId)
                       AND (@machineId <= 0 OR s.MachineId = @machineId)
+                      AND COALESCE(m.SectorId, 0) = 1
                       AND (@item = '' OR upper(trim(COALESCE(s.Item, ''))) = @item)
                       AND (
                             @search = ''

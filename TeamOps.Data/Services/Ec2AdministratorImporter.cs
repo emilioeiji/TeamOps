@@ -705,27 +705,7 @@ namespace TeamOps.Services
                     continue;
                 }
 
-                var layouts = new[]
-                {
-                    new { Name = "requested", MachineIndex = 2, StatusIndex = 3, PartCodeIndex = 7, ProcessIndex = 13 },
-                    new { Name = "sample_offset", MachineIndex = 1, StatusIndex = 2, PartCodeIndex = 3, ProcessIndex = 13 }
-                };
-
-                var selectedLayout = layouts.FirstOrDefault(layout =>
-                {
-                    var candidateMachine = GetColumn(columns, layout.MachineIndex);
-                    var candidateProcess = GetColumn(columns, layout.ProcessIndex);
-                    var parsedProcess = ParseDouble(candidateProcess);
-                    return ProductionMachineRepository.IsValidProductionMachineCode(candidateMachine)
-                        && parsedProcess.HasValue
-                        && double.IsFinite(parsedProcess.Value)
-                        && parsedProcess.Value > 0;
-                });
-
-                if (selectedLayout == null)
-                {
-                    selectedLayout = layouts[0];
-                }
+                var selectedLayout = ResolveAdministratorLayout(columns);
 
                 var machineRaw = GetColumn(columns, selectedLayout.MachineIndex);
                 var statusRaw = GetColumn(columns, selectedLayout.StatusIndex);
@@ -805,6 +785,111 @@ namespace TeamOps.Services
             }
 
             return rows;
+        }
+
+        private static AdministratorLayout ResolveAdministratorLayout(IReadOnlyList<string> columns)
+        {
+            var layouts = new List<AdministratorLayout>
+            {
+                new("requested", 2, 3, 7, 13),
+                new("sample_offset", 1, 2, 3, 13),
+                new("machine_first", 0, 1, 5, 13),
+                new("machine_fourth", 3, 4, 8, 13)
+            };
+
+            var withMachineAndProcess = layouts.FirstOrDefault(layout =>
+                IsValidMachineAt(columns, layout.MachineIndex)
+                && IsValidProcessAt(columns, layout.ProcessIndex));
+
+            if (withMachineAndProcess != null)
+            {
+                return withMachineAndProcess;
+            }
+
+            var withMachine = layouts.FirstOrDefault(layout => IsValidMachineAt(columns, layout.MachineIndex));
+            if (withMachine != null)
+            {
+                return withMachine with
+                {
+                    ProcessIndex = ResolveProcessIndex(columns, withMachine.ProcessIndex)
+                };
+            }
+
+            for (var index = 0; index < columns.Count; index++)
+            {
+                if (!ProductionMachineRepository.IsValidProductionMachineCode(GetColumn(columns, index)))
+                {
+                    continue;
+                }
+
+                var statusIndex = Math.Min(index + 1, columns.Count - 1);
+                var partCodeIndex = ResolvePartCodeIndex(columns, index);
+                return new AdministratorLayout(
+                    $"dynamic_machine_col_{index}",
+                    index,
+                    statusIndex,
+                    partCodeIndex,
+                    ResolveProcessIndex(columns, 13));
+            }
+
+            return layouts[0];
+        }
+
+        private static bool IsValidMachineAt(IReadOnlyList<string> columns, int index)
+        {
+            return ProductionMachineRepository.IsValidProductionMachineCode(GetColumn(columns, index));
+        }
+
+        private static bool IsValidProcessAt(IReadOnlyList<string> columns, int index)
+        {
+            var parsed = ParseDouble(GetColumn(columns, index));
+            return parsed.HasValue
+                && double.IsFinite(parsed.Value)
+                && parsed.Value > 0;
+        }
+
+        private static int ResolveProcessIndex(IReadOnlyList<string> columns, int preferredIndex)
+        {
+            foreach (var index in new[] { preferredIndex, 13, 12, 14, 11 })
+            {
+                if (index >= 0 && index < columns.Count && IsValidProcessAt(columns, index))
+                {
+                    return index;
+                }
+            }
+
+            for (var index = columns.Count - 1; index >= 0; index--)
+            {
+                if (IsValidProcessAt(columns, index))
+                {
+                    return index;
+                }
+            }
+
+            return Math.Min(Math.Max(preferredIndex, 0), Math.Max(columns.Count - 1, 0));
+        }
+
+        private static int ResolvePartCodeIndex(IReadOnlyList<string> columns, int machineIndex)
+        {
+            foreach (var offset in new[] { 5, 2, 4, 3 })
+            {
+                var index = machineIndex + offset;
+                if (index >= 0 && index < columns.Count && LooksLikePartCode(GetColumn(columns, index)))
+                {
+                    return index;
+                }
+            }
+
+            return Math.Min(machineIndex + 2, Math.Max(columns.Count - 1, 0));
+        }
+
+        private static bool LooksLikePartCode(string value)
+        {
+            var normalized = NormalizeCode(value);
+            return normalized.Length is >= 4 and <= 12
+                && normalized.Any(char.IsLetter)
+                && normalized.Any(char.IsDigit)
+                && !ProductionMachineRepository.IsValidProductionMachineCode(normalized);
         }
 
         private static Ec2DecodeResult DecodeLines(byte[] bytes)
@@ -1505,6 +1590,13 @@ namespace TeamOps.Services
         private sealed record Ec2DecodedText(string EncodingName, string Text, int Score, int Priority);
 
         private sealed record Ec2DecodeResult(List<string> Lines, string EncodingName, string DelimiterLabel, bool ContainsReplacementChar);
+
+        private sealed record AdministratorLayout(
+            string Name,
+            int MachineIndex,
+            int StatusIndex,
+            int PartCodeIndex,
+            int ProcessIndex);
 
         private sealed class Ec2ExistingImportRow
         {

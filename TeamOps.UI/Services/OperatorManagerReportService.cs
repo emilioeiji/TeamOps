@@ -964,146 +964,38 @@ namespace TeamOps.UI.Services
             DateTime startDate,
             DateTime endDate)
         {
-            using var conn = _factory.CreateOpenConnection();
             var analytics = new ProductionAnalyticsService(_factory);
-
-            var scheduleDays = scheduleRows
-                .Where(item =>
-                    item.LocalId > 0
-                    && item.IsLineupActive
-                    && !string.Equals(item.AvailabilityStatus, "Yukyu", StringComparison.OrdinalIgnoreCase)
-                    && !string.Equals(item.AvailabilityStatus, "Falta", StringComparison.OrdinalIgnoreCase)
-                    && !string.Equals(item.AvailabilityStatus, "Folga", StringComparison.OrdinalIgnoreCase)
-                    && (presentDays.Contains(item.Day) || movementRows.ContainsKey(item.Day)))
-                .GroupBy(item => new { item.Day, item.LocalId, item.ShiftId, item.LocalName, item.AssignmentCode })
-                .Select(group => group.First())
-                .ToList();
-
-            if (scheduleDays.Count == 0)
-            {
-                return new OperatorManagerProductionSummary(0, 0, Array.Empty<string>(), 0, 0, Array.Empty<OperatorManagerProductionDay>());
-            }
-
-            var machineRows = conn.Query<OperatorManagerMachineRow>(
-                @"
-                    SELECT
-                        Id,
-                        LocalId
-                    FROM Machines
-                    WHERE COALESCE(IsActive, 1) = 1
-                      AND LocalId IN @LocalIds;",
-                new
+            var detail = analytics.GetOperatorDetail(
+                new ProductionDashboardFilter
                 {
-                    LocalIds = scheduleDays
-                        .Select(item => item.LocalId)
-                        .Distinct()
-                        .ToArray()
-                })
+                    Date = endDate.Date,
+                    ShiftId = operatorInfo.ShiftId,
+                    SectorId = operatorInfo.SectorId
+                },
+                operatorInfo.CodigoFJ);
+
+            var productionDays = detail.Entries
+                .OrderByDescending(item => item.Date)
+                .Select(item => new OperatorManagerProductionDay(
+                    item.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    item.RunningMinutes,
+                    item.KadouritsuPercent,
+                    new[] { item.LocalNamePt }
+                        .Where(name => !string.IsNullOrWhiteSpace(name))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList(),
+                    item.CoverageMode,
+                    item.IsPartialCoverage,
+                    item.EffectiveMinutes,
+                    item.PlannedMinutes))
                 .ToList();
-
-            if (machineRows.Count == 0)
-            {
-                return new OperatorManagerProductionSummary(0, 0, Array.Empty<string>(), 0, 0, Array.Empty<OperatorManagerProductionDay>());
-            }
-
-            var machineIds = machineRows.Select(item => item.Id).ToArray();
-            var eventRows = conn.Query<OperatorManagerEventRow>(
-                @"
-                    SELECT
-                        MachineId,
-                        StatusCode,
-                        EventDateTime
-                    FROM MachineEvents
-                    WHERE MachineId IN @MachineIds
-                      AND EventDateTime >= @RangeStart
-                      AND EventDateTime <= @RangeEnd
-                    ORDER BY MachineId, EventDateTime, Id;",
-                new
-                {
-                    MachineIds = machineIds,
-                    RangeStart = startDate.AddDays(-1).ToString("yyyy-MM-dd HH:mm:ss"),
-                    RangeEnd = endDate.AddDays(2).ToString("yyyy-MM-dd HH:mm:ss")
-                })
-                .ToList();
-
-            var machineEventsById = eventRows
-                .GroupBy(item => item.MachineId)
-                .ToDictionary(group => group.Key, group => group.Select(item => new ProductionEventPoint(item.MachineId, item.StatusCode, item.EventDateTime)).ToList());
-
-            var machineIdsByLocal = machineRows
-                .GroupBy(item => item.LocalId)
-                .ToDictionary(group => group.Key, group => group.Select(item => item.Id).ToList());
-
-            var productionDays = new List<OperatorManagerProductionDay>();
-            var totalMinutes = 0d;
-            var totalScheduledMinutes = 0d;
-            var localNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var dayGroup in scheduleDays.GroupBy(item => item.Day).OrderByDescending(group => group.Key))
-            {
-                var dayDate = DateTime.ParseExact(dayGroup.Key, "yyyy-MM-dd", CultureInfo.InvariantCulture);
-                var shiftPeriod = analytics.GetShiftPeriod(dayDate, operatorInfo.ShiftName);
-                var dayRunningMinutes = 0d;
-                var dayScheduledMinutes = 0d;
-                var dayLocalNames = new List<string>();
-                movementRows.TryGetValue(dayGroup.Key, out var movement);
-                replacementMovementRows.TryGetValue(dayGroup.Key, out var replacementMovement);
-                var effectivePeriod = ResolveEffectiveOperatorPeriod(shiftPeriod, movement, replacementMovement);
-                var coverage = DescribeProductionCoverage(shiftPeriod, movement, replacementMovement);
-
-                foreach (var item in dayGroup)
-                {
-                    if (!machineIdsByLocal.TryGetValue(item.LocalId, out var localMachineIds))
-                    {
-                        continue;
-                    }
-
-                    var effectiveMinutes = coverage.EffectiveMinutes;
-                    if (effectiveMinutes <= 0)
-                    {
-                        continue;
-                    }
-
-                    var localRunning = 0d;
-                    foreach (var machineId in localMachineIds)
-                    {
-                        if (!machineEventsById.TryGetValue(machineId, out var points))
-                        {
-                            continue;
-                        }
-
-                        localRunning += CalculateRunningMinutes(points, ResolveObservedProductionPeriod(points, effectivePeriod));
-                    }
-
-                    dayRunningMinutes += localRunning;
-                    dayScheduledMinutes += effectiveMinutes * localMachineIds.Count;
-                    if (!string.IsNullOrWhiteSpace(item.LocalName))
-                    {
-                        dayLocalNames.Add(item.LocalName);
-                        localNames.Add(item.LocalName);
-                    }
-                }
-
-                totalMinutes += dayRunningMinutes;
-                totalScheduledMinutes += dayScheduledMinutes;
-
-                productionDays.Add(new OperatorManagerProductionDay(
-                    dayDate.ToString("yyyy-MM-dd"),
-                    dayRunningMinutes,
-                    dayScheduledMinutes <= 0 ? 0 : Math.Round((dayRunningMinutes / dayScheduledMinutes) * 100d, 1),
-                    dayLocalNames.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
-                    coverage.Mode,
-                    coverage.IsPartial,
-                    Math.Round(coverage.EffectiveMinutes, 1),
-                    Math.Round(coverage.PlannedMinutes, 1)));
-            }
 
             return new OperatorManagerProductionSummary(
-                Math.Round(totalMinutes, 1),
-                totalScheduledMinutes <= 0 ? 0 : Math.Round((totalMinutes / totalScheduledMinutes) * 100d, 1),
-                localNames.ToList(),
-                productionDays.Count(day => !day.IsPartialCoverage),
-                productionDays.Count(day => day.IsPartialCoverage),
+                detail.TotalRunningMinutes,
+                detail.AverageKadouritsuPercent,
+                detail.LocalNamesPt.Count > 0 ? detail.LocalNamesPt : detail.LocalNamesJp,
+                detail.FullCoverageDays,
+                detail.PartialCoverageDays,
                 productionDays.Take(12).ToList());
         }
 

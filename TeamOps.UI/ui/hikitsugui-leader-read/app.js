@@ -405,7 +405,7 @@ function renderTable(rows) {
         const replyCount = Number(r.ReplyCount || 0);
         const icon = Number(r.IsRead) === 1
             ? `<span class="read-indicator-wrap"><span class="maru animate">○</span>${renderReplyBadge(replyCount)}</span>`
-            : `<span class="read-indicator-wrap"><span class="batsu animate" onclick="markRead(${r.Id})">×</span>${renderReplyBadge(replyCount)}</span>`;
+            : `<span class="read-indicator-wrap"><span class="batsu animate">×</span>${renderReplyBadge(replyCount)}</span>`;
 
         const dataFormatada = r.Date?.split(" ")[0] ?? "";
         const operatorName = getLocalizedValue(r, "OperatorNamePt", "OperatorNameJp");
@@ -432,7 +432,7 @@ function renderTable(rows) {
                         <button
                             type="button"
                             class="icon-btn icon-btn-view"
-                            onclick="preview(${r.Id})"
+                            onclick="previewAndMarkRead(${r.Id})"
                             title="${escapeHtmlAttr(t("actionView"))}"
                             aria-label="${escapeHtmlAttr(`${t("actionView")} hikitsugui ${r.Id}`)}">
                             ${ACTION_ICONS.view}
@@ -611,6 +611,13 @@ function preview(id) {
         HikitsuguiId: id
     });
     send("preview", { id });
+}
+
+function previewAndMarkRead(id) {
+    console.debug("[HikitsuguiLeaderRead][PreviewAndMarkReadClick]", {
+        HikitsuguiId: id
+    });
+    send("preview_and_mark_read", currentFiltersPayload(id));
 }
 
 function openModal(row) {

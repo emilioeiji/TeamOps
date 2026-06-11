@@ -182,6 +182,28 @@ namespace TeamOps.UI.Forms
                         break;
                     }
 
+                case "preview_and_mark_read":
+                    {
+                        using var conn = _factory.CreateOpenConnection();
+
+                        var id = Convert.ToInt32(msg.id);
+                        EnsureRead(conn, id, _currentLeader.CodigoFJ);
+
+                        SendPreview(id);
+                        SendLeaderRows(
+                            (string)msg.dtInicial,
+                            (string)msg.dtFinal,
+                            (string)msg.publico,
+                            Convert.ToInt32(msg.shiftId),
+                            Convert.ToInt32(msg.operatorId),
+                            Convert.ToInt32(msg.reasonId),
+                            Convert.ToInt32(msg.equipId),
+                            Convert.ToInt32(msg.sectorId),
+                            (string)msg.search
+                        );
+                        break;
+                    }
+
                 case "mark_read":
                     {
                         using var conn = _factory.CreateOpenConnection();
