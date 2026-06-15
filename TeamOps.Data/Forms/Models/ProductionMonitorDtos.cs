@@ -175,6 +175,8 @@ namespace TeamOps.UI.Forms.Models
         public DateTime DateTime { get; set; }
         public int StatusCode { get; set; }
         public int DisplayCode { get; set; }
+        public bool IsIgnored { get; set; }
+        public string IgnoreReason { get; set; } = string.Empty;
         public string CssClass { get; set; } = string.Empty;
     }
 

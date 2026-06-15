@@ -46,6 +46,7 @@ namespace TeamOps.UI.Services
                         TrainerCodigoFJ TEXT,
                         CountsTowardKousu INTEGER NOT NULL DEFAULT 1,
                         IsLineupActive INTEGER NOT NULL DEFAULT 1,
+                        IsHolidayWork INTEGER NOT NULL DEFAULT 0,
                         AvailabilityStatus TEXT,
                         Notes TEXT,
                         UpdatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -64,6 +65,7 @@ namespace TeamOps.UI.Services
 
             EnsureColumn(conn, "Locals", "ShortCode", "TEXT");
             EnsureColumn(conn, "HaidaiAssignments", "IsLineupActive", "INTEGER NOT NULL DEFAULT 1");
+            EnsureColumn(conn, "HaidaiAssignments", "IsHolidayWork", "INTEGER NOT NULL DEFAULT 0");
             EnsureColumn(conn, "HaidaiAssignments", "AvailabilityStatus", "TEXT");
 
             conn.Execute(
@@ -240,6 +242,7 @@ namespace TeamOps.UI.Services
                         COALESCE(TrainerCodigoFJ, '') AS TrainerCodigoFJ,
                         COALESCE(CountsTowardKousu, 1) AS CountsTowardKousu,
                         COALESCE(IsLineupActive, 1) AS IsLineupActive,
+                        COALESCE(IsHolidayWork, 0) AS IsHolidayWork,
                         COALESCE(AvailabilityStatus, '') AS AvailabilityStatus,
                         COALESCE(Notes, '') AS Notes
                     FROM HaidaiAssignments
@@ -323,6 +326,7 @@ namespace TeamOps.UI.Services
                                     record?.LocalId,
                                     record?.IsTrainee ?? false,
                                     record?.IsLineupActive ?? false,
+                                    record?.IsHolidayWork ?? false,
                                     status);
                             })
                             .ToList();
@@ -418,6 +422,7 @@ namespace TeamOps.UI.Services
                         COALESCE(TrainerCodigoFJ, '') AS TrainerCodigoFJ,
                         COALESCE(CountsTowardKousu, 1) AS CountsTowardKousu,
                         COALESCE(IsLineupActive, 1) AS IsLineupActive,
+                        COALESCE(IsHolidayWork, 0) AS IsHolidayWork,
                         COALESCE(AvailabilityStatus, '') AS AvailabilityStatus,
                         COALESCE(Notes, '') AS Notes
                     FROM HaidaiAssignments
@@ -735,6 +740,7 @@ namespace TeamOps.UI.Services
                         COALESCE(TrainerCodigoFJ, '') AS TrainerCodigoFJ,
                         COALESCE(CountsTowardKousu, 1) AS CountsTowardKousu,
                         COALESCE(IsLineupActive, 1) AS IsLineupActive,
+                        COALESCE(IsHolidayWork, 0) AS IsHolidayWork,
                         COALESCE(AvailabilityStatus, '') AS AvailabilityStatus,
                         COALESCE(Notes, '') AS Notes
                     FROM HaidaiAssignments
@@ -879,6 +885,7 @@ namespace TeamOps.UI.Services
                         trainerName,
                         assignment?.CountsTowardKousu ?? true,
                         assignment?.IsLineupActive ?? false,
+                        assignment?.IsHolidayWork ?? false,
                         assignment?.Notes ?? string.Empty,
                         exception?.MotiveId ?? 0,
                         exception?.MotiveName ?? string.Empty,
@@ -898,6 +905,18 @@ namespace TeamOps.UI.Services
                             movement.CreatedAt)).ToList());
                 })
                 .ToList();
+
+            foreach (var row in rows.Take(50))
+            {
+                Console.WriteLine(
+                    "[Haidai][LoadAssignment] "
+                    + $"Date={date:yyyy-MM-dd} "
+                    + $"ShiftId={shiftId} "
+                    + $"OperatorId={row.CodigoFJ} "
+                    + $"OperatorName={row.Name} "
+                    + $"LocalId={FormatNullableInt(row.LocalId)} "
+                    + $"IsHolidayWork={row.IsHolidayWork}");
+            }
 
             var grouped = rows
                 .GroupBy(item => new { item.GroupId, item.GroupName })
@@ -978,6 +997,15 @@ namespace TeamOps.UI.Services
             }
 
             transaction.Commit();
+
+            Console.WriteLine(
+                "[Haidai][SaveAssignment] "
+                + $"Date={normalizedRequest.Date:yyyy-MM-dd} "
+                + $"ShiftId={normalizedRequest.ShiftId} "
+                + $"OperatorId={normalizedRequest.OperatorCodigoFJ} "
+                + $"OperatorName={ResolveOperatorName(conn, normalizedRequest.OperatorCodigoFJ)} "
+                + $"LocalId={FormatNullableInt(normalizedRequest.LocalId)} "
+                + $"IsHolidayWork={normalizedRequest.IsHolidayWork}");
         }
 
         public void UpsertException(DateTime date, string operatorCodigoFJ, int motiveId, string notes, string authorizedByCodigoFJ)
@@ -1124,6 +1152,7 @@ namespace TeamOps.UI.Services
                         COALESCE(TrainerCodigoFJ, '') AS TrainerCodigoFJ,
                         COALESCE(CountsTowardKousu, 1) AS CountsTowardKousu,
                         COALESCE(IsLineupActive, 1) AS IsLineupActive,
+                        COALESCE(IsHolidayWork, 0) AS IsHolidayWork,
                         COALESCE(AvailabilityStatus, '') AS AvailabilityStatus,
                         COALESCE(Notes, '') AS Notes
                     FROM HaidaiAssignments
@@ -1330,7 +1359,8 @@ namespace TeamOps.UI.Services
                         false,
                         string.Empty,
                         true,
-                        BuildReplacementNote(request.OperatorCodigoFJ, request.MovementType, request.EventTime, request.Reason)));
+                        BuildReplacementNote(request.OperatorCodigoFJ, request.MovementType, request.EventTime, request.Reason),
+                        false));
             }
 
             transaction.Commit();
@@ -1533,7 +1563,8 @@ namespace TeamOps.UI.Services
                             false,
                             string.Empty,
                             true,
-                            BuildReplacementNote(operatorCodigoFJ, latestMovement.MovementType, latestMovement.EventTime, latestMovement.Reason)));
+                            BuildReplacementNote(operatorCodigoFJ, latestMovement.MovementType, latestMovement.EventTime, latestMovement.Reason),
+                            false));
                 }
             }
 
@@ -2093,6 +2124,7 @@ namespace TeamOps.UI.Services
                             TrainerCodigoFJ = @TrainerCodigoFJ,
                             CountsTowardKousu = @CountsTowardKousu,
                             IsLineupActive = @IsLineupActive,
+                            IsHolidayWork = @IsHolidayWork,
                             AvailabilityStatus = @AvailabilityStatus,
                             Notes = @Notes,
                             UpdatedAt = CURRENT_TIMESTAMP
@@ -2202,6 +2234,7 @@ namespace TeamOps.UI.Services
                         TrainerCodigoFJ = isOffDay ? null : NullIfWhiteSpace(request.TrainerCodigoFJ),
                         CountsTowardKousu = isOffDay ? 0 : request.CountsTowardKousu ? 1 : 0,
                         IsLineupActive = isOffDay ? 0 : 1,
+                        IsHolidayWork = isOffDay ? 0 : request.IsHolidayWork ? 1 : 0,
                         AvailabilityStatus = isOffDay ? "Folga" : "Escalado",
                         Notes = NullIfWhiteSpace(request.Notes)
                     },
@@ -2223,6 +2256,7 @@ namespace TeamOps.UI.Services
                             TrainerCodigoFJ,
                             CountsTowardKousu,
                             IsLineupActive,
+                            IsHolidayWork,
                             AvailabilityStatus,
                             Notes
                         )
@@ -2238,6 +2272,7 @@ namespace TeamOps.UI.Services
                             @TrainerCodigoFJ,
                             @CountsTowardKousu,
                             @IsLineupActive,
+                            @IsHolidayWork,
                             @AvailabilityStatus,
                             @Notes
                         );",
@@ -2254,6 +2289,7 @@ namespace TeamOps.UI.Services
                         TrainerCodigoFJ = isOffDay ? null : NullIfWhiteSpace(request.TrainerCodigoFJ),
                         CountsTowardKousu = isOffDay ? 0 : request.CountsTowardKousu ? 1 : 0,
                         IsLineupActive = isOffDay ? 0 : 1,
+                        IsHolidayWork = isOffDay ? 0 : request.IsHolidayWork ? 1 : 0,
                         AvailabilityStatus = isOffDay ? "Folga" : "Escalado",
                         Notes = NullIfWhiteSpace(request.Notes)
                     },
@@ -2337,6 +2373,23 @@ namespace TeamOps.UI.Services
         private static object? NullIfWhiteSpace(string? value)
         {
             return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+
+        private static string FormatNullableInt(int? value)
+        {
+            return value.HasValue ? value.Value.ToString(CultureInfo.InvariantCulture) : "NULL";
+        }
+
+        private static string ResolveOperatorName(System.Data.IDbConnection conn, string codigoFJ)
+        {
+            return conn.ExecuteScalar<string?>(
+                    @"
+                        SELECT COALESCE(NULLIF(NameRomanji, ''), NULLIF(NameNihongo, ''), CodigoFJ)
+                        FROM Operators
+                        WHERE CodigoFJ = @CodigoFJ
+                        LIMIT 1;",
+                    new { CodigoFJ = codigoFJ })
+                ?? codigoFJ;
         }
 
         private static void EnsureColumn(System.Data.IDbConnection conn, string tableName, string columnName, string definition)
@@ -3669,6 +3722,7 @@ namespace TeamOps.UI.Services
         int? LocalId,
         bool IsTrainee,
         bool IsLineupActive,
+        bool IsHolidayWork,
         string Status);
 
     public sealed record HaidaiMonthlySaveRequest(
@@ -3736,6 +3790,7 @@ namespace TeamOps.UI.Services
         string TrainerName,
         bool CountsTowardKousu,
         bool IsLineupActive,
+        bool IsHolidayWork,
         string Notes,
         int ExceptionMotiveId,
         string ExceptionMotiveName,
@@ -3768,6 +3823,7 @@ namespace TeamOps.UI.Services
         string TrainerCodigoFJ,
         bool CountsTowardKousu,
         string Notes,
+        bool IsHolidayWork,
         bool ApplyPairToMonth = false);
 
     public sealed record HaidaiMovementRequest(
@@ -3838,6 +3894,7 @@ namespace TeamOps.UI.Services
         public string TrainerCodigoFJ { get; set; } = string.Empty;
         public bool CountsTowardKousu { get; set; }
         public bool IsLineupActive { get; set; }
+        public bool IsHolidayWork { get; set; }
         public string AvailabilityStatus { get; set; } = string.Empty;
         public string Notes { get; set; } = string.Empty;
     }

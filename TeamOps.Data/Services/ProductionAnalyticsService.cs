@@ -369,6 +369,8 @@ namespace TeamOps.Services
                         DateTime = moment,
                         StatusCode = statusCode,
                         DisplayCode = displayCode,
+                        IsIgnored = machine.IsEc2Ignored,
+                        IgnoreReason = machine.Ec2IgnoreReason,
                         CssClass = GetNormalizedTimelineClass(displayCode)
                     });
                 }

@@ -84,6 +84,10 @@ switch (command)
         RunMachineCleanup(args.Skip(1).ToArray());
         break;
 
+    case "machine-location-guard":
+        RunMachineLocationGuard();
+        break;
+
     case "demo":
         RunImport();
         Console.WriteLine();
@@ -119,6 +123,7 @@ void PrintHelp()
     Console.WriteLine("  schema-repair");
     Console.WriteLine("  ec2-reset-latest");
     Console.WriteLine("  machine-cleanup [--apply]");
+    Console.WriteLine("  machine-location-guard");
     Console.WriteLine();
     Console.WriteLine("Observacao:");
     Console.WriteLine("  Abrir sem comando mostra esta ajuda. Use 'demo' apenas quando o BAT de importacao estiver configurado.");
@@ -158,6 +163,109 @@ void RunImport()
             Console.WriteLine($" - {error}");
         }
     }
+}
+
+void RunMachineLocationGuard()
+{
+    PrintRuntimeConfigDiagnostics();
+    using var conn = factory.CreateOpenConnection();
+    ProductionSchemaMigrator.Ensure(conn);
+
+    var before = ReadMachineLocationSnapshot(conn);
+    Console.WriteLine("=== MACHINE LOCATION GUARD ===");
+    Console.WriteLine($"Database={settings.DatabasePath}");
+    Console.WriteLine($"MachinesBefore={before.Count}");
+
+    TeamOps.Core.Entities.ProductionImportResult result;
+    try
+    {
+        result = importer.ImportLatest();
+    }
+    catch (FileNotFoundException ex)
+    {
+        Console.WriteLine("=== IMPORT FAILED ===");
+        Console.WriteLine(ex.Message);
+        Environment.ExitCode = 2;
+        return;
+    }
+
+    Console.WriteLine();
+    Console.WriteLine("=== IMPORT RESULT ===");
+    Console.WriteLine($"FilesRead={result.FilesRead}");
+    Console.WriteLine($"LinesRead={result.LinesRead}");
+    Console.WriteLine($"Imported={result.Imported}");
+    Console.WriteLine($"Ignored={result.Ignored}");
+    Console.WriteLine($"MachinesCreated={result.MachinesCreated}");
+    Console.WriteLine($"BatchExecuted={result.BatchExecuted}");
+    Console.WriteLine($"BatchMessage={result.BatchMessage}");
+    PrintEc2ImportResult(result);
+    PrintImportPerformance(result);
+
+    var after = ReadMachineLocationSnapshot(conn);
+    var changed = before.Values
+        .Select(previous =>
+        {
+            after.TryGetValue(previous.Id, out var current);
+            return new
+            {
+                Previous = previous,
+                Current = current
+            };
+        })
+        .Where(item => item.Current != null
+            && (item.Previous.SectorId != item.Current.SectorId
+                || item.Previous.LocalId != item.Current.LocalId))
+        .ToList();
+
+    Console.WriteLine();
+    Console.WriteLine($"MachinesAfter={after.Count}");
+    Console.WriteLine($"MachineLocationChanges={changed.Count}");
+
+    foreach (var item in changed.Take(100))
+    {
+        Console.WriteLine(
+            "  "
+            + $"MachineId={item.Previous.Id} "
+            + $"MachineCode={item.Previous.MachineCode} "
+            + $"MachineKey={item.Previous.MachineKey} "
+            + $"BeforeSectorId={FormatNullableInt(item.Previous.SectorId)} "
+            + $"AfterSectorId={FormatNullableInt(item.Current!.SectorId)} "
+            + $"BeforeLocalId={FormatNullableInt(item.Previous.LocalId)} "
+            + $"AfterLocalId={FormatNullableInt(item.Current.LocalId)}");
+    }
+
+    if (changed.Count > 100)
+    {
+        Console.WriteLine($"  ... {changed.Count - 100} alteracoes omitidas no console.");
+    }
+
+    if (changed.Count > 0)
+    {
+        Console.WriteLine("FAIL: a importacao alterou SectorId/LocalId de maquinas existentes.");
+        Environment.ExitCode = 3;
+        return;
+    }
+
+    Console.WriteLine("OK: nenhuma maquina existente teve SectorId/LocalId alterado pela importacao.");
+}
+
+Dictionary<int, MachineLocationSnapshotProbeRow> ReadMachineLocationSnapshot(System.Data.IDbConnection conn)
+{
+    return conn.Query<MachineLocationSnapshotProbeRow>(
+            @"
+                SELECT
+                    Id,
+                    COALESCE(MachineCode, '') AS MachineCode,
+                    COALESCE(MachineKey, '') AS MachineKey,
+                    SectorId,
+                    LocalId
+                FROM Machines;")
+        .ToDictionary(item => item.Id);
+}
+
+static string FormatNullableInt(int? value)
+{
+    return value.HasValue ? value.Value.ToString(CultureInfo.InvariantCulture) : "NULL";
 }
 
 void ShowDashboards()
@@ -2523,6 +2631,15 @@ sealed class MachineCleanupProbeRow
     public int IsActive { get; set; }
     public long EventCount { get; set; }
     public long CurrentStatusCount { get; set; }
+}
+
+sealed class MachineLocationSnapshotProbeRow
+{
+    public int Id { get; set; }
+    public string MachineCode { get; set; } = string.Empty;
+    public string MachineKey { get; set; } = string.Empty;
+    public int? SectorId { get; set; }
+    public int? LocalId { get; set; }
 }
 
 sealed class MachineLookupProbeRow

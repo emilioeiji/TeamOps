@@ -327,7 +327,7 @@ function renderPlanner(plan) {
         const rows = operators.map(operator => {
             const cells = (operator.cells || []).map(cell => {
                 const value = escapeAttr(cell.assignmentCode || "");
-                const classes = buildPlanCellClasses(cell.assignmentCode || "", cell.status || "");
+                const classes = buildPlanCellClasses(cell.assignmentCode || "", cell.status || "", cell.isHolidayWork);
                 return `<td class="day-cell"><input class="plan-cell ${classes}" data-op="${escapeAttr(operator.codigoFJ)}" data-day="${cell.day}" data-status="${escapeAttr(cell.status || "")}" value="${value}" spellcheck="false"></td>`;
             }).join("");
 
@@ -397,6 +397,10 @@ function renderDetail() {
         roleTags.push(`<span class="tag">Par ${escapeHtml(row.pairKey)}</span>`);
     }
 
+    if (row.isHolidayWork) {
+        roleTags.push(`<span class="tag tag-shukkin">Shukkin</span>`);
+    }
+
     const detailNotes = [];
     if (row.exceptionNotes) {
         detailNotes.push(`Todoke: ${row.exceptionNotes}`);
@@ -455,6 +459,7 @@ function renderDetail() {
         <div class="check-row">
             <label><input data-field="isTrainee" type="checkbox" ${row.isTrainee ? "checked" : ""}> Aprendiz</label>
             <label><input data-field="countsTowardKousu" type="checkbox" ${row.countsTowardKousu !== false ? "checked" : ""}> Conta no kousu</label>
+            <label class="holiday-work-check"><input data-field="isHolidayWork" type="checkbox" ${row.isHolidayWork ? "checked" : ""}> Shukkin</label>
             <label><input data-field="applyPairToMonth" type="checkbox" checked> Replicar dupla para os proximos dias</label>
         </div>
 
@@ -616,6 +621,7 @@ function saveDetail(container) {
         notes: readField(container, "notes"),
         isTrainee: readCheckbox(container, "isTrainee"),
         countsTowardKousu: readCheckbox(container, "countsTowardKousu"),
+        isHolidayWork: readCheckbox(container, "isHolidayWork"),
         applyPairToMonth: readCheckbox(container, "applyPairToMonth")
     });
 }
@@ -666,6 +672,7 @@ function markOffDay(container) {
         notes: readField(container, "notes"),
         isTrainee: false,
         countsTowardKousu: false,
+        isHolidayWork: false,
         applyPairToMonth: false
     });
 
@@ -1216,7 +1223,11 @@ function getAllowedLocalSectorIdsForOperator(operatorCodigoFJ, sectorId) {
     return [normalizedSectorId];
 }
 
-function buildPlanCellClasses(value, status) {
+function buildPlanCellClasses(value, status, isHolidayWork = false) {
+    if (isHolidayWork) {
+        return "cell-shukkin";
+    }
+
     const normalizedStatus = String(status || "").trim().toLowerCase();
     if (normalizedStatus === "falta") {
         return "cell-absence";
@@ -1241,7 +1252,7 @@ function buildPlanCellClasses(value, status) {
 function normalizeCellValue(input) {
     input.value = String(input.value || "").trim().toUpperCase();
     input.dataset.status = "";
-    input.classList.remove("cell-off", "cell-trainee", "cell-absence", "cell-yukyu");
+    input.classList.remove("cell-off", "cell-trainee", "cell-absence", "cell-yukyu", "cell-shukkin");
 
     const classes = buildPlanCellClasses(input.value, "");
     if (classes) {

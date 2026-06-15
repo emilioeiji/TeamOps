@@ -154,8 +154,40 @@ namespace TeamOps.UI.Forms
                         faltaDays = report.Summary.FaltaDays,
                         lateDays = report.Summary.LateDays,
                         earlyLeaveDays = report.Summary.EarlyLeaveDays,
-                        presencePercent = report.Summary.PresencePercent
+                        presencePercent = report.Summary.PresencePercent,
+                        scheduledDaysWithoutSunday = report.Summary.ScheduledDaysWithoutSunday,
+                        scheduledDaysWithSunday = report.Summary.ScheduledDaysWithSunday,
+                        absencesWithoutSunday = report.Summary.AbsencesWithoutSunday,
+                        absencesWithSunday = report.Summary.AbsencesWithSunday,
+                        presencePercentWithoutSunday = report.Summary.PresencePercentWithoutSunday,
+                        presencePercentWithSunday = report.Summary.PresencePercentWithSunday,
+                        overtimeOver45Count = report.Summary.OvertimeOver45Count,
+                        overtimeBetween35And45Count = report.Summary.OvertimeBetween35And45Count,
+                        overtimeBelow35Count = report.Summary.OvertimeBelow35Count,
+                        totalCurrentMonthOvertimeHours = report.Summary.TotalCurrentMonthOvertimeHours,
+                        totalWorkedSundays = report.Summary.TotalWorkedSundays,
+                        totalHolidayWorkDays = report.Summary.TotalHolidayWorkDays
                     },
+                    topOvertime = report.TopOvertime.Select(item => new
+                    {
+                        rank = item.Rank,
+                        codigoFJ = item.CodigoFJ,
+                        name = item.Name,
+                        nameJp = item.NameJp,
+                        shiftName = item.ShiftName,
+                        overtimeHours = item.OvertimeHours,
+                        holidayWorkDays = item.HolidayWorkDays
+                    }),
+                    topHolidayWork = report.TopHolidayWork.Select(item => new
+                    {
+                        rank = item.Rank,
+                        codigoFJ = item.CodigoFJ,
+                        name = item.Name,
+                        nameJp = item.NameJp,
+                        shiftName = item.ShiftName,
+                        overtimeHours = item.OvertimeHours,
+                        holidayWorkDays = item.HolidayWorkDays
+                    }),
                     rows = report.Rows.Select(item => new
                     {
                         codigoFJ = item.CodigoFJ,
@@ -172,6 +204,25 @@ namespace TeamOps.UI.Forms
                         earlyLeaveDays = item.EarlyLeaveDays,
                         pendingTodokeCount = item.PendingTodokeCount,
                         presencePercent = item.PresencePercent,
+                        scheduledDaysWithoutSunday = item.ScheduledDaysWithoutSunday,
+                        scheduledDaysWithSunday = item.ScheduledDaysWithSunday,
+                        absencesWithoutSunday = item.AbsencesWithoutSunday,
+                        absencesWithSunday = item.AbsencesWithSunday,
+                        presencePercentWithoutSunday = item.PresencePercentWithoutSunday,
+                        presencePercentWithSunday = item.PresencePercentWithSunday,
+                        below82WithoutSunday = item.Below82WithoutSunday,
+                        below82WithSunday = item.Below82WithSunday,
+                        currentMonthOvertimeHours = item.CurrentMonthOvertimeHours,
+                        previousMonthOvertimeHours = item.PreviousMonthOvertimeHours,
+                        realizedOvertimeHours = item.RealizedOvertimeHours,
+                        projectedRemainingOvertimeHours = item.ProjectedRemainingOvertimeHours,
+                        projectedFinalOvertimeHours = item.ProjectedFinalOvertimeHours,
+                        workedSundays = item.WorkedSundays,
+                        holidayWorkDays = item.HolidayWorkDays,
+                        totalOvertimeHours = item.TotalOvertimeHours,
+                        overtimeLimitDifferenceHours = item.OvertimeLimitDifferenceHours,
+                        overtimeRiskLevel = item.OvertimeRiskLevel,
+                        overtimePlusSundaysLabel = item.OvertimePlusSundaysLabel,
                         lastStatus = item.LastStatus,
                         lastDateIso = item.LastDateIso,
                         lastArea = item.LastArea
@@ -179,7 +230,12 @@ namespace TeamOps.UI.Forms
                     performance = new
                     {
                         queryMs = watch.ElapsedMilliseconds,
-                        rowCount = report.Rows.Count
+                        rowCount = report.Rows.Count,
+                        loadPresenceMs = report.Performance.LoadPresenceMs,
+                        loadHaidaiMs = report.Performance.LoadHaidaiMs,
+                        buildOvertimeMs = report.Performance.BuildOvertimeMs,
+                        buildProjectionMs = report.Performance.BuildProjectionMs,
+                        buildRankingMs = report.Performance.BuildRankingMs
                     }
                 }
             });

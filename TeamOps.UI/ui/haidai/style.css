@@ -538,6 +538,11 @@ code {
     color: #111827;
 }
 
+.plan-cell.cell-shukkin {
+    background: #fef08a;
+    color: #111827;
+}
+
 .plan-cell.cell-selected {
     background: #dceeff;
     box-shadow: inset 0 0 0 2px #2b74c8;
@@ -610,6 +615,13 @@ code {
     gap: 10px;
     flex-wrap: wrap;
     align-items: center;
+}
+
+.tag-shukkin,
+.holiday-work-check {
+    background: #fef08a !important;
+    color: #111827 !important;
+    border-color: #facc15 !important;
 }
 
 .status-chip {

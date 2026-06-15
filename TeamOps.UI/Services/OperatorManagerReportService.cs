@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using Dapper;
@@ -303,6 +304,7 @@ namespace TeamOps.UI.Services
 
         public OperatorPresenceReportPayload GetPresenceReport(OperatorPresenceReportFilter filter)
         {
+            new HaidaiModuleService(_factory).EnsureSchema();
             using var conn = _factory.CreateOpenConnection();
 
             var startDate = ParseDateOrDefault(filter.StartDateIso, DateTime.Today.AddDays(-29));
@@ -314,6 +316,17 @@ namespace TeamOps.UI.Services
 
             var search = (filter.Search ?? string.Empty).Trim();
             var statusFilter = (filter.Status ?? string.Empty).Trim().ToLowerInvariant();
+            var loadPresenceWatch = new Stopwatch();
+            var loadHaidaiWatch = new Stopwatch();
+            var buildOvertimeWatch = new Stopwatch();
+            var buildProjectionWatch = new Stopwatch();
+            var buildRankingWatch = new Stopwatch();
+            var currentMonthStart = new DateTime(endDate.Year, endDate.Month, 1);
+            var currentMonthEnd = currentMonthStart.AddMonths(1).AddDays(-1);
+            var previousMonthStart = currentMonthStart.AddMonths(-1);
+            var previousMonthEnd = currentMonthStart.AddDays(-1);
+            var overtimeStartDate = previousMonthStart < startDate ? previousMonthStart : startDate;
+            var overtimeEndDate = currentMonthEnd > endDate ? currentMonthEnd : endDate;
 
             var operators = conn.Query<OperatorManagerDirectoryRow>(
                 @"
@@ -358,7 +371,10 @@ namespace TeamOps.UI.Services
                 return new OperatorPresenceReportPayload(
                     startDate.ToString("yyyy-MM-dd"),
                     endDate.ToString("yyyy-MM-dd"),
-                    new OperatorPresenceReportSummary(0, 0, 0, 0, 0, 0, 0, 0),
+                    new OperatorPresenceReportSummary(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                    Array.Empty<OperatorPresenceOvertimeRankingItem>(),
+                    Array.Empty<OperatorPresenceOvertimeRankingItem>(),
+                    new OperatorPresenceReportPerformance(0, 0, 0, 0, 0),
                     Array.Empty<OperatorPresenceReportRow>());
             }
 
@@ -367,6 +383,7 @@ namespace TeamOps.UI.Services
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
 
+            loadHaidaiWatch.Start();
             var scheduleRows = conn.Query<OperatorManagerScheduleRow>(
                 @"
                     SELECT
@@ -378,6 +395,7 @@ namespace TeamOps.UI.Services
                         COALESCE(ha.AssignmentCode, '') AS AssignmentCode,
                         COALESCE(ha.AvailabilityStatus, '') AS AvailabilityStatus,
                         COALESCE(ha.IsLineupActive, 1) AS IsLineupActive,
+                        COALESCE(ha.IsHolidayWork, 0) AS IsHolidayWork,
                         COALESCE(ha.IsTrainee, 0) AS IsTrainee
                     FROM HaidaiAssignments ha
                     LEFT JOIN Locals l ON l.Id = ha.LocalId
@@ -391,7 +409,109 @@ namespace TeamOps.UI.Services
                     EndDate = endDate.ToString("yyyy-MM-dd")
                 })
                 .ToList();
+            loadHaidaiWatch.Stop();
 
+            loadHaidaiWatch.Start();
+            var overtimeScheduleRows = conn.Query<OperatorManagerScheduleRow>(
+                @"
+                    SELECT
+                        ha.OperatorCodigoFJ,
+                        date(ha.ScheduleDate) AS Day,
+                        ha.ShiftId,
+                        ha.LocalId,
+                        COALESCE(NULLIF(l.NamePt, ''), NULLIF(l.NameJp, ''), '') AS LocalName,
+                        COALESCE(ha.AssignmentCode, '') AS AssignmentCode,
+                        COALESCE(ha.AvailabilityStatus, '') AS AvailabilityStatus,
+                        COALESCE(ha.IsLineupActive, 1) AS IsLineupActive,
+                        COALESCE(ha.IsHolidayWork, 0) AS IsHolidayWork,
+                        COALESCE(ha.IsTrainee, 0) AS IsTrainee
+                    FROM HaidaiAssignments ha
+                    LEFT JOIN Locals l ON l.Id = ha.LocalId
+                    WHERE ha.OperatorCodigoFJ IN @OperatorCodes
+                      AND date(ha.ScheduleDate) BETWEEN date(@StartDate) AND date(@EndDate)
+                    ORDER BY date(ha.ScheduleDate) DESC, ha.Id DESC;",
+                new
+                {
+                    OperatorCodes = operatorCodes,
+                    StartDate = overtimeStartDate.ToString("yyyy-MM-dd"),
+                    EndDate = overtimeEndDate.ToString("yyyy-MM-dd")
+                })
+                .ToList();
+            loadHaidaiWatch.Stop();
+
+            loadPresenceWatch.Start();
+            var overtimePresenceRows = conn.Query<OperatorPresenceReportPresenceRow>(
+                @"
+                    SELECT
+                        CodigoFJ AS OperatorCodigoFJ,
+                        date(Date) AS Day,
+                        MAX(Date) AS LastPresence
+                    FROM OperatorPresence
+                    WHERE CodigoFJ IN @OperatorCodes
+                      AND date(Date) BETWEEN date(@StartDate) AND date(@EndDate)
+                    GROUP BY CodigoFJ, date(Date);",
+                new
+                {
+                    OperatorCodes = operatorCodes,
+                    StartDate = overtimeStartDate.ToString("yyyy-MM-dd"),
+                    EndDate = overtimeEndDate.ToString("yyyy-MM-dd")
+                })
+                .ToList();
+            loadPresenceWatch.Stop();
+
+            var overtimeTodokeRows = conn.Query<OperatorManagerTodokeRow>(
+                @"
+                    SELECT
+                        a.OperatorCodigoFJ,
+                        date(a.RequestDate) AS Day,
+                        a.Id,
+                        a.TodokeMotivoId AS MotiveId,
+                        COALESCE(m.NomePt, '') AS MotiveName,
+                        COALESCE(a.Notes, '') AS Notes,
+                        CASE
+                            WHEN EXISTS (
+                                SELECT 1
+                                FROM YukyuTodoke y
+                                WHERE y.AcompYukyuId = a.Id
+                            ) THEN 1
+                            ELSE 0
+                        END AS Validated
+                    FROM AcompYukyu a
+                    LEFT JOIN TodokeMotivo m ON m.Id = a.TodokeMotivoId
+                    WHERE a.OperatorCodigoFJ IN @OperatorCodes
+                      AND date(a.RequestDate) BETWEEN date(@StartDate) AND date(@EndDate)
+                    ORDER BY date(a.RequestDate) DESC, a.Id DESC;",
+                new
+                {
+                    OperatorCodes = operatorCodes,
+                    StartDate = overtimeStartDate.ToString("yyyy-MM-dd"),
+                    EndDate = overtimeEndDate.ToString("yyyy-MM-dd")
+                })
+                .ToList();
+
+            var overtimeMovementRows = conn.Query<OperatorManagerMovementRow>(
+                @"
+                    SELECT
+                        OperatorCodigoFJ,
+                        date(ScheduleDate) AS Day,
+                        COALESCE(MovementType, '') AS MovementType,
+                        COALESCE(EventTime, '') AS EventTime,
+                        COALESCE(EventDateTime, '') AS EventDateTime,
+                        COALESCE(AssignmentCode, '') AS AssignmentCode,
+                        COALESCE(Reason, '') AS Reason
+                    FROM HaidaiMovements
+                    WHERE OperatorCodigoFJ IN @OperatorCodes
+                      AND date(ScheduleDate) BETWEEN date(@StartDate) AND date(@EndDate)
+                    ORDER BY date(ScheduleDate) DESC, COALESCE(EventTime, '') DESC, Id DESC;",
+                new
+                {
+                    OperatorCodes = operatorCodes,
+                    StartDate = overtimeStartDate.ToString("yyyy-MM-dd"),
+                    EndDate = overtimeEndDate.ToString("yyyy-MM-dd")
+                })
+                .ToList();
+
+            loadPresenceWatch.Start();
             var presenceRows = conn.Query<OperatorPresenceReportPresenceRow>(
                 @"
                     SELECT
@@ -409,6 +529,7 @@ namespace TeamOps.UI.Services
                     EndDate = endDate.ToString("yyyy-MM-dd")
                 })
                 .ToList();
+            loadPresenceWatch.Stop();
 
             var todokeRows = conn.Query<OperatorManagerTodokeRow>(
                 @"
@@ -485,12 +606,37 @@ namespace TeamOps.UI.Services
                     .GroupBy(item => item.Day, StringComparer.OrdinalIgnoreCase)
                     .ToDictionary(dayGroup => dayGroup.Key, dayGroup => dayGroup.First(), StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
 
+            var overtimeSchedulesByOperator = overtimeScheduleRows
+                .GroupBy(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => (IReadOnlyDictionary<string, OperatorManagerScheduleRow>)group
+                    .GroupBy(item => item.Day, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(dayGroup => dayGroup.Key, dayGroup => dayGroup.First(), StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
+
+            var overtimePresencesByOperator = overtimePresenceRows
+                .GroupBy(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => (IReadOnlyDictionary<string, OperatorManagerPresenceRow>)group
+                    .ToDictionary(item => item.Day, item => new OperatorManagerPresenceRow { Day = item.Day, LastPresence = item.LastPresence }, StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
+
+            var overtimeTodokesByOperator = overtimeTodokeRows
+                .GroupBy(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => (IReadOnlyDictionary<string, OperatorManagerTodokeRow>)group
+                    .GroupBy(item => item.Day, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(dayGroup => dayGroup.Key, dayGroup => dayGroup.First(), StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
+
+            var overtimeMovementsByOperator = overtimeMovementRows
+                .GroupBy(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => (IReadOnlyDictionary<string, OperatorManagerMovementRow>)group
+                    .GroupBy(item => item.Day, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(dayGroup => dayGroup.Key, dayGroup => dayGroup.First(), StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
+
             var emptyScheduleMap = new Dictionary<string, OperatorManagerScheduleRow>(StringComparer.OrdinalIgnoreCase);
             var emptyPresenceMap = new Dictionary<string, OperatorManagerPresenceRow>(StringComparer.OrdinalIgnoreCase);
             var emptyTodokeMap = new Dictionary<string, OperatorManagerTodokeRow>(StringComparer.OrdinalIgnoreCase);
             var emptyMovementMap = new Dictionary<string, OperatorManagerMovementRow>(StringComparer.OrdinalIgnoreCase);
 
             var rows = new List<OperatorPresenceReportRow>();
+            buildOvertimeWatch.Start();
+            buildProjectionWatch.Start();
             foreach (var op in operators)
             {
                 schedulesByOperator.TryGetValue(op.CodigoFJ, out var scheduleMap);
@@ -502,9 +648,28 @@ namespace TeamOps.UI.Services
                 presenceMap ??= emptyPresenceMap;
                 todokeMap ??= emptyTodokeMap;
                 movementMap ??= emptyMovementMap;
+                overtimeSchedulesByOperator.TryGetValue(op.CodigoFJ, out var overtimeScheduleMap);
+                overtimePresencesByOperator.TryGetValue(op.CodigoFJ, out var overtimePresenceMap);
+                overtimeTodokesByOperator.TryGetValue(op.CodigoFJ, out var overtimeTodokeMap);
+                overtimeMovementsByOperator.TryGetValue(op.CodigoFJ, out var overtimeMovementMap);
+                overtimeScheduleMap ??= emptyScheduleMap;
+                overtimePresenceMap ??= emptyPresenceMap;
+                overtimeTodokeMap ??= emptyTodokeMap;
+                overtimeMovementMap ??= emptyMovementMap;
 
                 var attendanceDays = BuildAttendanceDaySummaries(scheduleMap, presenceMap, todokeMap, movementMap);
                 var metrics = BuildPresenceMetrics(attendanceDays.Values, presenceMap, todokeMap.Values, 0);
+                var overtime = BuildOvertimeMetrics(
+                    op,
+                    overtimeScheduleMap,
+                    overtimePresenceMap,
+                    overtimeTodokeMap,
+                    overtimeMovementMap,
+                    previousMonthStart,
+                    previousMonthEnd,
+                    currentMonthStart,
+                    currentMonthEnd,
+                    DateTime.Today);
                 var latest = attendanceDays.Values
                     .OrderByDescending(item => item.Day, StringComparer.OrdinalIgnoreCase)
                     .FirstOrDefault();
@@ -524,15 +689,45 @@ namespace TeamOps.UI.Services
                     metrics.EarlyLeaveDays,
                     metrics.PendingTodokeCount,
                     metrics.PresencePercent,
+                    metrics.ScheduledDaysWithoutSunday,
+                    metrics.ScheduledDaysWithSunday,
+                    metrics.AbsencesWithoutSunday,
+                    metrics.AbsencesWithSunday,
+                    metrics.PresencePercentWithoutSunday,
+                    metrics.PresencePercentWithSunday,
+                    metrics.ScheduledDaysWithoutSunday > 0 && metrics.PresencePercentWithoutSunday < 82d,
+                    metrics.ScheduledDaysWithSunday > 0 && metrics.PresencePercentWithSunday < 82d,
+                    overtime.CurrentMonthOvertimeHours,
+                    overtime.PreviousMonthOvertimeHours,
+                    overtime.RealizedOvertimeHours,
+                    overtime.ProjectedRemainingOvertimeHours,
+                    overtime.ProjectedFinalOvertimeHours,
+                    overtime.WorkedSundays,
+                    overtime.HolidayWorkDays,
+                    overtime.TotalOvertimeHours,
+                    overtime.OvertimeLimitDifferenceHours,
+                    overtime.OvertimeRiskLevel,
+                    overtime.OvertimePlusSundaysLabel,
                     latest?.DisplayStatus ?? "Sem registro",
                     latest?.Day ?? string.Empty,
                     latest?.Area ?? string.Empty);
+
+                LogPresenceReportDiagnostic(
+                    row,
+                    op.CodigoFJ,
+                    op.Name,
+                    op.ShiftId,
+                    op.ShiftName,
+                    startDate,
+                    endDate);
 
                 if (MatchesPresenceStatusFilter(row, statusFilter))
                 {
                     rows.Add(row);
                 }
             }
+            buildProjectionWatch.Stop();
+            buildOvertimeWatch.Stop();
 
             var summary = new OperatorPresenceReportSummary(
                 rows.Count,
@@ -542,12 +737,64 @@ namespace TeamOps.UI.Services
                 rows.Sum(item => item.FaltaDays),
                 rows.Sum(item => item.LateDays),
                 rows.Sum(item => item.EarlyLeaveDays),
-                rows.Count == 0 ? 0 : Math.Round(rows.Average(item => item.PresencePercent), 1));
+                rows.Count == 0 ? 0 : Math.Round(rows.Average(item => item.PresencePercent), 1),
+                rows.Sum(item => item.ScheduledDaysWithoutSunday),
+                rows.Sum(item => item.ScheduledDaysWithSunday),
+                rows.Sum(item => item.AbsencesWithoutSunday),
+                rows.Sum(item => item.AbsencesWithSunday),
+                rows.Count == 0 ? 0 : Math.Round(rows.Average(item => item.PresencePercentWithoutSunday), 1),
+                rows.Count == 0 ? 0 : Math.Round(rows.Average(item => item.PresencePercentWithSunday), 1),
+                rows.Count(item => item.ProjectedFinalOvertimeHours > 45d),
+                rows.Count(item => item.ProjectedFinalOvertimeHours >= 35d && item.ProjectedFinalOvertimeHours <= 45d),
+                rows.Count(item => item.ProjectedFinalOvertimeHours < 35d),
+                Math.Round(rows.Sum(item => item.CurrentMonthOvertimeHours), 1),
+                rows.Sum(item => item.WorkedSundays),
+                rows.Sum(item => item.HolidayWorkDays));
+
+            buildRankingWatch.Start();
+            var topOvertime = rows
+                .OrderByDescending(item => item.ProjectedFinalOvertimeHours)
+                .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+                .Take(10)
+                .Select((item, index) => new OperatorPresenceOvertimeRankingItem(
+                    index + 1,
+                    item.CodigoFJ,
+                    item.Name,
+                    item.NameJp,
+                    item.ShiftName,
+                    item.ProjectedFinalOvertimeHours,
+                    item.HolidayWorkDays))
+                .ToList();
+            var topHolidayWork = rows
+                .OrderByDescending(item => item.HolidayWorkDays)
+                .ThenByDescending(item => item.ProjectedFinalOvertimeHours)
+                .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+                .Take(10)
+                .Select((item, index) => new OperatorPresenceOvertimeRankingItem(
+                    index + 1,
+                    item.CodigoFJ,
+                    item.Name,
+                    item.NameJp,
+                    item.ShiftName,
+                    item.ProjectedFinalOvertimeHours,
+                    item.HolidayWorkDays))
+                .ToList();
+            buildRankingWatch.Stop();
+
+            var performance = new OperatorPresenceReportPerformance(
+                LoadPresenceMs: loadPresenceWatch.ElapsedMilliseconds,
+                LoadHaidaiMs: loadHaidaiWatch.ElapsedMilliseconds,
+                BuildOvertimeMs: buildOvertimeWatch.ElapsedMilliseconds,
+                BuildProjectionMs: buildProjectionWatch.ElapsedMilliseconds,
+                BuildRankingMs: buildRankingWatch.ElapsedMilliseconds);
 
             return new OperatorPresenceReportPayload(
                 startDate.ToString("yyyy-MM-dd"),
                 endDate.ToString("yyyy-MM-dd"),
                 summary,
+                topOvertime,
+                topHolidayWork,
+                performance,
                 rows
                     .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
                     .ToList());
@@ -901,19 +1148,29 @@ namespace TeamOps.UI.Services
             var dayList = attendanceDays
                 .Where(item => item.CountsAsScheduled)
                 .ToList();
+            var dayListWithoutSunday = dayList
+                .Where(item => !IsSunday(item.Day))
+                .ToList();
 
-            var scheduledDays = dayList.Count;
-            var effectivePresenceDays = dayList.Count(item => item.CountsTowardPresence);
-            var coveredDays = dayList.Count(item => item.CountsTowardCoverage);
+            var scheduledDays = dayListWithoutSunday.Count;
+            var scheduledDaysWithSunday = dayList.Count;
+            var effectivePresenceDays = dayListWithoutSunday.Count(item => item.CountsTowardPresence);
+            var effectivePresenceDaysWithSunday = dayList.Count(item => item.CountsTowardPresence);
+            var coveredDays = dayListWithoutSunday.Count(item => item.CountsTowardCoverage);
             var yukyuDays = dayList.Count(item => item.StatusKey == AttendanceStatusKeys.Yukyu);
             var faltaDays = dayList.Count(item => item.StatusKey == AttendanceStatusKeys.Falta);
             var lateDays = dayList.Count(item => item.StatusKey == AttendanceStatusKeys.Late);
             var earlyLeaveDays = dayList.Count(item => item.StatusKey == AttendanceStatusKeys.EarlyLeave);
             var pendingTodokeCount = todokes.Count(item => !item.Validated);
+            var absencesWithoutSunday = Math.Max(0, scheduledDays - effectivePresenceDays);
+            var absencesWithSunday = Math.Max(0, scheduledDaysWithSunday - effectivePresenceDaysWithSunday);
 
             var presencePercent = scheduledDays <= 0
                 ? 0
                 : Math.Round((effectivePresenceDays / (double)scheduledDays) * 100d, 1);
+            var presencePercentWithSunday = scheduledDaysWithSunday <= 0
+                ? 0
+                : Math.Round((effectivePresenceDaysWithSunday / (double)scheduledDaysWithSunday) * 100d, 1);
 
             var coveragePercent = scheduledDays <= 0
                 ? 0
@@ -929,7 +1186,221 @@ namespace TeamOps.UI.Services
                 pendingTodokeCount,
                 followUpCount,
                 presencePercent,
-                coveragePercent);
+                coveragePercent,
+                scheduledDays,
+                scheduledDaysWithSunday,
+                absencesWithoutSunday,
+                absencesWithSunday,
+                presencePercent,
+                presencePercentWithSunday);
+        }
+
+        private static OperatorPresenceOvertimeMetrics BuildOvertimeMetrics(
+            OperatorManagerDirectoryRow op,
+            IReadOnlyDictionary<string, OperatorManagerScheduleRow> schedules,
+            IReadOnlyDictionary<string, OperatorManagerPresenceRow> presences,
+            IReadOnlyDictionary<string, OperatorManagerTodokeRow> todokes,
+            IReadOnlyDictionary<string, OperatorManagerMovementRow> movements,
+            DateTime previousMonthStart,
+            DateTime previousMonthEnd,
+            DateTime currentMonthStart,
+            DateTime currentMonthEnd,
+            DateTime today)
+        {
+            var previousMonthMinutes = 0d;
+            var currentMonthMinutes = 0d;
+            var realizedCurrentMinutes = 0d;
+            var projectedRemainingMinutes = 0d;
+            var workedSundays = 0;
+            var holidayWorkDays = 0;
+
+            for (var date = previousMonthStart.Date; date <= currentMonthEnd.Date; date = date.AddDays(1))
+            {
+                var day = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                schedules.TryGetValue(day, out var schedule);
+                presences.TryGetValue(day, out var presence);
+                todokes.TryGetValue(day, out var todoke);
+                movements.TryGetValue(day, out var movement);
+
+                var statusKey = ResolveAttendanceStatusKey(schedule, presence, todoke, movement);
+                var daily = CalculateDailyOvertime(op, date, schedule, presence, todoke, movement, statusKey, isProjection: date.Date > today.Date);
+
+                if (date >= previousMonthStart && date <= previousMonthEnd)
+                {
+                    previousMonthMinutes += daily.OvertimeMinutes;
+                }
+
+                if (date >= currentMonthStart && date <= currentMonthEnd)
+                {
+                    currentMonthMinutes += daily.OvertimeMinutes;
+                    if (date.Date <= today.Date)
+                    {
+                        realizedCurrentMinutes += daily.OvertimeMinutes;
+                    }
+                    else
+                    {
+                        projectedRemainingMinutes += daily.OvertimeMinutes;
+                    }
+                }
+
+                if (date >= currentMonthStart && date <= currentMonthEnd && daily.WorkedSunday)
+                {
+                    workedSundays++;
+                }
+
+                if (date >= currentMonthStart && date <= currentMonthEnd && daily.IsHolidayWork)
+                {
+                    holidayWorkDays++;
+                }
+
+                if (daily.HasDiagnostic)
+                {
+                    Console.WriteLine(
+                        "[PresenceOvertime][Diagnostic] "
+                        + $"OperatorId={op.CodigoFJ} "
+                        + $"OperatorName={op.Name} "
+                        + $"Date={day} "
+                        + $"Shift={op.ShiftName} "
+                        + $"AttendanceStatus={statusKey} "
+                        + $"IsSunday={daily.IsSunday} "
+                        + $"IsHolidayWork={daily.IsHolidayWork} "
+                        + $"ExpectedWorkMinutes={daily.ExpectedWorkMinutes.ToString("0.0", CultureInfo.InvariantCulture)} "
+                        + $"ActualWorkMinutes={daily.ActualWorkMinutes.ToString("0.0", CultureInfo.InvariantCulture)} "
+                        + $"OvertimeMinutes={daily.OvertimeMinutes.ToString("0.0", CultureInfo.InvariantCulture)} "
+                        + $"OvertimeHours={(daily.OvertimeMinutes / 60d).ToString("0.0", CultureInfo.InvariantCulture)} "
+                        + $"Reason={daily.Reason}");
+                }
+            }
+
+            var currentHours = ToHours(currentMonthMinutes);
+            var projectedFinalHours = ToHours(realizedCurrentMinutes + projectedRemainingMinutes);
+            var diff = Math.Round(projectedFinalHours - 45d, 1);
+            var risk = projectedFinalHours > 45d
+                ? "danger"
+                : projectedFinalHours >= 35d
+                    ? "warn"
+                    : "normal";
+
+            return new OperatorPresenceOvertimeMetrics(
+                CurrentMonthOvertimeHours: currentHours,
+                PreviousMonthOvertimeHours: ToHours(previousMonthMinutes),
+                RealizedOvertimeHours: ToHours(realizedCurrentMinutes),
+                ProjectedRemainingOvertimeHours: ToHours(projectedRemainingMinutes),
+                ProjectedFinalOvertimeHours: projectedFinalHours,
+                WorkedSundays: workedSundays,
+                HolidayWorkDays: holidayWorkDays,
+                TotalOvertimeHours: Math.Round(currentHours + ToHours(previousMonthMinutes), 1),
+                OvertimeLimitDifferenceHours: diff,
+                OvertimeRiskLevel: risk,
+                OvertimePlusSundaysLabel: $"{currentHours.ToString("0.0", CultureInfo.InvariantCulture)}h + {workedSundays} domingos");
+        }
+
+        private static OperatorDailyOvertimeAudit CalculateDailyOvertime(
+            OperatorManagerDirectoryRow op,
+            DateTime date,
+            OperatorManagerScheduleRow? schedule,
+            OperatorManagerPresenceRow? presence,
+            OperatorManagerTodokeRow? todoke,
+            OperatorManagerMovementRow? movement,
+            string statusKey,
+            bool isProjection)
+        {
+            var isSunday = date.DayOfWeek == DayOfWeek.Sunday;
+            var isHolidayWork = schedule?.IsHolidayWork == true;
+            var hasSchedule = IsScheduledDay(schedule);
+            var isPresentOrProjected = isProjection
+                ? hasSchedule
+                : presence?.LastPresence != null || statusKey == AttendanceStatusKeys.Present;
+            var expectedWorkMinutes = ResolveExpectedWorkMinutes(op.ShiftName);
+            var actualWorkMinutes = isPresentOrProjected ? expectedWorkMinutes : 0d;
+            var workedSunday = isSunday && isPresentOrProjected && hasSchedule;
+            var overtimeMinutes = 0d;
+            var reason = "no_overtime";
+
+            if (statusKey == AttendanceStatusKeys.Falta || statusKey == AttendanceStatusKeys.Yukyu)
+            {
+                reason = statusKey;
+                actualWorkMinutes = 0d;
+            }
+            else if (!hasSchedule)
+            {
+                reason = "not_scheduled";
+            }
+            else if (isHolidayWork)
+            {
+                overtimeMinutes = 11d * 60d;
+                reason = "kyuujitsu_shukkin";
+            }
+            else if (isSunday)
+            {
+                reason = "sunday_no_zangyou";
+            }
+            else if (statusKey == AttendanceStatusKeys.Late || statusKey == AttendanceStatusKeys.EarlyLeave)
+            {
+                reason = statusKey == AttendanceStatusKeys.Late ? "late_no_full_overtime" : "early_leave_no_full_overtime";
+            }
+            else if (isPresentOrProjected)
+            {
+                overtimeMinutes = 2d * 60d;
+                reason = isProjection ? "projected_full_shift" : "full_shift_base";
+            }
+
+            return new OperatorDailyOvertimeAudit(
+                IsSunday: isSunday,
+                IsHolidayWork: isHolidayWork,
+                WorkedSunday: workedSunday,
+                ExpectedWorkMinutes: expectedWorkMinutes,
+                ActualWorkMinutes: actualWorkMinutes,
+                OvertimeMinutes: overtimeMinutes,
+                Reason: reason,
+                HasDiagnostic: hasSchedule || presence?.LastPresence != null || todoke != null || movement != null);
+        }
+
+        private static double ResolveExpectedWorkMinutes(string shiftName)
+        {
+            return (shiftName ?? string.Empty).Contains("noite", StringComparison.OrdinalIgnoreCase)
+                || (shiftName ?? string.Empty).Contains("yakin", StringComparison.OrdinalIgnoreCase)
+                ? 605d
+                : 605d;
+        }
+
+        private static double ToHours(double minutes)
+        {
+            return Math.Round(minutes / 60d, 1);
+        }
+
+        private static bool IsSunday(string day)
+        {
+            return DateTime.TryParseExact(day, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
+                && parsed.DayOfWeek == DayOfWeek.Sunday;
+        }
+
+        private static void LogPresenceReportDiagnostic(
+            OperatorPresenceReportRow row,
+            string operatorId,
+            string operatorName,
+            int shiftId,
+            string shiftName,
+            DateTime periodStart,
+            DateTime periodEnd)
+        {
+            Console.WriteLine(
+                "[PresenceReport][Diagnostic] "
+                + $"OperatorId={operatorId} "
+                + $"OperatorName={operatorName} "
+                + $"ShiftId={shiftId} "
+                + $"ShiftName={shiftName} "
+                + $"PeriodStart={periodStart:yyyy-MM-dd} "
+                + $"PeriodEnd={periodEnd:yyyy-MM-dd} "
+                + $"ExpectedDaysWithoutSunday={row.ScheduledDaysWithoutSunday} "
+                + $"ExpectedDaysWithSunday={row.ScheduledDaysWithSunday} "
+                + $"PresentDays={row.PresentDays} "
+                + $"AbsencesWithoutSunday={row.AbsencesWithoutSunday} "
+                + $"AbsencesWithSunday={row.AbsencesWithSunday} "
+                + $"AttendancePercentWithoutSunday={row.PresencePercentWithoutSunday.ToString("0.0", CultureInfo.InvariantCulture)} "
+                + $"AttendancePercentWithSunday={row.PresencePercentWithSunday.ToString("0.0", CultureInfo.InvariantCulture)} "
+                + $"Below82WithoutSunday={row.Below82WithoutSunday} "
+                + $"Below82WithSunday={row.Below82WithSunday}");
         }
 
         private static bool MatchesPresenceStatusFilter(OperatorPresenceReportRow row, string statusFilter)
@@ -1419,8 +1890,9 @@ namespace TeamOps.UI.Services
             public string LocalName { get; set; } = string.Empty;
             public string AssignmentCode { get; set; } = string.Empty;
             public string AvailabilityStatus { get; set; } = string.Empty;
-            public bool IsLineupActive { get; set; }
-            public bool IsTrainee { get; set; }
+        public bool IsLineupActive { get; set; }
+        public bool IsHolidayWork { get; set; }
+        public bool IsTrainee { get; set; }
         }
 
         private sealed class OperatorManagerPresenceRow
@@ -1473,6 +1945,29 @@ namespace TeamOps.UI.Services
             bool CountsAsScheduled,
             bool CountsTowardPresence,
             bool CountsTowardCoverage);
+
+        private sealed record OperatorPresenceOvertimeMetrics(
+            double CurrentMonthOvertimeHours,
+            double PreviousMonthOvertimeHours,
+            double RealizedOvertimeHours,
+            double ProjectedRemainingOvertimeHours,
+            double ProjectedFinalOvertimeHours,
+            int WorkedSundays,
+            int HolidayWorkDays,
+            double TotalOvertimeHours,
+            double OvertimeLimitDifferenceHours,
+            string OvertimeRiskLevel,
+            string OvertimePlusSundaysLabel);
+
+        private sealed record OperatorDailyOvertimeAudit(
+            bool IsSunday,
+            bool IsHolidayWork,
+            bool WorkedSunday,
+            double ExpectedWorkMinutes,
+            double ActualWorkMinutes,
+            double OvertimeMinutes,
+            string Reason,
+            bool HasDiagnostic);
 
         private readonly record struct ProductionCoverageDescriptor(
             string Mode,
@@ -1568,6 +2063,9 @@ namespace TeamOps.UI.Services
         string StartDateIso,
         string EndDateIso,
         OperatorPresenceReportSummary Summary,
+        IReadOnlyList<OperatorPresenceOvertimeRankingItem> TopOvertime,
+        IReadOnlyList<OperatorPresenceOvertimeRankingItem> TopHolidayWork,
+        OperatorPresenceReportPerformance Performance,
         IReadOnlyList<OperatorPresenceReportRow> Rows);
 
     public sealed record OperatorPresenceReportSummary(
@@ -1578,7 +2076,19 @@ namespace TeamOps.UI.Services
         int FaltaDays,
         int LateDays,
         int EarlyLeaveDays,
-        double PresencePercent);
+        double PresencePercent,
+        int ScheduledDaysWithoutSunday,
+        int ScheduledDaysWithSunday,
+        int AbsencesWithoutSunday,
+        int AbsencesWithSunday,
+        double PresencePercentWithoutSunday,
+        double PresencePercentWithSunday,
+        int OvertimeOver45Count,
+        int OvertimeBetween35And45Count,
+        int OvertimeBelow35Count,
+        double TotalCurrentMonthOvertimeHours,
+        int TotalWorkedSundays,
+        int TotalHolidayWorkDays);
 
     public sealed record OperatorPresenceReportRow(
         string CodigoFJ,
@@ -1595,9 +2105,44 @@ namespace TeamOps.UI.Services
         int EarlyLeaveDays,
         int PendingTodokeCount,
         double PresencePercent,
+        int ScheduledDaysWithoutSunday,
+        int ScheduledDaysWithSunday,
+        int AbsencesWithoutSunday,
+        int AbsencesWithSunday,
+        double PresencePercentWithoutSunday,
+        double PresencePercentWithSunday,
+        bool Below82WithoutSunday,
+        bool Below82WithSunday,
+        double CurrentMonthOvertimeHours,
+        double PreviousMonthOvertimeHours,
+        double RealizedOvertimeHours,
+        double ProjectedRemainingOvertimeHours,
+        double ProjectedFinalOvertimeHours,
+        int WorkedSundays,
+        int HolidayWorkDays,
+        double TotalOvertimeHours,
+        double OvertimeLimitDifferenceHours,
+        string OvertimeRiskLevel,
+        string OvertimePlusSundaysLabel,
         string LastStatus,
         string LastDateIso,
         string LastArea);
+
+    public sealed record OperatorPresenceOvertimeRankingItem(
+        int Rank,
+        string CodigoFJ,
+        string Name,
+        string NameJp,
+        string ShiftName,
+        double OvertimeHours,
+        int HolidayWorkDays);
+
+    public sealed record OperatorPresenceReportPerformance(
+        long LoadPresenceMs,
+        long LoadHaidaiMs,
+        long BuildOvertimeMs,
+        long BuildProjectionMs,
+        long BuildRankingMs);
 
     public sealed record OperatorManagerDirectoryPayload(
         string StartDateIso,
@@ -1653,7 +2198,13 @@ namespace TeamOps.UI.Services
         int PendingTodokeCount,
         int FollowUpCount,
         double PresencePercent,
-        double CoveragePercent);
+        double CoveragePercent,
+        int ScheduledDaysWithoutSunday,
+        int ScheduledDaysWithSunday,
+        int AbsencesWithoutSunday,
+        int AbsencesWithSunday,
+        double PresencePercentWithoutSunday,
+        double PresencePercentWithSunday);
 
     public sealed record OperatorManagerMasterCardSummary(
         int TotalCount,

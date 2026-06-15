@@ -350,6 +350,8 @@ namespace TeamOps.UI.Forms
                                 dateTime = cell.DateTime.ToString("yyyy-MM-dd HH:mm:ss"),
                                 statusCode = cell.StatusCode,
                                 displayCode = cell.DisplayCode,
+                                isIgnored = cell.IsIgnored,
+                                ignoreReason = cell.IgnoreReason,
                                 cssClass = cell.CssClass
                             })
                         }),

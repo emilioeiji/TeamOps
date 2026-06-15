@@ -131,39 +131,7 @@ namespace TeamOps.Data.Repositories
                     machine.MachineKey = machineKey;
                 }
 
-                if (sectorId.HasValue && machine.SectorId != sectorId.Value)
-                {
-                    conn.Execute(
-                        @"
-                            UPDATE Machines
-                            SET SectorId = @sectorId
-                            WHERE Id = @id;",
-                        new
-                        {
-                            sectorId,
-                            id = machine.Id
-                        }
-                    );
-
-                    machine.SectorId = sectorId.Value;
-                }
-
-                if (localId.HasValue && machine.LocalId != localId.Value)
-                {
-                    conn.Execute(
-                        @"
-                            UPDATE Machines
-                            SET LocalId = @localId
-                            WHERE Id = @id;",
-                        new
-                        {
-                            localId,
-                            id = machine.Id
-                        }
-                    );
-
-                    machine.LocalId = localId.Value;
-                }
+                LogLocationMismatchIfNeeded(machine, machineKey, sectorId, localId);
 
                 return machine;
             }
@@ -222,6 +190,31 @@ namespace TeamOps.Data.Repositories
         public static string BuildMachineKey(string machineCode, string lineCode)
         {
             return $"{NormalizeCode(lineCode)}:{NormalizeCode(machineCode)}";
+        }
+
+        private static void LogLocationMismatchIfNeeded(Machine machine, string machineKey, int? importedSectorId, int? importedLocalId)
+        {
+            var sectorMismatch = importedSectorId.HasValue && machine.SectorId != importedSectorId.Value;
+            var localMismatch = importedLocalId.HasValue && machine.LocalId != importedLocalId.Value;
+            if (!sectorMismatch && !localMismatch)
+            {
+                return;
+            }
+
+            Console.WriteLine(
+                "[ProductionMachineRepository][LocationMismatch] "
+                + $"MachineId={machine.Id} "
+                + $"MachineKey={machineKey} "
+                + $"ExistingSectorId={FormatNullable(machine.SectorId)} "
+                + $"ImportedSectorId={FormatNullable(importedSectorId)} "
+                + $"ExistingLocalId={FormatNullable(machine.LocalId)} "
+                + $"ImportedLocalId={FormatNullable(importedLocalId)} "
+                + "Action=kept_existing_manual_location");
+        }
+
+        private static string FormatNullable(int? value)
+        {
+            return value.HasValue ? value.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "NULL";
         }
 
         private static string NormalizeCode(string value)

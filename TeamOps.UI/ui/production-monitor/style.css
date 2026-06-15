@@ -713,6 +713,15 @@ tbody td {
     background: #eef5ff;
 }
 
+.machine-row.machine-row-ignored td {
+    background: #f3f4f6;
+}
+
+.machine-row.machine-row-ignored:hover td,
+.machine-row.machine-row-ignored.is-selected td {
+    background: #e5e7eb;
+}
+
 .machine-row strong,
 .ranking-copy strong,
 .operator-ranking-copy strong {

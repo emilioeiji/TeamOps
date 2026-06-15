@@ -236,6 +236,7 @@ namespace TeamOps.UI.Forms
                                 localId = cell.LocalId,
                                 isTrainee = cell.IsTrainee,
                                 isLineupActive = cell.IsLineupActive,
+                                isHolidayWork = cell.IsHolidayWork,
                                 status = cell.Status
                             })
                         })
@@ -306,6 +307,7 @@ namespace TeamOps.UI.Forms
                             trainerCodigoFJ = row.TrainerCodigoFJ,
                             countsTowardKousu = row.CountsTowardKousu,
                             isLineupActive = row.IsLineupActive,
+                            isHolidayWork = row.IsHolidayWork,
                             notes = row.Notes,
                             exceptionMotiveId = row.ExceptionMotiveId,
                             exceptionMotiveName = row.ExceptionMotiveName,
@@ -382,6 +384,7 @@ namespace TeamOps.UI.Forms
                     ReadString(root, "trainerCodigoFJ"),
                     ReadBool(root, "countsTowardKousu", true),
                     ReadString(root, "notes"),
+                    ReadBool(root, "isHolidayWork"),
                     ReadBool(root, "applyPairToMonth")));
 
             SendBoard(date, shiftId, sectorId);

@@ -32,7 +32,11 @@ const I18N = {
         operator: "Operador",
         scheduled: "Escalado",
         present: "Conforme",
-        percent: "%",
+        percentOfficial: "% sem domingo",
+        percentControl: "% com domingo",
+        overtimeCurrent: "HE atual",
+        overtimeProjection: "Projecao HE",
+        overtimeSunday: "Dom/Shukkin",
         issues: "Ocorrencias",
         last: "Ultimo status",
         empty: "Nenhum registro encontrado.",
@@ -45,6 +49,28 @@ const I18N = {
         late: "Atrasos",
         early: "Saida antecipada",
         avgPresence: "Media presenca",
+        avgPresenceOfficial: "Media oficial",
+        avgPresenceControl: "Media controle",
+        below82ByShift: "Abaixo de 82% por turno",
+        daysWithoutSunday: "Dias sem domingo",
+        daysWithSunday: "Dias com domingo",
+        absencesWithoutSunday: "Faltas sem domingo",
+        absencesWithSunday: "Faltas com domingo",
+        overtimeOver45: "Acima de 45h",
+        overtime35To45: "Risco 35-45h",
+        overtimeBelow35: "Normal abaixo 35h",
+        overtimeTotal: "HE mes atual",
+        workedSundays: "Domingos trab.",
+        holidayWork: "Kyuujitsu Shukkin",
+        topOvertime: "Top Zangyou projetado",
+        topHolidayWork: "Top Kyuujitsu Shukkin",
+        currentMonth: "Mes atual",
+        previousMonth: "Mes anterior",
+        projected: "Projetado",
+        realized: "Realizado",
+        remaining: "Futuro",
+        overtimeLimit: "Limite 45h",
+        performance: "Performance",
         pending: "Todoke pendente",
         managerSummary: "Resumo Gerencial",
         details: "Detalhamento",
@@ -78,7 +104,11 @@ const I18N = {
         operator: "Operator",
         scheduled: "Scheduled",
         present: "Compliant",
-        percent: "%",
+        percentOfficial: "% without Sunday",
+        percentControl: "% with Sunday",
+        overtimeCurrent: "Current OT",
+        overtimeProjection: "OT projection",
+        overtimeSunday: "Sun/Holiday",
         issues: "Issues",
         last: "Latest status",
         empty: "No records found.",
@@ -91,6 +121,28 @@ const I18N = {
         late: "Late",
         early: "Early leave",
         avgPresence: "Avg attendance",
+        avgPresenceOfficial: "Official avg",
+        avgPresenceControl: "Control avg",
+        below82ByShift: "Below 82% by shift",
+        daysWithoutSunday: "Days without Sunday",
+        daysWithSunday: "Days with Sunday",
+        absencesWithoutSunday: "Absences without Sunday",
+        absencesWithSunday: "Absences with Sunday",
+        overtimeOver45: "Over 45h",
+        overtime35To45: "Risk 35-45h",
+        overtimeBelow35: "Normal below 35h",
+        overtimeTotal: "Current month OT",
+        workedSundays: "Worked Sundays",
+        holidayWork: "Holiday work",
+        topOvertime: "Top projected OT",
+        topHolidayWork: "Top holiday work",
+        currentMonth: "Current month",
+        previousMonth: "Previous month",
+        projected: "Projected",
+        realized: "Realized",
+        remaining: "Future",
+        overtimeLimit: "45h limit",
+        performance: "Performance",
         pending: "Pending Todoke",
         managerSummary: "Management Summary",
         details: "Details",
@@ -182,7 +234,11 @@ function applyLocale() {
     setText("thGroup", t("group"));
     setText("thScheduled", t("scheduled"));
     setText("thPresent", t("present"));
-    setText("thPercent", t("percent"));
+    setText("thPercentOfficial", t("percentOfficial"));
+    setText("thPercentControl", t("percentControl"));
+    setText("thOvertimeCurrent", t("overtimeCurrent"));
+    setText("thOvertimeProjection", t("overtimeProjection"));
+    setText("thOvertimeSunday", t("overtimeSunday"));
     setText("thIssues", t("issues"));
     setText("thLast", t("last"));
     setText("optStatusAll", t("all"));
@@ -222,30 +278,44 @@ function renderReport(data) {
     setText("lblWindow", `${formatDate(data.startDateIso)} - ${formatDate(data.endDateIso)}`);
     setText("lblCount", state.rows.length);
     renderSummary(data.summary || {});
-    renderBreakdowns(state.rows);
+    renderBreakdowns(data || {});
     renderRows(state.rows);
 }
 
 function renderSummary(summary) {
     document.getElementById("summary").innerHTML = [
         summaryCard(t("operators"), summary.operatorCount ?? 0),
-        summaryCard(t("scheduledDays"), summary.scheduledDays ?? 0),
+        summaryCard(t("daysWithoutSunday"), summary.scheduledDaysWithoutSunday ?? summary.scheduledDays ?? 0),
+        summaryCard(t("daysWithSunday"), summary.scheduledDaysWithSunday ?? summary.scheduledDays ?? 0),
         summaryCard(t("presentDays"), summary.presentDays ?? 0),
-        summaryCard(t("avgPresence"), formatPercent(summary.presencePercent), "accent"),
+        summaryCard(t("avgPresenceOfficial"), formatPercent(summary.presencePercentWithoutSunday ?? summary.presencePercent), "accent"),
+        summaryCard(t("avgPresenceControl"), formatPercent(summary.presencePercentWithSunday ?? summary.presencePercent), "accent"),
         summaryCard(t("absenceRate"), formatPercent(calculateAbsenceRate(summary)), "danger"),
+        summaryCard(t("overtimeOver45"), summary.overtimeOver45Count ?? 0, "danger"),
+        summaryCard(t("overtime35To45"), summary.overtimeBetween35And45Count ?? 0, "warn"),
+        summaryCard(t("overtimeBelow35"), summary.overtimeBelow35Count ?? 0, "accent"),
+        summaryCard(t("overtimeTotal"), formatHours(summary.totalCurrentMonthOvertimeHours), "accent"),
+        summaryCard(t("workedSundays"), summary.totalWorkedSundays ?? 0, "warn"),
+        summaryCard(t("holidayWork"), summary.totalHolidayWorkDays ?? 0, "warn"),
+        summaryCard(t("absencesWithoutSunday"), summary.absencesWithoutSunday ?? summary.faltaDays ?? 0, "danger"),
+        summaryCard(t("absencesWithSunday"), summary.absencesWithSunday ?? summary.faltaDays ?? 0, "danger"),
         summaryCard(t("yukyu"), summary.yukyuDays ?? 0),
-        summaryCard(t("falta"), summary.faltaDays ?? 0, "danger"),
         summaryCard(t("late"), summary.lateDays ?? 0, "warn"),
         summaryCard(t("early"), summary.earlyLeaveDays ?? 0, "warn")
     ].join("");
 }
 
-function renderBreakdowns(rows) {
+function renderBreakdowns(data) {
     const container = document.getElementById("managerBreakdowns");
+    const rows = data.rows || [];
     container.innerHTML = [
         breakdownCard(t("byGroup"), buildBreakdown(rows, "groupName")),
         breakdownCard(t("bySector"), buildBreakdown(rows, "sectorName")),
-        breakdownCard(t("byShift"), buildBreakdown(rows, "shiftName"))
+        breakdownCard(t("byShift"), buildBreakdown(rows, "shiftName")),
+        below82Card(t("below82ByShift"), rows),
+        rankingCard(t("topOvertime"), data.topOvertime || [], "overtime"),
+        rankingCard(t("topHolidayWork"), data.topHolidayWork || [], "holiday"),
+        performanceCard(data.performance || {})
     ].join("");
 }
 
@@ -254,7 +324,7 @@ function buildBreakdown(rows, field) {
     rows.forEach(row => {
         const key = row[field] || "-";
         const current = map.get(key) || { label: key, scheduled: 0, present: 0, issues: 0 };
-        current.scheduled += Number(row.scheduledDays || 0);
+        current.scheduled += Number(row.scheduledDaysWithoutSunday ?? row.scheduledDays ?? 0);
         current.present += Number(row.presentDays || 0);
         current.issues += Number(row.yukyuDays || 0) + Number(row.faltaDays || 0)
             + Number(row.lateDays || 0) + Number(row.earlyLeaveDays || 0);
@@ -264,6 +334,38 @@ function buildBreakdown(rows, field) {
     return Array.from(map.values())
         .sort((a, b) => b.scheduled - a.scheduled || a.label.localeCompare(b.label))
         .slice(0, 8);
+}
+
+function below82Card(title, rows) {
+    const byShift = new Map();
+    rows
+        .filter(row => row.below82WithoutSunday || row.below82WithSunday)
+        .forEach(row => {
+            const shift = row.shiftName || "-";
+            const items = byShift.get(shift) || [];
+            items.push(row);
+            byShift.set(shift, items);
+        });
+
+    const content = Array.from(byShift.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([shift, items]) => `
+            <div class="below-shift">
+                <strong>${escapeHtml(shift)}</strong>
+                ${items
+                    .sort((a, b) => Number(a.presencePercentWithoutSunday || 0) - Number(b.presencePercentWithoutSunday || 0))
+                    .map(item => `
+                        <span>${escapeHtml(localizedName(item.name, item.nameJp))}: ${escapeHtml(formatPercent(item.presencePercentWithoutSunday))} / ${escapeHtml(formatPercent(item.presencePercentWithSunday))}</span>
+                    `).join("")}
+            </div>
+        `).join("");
+
+    return `
+        <article class="breakdown-card breakdown-card-alert">
+            <h2>${escapeHtml(title)}</h2>
+            ${content || `<p class="breakdown-empty">${escapeHtml(t("empty"))}</p>`}
+        </article>
+    `;
 }
 
 function breakdownCard(title, items) {
@@ -284,6 +386,47 @@ function breakdownCard(title, items) {
         <article class="breakdown-card">
             <h2>${escapeHtml(title)}</h2>
             ${rows}
+        </article>
+    `;
+}
+
+function rankingCard(title, items, mode) {
+    const rows = items.length
+        ? items.map(item => `
+            <div class="breakdown-row">
+                <span>${item.rank}. ${escapeHtml(localizedName(item.name, item.nameJp))}</span>
+                <strong>${mode === "holiday" ? item.holidayWorkDays : formatHours(item.overtimeHours)}</strong>
+                <small>${escapeHtml(item.codigoFJ)} | ${escapeHtml(item.shiftName || "-")} | ${escapeHtml(t("holidayWork"))}: ${item.holidayWorkDays}</small>
+            </div>
+        `).join("")
+        : `<p class="breakdown-empty">${escapeHtml(t("empty"))}</p>`;
+
+    return `
+        <article class="breakdown-card breakdown-card-overtime">
+            <h2>${escapeHtml(title)}</h2>
+            ${rows}
+        </article>
+    `;
+}
+
+function performanceCard(performance) {
+    const items = [
+        ["LoadPresenceMs", performance.loadPresenceMs ?? 0],
+        ["LoadHaidaiMs", performance.loadHaidaiMs ?? 0],
+        ["BuildOvertimeMs", performance.buildOvertimeMs ?? 0],
+        ["BuildProjectionMs", performance.buildProjectionMs ?? 0],
+        ["BuildRankingMs", performance.buildRankingMs ?? 0]
+    ];
+
+    return `
+        <article class="breakdown-card breakdown-card-performance">
+            <h2>${escapeHtml(t("performance"))}</h2>
+            ${items.map(([label, value]) => `
+                <div class="breakdown-row">
+                    <span>${escapeHtml(label)}</span>
+                    <strong>${escapeHtml(String(value))}ms</strong>
+                </div>
+            `).join("")}
         </article>
     `;
 }
@@ -309,7 +452,7 @@ function switchView(view) {
 function renderRows(rows) {
     const body = document.getElementById("rows");
     if (!rows.length) {
-        body.innerHTML = `<tr><td colspan="7" class="empty-cell">${escapeHtml(t("empty"))}</td></tr>`;
+        body.innerHTML = `<tr><td colspan="11" class="empty-cell">${escapeHtml(t("empty"))}</td></tr>`;
         return;
     }
 
@@ -323,7 +466,7 @@ function renderRows(rows) {
         ].filter(Boolean).join(" | ");
 
         return `
-            <tr>
+            <tr class="${row.below82WithoutSunday || row.below82WithSunday ? "attendance-alert-row" : ""}">
                 <td>
                     <div class="operator-cell">
                         <button class="operator-link" type="button" data-open-operator="${escapeHtmlAttr(row.codigoFJ)}">
@@ -335,7 +478,27 @@ function renderRows(rows) {
                 <td>${escapeHtml(row.groupName || "-")}</td>
                 <td>${row.scheduledDays ?? 0}</td>
                 <td>${row.presentDays ?? 0}</td>
-                <td><span class="percent-pill">${formatPercent(row.presencePercent)}</span></td>
+                <td>
+                    <span class="percent-pill ${row.below82WithoutSunday ? "percent-pill-alert" : ""}">${formatPercent(row.presencePercentWithoutSunday ?? row.presencePercent)}</span>
+                    <small>${escapeHtml(t("absencesWithoutSunday"))}: ${row.absencesWithoutSunday ?? 0}</small>
+                </td>
+                <td>
+                    <span class="percent-pill ${row.below82WithSunday ? "percent-pill-alert" : ""}">${formatPercent(row.presencePercentWithSunday ?? row.presencePercent)}</span>
+                    <small>${escapeHtml(t("absencesWithSunday"))}: ${row.absencesWithSunday ?? 0}</small>
+                </td>
+                <td>
+                    <span class="percent-pill overtime-risk-${escapeHtmlAttr(row.overtimeRiskLevel || "normal")}">${formatHours(row.currentMonthOvertimeHours)}</span>
+                    <small>${escapeHtml(t("previousMonth"))}: ${formatHours(row.previousMonthOvertimeHours)}</small>
+                </td>
+                <td>
+                    <span class="percent-pill overtime-risk-${escapeHtmlAttr(row.overtimeRiskLevel || "normal")}">${formatHours(row.projectedFinalOvertimeHours)}</span>
+                    <small>${escapeHtml(t("realized"))}: ${formatHours(row.realizedOvertimeHours)} | ${escapeHtml(t("remaining"))}: ${formatHours(row.projectedRemainingOvertimeHours)}</small>
+                    <small>${escapeHtml(t("overtimeLimit"))}: ${formatSignedHours(row.overtimeLimitDifferenceHours)}</small>
+                </td>
+                <td>
+                    <strong>${escapeHtml(row.overtimePlusSundaysLabel || "-")}</strong>
+                    <small>${escapeHtml(t("holidayWork"))}: ${row.holidayWorkDays ?? 0}</small>
+                </td>
                 <td>${escapeHtml(issueText || "-")}</td>
                 <td>${escapeHtml(row.lastStatus || "-")}<small>${escapeHtml(row.lastDateIso ? ` | ${formatDate(row.lastDateIso)}` : "")}${escapeHtml(row.lastArea ? ` | ${row.lastArea}` : "")}</small></td>
             </tr>
@@ -355,7 +518,7 @@ function renderRows(rows) {
 }
 
 function setRowsLoading() {
-    document.getElementById("rows").innerHTML = `<tr><td colspan="7" class="empty-cell">${escapeHtml(t("loading"))}</td></tr>`;
+    document.getElementById("rows").innerHTML = `<tr><td colspan="11" class="empty-cell">${escapeHtml(t("loading"))}</td></tr>`;
 }
 
 function summaryCard(label, value, tone = "") {
@@ -373,6 +536,15 @@ function localizedName(name, nameJp) {
 
 function formatPercent(value) {
     return `${Number(value || 0).toFixed(1)}%`;
+}
+
+function formatHours(value) {
+    return `${Number(value || 0).toFixed(1)}h`;
+}
+
+function formatSignedHours(value) {
+    const numeric = Number(value || 0);
+    return `${numeric >= 0 ? "+" : ""}${numeric.toFixed(1)}h`;
 }
 
 function formatDate(value) {

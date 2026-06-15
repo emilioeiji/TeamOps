@@ -192,7 +192,7 @@ select:focus {
 
 .summary-grid {
     display: grid;
-    grid-template-columns: repeat(9, minmax(100px, 1fr));
+    grid-template-columns: repeat(6, minmax(120px, 1fr));
     gap: 10px;
 }
 
@@ -234,7 +234,7 @@ select:focus {
 
 .breakdown-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px;
 }
 
@@ -276,6 +276,37 @@ select:focus {
     grid-column: 1 / -1;
     color: var(--muted);
     font-weight: 650;
+}
+
+.breakdown-card-alert {
+    border-color: #fecaca;
+    background: #fff7f7;
+}
+
+.breakdown-card-overtime {
+    border-color: #fed7aa;
+    background: #fffaf3;
+}
+
+.breakdown-card-performance {
+    border-color: #bfdbfe;
+    background: #f5f9ff;
+}
+
+.below-shift {
+    display: grid;
+    gap: 6px;
+    padding: 10px 0;
+    border-top: 1px solid #fecaca;
+}
+
+.below-shift strong {
+    color: var(--danger);
+}
+
+.below-shift span {
+    color: #7f1d1d;
+    font-weight: 750;
 }
 
 .breakdown-empty {
@@ -348,12 +379,12 @@ tbody tr:hover {
 
 th:nth-child(1),
 td:nth-child(1) {
-    width: 28%;
+    width: 20%;
 }
 
 th:nth-child(2),
 td:nth-child(2) {
-    width: 12%;
+    width: 9%;
 }
 
 th:nth-child(3),
@@ -362,17 +393,37 @@ th:nth-child(4),
 td:nth-child(4),
 th:nth-child(5),
 td:nth-child(5) {
-    width: 9%;
+    width: 7%;
 }
 
 th:nth-child(6),
 td:nth-child(6) {
-    width: 19%;
+    width: 8%;
 }
 
 th:nth-child(7),
 td:nth-child(7) {
-    width: 14%;
+    width: 8%;
+}
+
+th:nth-child(8),
+td:nth-child(8) {
+    width: 11%;
+}
+
+th:nth-child(9),
+td:nth-child(9) {
+    width: 10%;
+}
+
+th:nth-child(10),
+td:nth-child(10) {
+    width: 11%;
+}
+
+th:nth-child(11),
+td:nth-child(11) {
+    width: 9%;
 }
 
 .operator-cell {
@@ -418,6 +469,34 @@ td small {
     background: #e6f3f8;
     color: var(--primary);
     font-weight: 900;
+}
+
+.percent-pill-alert {
+    background: #fee2e2;
+    color: var(--danger);
+}
+
+.overtime-risk-normal {
+    background: #dff3f0;
+    color: var(--accent);
+}
+
+.overtime-risk-warn {
+    background: #fef3c7;
+    color: var(--warn);
+}
+
+.overtime-risk-danger {
+    background: #fee2e2;
+    color: var(--danger);
+}
+
+.attendance-alert-row {
+    background: #fff7f7;
+}
+
+.attendance-alert-row:hover {
+    background: #fff1f1;
 }
 
 .empty-cell {

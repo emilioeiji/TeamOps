@@ -698,7 +698,7 @@ namespace TeamOps.Services
                 result.Ec2RowsCandidate++;
                 GetAreaStats(areaStats, currentArea).CandidateRows++;
 
-                if (columns.Count < 14)
+                if (columns.Count < 3)
                 {
                     IgnoreEc2Line(result, "TOO_FEW_COLUMNS", index + 1, rawLine, columns, currentArea);
                     GetAreaStats(areaStats, currentArea).IgnoredRows++;
@@ -746,11 +746,8 @@ namespace TeamOps.Services
 
                 if (!processMinutes.HasValue || !double.IsFinite(processMinutes.Value) || processMinutes.Value <= 0)
                 {
-                    importReason = "invalid_process_minutes";
-                    IgnoreEc2Line(result, "invalid_process_minutes", index + 1, rawLine, columns, currentArea, machineCandidate: machineCode, statusCandidate: statusText, partCodeCandidate: partCode, timeCandidate: processRaw);
-                    PushDiagnosticLine(index + 1, machineRaw, statusRaw, partCodeRaw, processRaw, machineCode, statusText, partCode, FormatNullable(processMinutes), false, importReason, selectedLayout.Name, isRunning);
-                    GetAreaStats(areaStats, currentArea).IgnoredRows++;
-                    continue;
+                    processMinutes = null;
+                    importReason = "missing_process_minutes_imported_status_only";
                 }
 
                 var parsedRow = new Ec2ParsedRow

@@ -22,7 +22,7 @@ const I18N = {
         metricProduction: "% Kadouritsu",
         metricRunning: "Rodando",
         metricStopped: "Paradas",
-        metricIgnored: "Desconsideradas",
+        metricIgnored: "Suspensas",
         metricAvgOperating: "Media operando",
         metricError: "Min. erro",
         metricInactive: "Min. inativo",
@@ -43,7 +43,7 @@ const I18N = {
         areaDetailTitle: "Detalhe da area",
         areaDetailSubtitle: "Clique em uma area para listar as maquinas e os operadores previstos naquele local.",
         areaFocusLabel: "Area em foco",
-        areaSummaryTemplate: "{machines} maquinas, {running} rodando, {stopped} paradas, {ignored} desconsideradas, {operators} operadores previstos.",
+        areaSummaryTemplate: "{machines} maquinas, {running} rodando, {stopped} paradas, {ignored} suspensas, {operators} operadores previstos.",
         areaMachineCount: "Maquinas",
         areaKadouritsu: "Kadouritsu",
         areaRunningMinutes: "Min. rodando",
@@ -132,7 +132,7 @@ const I18N = {
         impactLabel: "Impacto",
         rankingMinutesSuffix: "min de impacto",
         machineProcessLabel: "Tempo EC2",
-        machineIgnoredLabel: "Ignorado pelo EC2",
+        machineIgnoredLabel: "Suspensa",
         machineInvalidTimeLabel: "Sem tempo EC2 valido",
         machineStoppedTimeLabel: "Maquina parada no EC2"
     },
@@ -615,7 +615,7 @@ function renderMachineTable(rows) {
     }
 
     body.innerHTML = renderRows.map(model => `
-        <tr class="machine-row ${Number(model.machineId || 0) === Number(state.selectedMachineId) ? "is-selected" : ""}" data-machine-id="${model.machineId || 0}">
+        <tr class="machine-row ${model.isIgnored ? "machine-row-ignored" : ""} ${Number(model.machineId || 0) === Number(state.selectedMachineId) ? "is-selected" : ""}" data-machine-id="${model.machineId || 0}">
             <td>
                 <div class="machine-main">
                     <strong>${escapeHtml(model.equipmentLabel)}</strong>
@@ -665,8 +665,9 @@ function buildMachineRenderModel(row) {
         equipmentLabel: getMachineLabel(row),
         equipmentMeta: [getMachineCodeLineLabel(row), row.area || row.localNamePt || row.localNameJp || ""].filter(Boolean).join(" · "),
         statusLabel: getStatusLabel(row),
-        ec2StatusLabel: row.ec2Status || row.ec2StatusText || row.statusText || "-",
-        statusBadgeStyle: getStatusBadgeStyle(row.statusCode, row.displayCode, row.sectorId),
+        ec2StatusLabel: row.isEc2Ignored ? getIgnoredMachineLabel(row) : row.ec2Status || row.ec2StatusText || row.statusText || "-",
+        statusBadgeStyle: getStatusBadgeStyle(row.statusCode, row.displayCode, row.sectorId, row.isEc2Ignored),
+        isIgnored: Boolean(row.isEc2Ignored),
         areaLabel: row.area || row.localNamePt || row.localNameJp || "",
         partCode,
         partCodeStyle,
@@ -895,7 +896,7 @@ function renderTimeline(rows) {
     const bodyRows = rows.map(row => `
         <tr>
             <td class="timeline-machine-cell">${escapeHtml(getMachineCodeLineLabel(row))}</td>
-            ${row.cells.map(cell => `<td class="timeline-status-cell" style="${escapeHtmlAttr(getTimelineCellStyle(cell.statusCode, cell.displayCode, row.sectorId))}" title="${escapeHtml(cell.timeLabel)}"></td>`).join("")}
+            ${row.cells.map(cell => `<td class="timeline-status-cell" style="${escapeHtmlAttr(getTimelineCellStyle(cell.statusCode, cell.displayCode, row.sectorId, cell.isIgnored))}" title="${escapeHtml(cell.isIgnored ? `${cell.timeLabel} | ${t("machineIgnoredLabel")}: ${cell.ignoreReason || "-"}` : cell.timeLabel)}"></td>`).join("")}
         </tr>
     `).join("");
 
@@ -1445,6 +1446,10 @@ function groupAreasBySector(areas) {
 }
 
 function getStatusLabel(row) {
+    if (row?.isEc2Ignored || row?.isIgnored) {
+        return t("machineIgnoredLabel");
+    }
+
     const statusCode = Number(row.statusCode || 0);
     const displayCode = Number(row.displayCode || statusCode || 0);
     const configured = findStatusDefinition(row.sectorId, statusCode, displayCode);
@@ -1484,7 +1489,24 @@ function getStatusClass(statusCode) {
     }
 }
 
-function getStatusBadgeStyle(statusCode, fallbackCode = null, sectorId = null) {
+function getIgnoredMachineLabel(row) {
+    const reason = row?.ec2IgnoreReason || row?.ignoreReason || "";
+    return reason ? `${t("machineIgnoredLabel")} (${reason})` : t("machineIgnoredLabel");
+}
+
+function getIgnoredStatusBadgeStyle() {
+    return "background:#e5e7eb;color:#374151;border:1px solid #cbd5e1;";
+}
+
+function getIgnoredTimelineCellStyle() {
+    return "background:#d1d5db;box-shadow:inset 0 0 0 1px #9ca3af;";
+}
+
+function getStatusBadgeStyle(statusCode, fallbackCode = null, sectorId = null, isIgnored = false) {
+    if (isIgnored) {
+        return getIgnoredStatusBadgeStyle();
+    }
+
     const configured = findStatusDefinition(sectorId, statusCode, fallbackCode);
     if (!configured) {
         return "";
@@ -1499,7 +1521,11 @@ function getStatusBadgeStyle(statusCode, fallbackCode = null, sectorId = null) {
     return `background:${background};color:${color};${border}`;
 }
 
-function getTimelineCellStyle(statusCode, fallbackCode = null, sectorId = null) {
+function getTimelineCellStyle(statusCode, fallbackCode = null, sectorId = null, isIgnored = false) {
+    if (isIgnored) {
+        return getIgnoredTimelineCellStyle();
+    }
+
     const configured = findStatusDefinition(sectorId, statusCode, fallbackCode);
     if (!configured) {
         return "";
