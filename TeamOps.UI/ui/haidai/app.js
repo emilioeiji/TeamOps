@@ -288,7 +288,8 @@ function saveMonthPlan() {
     const cells = Array.from(document.querySelectorAll(".plan-cell")).map(input => ({
         operatorCodigoFJ: input.dataset.op,
         day: Number(input.dataset.day || 0),
-        assignmentCode: String(input.value || "").trim().toUpperCase()
+        assignmentCode: String(input.value || "").trim().toUpperCase(),
+        isHolidayWork: input.dataset.isHolidayWork === "true"
     }));
 
     post({
@@ -328,7 +329,7 @@ function renderPlanner(plan) {
             const cells = (operator.cells || []).map(cell => {
                 const value = escapeAttr(cell.assignmentCode || "");
                 const classes = buildPlanCellClasses(cell.assignmentCode || "", cell.status || "", cell.isHolidayWork);
-                return `<td class="day-cell"><input class="plan-cell ${classes}" data-op="${escapeAttr(operator.codigoFJ)}" data-day="${cell.day}" data-status="${escapeAttr(cell.status || "")}" value="${value}" spellcheck="false"></td>`;
+                return `<td class="day-cell"><input class="plan-cell ${classes}" data-op="${escapeAttr(operator.codigoFJ)}" data-day="${cell.day}" data-status="${escapeAttr(cell.status || "")}" data-is-holiday-work="${cell.isHolidayWork ? "true" : "false"}" value="${value}" spellcheck="false"></td>`;
             }).join("");
 
             return `

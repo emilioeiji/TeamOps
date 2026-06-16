@@ -495,17 +495,37 @@ namespace TeamOps.UI.Services
                     .GroupBy(item => item.ShortCode, StringComparer.OrdinalIgnoreCase)
                     .ToDictionary(group => group.Key.Trim(), group => group.First(), StringComparer.OrdinalIgnoreCase);
 
-                var resolved = ResolveMonthlyCell(cell.AssignmentCode, localsByCode, existing, exception);
+                var resolved = ResolveMonthlyCell(cell.AssignmentCode, cell.IsHolidayWork, localsByCode, existing, exception);
+                var storageSectorId = ResolveStorageSectorId(request.SectorId, homeSectorId);
 
-                UpsertMonthlyAssignmentInternal(
-                    conn,
-                    transaction,
-                    date,
-                    request.ShiftId,
-                    ResolveStorageSectorId(request.SectorId, homeSectorId),
-                    cell.OperatorCodigoFJ,
-                    resolved,
-                    existing);
+                try
+                {
+                    UpsertMonthlyAssignmentInternal(
+                        conn,
+                        transaction,
+                        date,
+                        request.ShiftId,
+                        storageSectorId,
+                        cell.OperatorCodigoFJ,
+                        resolved,
+                        existing);
+                }
+                catch (Exception ex)
+                {
+                    LogHaidaiSave(
+                        date,
+                        request.ShiftId,
+                        resolved.LocalId,
+                        resolved.AssignmentCode,
+                        cell.OperatorCodigoFJ,
+                        existing?.Id,
+                        existing?.IsHolidayWork ?? false,
+                        resolved.IsHolidayWork,
+                        existing == null ? "Insert" : "Update",
+                        saved: false,
+                        error: ex.Message);
+                    throw;
+                }
             }
 
             transaction.Commit();
@@ -513,6 +533,7 @@ namespace TeamOps.UI.Services
 
         private static HaidaiResolvedMonthlyCell ResolveMonthlyCell(
             string? rawAssignmentCode,
+            bool isHolidayWork,
             IReadOnlyDictionary<string, HaidaiLocalLookup> localsByCode,
             HaidaiAssignmentRecord? existing,
             HaidaiMonthlyExceptionRecord? exception)
@@ -525,12 +546,13 @@ namespace TeamOps.UI.Services
                     string.Empty,
                     false,
                     false,
+                    false,
                     exception == null ? string.Empty : ResolveExceptionStatus(exception.MotiveId));
             }
 
             if (IsOffDayCode(normalized))
             {
-                return new HaidaiResolvedMonthlyCell(null, "\u4f11", false, false, "Folga");
+                return new HaidaiResolvedMonthlyCell(null, "\u4f11", false, false, false, "Folga");
             }
 
             if (IsDisplayExceptionCode(normalized) && existing != null)
@@ -540,6 +562,7 @@ namespace TeamOps.UI.Services
                     existing.AssignmentCode,
                     existing.IsTrainee,
                     exception == null ? existing.IsLineupActive : false,
+                    false,
                     exception == null ? existing.AvailabilityStatus : ResolveExceptionStatus(exception.MotiveId));
             }
 
@@ -564,6 +587,7 @@ namespace TeamOps.UI.Services
                 normalized,
                 isTrainee,
                 exception == null,
+                exception == null && isHolidayWork,
                 exception == null ? "Escalado" : ResolveExceptionStatus(exception.MotiveId));
         }
 
@@ -2108,6 +2132,7 @@ namespace TeamOps.UI.Services
                 TrainerCodigoFJ = NullIfWhiteSpace(existing?.TrainerCodigoFJ),
                 CountsTowardKousu = countsTowardKousu ? 1 : 0,
                 IsLineupActive = resolved.IsLineupActive ? 1 : 0,
+                IsHolidayWork = resolved.IsHolidayWork ? 1 : 0,
                 AvailabilityStatus = NullIfWhiteSpace(resolved.AvailabilityStatus),
                 Notes = NullIfWhiteSpace(existing?.Notes)
             };
@@ -2139,10 +2164,24 @@ namespace TeamOps.UI.Services
                         payload.TrainerCodigoFJ,
                         payload.CountsTowardKousu,
                         payload.IsLineupActive,
+                        payload.IsHolidayWork,
                         payload.AvailabilityStatus,
                         payload.Notes
                     },
                     transaction);
+
+                LogHaidaiSave(
+                    date,
+                    shiftId,
+                    resolved.LocalId,
+                    resolved.AssignmentCode,
+                    operatorCodigoFJ,
+                    existing.Id,
+                    existing.IsHolidayWork,
+                    resolved.IsHolidayWork,
+                    "Update",
+                    saved: true,
+                    error: string.Empty);
 
                 return;
             }
@@ -2161,6 +2200,7 @@ namespace TeamOps.UI.Services
                         TrainerCodigoFJ,
                         CountsTowardKousu,
                         IsLineupActive,
+                        IsHolidayWork,
                         AvailabilityStatus,
                         Notes
                     )
@@ -2176,11 +2216,25 @@ namespace TeamOps.UI.Services
                         @TrainerCodigoFJ,
                         @CountsTowardKousu,
                         @IsLineupActive,
+                        @IsHolidayWork,
                         @AvailabilityStatus,
                         @Notes
                     );",
                 payload,
                 transaction);
+
+            LogHaidaiSave(
+                date,
+                shiftId,
+                resolved.LocalId,
+                resolved.AssignmentCode,
+                operatorCodigoFJ,
+                null,
+                false,
+                resolved.IsHolidayWork,
+                "Insert",
+                saved: true,
+                error: string.Empty);
         }
 
         private static void UpsertAssignmentInternal(System.Data.IDbConnection conn, System.Data.IDbTransaction transaction, HaidaiSaveAssignmentRequest request)
@@ -2190,9 +2244,24 @@ namespace TeamOps.UI.Services
             var isOffDay = IsOffDayCode(assignmentCode);
             var normalizedAssignmentCode = isOffDay ? "\u4f11" : assignmentCode;
 
-            var existingId = conn.ExecuteScalar<long?>(
+            var existing = conn.QueryFirstOrDefault<HaidaiAssignmentRecord>(
                 @"
-                    SELECT Id
+                    SELECT
+                        Id,
+                        ScheduleDate,
+                        ShiftId,
+                        SectorId,
+                        OperatorCodigoFJ,
+                        LocalId,
+                        COALESCE(AssignmentCode, '') AS AssignmentCode,
+                        COALESCE(PairKey, '') AS PairKey,
+                        COALESCE(IsTrainee, 0) AS IsTrainee,
+                        COALESCE(TrainerCodigoFJ, '') AS TrainerCodigoFJ,
+                        COALESCE(CountsTowardKousu, 1) AS CountsTowardKousu,
+                        COALESCE(IsLineupActive, 1) AS IsLineupActive,
+                        COALESCE(IsHolidayWork, 0) AS IsHolidayWork,
+                        COALESCE(AvailabilityStatus, '') AS AvailabilityStatus,
+                        COALESCE(Notes, '') AS Notes
                     FROM HaidaiAssignments
                     WHERE date(ScheduleDate) = date(@ScheduleDate)
                       AND ShiftId = @ShiftId
@@ -2208,93 +2277,158 @@ namespace TeamOps.UI.Services
                 },
                 transaction);
 
-            if (existingId.HasValue)
+            var action = existing == null ? "Insert" : "Update";
+            var localId = isOffDay ? null : request.LocalId;
+            var nextIsHolidayWork = !isOffDay && request.IsHolidayWork;
+
+            try
             {
-                conn.Execute(
-                    @"
-                        UPDATE HaidaiAssignments
-                        SET LocalId = @LocalId,
-                            AssignmentCode = @AssignmentCode,
-                            PairKey = @PairKey,
-                            IsTrainee = @IsTrainee,
-                            TrainerCodigoFJ = @TrainerCodigoFJ,
-                            CountsTowardKousu = @CountsTowardKousu,
-                            IsLineupActive = @IsLineupActive,
-                            AvailabilityStatus = @AvailabilityStatus,
-                            Notes = @Notes,
-                            UpdatedAt = CURRENT_TIMESTAMP
-                        WHERE Id = @Id;",
-                    new
-                    {
-                        Id = existingId.Value,
-                        LocalId = isOffDay ? null : request.LocalId,
-                        AssignmentCode = normalizedAssignmentCode,
-                        PairKey = isOffDay ? null : NullIfWhiteSpace(request.PairKey),
-                        IsTrainee = isOffDay ? 0 : request.IsTrainee ? 1 : 0,
-                        TrainerCodigoFJ = isOffDay ? null : NullIfWhiteSpace(request.TrainerCodigoFJ),
-                        CountsTowardKousu = isOffDay ? 0 : request.CountsTowardKousu ? 1 : 0,
-                        IsLineupActive = isOffDay ? 0 : 1,
-                        IsHolidayWork = isOffDay ? 0 : request.IsHolidayWork ? 1 : 0,
-                        AvailabilityStatus = isOffDay ? "Folga" : "Escalado",
-                        Notes = NullIfWhiteSpace(request.Notes)
-                    },
-                    transaction);
+                if (existing != null)
+                {
+                    conn.Execute(
+                        @"
+                            UPDATE HaidaiAssignments
+                            SET LocalId = @LocalId,
+                                AssignmentCode = @AssignmentCode,
+                                PairKey = @PairKey,
+                                IsTrainee = @IsTrainee,
+                                TrainerCodigoFJ = @TrainerCodigoFJ,
+                                CountsTowardKousu = @CountsTowardKousu,
+                                IsLineupActive = @IsLineupActive,
+                                IsHolidayWork = @IsHolidayWork,
+                                AvailabilityStatus = @AvailabilityStatus,
+                                Notes = @Notes,
+                                UpdatedAt = CURRENT_TIMESTAMP
+                            WHERE Id = @Id;",
+                        new
+                        {
+                            Id = existing.Id,
+                            LocalId = localId,
+                            AssignmentCode = normalizedAssignmentCode,
+                            PairKey = isOffDay ? null : NullIfWhiteSpace(request.PairKey),
+                            IsTrainee = isOffDay ? 0 : request.IsTrainee ? 1 : 0,
+                            TrainerCodigoFJ = isOffDay ? null : NullIfWhiteSpace(request.TrainerCodigoFJ),
+                            CountsTowardKousu = isOffDay ? 0 : request.CountsTowardKousu ? 1 : 0,
+                            IsLineupActive = isOffDay ? 0 : 1,
+                            IsHolidayWork = nextIsHolidayWork ? 1 : 0,
+                            AvailabilityStatus = isOffDay ? "Folga" : "Escalado",
+                            Notes = NullIfWhiteSpace(request.Notes)
+                        },
+                        transaction);
+                }
+                else
+                {
+                    conn.Execute(
+                        @"
+                            INSERT INTO HaidaiAssignments (
+                                ScheduleDate,
+                                ShiftId,
+                                SectorId,
+                                OperatorCodigoFJ,
+                                LocalId,
+                                AssignmentCode,
+                                PairKey,
+                                IsTrainee,
+                                TrainerCodigoFJ,
+                                CountsTowardKousu,
+                                IsLineupActive,
+                                IsHolidayWork,
+                                AvailabilityStatus,
+                                Notes
+                            )
+                            VALUES (
+                                @ScheduleDate,
+                                @ShiftId,
+                                @SectorId,
+                                @OperatorCodigoFJ,
+                                @LocalId,
+                                @AssignmentCode,
+                                @PairKey,
+                                @IsTrainee,
+                                @TrainerCodigoFJ,
+                                @CountsTowardKousu,
+                                @IsLineupActive,
+                                @IsHolidayWork,
+                                @AvailabilityStatus,
+                                @Notes
+                            );",
+                        new
+                        {
+                            ScheduleDate = normalizedDate,
+                            request.ShiftId,
+                            request.SectorId,
+                            request.OperatorCodigoFJ,
+                            LocalId = localId,
+                            AssignmentCode = normalizedAssignmentCode,
+                            PairKey = isOffDay ? null : NullIfWhiteSpace(request.PairKey),
+                            IsTrainee = isOffDay ? 0 : request.IsTrainee ? 1 : 0,
+                            TrainerCodigoFJ = isOffDay ? null : NullIfWhiteSpace(request.TrainerCodigoFJ),
+                            CountsTowardKousu = isOffDay ? 0 : request.CountsTowardKousu ? 1 : 0,
+                            IsLineupActive = isOffDay ? 0 : 1,
+                            IsHolidayWork = nextIsHolidayWork ? 1 : 0,
+                            AvailabilityStatus = isOffDay ? "Folga" : "Escalado",
+                            Notes = NullIfWhiteSpace(request.Notes)
+                        },
+                        transaction);
+                }
+
+                LogHaidaiSave(
+                    request.Date,
+                    request.ShiftId,
+                    localId,
+                    normalizedAssignmentCode,
+                    request.OperatorCodigoFJ,
+                    existing?.Id,
+                    existing?.IsHolidayWork ?? false,
+                    nextIsHolidayWork,
+                    action,
+                    saved: true,
+                    error: string.Empty);
             }
-            else
+            catch (Exception ex)
             {
-                conn.Execute(
-                    @"
-                        INSERT INTO HaidaiAssignments (
-                            ScheduleDate,
-                            ShiftId,
-                            SectorId,
-                            OperatorCodigoFJ,
-                            LocalId,
-                            AssignmentCode,
-                            PairKey,
-                            IsTrainee,
-                            TrainerCodigoFJ,
-                            CountsTowardKousu,
-                            IsLineupActive,
-                            IsHolidayWork,
-                            AvailabilityStatus,
-                            Notes
-                        )
-                        VALUES (
-                            @ScheduleDate,
-                            @ShiftId,
-                            @SectorId,
-                            @OperatorCodigoFJ,
-                            @LocalId,
-                            @AssignmentCode,
-                            @PairKey,
-                            @IsTrainee,
-                            @TrainerCodigoFJ,
-                            @CountsTowardKousu,
-                            @IsLineupActive,
-                            @IsHolidayWork,
-                            @AvailabilityStatus,
-                            @Notes
-                        );",
-                    new
-                    {
-                        ScheduleDate = normalizedDate,
-                        request.ShiftId,
-                        request.SectorId,
-                        request.OperatorCodigoFJ,
-                        LocalId = isOffDay ? null : request.LocalId,
-                        AssignmentCode = normalizedAssignmentCode,
-                        PairKey = isOffDay ? null : NullIfWhiteSpace(request.PairKey),
-                        IsTrainee = isOffDay ? 0 : request.IsTrainee ? 1 : 0,
-                        TrainerCodigoFJ = isOffDay ? null : NullIfWhiteSpace(request.TrainerCodigoFJ),
-                        CountsTowardKousu = isOffDay ? 0 : request.CountsTowardKousu ? 1 : 0,
-                        IsLineupActive = isOffDay ? 0 : 1,
-                        IsHolidayWork = isOffDay ? 0 : request.IsHolidayWork ? 1 : 0,
-                        AvailabilityStatus = isOffDay ? "Folga" : "Escalado",
-                        Notes = NullIfWhiteSpace(request.Notes)
-                    },
-                    transaction);
+                LogHaidaiSave(
+                    request.Date,
+                    request.ShiftId,
+                    localId,
+                    normalizedAssignmentCode,
+                    request.OperatorCodigoFJ,
+                    existing?.Id,
+                    existing?.IsHolidayWork ?? false,
+                    nextIsHolidayWork,
+                    action,
+                    saved: false,
+                    error: ex.Message);
+                throw;
             }
+        }
+
+        private static void LogHaidaiSave(
+            DateTime date,
+            int shiftId,
+            int? localId,
+            string position,
+            string operatorId,
+            int? existingAssignmentId,
+            bool isHolidayWorkBefore,
+            bool isHolidayWorkAfter,
+            string action,
+            bool saved,
+            string error)
+        {
+            Console.WriteLine(
+                "[HaidaiSave] "
+                + $"Date={date:yyyy-MM-dd} "
+                + $"ShiftId={shiftId} "
+                + $"LocalId={FormatNullableInt(localId)} "
+                + $"Position={position} "
+                + $"OperatorId={operatorId} "
+                + $"ExistingAssignmentId={(existingAssignmentId?.ToString(CultureInfo.InvariantCulture) ?? "null")} "
+                + $"IsHolidayWorkBefore={isHolidayWorkBefore} "
+                + $"IsHolidayWorkAfter={isHolidayWorkAfter} "
+                + $"Action={action} "
+                + $"Saved={saved} "
+                + $"Error={error}");
         }
 
         private static void ApplyPairKeyToMonth(System.Data.IDbConnection conn, System.Data.IDbTransaction transaction, HaidaiSaveAssignmentRequest request)
@@ -3735,7 +3869,8 @@ namespace TeamOps.UI.Services
     public sealed record HaidaiMonthlySaveCell(
         string OperatorCodigoFJ,
         int Day,
-        string AssignmentCode);
+        string AssignmentCode,
+        bool IsHolidayWork);
 
     public sealed record HaidaiBoardPayload(
         string DateIso,
@@ -3933,6 +4068,7 @@ namespace TeamOps.UI.Services
         string AssignmentCode,
         bool IsTrainee,
         bool IsLineupActive,
+        bool IsHolidayWork,
         string AvailabilityStatus);
 
     internal sealed class HaidaiExportLayoutDefinition

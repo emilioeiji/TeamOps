@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Diagnostics;
 using System.Configuration;
 using Dapper;
+using TeamOps.Core.Common;
 using TeamOps.Config;
 using TeamOps.Data.Db;
 using TeamOps.Data.Repositories;
@@ -80,6 +81,14 @@ switch (command)
         RunValidateReports(args.Skip(1).ToArray());
         break;
 
+    case "validate-overtime-rules":
+        RunValidateOvertimeRules();
+        break;
+
+    case "validate-overtime-real":
+        RunValidateOvertimeReal(args.Skip(1).ToArray());
+        break;
+
     case "machine-cleanup":
         RunMachineCleanup(args.Skip(1).ToArray());
         break;
@@ -113,6 +122,8 @@ void PrintHelp()
     Console.WriteLine("  production-diagnostics");
     Console.WriteLine("  production-audit --date yyyy-MM-dd [--sector dad|gbareru]");
     Console.WriteLine("  validate-reports --date yyyy-MM-dd --shift noite --sector gbareru [--area Area1] [--machine K09] [--operator all|FJ]");
+    Console.WriteLine("  validate-overtime-rules");
+    Console.WriteLine("  validate-overtime-real --date yyyy-MM-dd --shift yakin [--operator CODIGOFJ]");
     Console.WriteLine("  ec2-diagnostics");
     Console.WriteLine("  dashboard");
     Console.WriteLine("  status-report --start yyyy-MM-dd --end yyyy-MM-dd --sector dad");
@@ -247,6 +258,385 @@ void RunMachineLocationGuard()
     }
 
     Console.WriteLine("OK: nenhuma maquina existente teve SectorId/LocalId alterado pela importacao.");
+}
+
+void RunValidateOvertimeRules()
+{
+    var monday = new DateTime(2026, 6, 8);
+    var sunday = new DateTime(2026, 6, 7);
+    var cases = new[]
+    {
+        (Code: "H1", Name: "Hirukin teiji", Input: new OvertimeCalculationInput("OP-H1", "Case H1", monday, "Dia", true, false, "present", monday.AddHours(18).AddMinutes(35), false, false, false, false), ExpectedMinutes: 0d),
+        (Code: "H2", Name: "Hirukin 2h", Input: new OvertimeCalculationInput("OP-H2", "Case H2", monday, "Dia", true, false, "present", monday.AddHours(20).AddMinutes(35), false, false, false, false), ExpectedMinutes: 120d),
+        (Code: "H3", Name: "Hirukin 1h", Input: new OvertimeCalculationInput("OP-H3", "Case H3", monday, "Dia", true, false, "present", monday.AddHours(19).AddMinutes(35), false, false, false, false), ExpectedMinutes: 60d),
+        (Code: "H4", Name: "Hirukin antes do teiji", Input: new OvertimeCalculationInput("OP-H4", "Case H4", monday, "Dia", true, false, "present", monday.AddHours(18), false, false, false, false), ExpectedMinutes: 0d),
+        (Code: "Y1", Name: "Yakin teiji", Input: new OvertimeCalculationInput("OP-Y1", "Case Y1", monday, "Noite", true, false, "present", monday.AddDays(1).AddHours(6).AddMinutes(35), false, false, false, false), ExpectedMinutes: 0d),
+        (Code: "Y2", Name: "Yakin 2h", Input: new OvertimeCalculationInput("OP-Y2", "Case Y2", monday, "Noite", true, false, "present", monday.AddDays(1).AddHours(8).AddMinutes(35), false, false, false, false), ExpectedMinutes: 120d),
+        (Code: "Y3", Name: "Yakin 1h", Input: new OvertimeCalculationInput("OP-Y3", "Case Y3", monday, "Noite", true, false, "present", monday.AddDays(1).AddHours(7).AddMinutes(35), false, false, false, false), ExpectedMinutes: 60d),
+        (Code: "Y4", Name: "Yakin antes do teiji", Input: new OvertimeCalculationInput("OP-Y4", "Case Y4", monday, "Noite", true, false, "present", monday.AddDays(1).AddHours(6), false, false, false, false), ExpectedMinutes: 0d),
+        (Code: "S1", Name: "Domingo normal", Input: new OvertimeCalculationInput("OP-S1", "Case S1", sunday, "Dia", true, false, "present", sunday.AddHours(20).AddMinutes(35), false, false, false, false), ExpectedMinutes: 0d),
+        (Code: "S2", Name: "Domingo holiday work", Input: new OvertimeCalculationInput("OP-S2", "Case S2", sunday, "Dia", true, true, "present", sunday.AddHours(20).AddMinutes(35), false, false, false, false), ExpectedMinutes: 660d),
+        (Code: "A1", Name: "Falta", Input: new OvertimeCalculationInput("OP-A1", "Case A1", monday, "Dia", true, false, "falta", monday.AddHours(20).AddMinutes(35), false, false, false, false), ExpectedMinutes: 0d),
+        (Code: "A2", Name: "Yukyu", Input: new OvertimeCalculationInput("OP-A2", "Case A2", monday, "Dia", true, false, "yukyu", monday.AddHours(20).AddMinutes(35), false, false, false, false), ExpectedMinutes: 0d)
+    };
+
+    Console.WriteLine("=== OVERTIME RULE VALIDATION ===");
+    Console.WriteLine("Case\tExpectedMinutes\tActualMinutes\tPass\tReason");
+
+    var audits = new List<OvertimeCalculationAudit>();
+    var failures = 0;
+    foreach (var item in cases)
+    {
+        var audit = OvertimeRuleCalculator.Calculate(item.Input);
+        audits.Add(audit);
+        var pass = Math.Abs(audit.TotalOvertimeMinutes - item.ExpectedMinutes) < 0.1;
+        if (!pass)
+        {
+            failures++;
+        }
+
+        Console.WriteLine($"{item.Code}\t{item.ExpectedMinutes}\t{audit.TotalOvertimeMinutes.ToString("0.#", CultureInfo.InvariantCulture)}\t{(pass ? "OK" : "FAIL")}\t{audit.Reason}");
+    }
+
+    Console.WriteLine();
+    Console.WriteLine("OperatorId\tOperatorName\tDate\tDayOfWeek\tShift\tIsSunday\tIsHolidayWork\tAttendanceStatus\tScheduledStart\tTeijiEnd\tZangyouStart\tZangyouEnd\tActualEnd\tHasLate\tHasEarlyLeave\tNormalZangyouMinutes\tHolidayWorkMinutes\tTotalOvertimeMinutes\tReason");
+    foreach (var audit in audits)
+    {
+        Console.WriteLine(string.Join("\t", new[]
+        {
+            audit.OperatorId,
+            audit.OperatorName,
+            audit.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            audit.DayOfWeek,
+            audit.Shift,
+            audit.IsSunday ? "1" : "0",
+            audit.IsHolidayWork ? "1" : "0",
+            audit.AttendanceStatus,
+            FormatAuditDateTime(audit.ScheduledStart),
+            FormatAuditDateTime(audit.TeijiEnd),
+            FormatAuditDateTime(audit.ZangyouStart),
+            FormatAuditDateTime(audit.ZangyouEnd),
+            FormatAuditDateTime(audit.ActualEnd),
+            audit.HasLate ? "1" : "0",
+            audit.HasEarlyLeave ? "1" : "0",
+            audit.NormalZangyouMinutes.ToString("0.#", CultureInfo.InvariantCulture),
+            audit.HolidayWorkMinutes.ToString("0.#", CultureInfo.InvariantCulture),
+            audit.TotalOvertimeMinutes.ToString("0.#", CultureInfo.InvariantCulture),
+            audit.Reason
+        }));
+    }
+
+    Console.WriteLine();
+    Console.WriteLine($"Summary: Cases={cases.Length} Failures={failures}");
+    if (failures > 0)
+    {
+        Environment.ExitCode = 2;
+    }
+}
+
+void RunValidateOvertimeReal(string[] overtimeArgs)
+{
+    var options = ValidateOvertimeRealOptions.Parse(overtimeArgs);
+    using var conn = factory.CreateOpenConnection();
+    ProductionSchemaMigrator.Ensure(conn);
+    new TeamOps.UI.Services.HaidaiModuleService(factory).EnsureSchema();
+
+    var shift = ResolveValidateShift(conn, options.Shift);
+    var rows = conn.Query<OvertimeRealScheduleRow>(
+        @"
+            SELECT
+                o.CodigoFJ AS OperatorCodigoFJ,
+                COALESCE(NULLIF(o.NameRomanji, ''), o.CodigoFJ) AS OperatorName,
+                o.ShiftId,
+                COALESCE(NULLIF(s.NamePt, ''), NULLIF(s.NameJp, ''), 'Turno ' || o.ShiftId) AS ShiftName,
+                o.SectorId,
+                COALESCE(NULLIF(sec.NamePt, ''), NULLIF(sec.NameJp, ''), 'Setor ' || o.SectorId) AS SectorName,
+                date(ha.ScheduleDate) AS BaseDate,
+                ha.LocalId,
+                COALESCE(NULLIF(l.NamePt, ''), NULLIF(l.NameJp, ''), '') AS LocalName,
+                COALESCE(ha.AssignmentCode, '') AS AssignmentCode,
+                COALESCE(ha.AvailabilityStatus, '') AS AvailabilityStatus,
+                COALESCE(ha.IsHolidayWork, 0) AS IsHolidayWork
+            FROM HaidaiAssignments ha
+            INNER JOIN Operators o ON o.CodigoFJ = ha.OperatorCodigoFJ
+            LEFT JOIN Shifts s ON s.Id = o.ShiftId
+            LEFT JOIN Sectors sec ON sec.Id = o.SectorId
+            LEFT JOIN Locals l ON l.Id = ha.LocalId
+            WHERE date(ha.ScheduleDate) = date(@BaseDate)
+              AND ha.ShiftId = @ShiftId
+              AND (@Operator = '' OR upper(trim(ha.OperatorCodigoFJ)) = upper(trim(@Operator)))
+            ORDER BY o.SectorId, o.CodigoFJ, ha.Id DESC;",
+        new
+        {
+            BaseDate = options.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            ShiftId = shift.Id,
+            Operator = options.Operator.Equals("all", StringComparison.OrdinalIgnoreCase) ? string.Empty : options.Operator
+        })
+        .GroupBy(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase)
+        .Select(group => group.First())
+        .ToList();
+
+    Console.WriteLine("=== VALIDATE OVERTIME REAL ===");
+    Console.WriteLine($"Database={settings.DatabasePath}");
+    Console.WriteLine($"BaseDate={options.Date:yyyy-MM-dd}");
+    Console.WriteLine($"Shift={shift.Id} {shift.NamePt} {shift.NameJp}".Trim());
+    Console.WriteLine($"OperatorFilter={options.Operator}");
+    Console.WriteLine($"Rows={rows.Count}");
+    Console.WriteLine();
+
+    if (rows.Count == 0)
+    {
+        Console.WriteLine("No scheduled operators found for this base date/shift.");
+        return;
+    }
+
+    var operatorCodes = rows.Select(item => item.OperatorCodigoFJ).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+    var presenceEvents = conn.Query<OvertimeRealPresenceEventRow>(
+        @"
+            SELECT
+                CodigoFJ AS OperatorCodigoFJ,
+                Date AS PresenceDateTime
+            FROM OperatorPresence
+            WHERE CodigoFJ IN @OperatorCodes
+              AND Date >= @StartDateTime
+              AND Date < @EndExclusive
+            ORDER BY CodigoFJ, Date;",
+        new
+        {
+            OperatorCodes = operatorCodes,
+            StartDateTime = options.Date.Date,
+            EndExclusive = options.Date.Date.AddDays(2)
+        })
+        .GroupBy(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase)
+        .ToDictionary(group => group.Key, group => (IReadOnlyList<OvertimeRealPresenceEventRow>)group.OrderBy(item => item.PresenceDateTime).ToList(), StringComparer.OrdinalIgnoreCase);
+
+    var todokes = conn.Query<OvertimeRealTodokeRow>(
+        @"
+            SELECT
+                a.OperatorCodigoFJ,
+                date(a.RequestDate) AS BaseDate,
+                a.TodokeMotivoId AS MotiveId,
+                COALESCE(m.NomePt, '') AS MotiveName
+            FROM AcompYukyu a
+            LEFT JOIN TodokeMotivo m ON m.Id = a.TodokeMotivoId
+            WHERE a.OperatorCodigoFJ IN @OperatorCodes
+              AND date(a.RequestDate) = date(@BaseDate)
+            ORDER BY a.Id DESC;",
+        new
+        {
+            OperatorCodes = operatorCodes,
+            BaseDate = options.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+        })
+        .GroupBy(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase)
+        .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+
+    var movements = conn.Query<OvertimeRealMovementRow>(
+        @"
+            SELECT
+                OperatorCodigoFJ,
+                date(ScheduleDate) AS BaseDate,
+                COALESCE(MovementType, '') AS MovementType,
+                COALESCE(EventTime, '') AS EventTime,
+                COALESCE(EventDateTime, '') AS EventDateTime,
+                COALESCE(Reason, '') AS Reason
+            FROM HaidaiMovements
+            WHERE OperatorCodigoFJ IN @OperatorCodes
+              AND date(ScheduleDate) = date(@BaseDate)
+            ORDER BY COALESCE(EventTime, '') DESC, Id DESC;",
+        new
+        {
+            OperatorCodes = operatorCodes,
+            BaseDate = options.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+        })
+        .GroupBy(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase)
+        .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+
+    Console.WriteLine("Operator\tSector\tBaseDate\tShift\tIsYakin\tPresenceRowsFound\tFirstPresenceTime\tLastPresenceTime\tScheduledStart\tTeijiEnd\tZangyouStart\tZangyouEnd\tActualEnd\tAttendanceStatus\tIsHolidayWork\tIsSunday\tHasLate\tHasEarlyLeave\tNormalZangyouMinutes\tHolidayWorkMinutes\tTotalOvertimeMinutes\tReason");
+    foreach (var row in rows)
+    {
+        presenceEvents.TryGetValue(row.OperatorCodigoFJ, out var operatorPresenceEvents);
+        todokes.TryGetValue(row.OperatorCodigoFJ, out var todoke);
+        movements.TryGetValue(row.OperatorCodigoFJ, out var movement);
+        operatorPresenceEvents ??= Array.Empty<OvertimeRealPresenceEventRow>();
+
+        var presenceWindow = ResolveProbePresenceWindow(options.Date, row.ShiftName, operatorPresenceEvents);
+        var statusKey = ResolveProbeAttendanceStatus(row, presenceWindow.RowsFound > 0, todoke, movement);
+        var hasLate = statusKey == "late";
+        var hasEarlyLeave = statusKey == "early_leave";
+        var actualEnd = ResolveProbeActualEnd(options.Date, row.ShiftName, presenceWindow, movement);
+        var allowFallback = ShouldAllowProbeFullShiftFallback(options.Date, row.ShiftName, presenceWindow, ProbeIsScheduledDay(row), hasLate, hasEarlyLeave);
+        var audit = OvertimeRuleCalculator.Calculate(new OvertimeCalculationInput(
+            row.OperatorCodigoFJ,
+            row.OperatorName,
+            options.Date.Date,
+            row.ShiftName,
+            HasSchedule: ProbeIsScheduledDay(row),
+            IsHolidayWork: row.IsHolidayWork,
+            AttendanceStatus: statusKey,
+            ActualEnd: actualEnd,
+            HasLate: hasLate,
+            HasEarlyLeave: hasEarlyLeave,
+            IsProjection: false,
+            AllowFullShiftFallbackWithoutPresenceEnd: allowFallback));
+
+        var isYakin = OvertimeRuleCalculator.TryResolveShiftWindow(row.ShiftName, options.Date.Date, out var window)
+            && window.ShiftKind == OvertimeShiftKind.Yakin;
+
+        Console.WriteLine(string.Join("\t", new[]
+        {
+            row.OperatorCodigoFJ,
+            row.SectorName,
+            options.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            row.ShiftName,
+            isYakin ? "1" : "0",
+            presenceWindow.RowsFound.ToString(CultureInfo.InvariantCulture),
+            FormatAuditDateTime(presenceWindow.FirstPresenceTime),
+            FormatAuditDateTime(presenceWindow.LastPresenceTime),
+            FormatAuditDateTime(audit.ScheduledStart),
+            FormatAuditDateTime(audit.TeijiEnd),
+            FormatAuditDateTime(audit.ZangyouStart),
+            FormatAuditDateTime(audit.ZangyouEnd),
+            FormatAuditDateTime(audit.ActualEnd),
+            statusKey,
+            audit.IsHolidayWork ? "1" : "0",
+            audit.IsSunday ? "1" : "0",
+            audit.HasLate ? "1" : "0",
+            audit.HasEarlyLeave ? "1" : "0",
+            audit.NormalZangyouMinutes.ToString("0.#", CultureInfo.InvariantCulture),
+            audit.HolidayWorkMinutes.ToString("0.#", CultureInfo.InvariantCulture),
+            audit.TotalOvertimeMinutes.ToString("0.#", CultureInfo.InvariantCulture),
+            audit.Reason
+        }));
+    }
+}
+
+string FormatAuditDateTime(DateTime? value)
+{
+    return value?.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) ?? "-";
+}
+
+ProbePresenceWindowSummary ResolveProbePresenceWindow(
+    DateTime baseDate,
+    string shiftName,
+    IReadOnlyList<OvertimeRealPresenceEventRow> presenceEvents)
+{
+    if (presenceEvents.Count == 0
+        || !OvertimeRuleCalculator.TryResolveShiftWindow(shiftName, baseDate, out var window))
+    {
+        return new ProbePresenceWindowSummary(0, null, null);
+    }
+
+    var matches = presenceEvents
+        .Where(item => item.PresenceDateTime >= window.ScheduledStart && item.PresenceDateTime <= window.ZangyouEnd)
+        .Select(item => item.PresenceDateTime)
+        .OrderBy(item => item)
+        .ToList();
+
+    return matches.Count == 0
+        ? new ProbePresenceWindowSummary(0, null, null)
+        : new ProbePresenceWindowSummary(matches.Count, matches[0], matches[^1]);
+}
+
+DateTime? ResolveProbeActualEnd(
+    DateTime baseDate,
+    string shiftName,
+    ProbePresenceWindowSummary presenceWindow,
+    OvertimeRealMovementRow? movement)
+{
+    if (movement != null && string.Equals(movement.MovementType, "early_leave", StringComparison.OrdinalIgnoreCase))
+    {
+        var movementMoment = OvertimeRuleCalculator.NormalizeMovementMoment(baseDate, shiftName, movement.EventTime, movement.EventDateTime);
+        if (movementMoment.HasValue)
+        {
+            return movementMoment;
+        }
+    }
+
+    return presenceWindow.LastPresenceTime;
+}
+
+string ResolveProbeAttendanceStatus(
+    OvertimeRealScheduleRow schedule,
+    bool hasPresence,
+    OvertimeRealTodokeRow? todoke,
+    OvertimeRealMovementRow? movement)
+{
+    if (todoke?.MotiveId == 2)
+    {
+        return "falta";
+    }
+
+    if (todoke?.MotiveId == 3
+        || string.Equals(movement?.MovementType, "late", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(schedule.AvailabilityStatus, "Atraso", StringComparison.OrdinalIgnoreCase))
+    {
+        return "late";
+    }
+
+    if (todoke?.MotiveId == 5
+        || string.Equals(movement?.MovementType, "early_leave", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(schedule.AvailabilityStatus, "Saiu cedo", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(schedule.AvailabilityStatus, "Saida antecipada", StringComparison.OrdinalIgnoreCase))
+    {
+        return "early_leave";
+    }
+
+    if (todoke?.MotiveId == 1
+        || string.Equals(schedule.AvailabilityStatus, "Yukyu", StringComparison.OrdinalIgnoreCase))
+    {
+        return "yukyu";
+    }
+
+    if (string.Equals(schedule.AvailabilityStatus, "Folga", StringComparison.OrdinalIgnoreCase))
+    {
+        return "folga";
+    }
+
+    if (hasPresence)
+    {
+        return "present";
+    }
+
+    return ProbeIsScheduledDay(schedule) ? "scheduled" : "no_record";
+}
+
+bool ProbeIsScheduledDay(OvertimeRealScheduleRow? schedule)
+{
+    return schedule != null
+        && !string.Equals(schedule.AvailabilityStatus, "Folga", StringComparison.OrdinalIgnoreCase)
+        && (!string.IsNullOrWhiteSpace(schedule.AssignmentCode)
+            || schedule.LocalId > 0
+            || !string.IsNullOrWhiteSpace(schedule.AvailabilityStatus));
+}
+
+bool ShouldAllowProbeFullShiftFallback(
+    DateTime baseDate,
+    string shiftName,
+    ProbePresenceWindowSummary presenceWindow,
+    bool hasSchedule,
+    bool hasLate,
+    bool hasEarlyLeave)
+{
+    if (!hasSchedule
+        || hasLate
+        || hasEarlyLeave
+        || !OvertimeRuleCalculator.TryResolveShiftWindow(shiftName, baseDate, out var window))
+    {
+        return false;
+    }
+
+    if (presenceWindow.RowsFound == 0)
+    {
+        return true;
+    }
+
+    if (presenceWindow.RowsFound == 1
+        && presenceWindow.LastPresenceTime.HasValue)
+    {
+        return presenceWindow.LastPresenceTime.Value <= window.ScheduledStart.AddHours(3);
+    }
+
+    return false;
 }
 
 Dictionary<int, MachineLocationSnapshotProbeRow> ReadMachineLocationSnapshot(System.Data.IDbConnection conn)
@@ -2504,6 +2894,44 @@ sealed class ValidateReportsOptions
     }
 }
 
+sealed class ValidateOvertimeRealOptions
+{
+    public DateTime Date { get; private init; } = DateTime.Today;
+    public string Shift { get; private init; } = "yakin";
+    public string Operator { get; private init; } = "all";
+
+    public static ValidateOvertimeRealOptions Parse(string[] args)
+    {
+        var date = DateTime.Today;
+        var shift = "yakin";
+        var operatorCode = "all";
+
+        for (var index = 0; index < args.Length; index++)
+        {
+            var arg = args[index].Trim();
+            if (arg.Equals("--date", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+            {
+                date = DateTime.Parse(args[++index], CultureInfo.InvariantCulture).Date;
+            }
+            else if (arg.Equals("--shift", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+            {
+                shift = args[++index].Trim();
+            }
+            else if (arg.Equals("--operator", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+            {
+                operatorCode = args[++index].Trim();
+            }
+        }
+
+        return new ValidateOvertimeRealOptions
+        {
+            Date = date,
+            Shift = shift,
+            Operator = string.IsNullOrWhiteSpace(operatorCode) ? "all" : operatorCode
+        };
+    }
+}
+
 sealed class ImportProfileOptions
 {
     public DateTime? Date { get; private init; }
@@ -2546,6 +2974,51 @@ sealed class ImportProfileOptions
             Reimport = reimport
         };
     }
+}
+
+sealed record ProbePresenceWindowSummary(
+    int RowsFound,
+    DateTime? FirstPresenceTime,
+    DateTime? LastPresenceTime);
+
+sealed class OvertimeRealScheduleRow
+{
+    public string OperatorCodigoFJ { get; set; } = string.Empty;
+    public string OperatorName { get; set; } = string.Empty;
+    public int ShiftId { get; set; }
+    public string ShiftName { get; set; } = string.Empty;
+    public int SectorId { get; set; }
+    public string SectorName { get; set; } = string.Empty;
+    public string BaseDate { get; set; } = string.Empty;
+    public int LocalId { get; set; }
+    public string LocalName { get; set; } = string.Empty;
+    public string AssignmentCode { get; set; } = string.Empty;
+    public string AvailabilityStatus { get; set; } = string.Empty;
+    public bool IsHolidayWork { get; set; }
+}
+
+sealed class OvertimeRealPresenceEventRow
+{
+    public string OperatorCodigoFJ { get; set; } = string.Empty;
+    public DateTime PresenceDateTime { get; set; }
+}
+
+sealed class OvertimeRealTodokeRow
+{
+    public string OperatorCodigoFJ { get; set; } = string.Empty;
+    public string BaseDate { get; set; } = string.Empty;
+    public int MotiveId { get; set; }
+    public string MotiveName { get; set; } = string.Empty;
+}
+
+sealed class OvertimeRealMovementRow
+{
+    public string OperatorCodigoFJ { get; set; } = string.Empty;
+    public string BaseDate { get; set; } = string.Empty;
+    public string MovementType { get; set; } = string.Empty;
+    public string EventTime { get; set; } = string.Empty;
+    public string EventDateTime { get; set; } = string.Empty;
+    public string Reason { get; set; } = string.Empty;
 }
 
 sealed class IndexProbeRow

@@ -491,6 +491,21 @@ td small {
     color: var(--danger);
 }
 
+.overtime-total-risk-normal {
+    background: #e6f3f8;
+    color: var(--primary);
+}
+
+.overtime-total-risk-warn {
+    background: #fef3c7;
+    color: var(--warn);
+}
+
+.overtime-total-risk-danger {
+    background: #fee2e2;
+    color: var(--danger);
+}
+
 .attendance-alert-row {
     background: #fff7f7;
 }

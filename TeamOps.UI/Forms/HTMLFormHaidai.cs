@@ -355,7 +355,8 @@ namespace TeamOps.UI.Forms
                     cells.Add(new HaidaiMonthlySaveCell(
                         operatorCodigoFJ,
                         day,
-                        ReadString(item, "assignmentCode")));
+                        ReadString(item, "assignmentCode"),
+                        ReadBool(item, "isHolidayWork")));
                 }
             }
 

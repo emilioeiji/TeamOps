@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using Dapper;
+using TeamOps.Core.Common;
 using TeamOps.Data.Db;
 using TeamOps.UI.Forms.Models;
 using TeamOps.Services;
@@ -440,21 +441,21 @@ namespace TeamOps.UI.Services
             loadHaidaiWatch.Stop();
 
             loadPresenceWatch.Start();
-            var overtimePresenceRows = conn.Query<OperatorPresenceReportPresenceRow>(
+            var overtimePresenceRows = conn.Query<OperatorManagerPresenceEventRow>(
                 @"
                     SELECT
                         CodigoFJ AS OperatorCodigoFJ,
-                        date(Date) AS Day,
-                        MAX(Date) AS LastPresence
+                        Date AS PresenceDateTime
                     FROM OperatorPresence
                     WHERE CodigoFJ IN @OperatorCodes
-                      AND date(Date) BETWEEN date(@StartDate) AND date(@EndDate)
-                    GROUP BY CodigoFJ, date(Date);",
+                      AND Date >= @StartDateTime
+                      AND Date < @EndExclusive
+                    ORDER BY CodigoFJ, Date;",
                 new
                 {
                     OperatorCodes = operatorCodes,
-                    StartDate = overtimeStartDate.ToString("yyyy-MM-dd"),
-                    EndDate = overtimeEndDate.ToString("yyyy-MM-dd")
+                    StartDateTime = overtimeStartDate.Date,
+                    EndExclusive = overtimeEndDate.Date.AddDays(2)
                 })
                 .ToList();
             loadPresenceWatch.Stop();
@@ -614,8 +615,9 @@ namespace TeamOps.UI.Services
 
             var overtimePresencesByOperator = overtimePresenceRows
                 .GroupBy(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(group => group.Key, group => (IReadOnlyDictionary<string, OperatorManagerPresenceRow>)group
-                    .ToDictionary(item => item.Day, item => new OperatorManagerPresenceRow { Day = item.Day, LastPresence = item.LastPresence }, StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
+                .ToDictionary(group => group.Key, group => (IReadOnlyList<OperatorManagerPresenceEventRow>)group
+                    .OrderBy(item => item.PresenceDateTime)
+                    .ToList(), StringComparer.OrdinalIgnoreCase);
 
             var overtimeTodokesByOperator = overtimeTodokeRows
                 .GroupBy(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase)
@@ -649,11 +651,11 @@ namespace TeamOps.UI.Services
                 todokeMap ??= emptyTodokeMap;
                 movementMap ??= emptyMovementMap;
                 overtimeSchedulesByOperator.TryGetValue(op.CodigoFJ, out var overtimeScheduleMap);
-                overtimePresencesByOperator.TryGetValue(op.CodigoFJ, out var overtimePresenceMap);
+                overtimePresencesByOperator.TryGetValue(op.CodigoFJ, out var overtimePresenceEvents);
                 overtimeTodokesByOperator.TryGetValue(op.CodigoFJ, out var overtimeTodokeMap);
                 overtimeMovementsByOperator.TryGetValue(op.CodigoFJ, out var overtimeMovementMap);
                 overtimeScheduleMap ??= emptyScheduleMap;
-                overtimePresenceMap ??= emptyPresenceMap;
+                overtimePresenceEvents ??= Array.Empty<OperatorManagerPresenceEventRow>();
                 overtimeTodokeMap ??= emptyTodokeMap;
                 overtimeMovementMap ??= emptyMovementMap;
 
@@ -662,7 +664,7 @@ namespace TeamOps.UI.Services
                 var overtime = BuildOvertimeMetrics(
                     op,
                     overtimeScheduleMap,
-                    overtimePresenceMap,
+                    overtimePresenceEvents,
                     overtimeTodokeMap,
                     overtimeMovementMap,
                     previousMonthStart,
@@ -704,9 +706,11 @@ namespace TeamOps.UI.Services
                     overtime.ProjectedFinalOvertimeHours,
                     overtime.WorkedSundays,
                     overtime.HolidayWorkDays,
+                    overtime.HolidayWorkHours,
                     overtime.TotalOvertimeHours,
                     overtime.OvertimeLimitDifferenceHours,
                     overtime.OvertimeRiskLevel,
+                    overtime.TotalOvertimeRiskLevel,
                     overtime.OvertimePlusSundaysLabel,
                     latest?.DisplayStatus ?? "Sem registro",
                     latest?.Day ?? string.Empty,
@@ -1198,7 +1202,7 @@ namespace TeamOps.UI.Services
         private static OperatorPresenceOvertimeMetrics BuildOvertimeMetrics(
             OperatorManagerDirectoryRow op,
             IReadOnlyDictionary<string, OperatorManagerScheduleRow> schedules,
-            IReadOnlyDictionary<string, OperatorManagerPresenceRow> presences,
+            IReadOnlyList<OperatorManagerPresenceEventRow> presenceEvents,
             IReadOnlyDictionary<string, OperatorManagerTodokeRow> todokes,
             IReadOnlyDictionary<string, OperatorManagerMovementRow> movements,
             DateTime previousMonthStart,
@@ -1213,17 +1217,19 @@ namespace TeamOps.UI.Services
             var projectedRemainingMinutes = 0d;
             var workedSundays = 0;
             var holidayWorkDays = 0;
+            var holidayWorkMinutes = 0d;
 
             for (var date = previousMonthStart.Date; date <= currentMonthEnd.Date; date = date.AddDays(1))
             {
                 var day = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
                 schedules.TryGetValue(day, out var schedule);
-                presences.TryGetValue(day, out var presence);
                 todokes.TryGetValue(day, out var todoke);
                 movements.TryGetValue(day, out var movement);
+                var presenceWindow = ResolvePresenceWindowForOvertime(date, op.ShiftName, presenceEvents);
+                var presence = presenceWindow.Presence;
 
                 var statusKey = ResolveAttendanceStatusKey(schedule, presence, todoke, movement);
-                var daily = CalculateDailyOvertime(op, date, schedule, presence, todoke, movement, statusKey, isProjection: date.Date > today.Date);
+                var daily = CalculateDailyOvertime(op, date, schedule, presenceWindow, todoke, movement, statusKey, isProjection: date.Date > today.Date);
 
                 if (date >= previousMonthStart && date <= previousMonthEnd)
                 {
@@ -1251,28 +1257,44 @@ namespace TeamOps.UI.Services
                 if (date >= currentMonthStart && date <= currentMonthEnd && daily.IsHolidayWork)
                 {
                     holidayWorkDays++;
+                    holidayWorkMinutes += daily.ShukkinMinutes;
                 }
 
                 if (daily.HasDiagnostic)
                 {
+                    var isYakin = OvertimeRuleCalculator.TryResolveShiftWindow(op.ShiftName, date, out var window)
+                        && window.ShiftKind == OvertimeShiftKind.Yakin;
                     Console.WriteLine(
                         "[PresenceOvertime][Diagnostic] "
                         + $"OperatorId={op.CodigoFJ} "
                         + $"OperatorName={op.Name} "
-                        + $"Date={day} "
-                        + $"Shift={op.ShiftName} "
+                        + $"BaseDate={day} "
+                        + $"ShiftId={op.ShiftId} "
+                        + $"ShiftName={op.ShiftName} "
+                        + $"IsYakin={isYakin} "
+                        + $"PresenceRowsFound={presenceWindow.RowsFound} "
+                        + $"FirstPresenceTime={FormatDiagnosticDateTime(presenceWindow.FirstPresenceTime)} "
+                        + $"LastPresenceTime={FormatDiagnosticDateTime(presenceWindow.LastPresenceTime)} "
+                        + $"DayOfWeek={daily.DayOfWeek} "
                         + $"AttendanceStatus={statusKey} "
                         + $"IsSunday={daily.IsSunday} "
                         + $"IsHolidayWork={daily.IsHolidayWork} "
-                        + $"ExpectedWorkMinutes={daily.ExpectedWorkMinutes.ToString("0.0", CultureInfo.InvariantCulture)} "
-                        + $"ActualWorkMinutes={daily.ActualWorkMinutes.ToString("0.0", CultureInfo.InvariantCulture)} "
-                        + $"OvertimeMinutes={daily.OvertimeMinutes.ToString("0.0", CultureInfo.InvariantCulture)} "
-                        + $"OvertimeHours={(daily.OvertimeMinutes / 60d).ToString("0.0", CultureInfo.InvariantCulture)} "
+                        + $"ScheduledStart={FormatDiagnosticDateTime(daily.ScheduledStart)} "
+                        + $"TeijiEnd={FormatDiagnosticDateTime(daily.TeijiEnd)} "
+                        + $"ZangyouStart={FormatDiagnosticDateTime(daily.ZangyouStart)} "
+                        + $"ZangyouEnd={FormatDiagnosticDateTime(daily.ZangyouEnd)} "
+                        + $"ActualEnd={FormatDiagnosticDateTime(daily.ActualEnd)} "
+                        + $"HasLate={daily.IsLate} "
+                        + $"HasEarlyLeave={daily.IsEarlyLeave} "
+                        + $"NormalZangyouMinutes={daily.NormalZangyouMinutes.ToString("0.#", CultureInfo.InvariantCulture)} "
+                        + $"HolidayWorkMinutes={daily.ShukkinMinutes.ToString("0.#", CultureInfo.InvariantCulture)} "
+                        + $"TotalOvertimeMinutes={daily.OvertimeMinutes.ToString("0.#", CultureInfo.InvariantCulture)} "
                         + $"Reason={daily.Reason}");
                 }
             }
 
             var currentHours = ToHours(currentMonthMinutes);
+            var holidayWorkHours = ToHours(holidayWorkMinutes);
             var projectedFinalHours = ToHours(realizedCurrentMinutes + projectedRemainingMinutes);
             var diff = Math.Round(projectedFinalHours - 45d, 1);
             var risk = projectedFinalHours > 45d
@@ -1280,6 +1302,7 @@ namespace TeamOps.UI.Services
                 : projectedFinalHours >= 35d
                     ? "warn"
                     : "normal";
+            var totalRisk = ResolveTotalOvertimeRiskLevel(currentHours);
 
             return new OperatorPresenceOvertimeMetrics(
                 CurrentMonthOvertimeHours: currentHours,
@@ -1289,79 +1312,184 @@ namespace TeamOps.UI.Services
                 ProjectedFinalOvertimeHours: projectedFinalHours,
                 WorkedSundays: workedSundays,
                 HolidayWorkDays: holidayWorkDays,
+                HolidayWorkHours: holidayWorkHours,
                 TotalOvertimeHours: Math.Round(currentHours + ToHours(previousMonthMinutes), 1),
                 OvertimeLimitDifferenceHours: diff,
                 OvertimeRiskLevel: risk,
-                OvertimePlusSundaysLabel: $"{currentHours.ToString("0.0", CultureInfo.InvariantCulture)}h + {workedSundays} domingos");
+                TotalOvertimeRiskLevel: totalRisk,
+                OvertimePlusSundaysLabel: $"{currentHours.ToString("0.0", CultureInfo.InvariantCulture)}h");
         }
 
         private static OperatorDailyOvertimeAudit CalculateDailyOvertime(
             OperatorManagerDirectoryRow op,
             DateTime date,
             OperatorManagerScheduleRow? schedule,
-            OperatorManagerPresenceRow? presence,
+            OperatorOvertimePresenceWindowSummary presenceWindow,
             OperatorManagerTodokeRow? todoke,
             OperatorManagerMovementRow? movement,
             string statusKey,
             bool isProjection)
         {
-            var isSunday = date.DayOfWeek == DayOfWeek.Sunday;
-            var isHolidayWork = schedule?.IsHolidayWork == true;
+            var presence = presenceWindow.Presence;
             var hasSchedule = IsScheduledDay(schedule);
-            var isPresentOrProjected = isProjection
-                ? hasSchedule
-                : presence?.LastPresence != null || statusKey == AttendanceStatusKeys.Present;
-            var expectedWorkMinutes = ResolveExpectedWorkMinutes(op.ShiftName);
-            var actualWorkMinutes = isPresentOrProjected ? expectedWorkMinutes : 0d;
-            var workedSunday = isSunday && isPresentOrProjected && hasSchedule;
-            var overtimeMinutes = 0d;
-            var reason = "no_overtime";
-
-            if (statusKey == AttendanceStatusKeys.Falta || statusKey == AttendanceStatusKeys.Yukyu)
-            {
-                reason = statusKey;
-                actualWorkMinutes = 0d;
-            }
-            else if (!hasSchedule)
-            {
-                reason = "not_scheduled";
-            }
-            else if (isHolidayWork)
-            {
-                overtimeMinutes = 11d * 60d;
-                reason = "kyuujitsu_shukkin";
-            }
-            else if (isSunday)
-            {
-                reason = "sunday_no_zangyou";
-            }
-            else if (statusKey == AttendanceStatusKeys.Late || statusKey == AttendanceStatusKeys.EarlyLeave)
-            {
-                reason = statusKey == AttendanceStatusKeys.Late ? "late_no_full_overtime" : "early_leave_no_full_overtime";
-            }
-            else if (isPresentOrProjected)
-            {
-                overtimeMinutes = 2d * 60d;
-                reason = isProjection ? "projected_full_shift" : "full_shift_base";
-            }
+            var isLate = statusKey == AttendanceStatusKeys.Late;
+            var isEarlyLeave = statusKey == AttendanceStatusKeys.EarlyLeave;
+            var actualEnd = ResolveActualEndForOvertime(date, op.ShiftName, presenceWindow, movement);
+            var allowFallback = ShouldAllowFullShiftFallback(date, op.ShiftName, presenceWindow, hasSchedule, isLate, isEarlyLeave);
+            var audit = OvertimeRuleCalculator.Calculate(new OvertimeCalculationInput(
+                op.CodigoFJ,
+                op.Name,
+                date.Date,
+                op.ShiftName,
+                hasSchedule,
+                schedule?.IsHolidayWork == true,
+                statusKey,
+                actualEnd,
+                isLate,
+                isEarlyLeave,
+                isProjection,
+                AllowFullShiftFallbackWithoutPresenceEnd: !isProjection && allowFallback));
 
             return new OperatorDailyOvertimeAudit(
-                IsSunday: isSunday,
-                IsHolidayWork: isHolidayWork,
-                WorkedSunday: workedSunday,
-                ExpectedWorkMinutes: expectedWorkMinutes,
-                ActualWorkMinutes: actualWorkMinutes,
-                OvertimeMinutes: overtimeMinutes,
-                Reason: reason,
-                HasDiagnostic: hasSchedule || presence?.LastPresence != null || todoke != null || movement != null);
+                DayOfWeek: audit.DayOfWeek,
+                ScheduledStart: audit.ScheduledStart,
+                TeijiEnd: audit.TeijiEnd,
+                ZangyouStart: audit.ZangyouStart,
+                ZangyouEnd: audit.ZangyouEnd,
+                ActualEnd: audit.ActualEnd,
+                IsSunday: audit.IsSunday,
+                IsHolidayWork: audit.IsHolidayWork,
+                WorkedSunday: audit.WorkedSunday,
+                IsFullShift: audit.IsFullShift,
+                IsLate: audit.HasLate,
+                IsEarlyLeave: audit.HasEarlyLeave,
+                ExpectedWorkMinutes: audit.ExpectedWorkMinutes,
+                ActualWorkMinutes: audit.ActualWorkMinutes,
+                NormalZangyouMinutes: audit.NormalZangyouMinutes,
+                ShukkinMinutes: audit.HolidayWorkMinutes,
+                OvertimeMinutes: audit.TotalOvertimeMinutes,
+                Reason: audit.Reason,
+                HasDiagnostic: audit.HasDiagnostic);
         }
 
-        private static double ResolveExpectedWorkMinutes(string shiftName)
+        private static string ResolveTotalOvertimeRiskLevel(double totalHours)
         {
-            return (shiftName ?? string.Empty).Contains("noite", StringComparison.OrdinalIgnoreCase)
-                || (shiftName ?? string.Empty).Contains("yakin", StringComparison.OrdinalIgnoreCase)
-                ? 605d
-                : 605d;
+            if (totalHours > 90d)
+            {
+                return "danger";
+            }
+
+            if (totalHours > 80d)
+            {
+                return "warn";
+            }
+
+            return "normal";
+        }
+
+        private static OperatorOvertimePresenceWindowSummary ResolvePresenceWindowForOvertime(
+            DateTime scheduleDate,
+            string shiftName,
+            IReadOnlyList<OperatorManagerPresenceEventRow> presenceEvents)
+        {
+            if (presenceEvents.Count == 0
+                || !OvertimeRuleCalculator.TryResolveShiftWindow(shiftName, scheduleDate, out var window))
+            {
+                return new OperatorOvertimePresenceWindowSummary(0, null, null, null);
+            }
+
+            var matches = presenceEvents
+                .Where(item => item.PresenceDateTime >= window.ScheduledStart && item.PresenceDateTime <= window.ZangyouEnd)
+                .Select(item => item.PresenceDateTime)
+                .OrderBy(item => item)
+                .ToList();
+
+            if (matches.Count == 0)
+            {
+                return new OperatorOvertimePresenceWindowSummary(0, null, null, null);
+            }
+
+            var firstPresence = matches[0];
+            var lastPresence = matches[^1];
+            var presence = new OperatorManagerPresenceRow
+            {
+                Day = scheduleDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                LastPresence = lastPresence
+            };
+
+            return new OperatorOvertimePresenceWindowSummary(
+                matches.Count,
+                firstPresence,
+                lastPresence,
+                presence);
+        }
+
+        private static DateTime? ResolveActualEndForOvertime(
+            DateTime scheduleDate,
+            string shiftName,
+            OperatorOvertimePresenceWindowSummary presenceWindow,
+            OperatorManagerMovementRow? movement)
+        {
+            var movementMoment = ResolveMovementActualEnd(scheduleDate, shiftName, movement);
+            if (movementMoment.HasValue)
+            {
+                return movementMoment;
+            }
+
+            return presenceWindow.LastPresenceTime;
+        }
+
+        private static DateTime? ResolveMovementActualEnd(
+            DateTime scheduleDate,
+            string shiftName,
+            OperatorManagerMovementRow? movement)
+        {
+            if (movement == null
+                || !string.Equals(movement.MovementType, "early_leave", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            return OvertimeRuleCalculator.NormalizeMovementMoment(
+                scheduleDate,
+                shiftName,
+                movement.EventTime,
+                movement.EventDateTime);
+        }
+
+        private static bool ShouldAllowFullShiftFallback(
+            DateTime scheduleDate,
+            string shiftName,
+            OperatorOvertimePresenceWindowSummary presenceWindow,
+            bool hasSchedule,
+            bool isLate,
+            bool isEarlyLeave)
+        {
+            if (!hasSchedule
+                || isLate
+                || isEarlyLeave
+                || !OvertimeRuleCalculator.TryResolveShiftWindow(shiftName, scheduleDate, out var window))
+            {
+                return false;
+            }
+
+            if (presenceWindow.RowsFound == 0)
+            {
+                return true;
+            }
+
+            if (presenceWindow.RowsFound == 1
+                && presenceWindow.LastPresenceTime.HasValue)
+            {
+                return presenceWindow.LastPresenceTime.Value <= window.ScheduledStart.AddHours(3);
+            }
+
+            return false;
+        }
+
+        private static string FormatDiagnosticDateTime(DateTime? value)
+        {
+            return value?.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) ?? "-";
         }
 
         private static double ToHours(double minutes)
@@ -1908,6 +2036,18 @@ namespace TeamOps.UI.Services
             public DateTime? LastPresence { get; set; }
         }
 
+        private sealed class OperatorManagerPresenceEventRow
+        {
+            public string OperatorCodigoFJ { get; set; } = string.Empty;
+            public DateTime PresenceDateTime { get; set; }
+        }
+
+        private sealed record OperatorOvertimePresenceWindowSummary(
+            int RowsFound,
+            DateTime? FirstPresenceTime,
+            DateTime? LastPresenceTime,
+            OperatorManagerPresenceRow? Presence);
+
         private sealed class OperatorManagerTodokeRow
         {
             public string OperatorCodigoFJ { get; set; } = string.Empty;
@@ -1954,17 +2094,30 @@ namespace TeamOps.UI.Services
             double ProjectedFinalOvertimeHours,
             int WorkedSundays,
             int HolidayWorkDays,
+            double HolidayWorkHours,
             double TotalOvertimeHours,
             double OvertimeLimitDifferenceHours,
             string OvertimeRiskLevel,
+            string TotalOvertimeRiskLevel,
             string OvertimePlusSundaysLabel);
 
         private sealed record OperatorDailyOvertimeAudit(
+            string DayOfWeek,
+            DateTime? ScheduledStart,
+            DateTime? TeijiEnd,
+            DateTime? ZangyouStart,
+            DateTime? ZangyouEnd,
+            DateTime? ActualEnd,
             bool IsSunday,
             bool IsHolidayWork,
             bool WorkedSunday,
+            bool IsFullShift,
+            bool IsLate,
+            bool IsEarlyLeave,
             double ExpectedWorkMinutes,
             double ActualWorkMinutes,
+            double NormalZangyouMinutes,
+            double ShukkinMinutes,
             double OvertimeMinutes,
             string Reason,
             bool HasDiagnostic);
@@ -2120,9 +2273,11 @@ namespace TeamOps.UI.Services
         double ProjectedFinalOvertimeHours,
         int WorkedSundays,
         int HolidayWorkDays,
+        double HolidayWorkHours,
         double TotalOvertimeHours,
         double OvertimeLimitDifferenceHours,
         string OvertimeRiskLevel,
+        string TotalOvertimeRiskLevel,
         string OvertimePlusSundaysLabel,
         string LastStatus,
         string LastDateIso,

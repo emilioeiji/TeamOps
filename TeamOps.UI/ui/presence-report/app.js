@@ -496,8 +496,8 @@ function renderRows(rows) {
                     <small>${escapeHtml(t("overtimeLimit"))}: ${formatSignedHours(row.overtimeLimitDifferenceHours)}</small>
                 </td>
                 <td>
-                    <strong>${escapeHtml(row.overtimePlusSundaysLabel || "-")}</strong>
-                    <small>${escapeHtml(t("holidayWork"))}: ${row.holidayWorkDays ?? 0}</small>
+                    <span class="percent-pill overtime-total-risk-${escapeHtmlAttr(row.totalOvertimeRiskLevel || "normal")}">${escapeHtml(row.overtimePlusSundaysLabel || "-")}</span>
+                    <small>${escapeHtml(t("holidayWork"))}: ${formatHours(row.holidayWorkHours)} | ${escapeHtml(t("workedSundays"))}: ${row.workedSundays ?? 0}</small>
                 </td>
                 <td>${escapeHtml(issueText || "-")}</td>
                 <td>${escapeHtml(row.lastStatus || "-")}<small>${escapeHtml(row.lastDateIso ? ` | ${formatDate(row.lastDateIso)}` : "")}${escapeHtml(row.lastArea ? ` | ${row.lastArea}` : "")}</small></td>
