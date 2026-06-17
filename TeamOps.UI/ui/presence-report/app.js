@@ -34,9 +34,9 @@ const I18N = {
         present: "Conforme",
         percentOfficial: "% sem domingo",
         percentControl: "% com domingo",
-        overtimeCurrent: "HE atual",
+        overtimeCurrent: "Zangyou Jikan",
         overtimeProjection: "Projecao HE",
-        overtimeSunday: "Dom/Shukkin",
+        overtimeSunday: "Zangyou + Dom/Shukkin",
         issues: "Ocorrencias",
         last: "Ultimo status",
         empty: "Nenhum registro encontrado.",
@@ -61,9 +61,11 @@ const I18N = {
         overtimeBelow35: "Normal abaixo 35h",
         overtimeTotal: "HE mes atual",
         workedSundays: "Domingos trab.",
-        holidayWork: "Kyuujitsu Shukkin",
+        holidayWork: "Qtd. Shukkin",
+        holidayWorkHours: "Horas Shukkin",
+        overtimeSundayHint: "Zangyou + horas de domingo/shukkin",
         topOvertime: "Top Zangyou projetado",
-        topHolidayWork: "Top Kyuujitsu Shukkin",
+        topAbsences: "Top Ausentes",
         currentMonth: "Mes atual",
         previousMonth: "Mes anterior",
         projected: "Projetado",
@@ -85,76 +87,78 @@ const I18N = {
         notifyTitle: "Aviso"
     },
     "ja-JP": {
-        title: "Attendance Report - TeamOps",
-        badge: "Attendance",
-        heading: "Attendance Report",
-        subtitle: "Operator attendance using Haidai lineup, attendance, Todoke, and movement records.",
-        window: "Period",
-        start: "Start",
-        end: "End",
-        shift: "Shift",
-        sector: "Sector",
-        group: "Group",
-        status: "Status",
-        search: "Search",
-        apply: "Apply",
-        all: "All",
-        tableTitle: "Operators",
-        tableSubtitle: "Percent is calculated from scheduled days in the selected period.",
-        operator: "Operator",
-        scheduled: "Scheduled",
-        present: "Compliant",
-        percentOfficial: "% without Sunday",
-        percentControl: "% with Sunday",
-        overtimeCurrent: "Current OT",
-        overtimeProjection: "OT projection",
-        overtimeSunday: "Sun/Holiday",
-        issues: "Issues",
-        last: "Latest status",
-        empty: "No records found.",
-        loading: "Loading...",
-        operators: "Operators",
-        scheduledDays: "Scheduled days",
-        presentDays: "Compliant days",
+        title: "出勤レポート - TeamOps",
+        badge: "出勤",
+        heading: "出勤レポート",
+        subtitle: "Haidai の配置、出勤、Todoke、移動記録を作業者別に集計します。",
+        window: "期間",
+        start: "開始",
+        end: "終了",
+        shift: "シフト",
+        sector: "工程",
+        group: "グループ",
+        status: "ステータス",
+        search: "検索",
+        apply: "適用",
+        all: "すべて",
+        tableTitle: "作業者",
+        tableSubtitle: "選択期間内の予定日数を基準に割合を計算します。",
+        operator: "作業者",
+        scheduled: "予定",
+        present: "確認済み",
+        percentOfficial: "% 日曜除外",
+        percentControl: "% 日曜含む",
+        overtimeCurrent: "Zangyou Jikan",
+        overtimeProjection: "残業予測",
+        overtimeSunday: "Zangyou + 日曜/Shukkin",
+        issues: "発生項目",
+        last: "最新ステータス",
+        empty: "該当する記録はありません。",
+        loading: "読み込み中...",
+        operators: "作業者",
+        scheduledDays: "予定日数",
+        presentDays: "確認済み日数",
         yukyu: "Yukyu",
-        falta: "Absences",
-        late: "Late",
-        early: "Early leave",
-        avgPresence: "Avg attendance",
-        avgPresenceOfficial: "Official avg",
-        avgPresenceControl: "Control avg",
-        below82ByShift: "Below 82% by shift",
-        daysWithoutSunday: "Days without Sunday",
-        daysWithSunday: "Days with Sunday",
-        absencesWithoutSunday: "Absences without Sunday",
-        absencesWithSunday: "Absences with Sunday",
-        overtimeOver45: "Over 45h",
-        overtime35To45: "Risk 35-45h",
-        overtimeBelow35: "Normal below 35h",
-        overtimeTotal: "Current month OT",
-        workedSundays: "Worked Sundays",
-        holidayWork: "Holiday work",
-        topOvertime: "Top projected OT",
-        topHolidayWork: "Top holiday work",
-        currentMonth: "Current month",
-        previousMonth: "Previous month",
-        projected: "Projected",
-        realized: "Realized",
-        remaining: "Future",
-        overtimeLimit: "45h limit",
-        performance: "Performance",
-        pending: "Pending Todoke",
-        managerSummary: "Management Summary",
-        details: "Details",
-        byGroup: "By group",
-        bySector: "By area",
-        byShift: "By shift",
-        absenceRate: "Absence rate",
-        statusPresent: "Attendance",
-        statusIssue: "Issues",
-        statusLate: "Late",
-        statusEarly: "Early leave",
-        notifyTitle: "Notice"
+        falta: "欠勤",
+        late: "遅刻",
+        early: "早退",
+        avgPresence: "平均出勤",
+        avgPresenceOfficial: "公式平均",
+        avgPresenceControl: "管理平均",
+        below82ByShift: "シフト別 82% 未満",
+        daysWithoutSunday: "日曜除外日数",
+        daysWithSunday: "日曜含む日数",
+        absencesWithoutSunday: "日曜除外の欠勤",
+        absencesWithSunday: "日曜含む欠勤",
+        overtimeOver45: "45h 超過",
+        overtime35To45: "35-45h リスク",
+        overtimeBelow35: "35h 未満正常",
+        overtimeTotal: "当月残業",
+        workedSundays: "日曜出勤",
+        holidayWork: "Shukkin 日数",
+        holidayWorkHours: "Shukkin 時間",
+        overtimeSundayHint: "Zangyou + 日曜/Shukkin 時間",
+        topOvertime: "Zangyou 予測上位",
+        topAbsences: "欠勤・遅刻上位",
+        currentMonth: "当月",
+        previousMonth: "前月",
+        projected: "予測",
+        realized: "実績",
+        remaining: "今後",
+        overtimeLimit: "45h 上限",
+        performance: "パフォーマンス",
+        pending: "Todoke 未処理",
+        managerSummary: "管理サマリー",
+        details: "詳細",
+        byGroup: "グループ別",
+        bySector: "工程別",
+        byShift: "シフト別",
+        absenceRate: "欠勤率",
+        statusPresent: "出勤",
+        statusIssue: "発生項目",
+        statusLate: "遅刻",
+        statusEarly: "早退",
+        notifyTitle: "通知"
     }
 };
 
@@ -239,6 +243,7 @@ function applyLocale() {
     setText("thOvertimeCurrent", t("overtimeCurrent"));
     setText("thOvertimeProjection", t("overtimeProjection"));
     setText("thOvertimeSunday", t("overtimeSunday"));
+    document.getElementById("thOvertimeSunday")?.setAttribute("title", t("overtimeSundayHint"));
     setText("thIssues", t("issues"));
     setText("thLast", t("last"));
     setText("optStatusAll", t("all"));
@@ -314,7 +319,7 @@ function renderBreakdowns(data) {
         breakdownCard(t("byShift"), buildBreakdown(rows, "shiftName")),
         below82Card(t("below82ByShift"), rows),
         rankingCard(t("topOvertime"), data.topOvertime || [], "overtime"),
-        rankingCard(t("topHolidayWork"), data.topHolidayWork || [], "holiday"),
+        rankingCard(t("topAbsences"), data.topAbsences || [], "absence"),
         performanceCard(data.performance || {})
     ].join("");
 }
@@ -391,19 +396,26 @@ function breakdownCard(title, items) {
 }
 
 function rankingCard(title, items, mode) {
+    const heading = mode === "absence"
+        ? `${escapeHtml(title)} <span class="absence-legend"><span title="Falta">F</span> | <span title="Atraso">A</span> | <span title="Saída Antecipada">S</span> | <span title="Yuukyu">Y</span></span>`
+        : escapeHtml(title);
     const rows = items.length
         ? items.map(item => `
             <div class="breakdown-row">
                 <span>${item.rank}. ${escapeHtml(localizedName(item.name, item.nameJp))}</span>
-                <strong>${mode === "holiday" ? item.holidayWorkDays : formatHours(item.overtimeHours)}</strong>
-                <small>${escapeHtml(item.codigoFJ)} | ${escapeHtml(item.shiftName || "-")} | ${escapeHtml(t("holidayWork"))}: ${item.holidayWorkDays}</small>
+                <strong>${mode === "absence"
+                    ? `${item.faltaDays ?? 0} | ${item.lateDays ?? 0} | ${item.earlyLeaveDays ?? 0} | ${item.yukyuDays ?? 0}`
+                    : formatHours(item.overtimeHours)}</strong>
+                <small>${mode === "absence"
+                    ? `${escapeHtml(item.codigoFJ)} | ${escapeHtml(item.shiftName || "-")}`
+                    : `${escapeHtml(item.codigoFJ)} | ${escapeHtml(item.shiftName || "-")} | ${escapeHtml(t("holidayWork"))}: ${item.holidayWorkDays}`}</small>
             </div>
         `).join("")
         : `<p class="breakdown-empty">${escapeHtml(t("empty"))}</p>`;
 
     return `
         <article class="breakdown-card breakdown-card-overtime">
-            <h2>${escapeHtml(title)}</h2>
+            <h2>${heading}</h2>
             ${rows}
         </article>
     `;
@@ -496,8 +508,8 @@ function renderRows(rows) {
                     <small>${escapeHtml(t("overtimeLimit"))}: ${formatSignedHours(row.overtimeLimitDifferenceHours)}</small>
                 </td>
                 <td>
-                    <span class="percent-pill overtime-total-risk-${escapeHtmlAttr(row.totalOvertimeRiskLevel || "normal")}">${escapeHtml(row.overtimePlusSundaysLabel || "-")}</span>
-                    <small>${escapeHtml(t("holidayWork"))}: ${formatHours(row.holidayWorkHours)} | ${escapeHtml(t("workedSundays"))}: ${row.workedSundays ?? 0}</small>
+                    <span class="percent-pill overtime-total-risk-${escapeHtmlAttr(row.totalOvertimeRiskLevel || "normal")}" title="${escapeHtmlAttr(t("overtimeSundayHint"))}">${escapeHtml(row.overtimePlusSundaysLabel || formatHours(row.domingoShukkinTotalHours))}</span>
+                    <small>${escapeHtml(t("holidayWork"))}: ${row.holidayWorkDays ?? 0} | ${escapeHtml(t("holidayWorkHours"))}: ${formatHours(row.holidayWorkHours)}</small>
                 </td>
                 <td>${escapeHtml(issueText || "-")}</td>
                 <td>${escapeHtml(row.lastStatus || "-")}<small>${escapeHtml(row.lastDateIso ? ` | ${formatDate(row.lastDateIso)}` : "")}${escapeHtml(row.lastArea ? ` | ${row.lastArea}` : "")}</small></td>

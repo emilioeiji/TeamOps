@@ -13,6 +13,8 @@ namespace TeamOps.UI.Services
 {
     public sealed class OperatorManagerReportService
     {
+        private const int HolidayWorkFixedMinutes = 11 * 60;
+
         private readonly SqliteConnectionFactory _factory;
 
         public OperatorManagerReportService(SqliteConnectionFactory factory)
@@ -374,7 +376,7 @@ namespace TeamOps.UI.Services
                     endDate.ToString("yyyy-MM-dd"),
                     new OperatorPresenceReportSummary(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
                     Array.Empty<OperatorPresenceOvertimeRankingItem>(),
-                    Array.Empty<OperatorPresenceOvertimeRankingItem>(),
+                    Array.Empty<OperatorPresenceAbsenceRankingItem>(),
                     new OperatorPresenceReportPerformance(0, 0, 0, 0, 0),
                     Array.Empty<OperatorPresenceReportRow>());
             }
@@ -708,6 +710,7 @@ namespace TeamOps.UI.Services
                     overtime.HolidayWorkDays,
                     overtime.HolidayWorkHours,
                     overtime.TotalOvertimeHours,
+                    overtime.DomingoShukkinTotalHours,
                     overtime.OvertimeLimitDifferenceHours,
                     overtime.OvertimeRiskLevel,
                     overtime.TotalOvertimeRiskLevel,
@@ -754,6 +757,7 @@ namespace TeamOps.UI.Services
                 Math.Round(rows.Sum(item => item.CurrentMonthOvertimeHours), 1),
                 rows.Sum(item => item.WorkedSundays),
                 rows.Sum(item => item.HolidayWorkDays));
+            LogSundayWorkedSummary(startDate, endDate, summary.TotalWorkedSundays);
 
             buildRankingWatch.Start();
             var topOvertime = rows
@@ -769,20 +773,32 @@ namespace TeamOps.UI.Services
                     item.ProjectedFinalOvertimeHours,
                     item.HolidayWorkDays))
                 .ToList();
-            var topHolidayWork = rows
-                .OrderByDescending(item => item.HolidayWorkDays)
-                .ThenByDescending(item => item.ProjectedFinalOvertimeHours)
-                .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+            var topAbsences = rows
+                .Select(item => new
+                {
+                    Row = item,
+                    TotalOccurrences = item.FaltaDays + item.LateDays + item.EarlyLeaveDays + item.YukyuDays
+                })
+                .Where(item => item.TotalOccurrences > 0)
+                .OrderByDescending(item => item.TotalOccurrences)
+                .ThenBy(item => item.Row.Name, StringComparer.OrdinalIgnoreCase)
                 .Take(10)
-                .Select((item, index) => new OperatorPresenceOvertimeRankingItem(
+                .Select((item, index) => new OperatorPresenceAbsenceRankingItem(
                     index + 1,
-                    item.CodigoFJ,
-                    item.Name,
-                    item.NameJp,
-                    item.ShiftName,
-                    item.ProjectedFinalOvertimeHours,
-                    item.HolidayWorkDays))
+                    item.Row.CodigoFJ,
+                    item.Row.Name,
+                    item.Row.NameJp,
+                    item.Row.ShiftName,
+                    item.Row.FaltaDays,
+                    item.Row.LateDays,
+                    item.Row.EarlyLeaveDays,
+                    item.Row.YukyuDays,
+                    item.TotalOccurrences))
                 .ToList();
+            foreach (var item in topAbsences)
+            {
+                LogAbsenceRankingAudit(item);
+            }
             buildRankingWatch.Stop();
 
             var performance = new OperatorPresenceReportPerformance(
@@ -797,7 +813,7 @@ namespace TeamOps.UI.Services
                 endDate.ToString("yyyy-MM-dd"),
                 summary,
                 topOvertime,
-                topHolidayWork,
+                topAbsences,
                 performance,
                 rows
                     .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
@@ -1212,12 +1228,14 @@ namespace TeamOps.UI.Services
             DateTime today)
         {
             var previousMonthMinutes = 0d;
-            var currentMonthMinutes = 0d;
-            var realizedCurrentMinutes = 0d;
-            var projectedRemainingMinutes = 0d;
+            var currentMonthNormalMinutes = 0d;
+            var realizedCurrentNormalMinutes = 0d;
+            var projectedRemainingNormalMinutes = 0d;
             var workedSundays = 0;
             var holidayWorkDays = 0;
             var holidayWorkMinutes = 0d;
+            var sundayWorkedDays = 0;
+            var sundayWorkedMinutes = 0d;
 
             for (var date = previousMonthStart.Date; date <= currentMonthEnd.Date; date = date.AddDays(1))
             {
@@ -1227,31 +1245,55 @@ namespace TeamOps.UI.Services
                 movements.TryGetValue(day, out var movement);
                 var presenceWindow = ResolvePresenceWindowForOvertime(date, op.ShiftName, presenceEvents);
                 var presence = presenceWindow.Presence;
+                var hasHaidaiAssignment = IsScheduledDay(schedule);
 
                 var statusKey = ResolveAttendanceStatusKey(schedule, presence, todoke, movement);
                 var daily = CalculateDailyOvertime(op, date, schedule, presenceWindow, todoke, movement, statusKey, isProjection: date.Date > today.Date);
+                var countedAsSundayWorked = ResolveSundayWorked(
+                    date,
+                    daily.IsHolidayWork,
+                    hasHaidaiAssignment,
+                    presence != null,
+                    statusKey,
+                    out var sundayWorkedReason);
 
                 if (date >= previousMonthStart && date <= previousMonthEnd)
                 {
-                    previousMonthMinutes += daily.OvertimeMinutes;
+                    previousMonthMinutes += daily.NormalZangyouMinutes;
                 }
 
                 if (date >= currentMonthStart && date <= currentMonthEnd)
                 {
-                    currentMonthMinutes += daily.OvertimeMinutes;
+                    currentMonthNormalMinutes += daily.NormalZangyouMinutes;
                     if (date.Date <= today.Date)
                     {
-                        realizedCurrentMinutes += daily.OvertimeMinutes;
+                        realizedCurrentNormalMinutes += daily.NormalZangyouMinutes;
                     }
                     else
                     {
-                        projectedRemainingMinutes += daily.OvertimeMinutes;
+                        projectedRemainingNormalMinutes += daily.NormalZangyouMinutes;
+                    }
+
+                    LogDailyOvertimeAudit(op, date, daily, countedAsSundayWorked ? ToHours(HolidayWorkFixedMinutes) : 0d);
+                    if (daily.IsSunday)
+                    {
+                        LogSundayWorkedAudit(
+                            op,
+                            date,
+                            daily.IsSunday,
+                            daily.IsHolidayWork,
+                            hasHaidaiAssignment,
+                            statusKey,
+                            countedAsSundayWorked,
+                            sundayWorkedReason);
                     }
                 }
 
-                if (date >= currentMonthStart && date <= currentMonthEnd && daily.WorkedSunday)
+                if (date >= currentMonthStart && date <= currentMonthEnd && countedAsSundayWorked)
                 {
                     workedSundays++;
+                    sundayWorkedDays++;
+                    sundayWorkedMinutes += HolidayWorkFixedMinutes;
                 }
 
                 if (date >= currentMonthStart && date <= currentMonthEnd && daily.IsHolidayWork)
@@ -1293,31 +1335,194 @@ namespace TeamOps.UI.Services
                 }
             }
 
-            var currentHours = ToHours(currentMonthMinutes);
+            var currentHours = ToHours(currentMonthNormalMinutes);
             var holidayWorkHours = ToHours(holidayWorkMinutes);
-            var projectedFinalHours = ToHours(realizedCurrentMinutes + projectedRemainingMinutes);
+            var sundayWorkedHours = ToHours(sundayWorkedMinutes);
+            var zangyouJikanHours = Math.Round(currentHours + holidayWorkHours, 1);
+            var domingoShukkinTotalHours = Math.Round(zangyouJikanHours + sundayWorkedHours, 1);
+            var projectedFinalHours = Math.Round(ToHours(realizedCurrentNormalMinutes + projectedRemainingNormalMinutes) + holidayWorkHours, 1);
             var diff = Math.Round(projectedFinalHours - 45d, 1);
             var risk = projectedFinalHours > 45d
                 ? "danger"
                 : projectedFinalHours >= 35d
                     ? "warn"
                     : "normal";
-            var totalRisk = ResolveTotalOvertimeRiskLevel(currentHours);
+            var totalRisk = ResolveTotalOvertimeRiskLevel(domingoShukkinTotalHours);
+
+            LogOperatorOvertimeAudit(
+                op,
+                currentMonthStart,
+                currentHours,
+                holidayWorkDays,
+                holidayWorkHours,
+                sundayWorkedDays,
+                sundayWorkedHours,
+                zangyouJikanHours,
+                domingoShukkinTotalHours,
+                projectedFinalHours > 45d,
+                domingoShukkinTotalHours > 80d && domingoShukkinTotalHours <= 90d,
+                domingoShukkinTotalHours > 90d);
 
             return new OperatorPresenceOvertimeMetrics(
-                CurrentMonthOvertimeHours: currentHours,
+                CurrentMonthOvertimeHours: zangyouJikanHours,
                 PreviousMonthOvertimeHours: ToHours(previousMonthMinutes),
-                RealizedOvertimeHours: ToHours(realizedCurrentMinutes),
-                ProjectedRemainingOvertimeHours: ToHours(projectedRemainingMinutes),
+                RealizedOvertimeHours: Math.Round(ToHours(realizedCurrentNormalMinutes) + holidayWorkHours, 1),
+                ProjectedRemainingOvertimeHours: ToHours(projectedRemainingNormalMinutes),
                 ProjectedFinalOvertimeHours: projectedFinalHours,
                 WorkedSundays: workedSundays,
                 HolidayWorkDays: holidayWorkDays,
                 HolidayWorkHours: holidayWorkHours,
-                TotalOvertimeHours: Math.Round(currentHours + ToHours(previousMonthMinutes), 1),
+                TotalOvertimeHours: Math.Round(zangyouJikanHours + ToHours(previousMonthMinutes), 1),
+                DomingoShukkinTotalHours: domingoShukkinTotalHours,
                 OvertimeLimitDifferenceHours: diff,
                 OvertimeRiskLevel: risk,
                 TotalOvertimeRiskLevel: totalRisk,
-                OvertimePlusSundaysLabel: $"{currentHours.ToString("0.0", CultureInfo.InvariantCulture)}h");
+                OvertimePlusSundaysLabel: $"{domingoShukkinTotalHours.ToString("0.0", CultureInfo.InvariantCulture)}h");
+        }
+
+        private static void LogOperatorOvertimeAudit(
+            OperatorManagerDirectoryRow op,
+            DateTime month,
+            double normalZangyouHours,
+            int holidayWorkDays,
+            double holidayWorkHours,
+            int sundayWorkedDays,
+            double sundayWorkedHours,
+            double zangyouJikanHours,
+            double domingoShukkinTotalHours,
+            bool zangyouLimit45Exceeded,
+            bool domingoShukkin80To90,
+            bool domingoShukkinOver90)
+        {
+            Console.WriteLine(
+                "[PresenceOvertime][OperatorAudit] "
+                + $"OperatorId={op.CodigoFJ} "
+                + $"OperatorName={op.Name} "
+                + $"Month={month.ToString("yyyy-MM", CultureInfo.InvariantCulture)} "
+                + $"NormalZangyouHours={normalZangyouHours.ToString("0.0", CultureInfo.InvariantCulture)} "
+                + $"ShukkinDays={holidayWorkDays.ToString(CultureInfo.InvariantCulture)} "
+                + $"ShukkinHours={holidayWorkHours.ToString("0.0", CultureInfo.InvariantCulture)} "
+                + $"SundayWorkedDays={sundayWorkedDays.ToString(CultureInfo.InvariantCulture)} "
+                + $"SundayWorkedHours={sundayWorkedHours.ToString("0.0", CultureInfo.InvariantCulture)} "
+                + $"ZangyouJikan={zangyouJikanHours.ToString("0.0", CultureInfo.InvariantCulture)} "
+                + $"ZangyouPlusDomShukkin={domingoShukkinTotalHours.ToString("0.0", CultureInfo.InvariantCulture)} "
+                + $"ZangyouLimit45Exceeded={zangyouLimit45Exceeded} "
+                + $"DomingoShukkin80To90={domingoShukkin80To90} "
+                + $"DomingoShukkinOver90={domingoShukkinOver90}");
+        }
+
+        private static void LogDailyOvertimeAudit(
+            OperatorManagerDirectoryRow op,
+            DateTime date,
+            OperatorDailyOvertimeAudit daily,
+            double sundayWorkedHours)
+        {
+            var normalHours = ToHours(daily.NormalZangyouMinutes);
+            var holidayHours = ToHours(daily.ShukkinMinutes);
+            Console.WriteLine(
+                "[PresenceOvertime][DailyAudit] "
+                + $"OperatorId={op.CodigoFJ} "
+                + $"Date={date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} "
+                + $"DayOfWeek={daily.DayOfWeek} "
+                + $"IsSunday={daily.IsSunday} "
+                + $"IsHolidayWork={daily.IsHolidayWork} "
+                + $"AttendanceStatus={daily.AttendanceStatus} "
+                + $"NormalZangyouHours={normalHours.ToString("0.0", CultureInfo.InvariantCulture)} "
+                + $"ShukkinHours={holidayHours.ToString("0.0", CultureInfo.InvariantCulture)} "
+                + $"SundayWorkedHours={sundayWorkedHours.ToString("0.0", CultureInfo.InvariantCulture)} "
+                + $"IncludedInZangyouJikan={(normalHours + holidayHours).ToString("0.0", CultureInfo.InvariantCulture)} "
+                + $"IncludedInZangyouPlusDomShukkin={(normalHours + holidayHours + sundayWorkedHours).ToString("0.0", CultureInfo.InvariantCulture)} "
+                + $"Reason={daily.Reason}");
+        }
+
+        private static bool ResolveSundayWorked(
+            DateTime date,
+            bool isHolidayWork,
+            bool hasHaidaiAssignment,
+            bool hasPresence,
+            string attendanceStatus,
+            out string reason)
+        {
+            if (date.DayOfWeek != DayOfWeek.Sunday)
+            {
+                reason = "not_sunday";
+                return false;
+            }
+
+            if (attendanceStatus is AttendanceStatusKeys.Falta or AttendanceStatusKeys.Yukyu)
+            {
+                reason = attendanceStatus;
+                return false;
+            }
+
+            if (isHolidayWork)
+            {
+                reason = "holiday_work";
+                return true;
+            }
+
+            if (hasHaidaiAssignment)
+            {
+                reason = "haidai_assignment";
+                return true;
+            }
+
+            if (hasPresence)
+            {
+                reason = "presence_on_sunday";
+                return true;
+            }
+
+            reason = "no_sunday_work_evidence";
+            return false;
+        }
+
+        private static void LogSundayWorkedAudit(
+            OperatorManagerDirectoryRow op,
+            DateTime date,
+            bool isSunday,
+            bool isHolidayWork,
+            bool hasHaidaiAssignment,
+            string attendanceStatus,
+            bool countedAsSundayWorked,
+            string reason)
+        {
+            Console.WriteLine(
+                "[PresenceOvertime][SundayWorkedAudit] "
+                + $"OperatorId={op.CodigoFJ} "
+                + $"OperatorName={op.Name} "
+                + $"Date={date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} "
+                + $"DayOfWeek={date.DayOfWeek} "
+                + $"IsSunday={isSunday} "
+                + $"IsHolidayWork={isHolidayWork} "
+                + $"HasHaidaiAssignment={hasHaidaiAssignment} "
+                + $"AttendanceStatus={attendanceStatus} "
+                + $"CountedAsSundayWorked={countedAsSundayWorked} "
+                + $"Reason={reason}");
+        }
+
+        private static void LogSundayWorkedSummary(DateTime periodStart, DateTime periodEnd, int sundayWorkedCount)
+        {
+            Console.WriteLine(
+                "[PresenceOvertime][SundayWorkedSummary] "
+                + $"PeriodStart={periodStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} "
+                + $"PeriodEnd={periodEnd.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)} "
+                + $"SundayWorkedCount={sundayWorkedCount.ToString(CultureInfo.InvariantCulture)} "
+                + $"SundayWorkedHours={ToHours(sundayWorkedCount * HolidayWorkFixedMinutes).ToString("0.0", CultureInfo.InvariantCulture)}");
+        }
+
+        private static void LogAbsenceRankingAudit(OperatorPresenceAbsenceRankingItem item)
+        {
+            Console.WriteLine(
+                "[PresenceReport][AbsenceRankingAudit] "
+                + $"OperatorId={item.CodigoFJ} "
+                + $"OperatorName={item.Name} "
+                + $"Faltas={item.FaltaDays.ToString(CultureInfo.InvariantCulture)} "
+                + $"Atrasos={item.LateDays.ToString(CultureInfo.InvariantCulture)} "
+                + $"SaidasAntecipadas={item.EarlyLeaveDays.ToString(CultureInfo.InvariantCulture)} "
+                + $"Yuukyu={item.YukyuDays.ToString(CultureInfo.InvariantCulture)} "
+                + $"TotalOcorrencias={item.TotalOccurrences.ToString(CultureInfo.InvariantCulture)} "
+                + $"RankingPosition={item.Rank.ToString(CultureInfo.InvariantCulture)}");
         }
 
         private static OperatorDailyOvertimeAudit CalculateDailyOvertime(
@@ -1359,6 +1564,7 @@ namespace TeamOps.UI.Services
                 ActualEnd: audit.ActualEnd,
                 IsSunday: audit.IsSunday,
                 IsHolidayWork: audit.IsHolidayWork,
+                AttendanceStatus: audit.AttendanceStatus,
                 WorkedSunday: audit.WorkedSunday,
                 IsFullShift: audit.IsFullShift,
                 IsLate: audit.HasLate,
@@ -2096,6 +2302,7 @@ namespace TeamOps.UI.Services
             int HolidayWorkDays,
             double HolidayWorkHours,
             double TotalOvertimeHours,
+            double DomingoShukkinTotalHours,
             double OvertimeLimitDifferenceHours,
             string OvertimeRiskLevel,
             string TotalOvertimeRiskLevel,
@@ -2110,6 +2317,7 @@ namespace TeamOps.UI.Services
             DateTime? ActualEnd,
             bool IsSunday,
             bool IsHolidayWork,
+            string AttendanceStatus,
             bool WorkedSunday,
             bool IsFullShift,
             bool IsLate,
@@ -2217,7 +2425,7 @@ namespace TeamOps.UI.Services
         string EndDateIso,
         OperatorPresenceReportSummary Summary,
         IReadOnlyList<OperatorPresenceOvertimeRankingItem> TopOvertime,
-        IReadOnlyList<OperatorPresenceOvertimeRankingItem> TopHolidayWork,
+        IReadOnlyList<OperatorPresenceAbsenceRankingItem> TopAbsences,
         OperatorPresenceReportPerformance Performance,
         IReadOnlyList<OperatorPresenceReportRow> Rows);
 
@@ -2275,6 +2483,7 @@ namespace TeamOps.UI.Services
         int HolidayWorkDays,
         double HolidayWorkHours,
         double TotalOvertimeHours,
+        double DomingoShukkinTotalHours,
         double OvertimeLimitDifferenceHours,
         string OvertimeRiskLevel,
         string TotalOvertimeRiskLevel,
@@ -2291,6 +2500,18 @@ namespace TeamOps.UI.Services
         string ShiftName,
         double OvertimeHours,
         int HolidayWorkDays);
+
+    public sealed record OperatorPresenceAbsenceRankingItem(
+        int Rank,
+        string CodigoFJ,
+        string Name,
+        string NameJp,
+        string ShiftName,
+        int FaltaDays,
+        int LateDays,
+        int EarlyLeaveDays,
+        int YukyuDays,
+        int TotalOccurrences);
 
     public sealed record OperatorPresenceReportPerformance(
         long LoadPresenceMs,

@@ -178,15 +178,17 @@ namespace TeamOps.UI.Forms
                         overtimeHours = item.OvertimeHours,
                         holidayWorkDays = item.HolidayWorkDays
                     }),
-                    topHolidayWork = report.TopHolidayWork.Select(item => new
+                    topAbsences = report.TopAbsences.Select(item => new
                     {
                         rank = item.Rank,
                         codigoFJ = item.CodigoFJ,
                         name = item.Name,
                         nameJp = item.NameJp,
                         shiftName = item.ShiftName,
-                        overtimeHours = item.OvertimeHours,
-                        holidayWorkDays = item.HolidayWorkDays
+                        faltaDays = item.FaltaDays,
+                        lateDays = item.LateDays,
+                        earlyLeaveDays = item.EarlyLeaveDays,
+                        yukyuDays = item.YukyuDays
                     }),
                     rows = report.Rows.Select(item => new
                     {
@@ -221,6 +223,7 @@ namespace TeamOps.UI.Forms
                         holidayWorkDays = item.HolidayWorkDays,
                         holidayWorkHours = item.HolidayWorkHours,
                         totalOvertimeHours = item.TotalOvertimeHours,
+                        domingoShukkinTotalHours = item.DomingoShukkinTotalHours,
                         overtimeLimitDifferenceHours = item.OvertimeLimitDifferenceHours,
                         overtimeRiskLevel = item.OvertimeRiskLevel,
                         totalOvertimeRiskLevel = item.TotalOvertimeRiskLevel,

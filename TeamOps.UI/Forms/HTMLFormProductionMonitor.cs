@@ -38,6 +38,7 @@ namespace TeamOps.UI.Forms
         {
             InitializeComponent();
             Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            Text = L("Monitor de producao", "\u751f\u7523\u30e2\u30cb\u30bf\u30fc");
 
             _factory = factory;
             _currentUser = currentUser;
@@ -684,25 +685,25 @@ namespace TeamOps.UI.Forms
 
         private static string BuildImportMessage(ProductionImportResult result)
         {
-            var message = $"Arquivos: {result.FilesRead} | Linhas: {result.LinesRead} | Importadas: {result.Imported} | Ignoradas: {result.Ignored}";
+            var message = $"{L("Arquivos", "\u30d5\u30a1\u30a4\u30eb")}: {result.FilesRead} | {L("Linhas", "\u884c")}: {result.LinesRead} | {L("Importadas", "\u53d6\u8fbc\u6e08\u307f")}: {result.Imported} | {L("Ignoradas", "\u9664\u5916")}: {result.Ignored}";
 
             if (result.MachinesCreated > 0)
             {
-                message += $" | Maquinas novas: {result.MachinesCreated}";
+                message += $" | {L("Maquinas novas", "\u65b0\u898f\u8a2d\u5099")}: {result.MachinesCreated}";
             }
 
             if (result.PlanFilesRead > 0)
             {
-                message += $" | DAT: {result.PlanFilesRead} arquivo(s), {result.PlanRowsImported} linha(s) de plano";
+                message += $" | DAT: {result.PlanFilesRead} {L("arquivo(s)", "\u30d5\u30a1\u30a4\u30eb")}, {result.PlanRowsImported} {L("linha(s) de plano", "\u8a08\u753b\u884c")}";
                 if (result.PlanRowsIgnored > 0)
                 {
-                    message += $", {result.PlanRowsIgnored} ignorada(s)";
+                    message += $", {result.PlanRowsIgnored} {L("ignorada(s)", "\u9664\u5916")}";
                 }
             }
 
             if (result.CleanupPerformed)
             {
-                message += $" | Limpeza: {result.CleanupEventsDeleted} evento(s), {result.CleanupCurrentStatusesDeleted} status atual(is)";
+                message += $" | {L("Limpeza", "\u30af\u30ea\u30fc\u30f3\u30a2\u30c3\u30d7")}: {result.CleanupEventsDeleted} {L("evento(s)", "\u30a4\u30d9\u30f3\u30c8")}, {result.CleanupCurrentStatusesDeleted} {L("status atual(is)", "\u73fe\u5728\u30b9\u30c6\u30fc\u30bf\u30b9")}";
             }
 
             if (result.BatchExecuted && !string.IsNullOrWhiteSpace(result.BatchMessage))
@@ -729,6 +730,13 @@ namespace TeamOps.UI.Forms
             }
 
             return message;
+        }
+
+        private static string L(string pt, string jp)
+        {
+            return string.Equals(Program.CurrentLocale, "ja-JP", StringComparison.OrdinalIgnoreCase)
+                ? jp
+                : pt;
         }
 
         private ProductionDashboardFilter ResolvePostImportDashboardFilter(ProductionDashboardFilter filter)

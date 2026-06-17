@@ -327,7 +327,61 @@ void RunValidateOvertimeRules()
     }
 
     Console.WriteLine();
-    Console.WriteLine($"Summary: Cases={cases.Length} Failures={failures}");
+    var aggregateCases = new[]
+    {
+        new OvertimeAggregateCase("C1", 40d, 0, 0, 40d, 40d, false, false, false),
+        new OvertimeAggregateCase("C2", 40d, 1, 0, 51d, 51d, true, false, false),
+        new OvertimeAggregateCase("C3", 40d, 0, 2, 40d, 62d, false, false, false),
+        new OvertimeAggregateCase("C4", 40d, 1, 2, 51d, 73d, true, false, false),
+        new OvertimeAggregateCase("C5", 0d, 0, 0, 0d, 0d, false, false, false),
+        new OvertimeAggregateCase("C6", 40d, 1, 0, 51d, 51d, true, false, false),
+        new OvertimeAggregateCase("C7", 45d, 0, 0, 45d, 45d, false, false, false),
+        new OvertimeAggregateCase("C8", 70d, 1, 0, 81d, 81d, true, true, false),
+        new OvertimeAggregateCase("C9", 80d, 1, 0, 91d, 91d, true, false, true)
+    };
+
+    Console.WriteLine("=== OVERTIME AGGREGATE VALIDATION ===");
+    Console.WriteLine("Case\tNormalZangyouHours\tShukkinDays\tShukkinHours\tSundayWorkedDays\tSundayWorkedHours\tExpectedZangyouJikan\tActualZangyouJikan\tExpectedDomingoShukkin\tActualDomingoShukkin\tPass\tZangyouOver45\tDomingo80To90\tDomingoOver90");
+    foreach (var item in aggregateCases)
+    {
+        var holidayWorkHours = item.ShukkinDays * 11d;
+        var sundayWorkedHours = item.SundayWorkedDays * 11d;
+        var actualZangyou = Math.Round(item.NormalZangyouHours + holidayWorkHours, 1);
+        var actualDomingoShukkin = Math.Round(actualZangyou + sundayWorkedHours, 1);
+        var zangyouOver45 = actualZangyou > 45d;
+        var domingo80To90 = actualDomingoShukkin > 80d && actualDomingoShukkin <= 90d;
+        var domingoOver90 = actualDomingoShukkin > 90d;
+        var pass = Math.Abs(actualZangyou - item.ExpectedZangyouJikanHours) < 0.1
+            && Math.Abs(actualDomingoShukkin - item.ExpectedDomingoShukkinHours) < 0.1
+            && zangyouOver45 == item.ExpectedZangyouOver45
+            && domingo80To90 == item.ExpectedDomingo80To90
+            && domingoOver90 == item.ExpectedDomingoOver90;
+        if (!pass)
+        {
+            failures++;
+        }
+
+        Console.WriteLine(string.Join("\t", new[]
+        {
+            item.Code,
+            item.NormalZangyouHours.ToString("0.0", CultureInfo.InvariantCulture),
+            item.ShukkinDays.ToString(CultureInfo.InvariantCulture),
+            holidayWorkHours.ToString("0.0", CultureInfo.InvariantCulture),
+            item.SundayWorkedDays.ToString(CultureInfo.InvariantCulture),
+            sundayWorkedHours.ToString("0.0", CultureInfo.InvariantCulture),
+            item.ExpectedZangyouJikanHours.ToString("0.0", CultureInfo.InvariantCulture),
+            actualZangyou.ToString("0.0", CultureInfo.InvariantCulture),
+            item.ExpectedDomingoShukkinHours.ToString("0.0", CultureInfo.InvariantCulture),
+            actualDomingoShukkin.ToString("0.0", CultureInfo.InvariantCulture),
+            pass ? "OK" : "FAIL",
+            zangyouOver45 ? "1" : "0",
+            domingo80To90 ? "1" : "0",
+            domingoOver90 ? "1" : "0"
+        }));
+    }
+
+    Console.WriteLine();
+    Console.WriteLine($"Summary: Cases={cases.Length + aggregateCases.Length} Failures={failures}");
     if (failures > 0)
     {
         Environment.ExitCode = 2;
@@ -2931,6 +2985,17 @@ sealed class ValidateOvertimeRealOptions
         };
     }
 }
+
+sealed record OvertimeAggregateCase(
+    string Code,
+    double NormalZangyouHours,
+    int ShukkinDays,
+    int SundayWorkedDays,
+    double ExpectedZangyouJikanHours,
+    double ExpectedDomingoShukkinHours,
+    bool ExpectedZangyouOver45,
+    bool ExpectedDomingo80To90,
+    bool ExpectedDomingoOver90);
 
 sealed class ImportProfileOptions
 {

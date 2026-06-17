@@ -248,8 +248,19 @@ select:focus {
 }
 
 .breakdown-card h2 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
     margin-bottom: 12px;
     font-size: 17px;
+}
+
+.absence-legend {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 900;
+    white-space: nowrap;
 }
 
 .breakdown-row {
