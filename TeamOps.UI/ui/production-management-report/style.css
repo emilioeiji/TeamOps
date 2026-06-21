@@ -321,14 +321,14 @@ select {
 
 .line-dot.day,
 .day-point {
-  fill: var(--blue);
-  background: var(--blue);
+  fill: var(--amber);
+  background: var(--amber);
 }
 
 .line-dot.night,
 .night-point {
-  fill: var(--green);
-  background: var(--green);
+  fill: var(--blue);
+  background: var(--blue);
 }
 
 .line-chart svg {
@@ -349,11 +349,11 @@ select {
 }
 
 .day-line {
-  stroke: var(--blue);
+  stroke: var(--amber);
 }
 
 .night-line {
-  stroke: var(--green);
+  stroke: var(--blue);
 }
 
 .line-labels {
