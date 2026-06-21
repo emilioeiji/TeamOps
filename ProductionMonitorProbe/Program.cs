@@ -163,6 +163,7 @@ void RunImport()
     Console.WriteLine($"MachinesCreated={result.MachinesCreated}");
     Console.WriteLine($"BatchExecuted={result.BatchExecuted}");
     Console.WriteLine($"BatchMessage={result.BatchMessage}");
+    PrintDadImportResult(result);
     PrintEc2ImportResult(result);
     PrintImportPerformance(result);
 
@@ -209,6 +210,7 @@ void RunMachineLocationGuard()
     Console.WriteLine($"MachinesCreated={result.MachinesCreated}");
     Console.WriteLine($"BatchExecuted={result.BatchExecuted}");
     Console.WriteLine($"BatchMessage={result.BatchMessage}");
+    PrintDadImportResult(result);
     PrintEc2ImportResult(result);
     PrintImportPerformance(result);
 
@@ -800,6 +802,7 @@ void RunImportProfile(string[] profileArgs)
     Console.WriteLine($"Imported={result.Imported}");
     Console.WriteLine($"Ignored={result.Ignored}");
     Console.WriteLine($"MachinesCreated={result.MachinesCreated}");
+    PrintDadImportResult(result);
     PrintEc2ImportResult(result);
     Console.WriteLine($"ProbeTotal={totalWatch.ElapsedMilliseconds}ms");
     PrintImportPerformance(result);
@@ -861,6 +864,56 @@ void RunImportProfile(string[] profileArgs)
         foreach (var error in result.Errors)
         {
             Console.WriteLine($" - {error}");
+        }
+    }
+}
+
+void PrintDadImportResult(TeamOps.Core.Entities.ProductionImportResult result)
+{
+    if (result.DadLinesRead == 0
+        && result.DadRowsParsed == 0
+        && result.DadRowsImported == 0
+        && result.DadRowsIgnored == 0)
+    {
+        return;
+    }
+
+    Console.WriteLine("=== DAD IMPORT DIAGNOSTICS ===");
+    Console.WriteLine($"DadLinesRead={result.DadLinesRead}");
+    Console.WriteLine($"DadRowsParsed={result.DadRowsParsed}");
+    Console.WriteLine($"DadRowsImported={result.DadRowsImported}");
+    Console.WriteLine($"DadRowsIgnored={result.DadRowsIgnored}");
+    Console.WriteLine($"DadMachinesFound={result.DadMachinesFound}");
+    Console.WriteLine($"DadMachinesImported={result.DadMachinesImported}");
+    Console.WriteLine($"DadMachinesWithRunningEvents={result.DadMachinesWithRunningEvents}");
+    Console.WriteLine($"DadMachinesWithZeroRunningEvents={result.DadMachinesWithZeroRunningEvents}");
+    Console.WriteLine($"DadLinkErrors={result.DadLinkErrors}");
+
+    if (result.DadEventsByMachine.Count > 0)
+    {
+        Console.WriteLine("DadTotalProductionByMachine=eventos importados / eventos rodando");
+        foreach (var machine in result.DadEventsByMachine.Keys.OrderBy(key => key, StringComparer.OrdinalIgnoreCase))
+        {
+            result.DadRunningEventsByMachine.TryGetValue(machine, out var running);
+            Console.WriteLine($"  Machine={machine} ImportedEvents={result.DadEventsByMachine[machine]} RunningEvents={running}");
+        }
+    }
+
+    if (result.DadIgnoredByMachine.Count > 0)
+    {
+        Console.WriteLine("DadIgnoredByMachine:");
+        foreach (var machine in result.DadIgnoredByMachine.Keys.OrderBy(key => key, StringComparer.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"  Machine={machine} IgnoredRows={result.DadIgnoredByMachine[machine]}");
+        }
+    }
+
+    if (result.DadDiagnostics.Count > 0)
+    {
+        Console.WriteLine("DadDiagnostics:");
+        foreach (var item in result.DadDiagnostics)
+        {
+            Console.WriteLine($"  {item}");
         }
     }
 }

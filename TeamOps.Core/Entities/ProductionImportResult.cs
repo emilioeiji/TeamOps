@@ -9,6 +9,15 @@ namespace TeamOps.Core.Entities
         public int Imported { get; set; }
         public int Ignored { get; set; }
         public int MachinesCreated { get; set; }
+        public int DadLinesRead { get; set; }
+        public int DadRowsParsed { get; set; }
+        public int DadRowsImported { get; set; }
+        public int DadRowsIgnored { get; set; }
+        public int DadMachinesFound { get; set; }
+        public int DadMachinesImported { get; set; }
+        public int DadMachinesWithRunningEvents { get; set; }
+        public int DadMachinesWithZeroRunningEvents { get; set; }
+        public int DadLinkErrors { get; set; }
         public int PlanFilesRead { get; set; }
         public int PlanRowsImported { get; set; }
         public int PlanRowsIgnored { get; set; }
@@ -51,6 +60,10 @@ namespace TeamOps.Core.Entities
         public int Ec2IgnoredCount { get; set; }
         public List<string> Ec2DiscardSamples { get; } = new();
         public List<string> Ec2ImportedSamples { get; } = new();
+        public Dictionary<string, int> DadEventsByMachine { get; } = new(System.StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, int> DadRunningEventsByMachine { get; } = new(System.StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, int> DadIgnoredByMachine { get; } = new(System.StringComparer.OrdinalIgnoreCase);
+        public List<string> DadDiagnostics { get; } = new();
         public List<string> Errors { get; } = new();
         public Dictionary<string, long> PerformanceMs { get; } = new();
         public bool BatchExecuted { get; set; }

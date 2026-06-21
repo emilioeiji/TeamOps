@@ -505,6 +505,19 @@ namespace TeamOps.UI.Forms
                         ec2RowsRead = result.Ec2RowsRead,
                         ec2RowsImported = result.Ec2RowsImported,
                         ec2RowsIgnored = result.Ec2RowsIgnored,
+                        dadLinesRead = result.DadLinesRead,
+                        dadRowsParsed = result.DadRowsParsed,
+                        dadRowsImported = result.DadRowsImported,
+                        dadRowsIgnored = result.DadRowsIgnored,
+                        dadMachinesFound = result.DadMachinesFound,
+                        dadMachinesImported = result.DadMachinesImported,
+                        dadMachinesWithRunningEvents = result.DadMachinesWithRunningEvents,
+                        dadMachinesWithZeroRunningEvents = result.DadMachinesWithZeroRunningEvents,
+                        dadLinkErrors = result.DadLinkErrors,
+                        dadEventsByMachine = result.DadEventsByMachine,
+                        dadRunningEventsByMachine = result.DadRunningEventsByMachine,
+                        dadIgnoredByMachine = result.DadIgnoredByMachine,
+                        dadDiagnostics = result.DadDiagnostics,
                         performanceMs = result.PerformanceMs,
                         errors = result.Errors
                     }
@@ -699,6 +712,11 @@ namespace TeamOps.UI.Forms
                 {
                     message += $", {result.PlanRowsIgnored} {L("ignorada(s)", "\u9664\u5916")}";
                 }
+            }
+
+            if (result.DadLinesRead > 0 || result.DadRowsParsed > 0 || result.DadRowsImported > 0 || result.DadRowsIgnored > 0)
+            {
+                message += $" | DAD: linhas={result.DadLinesRead}, maquinas={result.DadMachinesFound}, importadas={result.DadMachinesImported}, sem rodando={result.DadMachinesWithZeroRunningEvents}, erros vinculo={result.DadLinkErrors}";
             }
 
             if (result.CleanupPerformed)

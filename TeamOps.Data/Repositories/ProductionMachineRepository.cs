@@ -7,7 +7,7 @@ namespace TeamOps.Data.Repositories
 {
     public sealed class ProductionMachineRepository
     {
-        private static readonly Regex ValidMachineCodeRegex = new(@"^(?:E[A-Z]?\d{1,3}|[A-Z]\d{2,3})$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex ValidMachineCodeRegex = new(@"^[A-Z]{1,3}\d{1,3}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private readonly SqliteConnectionFactory _factory;
 
@@ -219,7 +219,8 @@ namespace TeamOps.Data.Repositories
 
         private static string NormalizeCode(string value)
         {
-            return (value ?? string.Empty).Trim().ToUpperInvariant();
+            return Regex.Replace(value ?? string.Empty, @"[\s\u200B-\u200D\uFEFF]", string.Empty)
+                .ToUpperInvariant();
         }
 
         public static bool IsValidProductionMachineCode(string value)

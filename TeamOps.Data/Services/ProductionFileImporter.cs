@@ -75,10 +75,20 @@ namespace TeamOps.Services
                 foreach (var line in lines)
                 {
                     result.LinesRead++;
+                    var isDadFile = IsDadEventFile(filePath);
+                    if (isDadFile)
+                    {
+                        result.DadLinesRead++;
+                    }
 
                     if (!TryParseLine(filePath, line, out var parsed, out var ignoreReason))
                     {
                         result.Ignored++;
+                        if (isDadFile)
+                        {
+                            result.DadRowsIgnored++;
+                            TrackDadIgnored(result, filePath, line, ignoreReason);
+                        }
                         PushError(result, ignoreReason);
                         continue;
                     }
@@ -91,6 +101,15 @@ namespace TeamOps.Services
             }
             result.PerformanceMs["ReadFiles"] = readElapsed;
             result.PerformanceMs["Parse"] = parseElapsed;
+            var dadParsedRows = parsedRows
+                .Where(row => row.SectorId == 2)
+                .ToList();
+            result.DadRowsParsed = dadParsedRows.Count;
+            result.DadMachinesFound = dadParsedRows
+                .Select(row => row.MachineCode)
+                .Where(code => !string.IsNullOrWhiteSpace(code))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count();
 
             if (options?.CleanExistingEvents == true)
             {
@@ -233,6 +252,13 @@ namespace TeamOps.Services
                 catch (Exception ex)
                 {
                     result.Ignored++;
+                    if (parsed.SectorId == 2)
+                    {
+                        result.DadLinkErrors++;
+                        AddDadDiagnostic(
+                            result,
+                            $"DAD_LINK_ERROR Machine={parsed.MachineCode} Line={parsed.LineCode} Status={parsed.StatusCode} Event={parsed.EventDateTime:yyyy-MM-dd HH:mm:ss} Reason={ex.Message}");
+                    }
                     PushError(result, $"{parsed.SourceFile}: {ex.Message}");
                 }
             }
@@ -251,6 +277,7 @@ namespace TeamOps.Services
             {
                 result.Ignored += candidates.Count - affected;
             }
+            TrackDadImportedCandidates(result, candidates);
             foreach (var machineId in candidates.Select(item => item.MachineId).Distinct())
             {
                 touchedMachineIds.Add(machineId);
@@ -409,8 +436,8 @@ namespace TeamOps.Services
                 return false;
             }
 
-            var lineCode = Safe(parts, 3);
-            var machineCode = Safe(parts, 4);
+            var lineCode = NormalizeCodeForImport(Safe(parts, 3));
+            var machineCode = NormalizeCodeForImport(Safe(parts, 4));
             var internalState = Safe(parts, 5);
             var eventDate = Safe(parts, 7);
             var eventTime = Safe(parts, 8);
@@ -526,6 +553,90 @@ namespace TeamOps.Services
             return index >= 0 && index < parts.Length
                 ? (parts[index] ?? string.Empty).Trim()
                 : string.Empty;
+        }
+
+        private static string NormalizeCodeForImport(string value)
+        {
+            return new string((value ?? string.Empty)
+                    .Where(character => !char.IsWhiteSpace(character)
+                        && character != '\u200B'
+                        && character != '\u200C'
+                        && character != '\u200D'
+                        && character != '\uFEFF')
+                    .ToArray())
+                .ToUpperInvariant();
+        }
+
+        private static bool IsDadEventFile(string filePath)
+        {
+            var fileName = Path.GetFileName(filePath);
+            return fileName.Contains("_211D_", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static void TrackDadIgnored(ProductionImportResult result, string filePath, string line, string reason)
+        {
+            var parts = line.Split('|');
+            var machineCode = parts.Length > 4
+                ? NormalizeCodeForImport(parts[4])
+                : string.Empty;
+
+            if (string.IsNullOrWhiteSpace(machineCode))
+            {
+                machineCode = "(unknown)";
+            }
+
+            Increment(result.DadIgnoredByMachine, machineCode);
+            AddDadDiagnostic(result, $"DAD_IGNORED File={Path.GetFileName(filePath)} Machine={machineCode} Reason={reason}");
+        }
+
+        private static void TrackDadImportedCandidates(ProductionImportResult result, IReadOnlyList<MachineEvent> candidates)
+        {
+            var dadCandidates = candidates
+                .Where(item => item.SectorId == 2)
+                .ToList();
+
+            result.DadRowsImported = dadCandidates.Count;
+            result.DadMachinesImported = dadCandidates
+                .Select(item => item.MachineCode)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count();
+
+            foreach (var machineEvent in dadCandidates)
+            {
+                Increment(result.DadEventsByMachine, machineEvent.MachineCode);
+                var displayCode = ResolveDisplayCode(machineEvent.StatusCode, machineEvent.StatusText);
+                if (displayCode == 0)
+                {
+                    Increment(result.DadRunningEventsByMachine, machineEvent.MachineCode);
+                }
+
+                AddDadDiagnostic(
+                    result,
+                    $"DAD_IMPORTED Machine={machineEvent.MachineCode} Line={machineEvent.LineCode} Status={machineEvent.StatusCode} Display={displayCode} Event={machineEvent.EventDateTime:yyyy-MM-dd HH:mm:ss} Recipe={machineEvent.RecipeName} Lot={machineEvent.LotNo}");
+            }
+
+            result.DadMachinesWithRunningEvents = result.DadRunningEventsByMachine.Count;
+            result.DadMachinesWithZeroRunningEvents = result.DadEventsByMachine.Keys
+                .Count(machineCode => !result.DadRunningEventsByMachine.ContainsKey(machineCode));
+        }
+
+        private static void Increment(IDictionary<string, int> values, string key)
+        {
+            if (values.TryGetValue(key, out var current))
+            {
+                values[key] = current + 1;
+                return;
+            }
+
+            values[key] = 1;
+        }
+
+        private static void AddDadDiagnostic(ProductionImportResult result, string message)
+        {
+            if (result.DadDiagnostics.Count < 80)
+            {
+                result.DadDiagnostics.Add(message);
+            }
         }
 
         private static void PushError(ProductionImportResult result, string message)
