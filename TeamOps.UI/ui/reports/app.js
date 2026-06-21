@@ -35,6 +35,8 @@ const I18N = {
         tileOperatorsSubtitle: "Presenca, producao, follow-up e ocorrencias do Haidai",
         tilePresenceTitle: "Presenca",
         tilePresenceSubtitle: "Resumo de escala, faltas, Yukyu, atrasos e Todoke",
+        tileProductionManagementTitle: "Gerencial de Producao",
+        tileProductionManagementSubtitle: "Performance historica por operador, setor, turno e maquina",
         tileMasterCardTitle: "MasterCard",
         tileMasterCardSubtitle: "Treinamentos, follow de 30 dias e fechamento",
         devTitle: "Em Desenvolvimento",
@@ -73,6 +75,8 @@ const I18N = {
         tileOperatorsSubtitle: "\u51fa\u52e4\u3001\u751f\u7523\u3001follow-up\u3001Haidai \u5c65\u6b74\u3092\u307e\u3068\u3081\u3066\u78ba\u8a8d",
         tilePresenceTitle: "Attendance",
         tilePresenceSubtitle: "\u30b7\u30d5\u30c8\u3001\u6b20\u52e4\u3001Yukyu\u3001\u9045\u523b\u3001Todoke \u3092\u96c6\u8a08",
+        tileProductionManagementTitle: "Production Management",
+        tileProductionManagementSubtitle: "\u30aa\u30da\u30ec\u30fc\u30bf\u30fc\u3001\u90e8\u9580\u3001\u30b7\u30d5\u30c8\u3001\u8a2d\u5099\u5225\u306e\u5c65\u6b74\u5206\u6790",
         tileMasterCardTitle: "MasterCard",
         tileMasterCardSubtitle: "\u6559\u80b2\u72b6\u6cc1\u3001Follow 30 \u65e5\u3001\u5b8c\u4e86\u72b6\u6cc1",
         devTitle: "\u958b\u767a\u4e2d",
@@ -156,6 +160,8 @@ function applyLocale() {
     setText("txtTileOperatorsSubtitle", t("tileOperatorsSubtitle"));
     setText("txtTilePresenceTitle", t("tilePresenceTitle"));
     setText("txtTilePresenceSubtitle", t("tilePresenceSubtitle"));
+    setText("txtTileProductionManagementTitle", t("tileProductionManagementTitle"));
+    setText("txtTileProductionManagementSubtitle", t("tileProductionManagementSubtitle"));
     setText("txtTileMasterCardTitle", t("tileMasterCardTitle"));
     setText("txtTileMasterCardSubtitle", t("tileMasterCardSubtitle"));
     setText("txtDevTitle", t("devTitle"));

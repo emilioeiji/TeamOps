@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Relatorio Gerencial de Producao</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">Relatorios</p>
+      <h1>Relatorio Gerencial de Producao</h1>
+      <p class="subtitle">Analise historica por operador, setor, turno, grupo, maquina e periodo.</p>
+    </div>
+    <div class="hero-actions">
+      <button id="btnExportCsv" type="button">CSV</button>
+      <button id="btnExportExcel" type="button">Excel</button>
+      <button id="btnPrint" type="button">Imprimir</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel filters">
+      <div class="grid">
+        <label>Data inicial<input id="startDate" type="date"></label>
+        <label>Data final<input id="endDate" type="date"></label>
+        <label>Setor<select id="sectorId"></select></label>
+        <label>Local<select id="localId"></select></label>
+        <label>Turno<select id="shiftId"></select></label>
+        <label>Grupo<select id="groupId"></select></label>
+        <label>Operador<select id="operatorCode"></select></label>
+        <label>Maquina<select id="machineId"></select></label>
+        <label>Peca<input id="partCode" list="partCodes" placeholder="PartCode"></label>
+        <label>Lider<select id="leaderCode"></select></label>
+        <label>Grupo A<select id="groupAId"></select></label>
+        <label>Grupo B<select id="groupBId"></select></label>
+      </div>
+      <datalist id="partCodes"></datalist>
+      <div class="filter-footer">
+        <label class="check"><input id="onlyActive" type="checkbox" checked> Somente ativos</label>
+        <label class="check"><input id="onlyProduction" type="checkbox"> Somente producao</label>
+        <button id="btnApply" type="button" class="primary">Gerar relatorio</button>
+      </div>
+    </section>
+
+    <section id="status" class="status">Carregando configuracoes...</section>
+
+    <section class="cards" id="summaryCards"></section>
+
+    <section class="panel metrics">
+      <h2>Performance</h2>
+      <div id="performanceGrid" class="perf-grid"></div>
+    </section>
+
+    <section class="tabs">
+      <button class="tab active" data-tab="operators">Operadores</button>
+      <button class="tab" data-tab="rankings">Rankings</button>
+      <button class="tab" data-tab="shifts">Dia x Noite</button>
+      <button class="tab" data-tab="groups">Grupos</button>
+      <button class="tab" data-tab="daily">Evolucao</button>
+      <button class="tab" data-tab="sectors">Setores</button>
+      <button class="tab" data-tab="machines">Maquinas</button>
+      <button class="tab" data-tab="presence">Producao x Presenca</button>
+      <button class="tab" data-tab="alerts">Alertas</button>
+    </section>
+
+    <section class="panel tab-panel active" id="tab-operators">
+      <h2>Producao por Operador</h2>
+      <div class="table-wrap">
+        <table id="operatorsTable" class="data-table sortable"></table>
+      </div>
+    </section>
+
+    <section class="panel tab-panel" id="tab-rankings">
+      <h2>Ranking de Producao</h2>
+      <div id="rankingsGrid" class="ranking-grid"></div>
+    </section>
+
+    <section class="panel tab-panel" id="tab-shifts">
+      <h2>Comparativo Dia x Noite</h2>
+      <div id="shiftChart" class="bar-chart"></div>
+    </section>
+
+    <section class="panel tab-panel" id="tab-groups">
+      <h2>Comparativo entre Grupos</h2>
+      <div id="groupChart" class="bar-chart"></div>
+    </section>
+
+    <section class="panel tab-panel" id="tab-daily">
+      <h2>Evolucao Diaria</h2>
+      <div id="dailyChart" class="line-chart"></div>
+    </section>
+
+    <section class="panel tab-panel" id="tab-sectors">
+      <h2>Producao por Setor</h2>
+      <div class="table-wrap">
+        <table id="sectorsTable" class="data-table"></table>
+      </div>
+    </section>
+
+    <section class="panel tab-panel" id="tab-machines">
+      <h2>Producao por Maquina</h2>
+      <div class="table-wrap">
+        <table id="machinesTable" class="data-table"></table>
+      </div>
+    </section>
+
+    <section class="panel tab-panel" id="tab-presence">
+      <h2>Cruzamento Producao x Presenca</h2>
+      <div class="table-wrap">
+        <table id="presenceTable" class="data-table"></table>
+      </div>
+    </section>
+
+    <section class="panel tab-panel" id="tab-alerts">
+      <h2>Alertas Gerenciais</h2>
+      <div id="alertsList" class="alerts"></div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
