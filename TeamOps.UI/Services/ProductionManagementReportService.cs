@@ -122,19 +122,19 @@ namespace TeamOps.UI.Services
             loadOperatorsWatch.Stop();
 
             var loadPresenceWatch = Stopwatch.StartNew();
-            var presenceRows = LoadPresenceRows(conn, start, end, operators.Select(item => item.CodigoFJ).ToArray()).ToList();
-            var presenceByOperator = BuildPresenceByOperator(presenceRows, start, end);
             var scheduleRows = LoadScheduleRows(conn, start, end, filter).ToList();
             var scheduleByOperator = scheduleRows
                 .GroupBy(item => item.OperatorCodigoFJ, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
+            var presenceRows = LoadPresenceRows(conn, start, end, operators.Select(item => item.CodigoFJ).ToArray()).ToList();
+            var presenceByOperator = BuildPresenceByOperator(presenceRows, scheduleByOperator, start, end);
             loadPresenceWatch.Stop();
 
             var buildChartsWatch = Stopwatch.StartNew();
             var operatorRows = BuildOperatorRows(operators, dailyDashboards, presenceByOperator, scheduleByOperator, filter).ToList();
             var machineRows = BuildMachineRows(dailyDashboards, filter).ToList();
             var sectorRows = BuildSectorRows(dailyDashboards).ToList();
-            var shiftComparison = BuildShiftComparison(dailyDashboards, operatorRows);
+            var shiftComparison = BuildShiftComparison(dailyDashboards);
             var groupComparison = BuildGroupComparison(operatorRows, filter.GroupAId, filter.GroupBId);
             var dailyTrend = BuildDailyTrend(dailyDashboards).ToList();
             var rankings = BuildRankings(operatorRows, sectorRows, machineRows);
@@ -295,7 +295,11 @@ namespace TeamOps.UI.Services
                 });
         }
 
-        private static Dictionary<string, PresenceAccumulator> BuildPresenceByOperator(IEnumerable<PresenceRow> rows, DateTime start, DateTime end)
+        private static Dictionary<string, PresenceAccumulator> BuildPresenceByOperator(
+            IEnumerable<PresenceRow> rows,
+            IReadOnlyDictionary<string, List<ScheduleRow>> scheduleByOperator,
+            DateTime start,
+            DateTime end)
         {
             var map = new Dictionary<string, PresenceAccumulator>(StringComparer.OrdinalIgnoreCase);
             foreach (var row in rows)
@@ -321,10 +325,24 @@ namespace TeamOps.UI.Services
                 }
             }
 
-            var periodDays = Math.Max(1, (end.Date - start.Date).Days + 1);
-            foreach (var acc in map.Values)
+            foreach (var code in scheduleByOperator.Keys)
             {
-                acc.PresencePercent = Math.Round((acc.PresentDays / (double)periodDays) * 100d, 1);
+                if (!map.ContainsKey(code))
+                {
+                    map[code] = new PresenceAccumulator();
+                }
+            }
+
+            var periodDays = Math.Max(1, (end.Date - start.Date).Days + 1);
+            foreach (var pair in map)
+            {
+                var acc = pair.Value;
+                var scheduledDays = scheduleByOperator.TryGetValue(pair.Key, out var schedules)
+                    ? schedules.Select(item => item.Day).Distinct(StringComparer.OrdinalIgnoreCase).Count()
+                    : 0;
+                var denominator = scheduledDays > 0 ? scheduledDays : periodDays;
+                acc.ScheduledDays = denominator;
+                acc.PresencePercent = Math.Round((acc.PresentDays / (double)Math.Max(1, denominator)) * 100d, 1);
             }
 
             return map;
@@ -359,17 +377,14 @@ namespace TeamOps.UI.Services
                 scheduleByOperator.TryGetValue(op.CodigoFJ, out var schedules);
                 presence ??= new PresenceAccumulator();
                 schedules ??= new List<ScheduleRow>();
-                var meta = schedules.Count * 720d;
-                if (meta <= 0 && prod?.Production > 0)
-                {
-                    meta = prod.Production;
-                }
-
                 var production = prod?.Production ?? 0;
                 if (filter.OnlyProduction && production <= 0)
                 {
                     continue;
                 }
+                var kadouritsu = Math.Round(prod?.Kadouritsu ?? 0, 1);
+                var meta = kadouritsu > 0 ? Math.Round((production * 100d) / kadouritsu, 1) : production;
+                var productionPercent = kadouritsu;
 
                 rows.Add(new ProductionManagementOperatorRow(
                     op.CodigoFJ,
@@ -386,13 +401,13 @@ namespace TeamOps.UI.Services
                     op.SectorNameJp,
                     Math.Round(production, 1),
                     Math.Round(meta, 1),
-                    meta <= 0 ? 0 : Math.Round((production / meta) * 100d, 1),
-                    Math.Round(prod?.Kadouritsu ?? 0, 1),
+                    productionPercent,
+                    kadouritsu,
                     Math.Round(presence.WorkedHours, 1),
                     Math.Round(presence.OvertimeHours, 1),
                     presence.WorkedSundays,
                     Math.Round(presence.PresencePercent, 1),
-                    Math.Max(0, schedules.Count - presence.PresentDays),
+                    Math.Max(0, presence.ScheduledDays - presence.PresentDays),
                     0));
             }
 
@@ -462,36 +477,18 @@ namespace TeamOps.UI.Services
                 .ToList();
         }
 
-        private static ProductionManagementShiftComparison BuildShiftComparison(
-            IReadOnlyList<ProductionDashboardSnapshot> dashboards,
-            IEnumerable<ProductionManagementOperatorRow> operators)
+        private static ProductionManagementShiftComparison BuildShiftComparison(IReadOnlyList<ProductionDashboardSnapshot> dashboards)
         {
-            var operatorOvertime = operators
-                .GroupBy(item => IsNightShift(item.ShiftNamePt, item.ShiftNameJp) ? "Noite" : "Dia")
-                .ToDictionary(group => group.Key, group => group.Sum(item => item.OvertimeHours));
+            var points = dashboards
+                .GroupBy(item => item.Day)
+                .OrderBy(group => group.Key)
+                .Select(group => new ProductionManagementShiftTrendPoint(
+                    group.Key.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    Average(group.Where(item => !IsNightShift(item.Shift.NamePt, item.Shift.NameJp)).Select(item => item.Dashboard.ProductionPercent)),
+                    Average(group.Where(item => IsNightShift(item.Shift.NamePt, item.Shift.NameJp)).Select(item => item.Dashboard.ProductionPercent))))
+                .ToList();
 
-            var rows = dashboards
-                .GroupBy(item => IsNightShift(item.Shift.NamePt, item.Shift.NameJp)
-                    ? "Noite"
-                    : "Dia")
-                .ToDictionary(
-                    group => group.Key,
-                    group =>
-                    {
-                        var production = group.Sum(item => item.Dashboard.Machines.Sum(machine => machine.RunningMinutes));
-                        var total = group.Sum(item => item.Dashboard.Machines.Sum(machine => machine.TotalMinutes));
-                        return new ProductionManagementShiftMetric(
-                            Math.Round(production, 1),
-                            total <= 0 ? 0 : Math.Round((production / total) * 100d, 1),
-                            Average(group.Select(item => item.Dashboard.ProductionPercent)),
-                            Math.Round(operatorOvertime.GetValueOrDefault(group.Key), 1));
-                    });
-
-            rows.TryGetValue("Dia", out var day);
-            rows.TryGetValue("Noite", out var night);
-            return new ProductionManagementShiftComparison(
-                day ?? new ProductionManagementShiftMetric(0, 0, 0, 0),
-                night ?? new ProductionManagementShiftMetric(0, 0, 0, 0));
+            return new ProductionManagementShiftComparison(points);
         }
 
         private static bool IsNightShift(string namePt, string nameJp)
@@ -739,6 +736,7 @@ namespace TeamOps.UI.Services
             public double OvertimeHours { get; set; }
             public int WorkedSundays { get; set; }
             public double PresencePercent { get; set; }
+            public int ScheduledDays { get; set; }
         }
     }
 
@@ -894,8 +892,8 @@ namespace TeamOps.UI.Services
     }
     public sealed record ProductionManagementRankingItem(int Rank, string Name, double Production, double Meta, double Percent, double Difference);
     public sealed record ProductionManagementRankings(IReadOnlyList<ProductionManagementRankingItem> Operators, IReadOnlyList<ProductionManagementRankingItem> Sectors, IReadOnlyList<ProductionManagementRankingItem> Groups, IReadOnlyList<ProductionManagementRankingItem> Machines);
-    public sealed record ProductionManagementShiftMetric(double Production, double Efficiency, double Kadouritsu, double OvertimeHours);
-    public sealed record ProductionManagementShiftComparison(ProductionManagementShiftMetric Day, ProductionManagementShiftMetric Night);
+    public sealed record ProductionManagementShiftTrendPoint(string Day, double DayKadouritsu, double NightKadouritsu);
+    public sealed record ProductionManagementShiftComparison(IReadOnlyList<ProductionManagementShiftTrendPoint> Points);
     public sealed record ProductionManagementGroupMetric(string Name, double Production, double Meta, double Percent, double OvertimeHours, int Absenteeism);
     public sealed record ProductionManagementGroupComparison(ProductionManagementGroupMetric GroupA, ProductionManagementGroupMetric GroupB);
     public sealed record ProductionManagementDailyTrend(string Day, double Production, double Meta, double Percent);

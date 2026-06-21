@@ -1,14 +1,16 @@
 :root {
-  --bg: #eef2ee;
-  --panel: #fffaf0;
-  --ink: #17221d;
-  --muted: #65706a;
-  --line: #d7ddd6;
-  --blue: #285e8f;
-  --green: #287a56;
-  --amber: #b77a16;
-  --red: #b83b31;
-  --shadow: 0 18px 50px rgba(31, 46, 38, 0.13);
+  --bg: #f6f8fb;
+  --panel: #ffffff;
+  --ink: #132238;
+  --muted: #5a6b80;
+  --line: #d9e2ec;
+  --blue: #1f4ea3;
+  --blue-hover: #2a63c8;
+  --blue-soft: #e8f0ff;
+  --green: #0f766e;
+  --amber: #b7791f;
+  --red: #c2410c;
+  --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
 }
 
 * {
@@ -19,8 +21,9 @@ body {
   margin: 0;
   color: var(--ink);
   background:
-    radial-gradient(circle at top left, rgba(69, 129, 91, 0.24), transparent 32rem),
-    linear-gradient(145deg, #f8f2df 0%, var(--bg) 46%, #e6edf0 100%);
+    radial-gradient(circle at top right, rgba(31, 78, 163, 0.15), transparent 22%),
+    radial-gradient(circle at bottom left, rgba(14, 116, 144, 0.08), transparent 18%),
+    linear-gradient(180deg, #eef4fb 0%, var(--bg) 100%);
   font-family: "Segoe UI", "Yu Gothic UI", sans-serif;
 }
 
@@ -34,7 +37,7 @@ body {
 
 .eyebrow {
   margin: 0 0 6px;
-  color: var(--green);
+  color: var(--blue);
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -76,8 +79,8 @@ button:hover {
 }
 
 button.primary {
-  background: var(--green);
-  border-color: var(--green);
+  background: var(--blue);
+  border-color: var(--blue);
   color: #fff;
   min-width: 160px;
 }
@@ -87,9 +90,9 @@ main {
 }
 
 .panel {
-  background: rgba(255, 250, 240, 0.94);
-  border: 1px solid rgba(255, 255, 255, 0.62);
-  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--line);
+  border-radius: 20px;
   box-shadow: var(--shadow);
   margin-bottom: 18px;
   padding: 20px;
@@ -97,7 +100,7 @@ main {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
 }
 
@@ -107,6 +110,7 @@ label {
   font-size: 12px;
   font-weight: 800;
   gap: 6px;
+  min-width: 0;
   text-transform: uppercase;
 }
 
@@ -118,7 +122,9 @@ select {
   color: var(--ink);
   font: inherit;
   min-height: 38px;
+  min-width: 0;
   padding: 8px 10px;
+  width: 100%;
 }
 
 .filter-footer {
@@ -127,6 +133,7 @@ select {
   gap: 18px;
   justify-content: flex-end;
   margin-top: 14px;
+  flex-wrap: wrap;
 }
 
 .check {
@@ -151,9 +158,9 @@ select {
 }
 
 .card {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 250, 240, 0.9));
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  border-radius: 22px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 20px;
   box-shadow: var(--shadow);
   padding: 18px;
 }
@@ -179,7 +186,7 @@ select {
 }
 
 .perf {
-  background: rgba(40, 94, 143, 0.08);
+  background: var(--blue-soft);
   border-radius: 14px;
   padding: 10px;
 }
@@ -228,7 +235,7 @@ select {
 }
 
 .data-table th {
-  background: #f7edd8;
+  background: var(--blue-soft);
   cursor: pointer;
   position: sticky;
   top: 0;
@@ -243,7 +250,7 @@ select {
 }
 
 .badge.good {
-  background: rgba(40, 122, 86, 0.15);
+  background: rgba(15, 118, 110, 0.12);
   color: var(--green);
 }
 
@@ -264,7 +271,8 @@ select {
 }
 
 .ranking-card {
-  background: rgba(255, 255, 255, 0.68);
+  background: #fff;
+  border: 1px solid var(--line);
   border-radius: 18px;
   padding: 16px;
 }
@@ -290,9 +298,70 @@ select {
 }
 
 .bar > i {
-  background: linear-gradient(90deg, var(--green), var(--blue));
+  background: linear-gradient(90deg, var(--blue), var(--blue-hover));
   display: block;
   height: 100%;
+}
+
+.legend {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-weight: 700;
+  gap: 12px;
+}
+
+.line-dot {
+  border-radius: 999px;
+  display: inline-block;
+  height: 12px;
+  width: 12px;
+}
+
+.line-dot.day,
+.day-point {
+  fill: var(--blue);
+  background: var(--blue);
+}
+
+.line-dot.night,
+.night-point {
+  fill: var(--green);
+  background: var(--green);
+}
+
+.line-chart svg {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  width: 100%;
+}
+
+.axis {
+  stroke: #cbd5e1;
+  stroke-width: 1.2;
+}
+
+.line {
+  fill: none;
+  stroke-width: 3;
+}
+
+.day-line {
+  stroke: var(--blue);
+}
+
+.night-line {
+  stroke: var(--green);
+}
+
+.line-labels {
+  color: var(--muted);
+  display: flex;
+  font-size: 11px;
+  justify-content: space-between;
+  overflow: hidden;
 }
 
 .alerts {

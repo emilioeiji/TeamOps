@@ -32,6 +32,11 @@ function formatNumber(value, digits = 1) {
   return n.toLocaleString(state.locale || "pt-BR", { maximumFractionDigits: digits, minimumFractionDigits: digits });
 }
 
+function formatPercent(value) {
+  const n = Number(value || 0);
+  return `${formatNumber(Math.max(0, Math.min(999.9, n)))}%`;
+}
+
 function formatInt(value) {
   return Number(value || 0).toLocaleString(state.locale || "pt-BR", { maximumFractionDigits: 0 });
 }
@@ -147,8 +152,8 @@ function renderSummary(summary) {
   const cards = [
     ["Producao Total", formatNumber(g(summary, "ProductionTotal"))],
     ["Meta Total", formatNumber(g(summary, "MetaTotal"))],
-    ["Eficiencia Media", `${formatNumber(g(summary, "EfficiencyAverage"))}%`],
-    ["Kadouritsu Medio", `${formatNumber(g(summary, "KadouritsuAverage"))}%`],
+    ["Eficiencia Media", formatPercent(g(summary, "EfficiencyAverage"))],
+    ["Kadouritsu Medio", formatPercent(g(summary, "KadouritsuAverage"))],
     ["Total Operadores", formatInt(g(summary, "TotalOperators"))],
     ["Total Maquinas", formatInt(g(summary, "TotalMachines"))],
     ["Horas Trabalhadas", `${formatNumber(g(summary, "TotalWorkedHours"))}h`],
@@ -198,7 +203,7 @@ function sortOperators(key) {
 function percentBadge(value) {
   const n = Number(value || 0);
   const cls = n < 70 ? "bad" : n < 80 ? "warn" : "good";
-  return `<span class="badge ${cls}">${formatNumber(n)}%</span>`;
+  return `<span class="badge ${cls}">${formatPercent(n)}</span>`;
 }
 
 function renderOperators(rows) {
@@ -210,7 +215,7 @@ function renderOperators(rows) {
     { label: "Producao", key: "Production", render: (r) => formatNumber(g(r, "Production")) },
     { label: "Meta", key: "Meta", render: (r) => formatNumber(g(r, "Meta")) },
     { label: "%", key: "ProductionPercent", render: (r) => percentBadge(g(r, "ProductionPercent")) },
-    { label: "Kadouritsu", key: "Kadouritsu", render: (r) => `${formatNumber(g(r, "Kadouritsu"))}%` },
+    { label: "Kadouritsu", key: "Kadouritsu", render: (r) => formatPercent(g(r, "Kadouritsu")) },
     { label: "Horas", key: "WorkedHours", render: (r) => `${formatNumber(g(r, "WorkedHours"))}h` },
     { label: "Extras", key: "OvertimeHours", render: (r) => `${formatNumber(g(r, "OvertimeHours"))}h` },
     { label: "Domingos", key: "WorkedSundays", render: (r) => formatInt(g(r, "WorkedSundays")) }
@@ -229,7 +234,7 @@ function renderRankings(rankings) {
       <h3>${title}</h3>
       <table class="data-table">
         <thead><tr><th>#</th><th>Nome</th><th>Producao</th><th>Meta</th><th>%</th><th>Dif.</th></tr></thead>
-        <tbody>${rows.map((r) => `<tr><td>${g(r, "Rank")}</td><td>${g(r, "Name")}</td><td>${formatNumber(g(r, "Production"))}</td><td>${formatNumber(g(r, "Meta"))}</td><td>${formatNumber(g(r, "Percent"))}%</td><td>${formatNumber(g(r, "Difference"))}</td></tr>`).join("")}</tbody>
+        <tbody>${rows.map((r) => `<tr><td>${g(r, "Rank")}</td><td>${g(r, "Name")}</td><td>${formatNumber(g(r, "Production"))}</td><td>${formatNumber(g(r, "Meta"))}</td><td>${formatPercent(g(r, "Percent"))}</td><td>${formatNumber(g(r, "Difference"))}</td></tr>`).join("")}</tbody>
       </table>
     </article>`).join("");
 }
@@ -245,16 +250,37 @@ function metricBars(containerId, rows) {
 }
 
 function renderShiftComparison(comparison) {
-  const day = g(comparison, "Day") || {};
-  const night = g(comparison, "Night") || {};
-  metricBars("shiftChart", [
-    { label: "Dia - Producao", value: g(day, "Production") },
-    { label: "Dia - Eficiencia", value: g(day, "Efficiency") },
-    { label: "Dia - Kadouritsu", value: g(day, "Kadouritsu") },
-    { label: "Noite - Producao", value: g(night, "Production") },
-    { label: "Noite - Eficiencia", value: g(night, "Efficiency") },
-    { label: "Noite - Kadouritsu", value: g(night, "Kadouritsu") }
-  ]);
+  const points = g(comparison, "Points") || [];
+  renderLineChart("shiftChart", points);
+}
+
+function renderLineChart(containerId, points) {
+  const el = $(containerId);
+  if (!points.length) {
+    el.innerHTML = "<p>Sem dados para comparar os turnos.</p>";
+    return;
+  }
+
+  const width = 900;
+  const height = 280;
+  const pad = 34;
+  const max = Math.max(100, ...points.flatMap((p) => [Number(g(p, "DayKadouritsu") || 0), Number(g(p, "NightKadouritsu") || 0)]));
+  const x = (index) => points.length === 1 ? width / 2 : pad + (index * (width - pad * 2)) / (points.length - 1);
+  const y = (value) => height - pad - (Number(value || 0) / max) * (height - pad * 2);
+  const path = (key) => points.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${y(g(p, key)).toFixed(1)}`).join(" ");
+  const dots = (key, cls) => points.map((p, i) => `<circle class="${cls}" cx="${x(i).toFixed(1)}" cy="${y(g(p, key)).toFixed(1)}" r="4"><title>${g(p, "Day")}: ${formatPercent(g(p, key))}</title></circle>`).join("");
+
+  el.innerHTML = `
+    <div class="legend"><span class="line-dot day"></span>Dia Kadouritsu medio <span class="line-dot night"></span>Noite Kadouritsu medio</div>
+    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Kadouritsu medio por dia e turno">
+      <line class="axis" x1="${pad}" y1="${height - pad}" x2="${width - pad}" y2="${height - pad}"></line>
+      <line class="axis" x1="${pad}" y1="${pad}" x2="${pad}" y2="${height - pad}"></line>
+      <path class="line day-line" d="${path("DayKadouritsu")}"></path>
+      <path class="line night-line" d="${path("NightKadouritsu")}"></path>
+      ${dots("DayKadouritsu", "day-point")}
+      ${dots("NightKadouritsu", "night-point")}
+    </svg>
+    <div class="line-labels">${points.map((p) => `<span>${String(g(p, "Day")).slice(5)}</span>`).join("")}</div>`;
 }
 
 function renderGroupComparison(comparison) {
@@ -282,7 +308,7 @@ function renderSectors(rows) {
     { label: "%", render: (r) => percentBadge(g(r, "Percent")) },
     { label: "Operadores", render: (r) => formatInt(g(r, "Operators")) },
     { label: "Maquinas", render: (r) => formatInt(g(r, "Machines")) },
-    { label: "Kadouritsu", render: (r) => `${formatNumber(g(r, "Kadouritsu"))}%` }
+    { label: "Kadouritsu", render: (r) => formatPercent(g(r, "Kadouritsu")) }
   ], rows);
 }
 
@@ -294,7 +320,7 @@ function renderMachines(rows) {
     { label: "Producao", render: (r) => formatNumber(g(r, "Production")) },
     { label: "Rodando", render: (r) => `${formatNumber(g(r, "RunningHours"))}h` },
     { label: "Parado", render: (r) => `${formatNumber(g(r, "StoppedHours"))}h` },
-    { label: "Kadouritsu", render: (r) => `${formatNumber(g(r, "Kadouritsu"))}%` },
+    { label: "Kadouritsu", render: (r) => formatPercent(g(r, "Kadouritsu")) },
     { label: "PartCode", render: (r) => g(r, "PartCode") || "-" }
   ], rows);
 }
