@@ -317,6 +317,7 @@ namespace TeamOps.UI.Forms
                             inactiveMinutes = machine.InactiveMinutes,
                             errorMinutes = machine.ErrorMinutes,
                             totalMinutes = machine.TotalMinutes,
+                            productionDenominatorMinutes = machine.ProductionDenominatorMinutes,
                             productionPercent = machine.ProductionPercent,
                             enteredAreaAverage = machine.EnteredAreaAverage,
                             areaAverageReason = machine.AreaAverageReason,
@@ -656,7 +657,12 @@ namespace TeamOps.UI.Forms
                             coverageMode = entry.CoverageMode,
                             isPartialCoverage = entry.IsPartialCoverage,
                             effectiveMinutes = entry.EffectiveMinutes,
-                            plannedMinutes = entry.PlannedMinutes
+                            plannedMinutes = entry.PlannedMinutes,
+                            eventsCount = entry.EventsCount,
+                            countsInAverage = entry.CountsInAverage,
+                            averageReason = entry.AverageReason,
+                            windowStart = entry.WindowStart?.ToString("yyyy-MM-dd HH:mm:ss"),
+                            windowEnd = entry.WindowEnd?.ToString("yyyy-MM-dd HH:mm:ss")
                         })
                     }
                 };

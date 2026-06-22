@@ -81,6 +81,10 @@ switch (command)
         RunValidateReports(args.Skip(1).ToArray());
         break;
 
+    case "validate-yakin-production":
+        RunValidateYakinProduction(args.Skip(1).ToArray());
+        break;
+
     case "validate-overtime-rules":
         RunValidateOvertimeRules();
         break;
@@ -122,6 +126,7 @@ void PrintHelp()
     Console.WriteLine("  production-diagnostics");
     Console.WriteLine("  production-audit --date yyyy-MM-dd [--sector dad|gbareru]");
     Console.WriteLine("  validate-reports --date yyyy-MM-dd --shift noite --sector gbareru [--area Area1] [--machine K09] [--operator all|FJ]");
+    Console.WriteLine("  validate-yakin-production --date yyyy-MM-dd [--operator CODIGOFJ]");
     Console.WriteLine("  validate-overtime-rules");
     Console.WriteLine("  validate-overtime-real --date yyyy-MM-dd --shift yakin [--operator CODIGOFJ]");
     Console.WriteLine("  ec2-diagnostics");
@@ -2105,6 +2110,73 @@ void RunValidateReports(string[] validateArgs)
     Console.WriteLine($"  TotalMs={totalWatch.ElapsedMilliseconds}");
 }
 
+void RunValidateYakinProduction(string[] validateArgs)
+{
+    var options = ValidateYakinProductionOptions.Parse(validateArgs);
+    using var conn = factory.CreateOpenConnection();
+    ProductionSchemaMigrator.Ensure(conn);
+    new TeamOps.UI.Services.HaidaiModuleService(factory).EnsureSchema();
+
+    var shift = ResolveValidateShift(conn, "yakin");
+    var operatorCodes = options.Operator.Equals("all", StringComparison.OrdinalIgnoreCase)
+        ? conn.Query<string>(
+                @"
+                    SELECT DISTINCT COALESCE(OperatorCodigoFJ, '')
+                    FROM HaidaiAssignments
+                    WHERE date(ScheduleDate) = date(@date)
+                      AND ShiftId = @shiftId
+                      AND COALESCE(IsLineupActive, 1) = 1
+                      AND COALESCE(LocalId, 0) > 0
+                      AND trim(COALESCE(OperatorCodigoFJ, '')) <> ''
+                    ORDER BY OperatorCodigoFJ;",
+                new
+                {
+                    date = options.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    shiftId = shift.Id
+                })
+            .ToList()
+        : new List<string> { options.Operator };
+
+    var filter = new ProductionDashboardFilter
+    {
+        Date = options.Date.Date,
+        ShiftId = shift.Id,
+        SectorId = 0,
+        LocalId = 0,
+        MachineId = 0
+    };
+
+    Console.WriteLine("=== VALIDATE YAKIN PRODUCTION ===");
+    Console.WriteLine($"Database={settings.DatabasePath}");
+    Console.WriteLine($"BaseDate={options.Date:yyyy-MM-dd}");
+    Console.WriteLine($"Shift={shift.Id} {shift.NamePt} {shift.NameJp}".Trim());
+    Console.WriteLine("Columns=OperatorId|OperatorName|Date|Shift|Area|Kadouritsu|RunningMinutes|TotalWindowMinutes|EventsCount|Coverage|CountsInAverage|Reason|WindowStart|WindowEnd|Suspicious");
+
+    var suspiciousCount = 0;
+    foreach (var operatorCode in operatorCodes)
+    {
+        var detail = analytics.GetOperatorDetail(filter, operatorCode);
+        foreach (var entry in detail.Entries.OrderBy(item => item.Date).ThenBy(item => item.LocalNamePt, StringComparer.OrdinalIgnoreCase))
+        {
+            var suspicious = entry.KadouritsuPercent == 0
+                && entry.RunningMinutes == 0
+                && entry.EffectiveMinutes == 0
+                && string.Equals(entry.CoverageMode, "full", StringComparison.OrdinalIgnoreCase);
+
+            if (suspicious)
+            {
+                suspiciousCount++;
+            }
+
+            Console.WriteLine(
+                $"{detail.OperatorCodigoFJ}|{detail.OperatorNamePt}|{entry.Date:yyyy-MM-dd}|{shift.NamePt}|{entry.LocalNamePt}|{entry.KadouritsuPercent:F1}|{entry.RunningMinutes:F1}|{entry.EffectiveMinutes:F1}/{entry.PlannedMinutes:F1}|{entry.EventsCount}|{entry.CoverageMode}|{(entry.CountsInAverage ? "sim" : "nao")}|{entry.AverageReason}|{entry.WindowStart:yyyy-MM-dd HH:mm:ss}|{entry.WindowEnd:yyyy-MM-dd HH:mm:ss}|{(suspicious ? "yes" : "no")}");
+        }
+    }
+
+    Console.WriteLine($"OperatorsChecked={operatorCodes.Count}");
+    Console.WriteLine($"SuspiciousRows={suspiciousCount}");
+}
+
 static void RequireTable(System.Data.IDbConnection conn, string tableName, List<string> issues)
 {
     var exists = conn.ExecuteScalar<int>(
@@ -2996,6 +3068,37 @@ sealed class ValidateReportsOptions
             Sector = sector,
             Area = area,
             Machine = machine,
+            Operator = string.IsNullOrWhiteSpace(operatorCode) ? "all" : operatorCode
+        };
+    }
+}
+
+sealed class ValidateYakinProductionOptions
+{
+    public DateTime Date { get; private init; } = DateTime.Today;
+    public string Operator { get; private init; } = "all";
+
+    public static ValidateYakinProductionOptions Parse(string[] args)
+    {
+        var date = DateTime.Today;
+        var operatorCode = "all";
+
+        for (var index = 0; index < args.Length; index++)
+        {
+            var arg = args[index].Trim();
+            if (arg.Equals("--date", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+            {
+                date = DateTime.Parse(args[++index], CultureInfo.InvariantCulture).Date;
+            }
+            else if (arg.Equals("--operator", StringComparison.OrdinalIgnoreCase) && index + 1 < args.Length)
+            {
+                operatorCode = args[++index].Trim();
+            }
+        }
+
+        return new ValidateYakinProductionOptions
+        {
+            Date = date,
             Operator = string.IsNullOrWhiteSpace(operatorCode) ? "all" : operatorCode
         };
     }

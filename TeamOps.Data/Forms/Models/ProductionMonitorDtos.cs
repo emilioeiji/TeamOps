@@ -138,6 +138,7 @@ namespace TeamOps.UI.Forms.Models
         public double InactiveMinutes { get; set; }
         public double ErrorMinutes { get; set; }
         public double TotalMinutes { get; set; }
+        public double ProductionDenominatorMinutes { get; set; }
         public double ProductionPercent { get; set; }
         public List<string> ScheduledOperatorsPt { get; } = new();
         public List<string> ScheduledOperatorsJp { get; } = new();
@@ -272,5 +273,10 @@ namespace TeamOps.UI.Forms.Models
         public bool IsPartialCoverage { get; set; }
         public double EffectiveMinutes { get; set; }
         public double PlannedMinutes { get; set; }
+        public int EventsCount { get; set; }
+        public bool CountsInAverage { get; set; } = true;
+        public string AverageReason { get; set; } = "ok";
+        public DateTime? WindowStart { get; set; }
+        public DateTime? WindowEnd { get; set; }
     }
 }

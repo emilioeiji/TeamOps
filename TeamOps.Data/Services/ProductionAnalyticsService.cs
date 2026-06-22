@@ -24,18 +24,17 @@ namespace TeamOps.Services
         public ProductionShiftPeriod GetShiftPeriod(DateTime date, string shiftName)
         {
             var normalized = (shiftName ?? string.Empty).Trim().ToLowerInvariant();
-            var isNightShift = normalized.Contains("yakin", StringComparison.Ordinal)
-                               || normalized.Contains("ﾃ･ﾂ､ﾅ禿･窶ｹﾂ､", StringComparison.Ordinal);
+            var isNightShift = IsYakinShiftHint(normalized);
 
             return isNightShift
                 ? new ProductionShiftPeriod
                 {
-                    Start = date.Date.AddHours(20).AddMinutes(35),
+                    Start = date.Date.AddHours(20).AddMinutes(30),
                     End = date.Date.AddDays(1).AddHours(8).AddMinutes(35)
                 }
                 : new ProductionShiftPeriod
                 {
-                    Start = date.Date.AddHours(8).AddMinutes(35),
+                    Start = date.Date.AddHours(8).AddMinutes(30),
                     End = date.Date.AddHours(20).AddMinutes(35)
                 };
         }
@@ -66,7 +65,9 @@ namespace TeamOps.Services
             var shift = shifts.FirstOrDefault(item => item.Id == filter.ShiftId)
                 ?? throw new InvalidOperationException("Turno nao encontrado para o monitor de producao.");
 
-            var period = GetShiftPeriod(filter.Date, BuildShiftPeriodHint(shift.NamePt, shift.NameJp));
+            var selectedShiftName = BuildShiftPeriodHint(shift.NamePt, shift.NameJp);
+            var operationalDate = ResolveOperationalDate(filter.Date, selectedShiftName);
+            var period = GetShiftPeriod(operationalDate, selectedShiftName);
             var dashboard = new ProductionDashboardDto
             {
                 Period = period
@@ -123,9 +124,9 @@ namespace TeamOps.Services
             }
 
             var machineIds = machines.Select(machine => machine.Id).ToArray();
-            var historyStartDate = filter.Date.Date.AddDays(-(HistoryDays - 1));
+            var historyStartDate = operationalDate.AddDays(-(HistoryDays - 1));
             var rangeStart = historyStartDate.AddDays(-1);
-            var rangeEnd = filter.Date.Date.AddDays(2);
+            var rangeEnd = operationalDate.AddDays(2);
 
             var statusRows = conn.Query<StatusRow>(
                 @"
@@ -188,7 +189,7 @@ namespace TeamOps.Services
                       AND COALESCE(ha.LocalId, 0) > 0;",
                 new
                 {
-                    scheduleDate = filter.Date.ToString("yyyy-MM-dd"),
+                    scheduleDate = operationalDate.ToString("yyyy-MM-dd"),
                     shiftId = filter.ShiftId
                 }
             ).ToList(), out _);
@@ -210,7 +211,7 @@ namespace TeamOps.Services
                 new
                 {
                     startDate = historyStartDate.ToString("yyyy-MM-dd"),
-                    endDate = filter.Date.ToString("yyyy-MM-dd"),
+                    endDate = operationalDate.ToString("yyyy-MM-dd"),
                     shiftId = filter.ShiftId
                 }
             ).ToList(), out _);
@@ -241,7 +242,7 @@ namespace TeamOps.Services
                     {
                         OperatorCodes = scheduleOperatorCodes,
                         startDate = historyStartDate.ToString("yyyy-MM-dd"),
-                        endDate = filter.Date.ToString("yyyy-MM-dd")
+                        endDate = operationalDate.ToString("yyyy-MM-dd")
                     }).ToList(), out _);
 
             var latestMovementByOperatorDay = movementRows
@@ -380,8 +381,10 @@ namespace TeamOps.Services
 
             foreach (var shiftItem in shifts)
             {
+                var comparisonShiftName = BuildShiftPeriodHint(shiftItem.NamePt, shiftItem.NameJp);
+                var comparisonDate = ResolveOperationalDate(filter.Date, comparisonShiftName);
                 var comparisonPeriod = ResolveEffectivePeriod(
-                    GetShiftPeriod(filter.Date, BuildShiftPeriodHint(shiftItem.NamePt, shiftItem.NameJp)),
+                    GetShiftPeriod(comparisonDate, comparisonShiftName),
                     latestKnownEventTime);
                 var comparisonSummaries = BuildMachineSummaries(
                     machines,
@@ -411,11 +414,12 @@ namespace TeamOps.Services
 
             for (var offset = HistoryDays - 1; offset >= 0; offset--)
             {
-                var day = filter.Date.Date.AddDays(-offset);
+                var day = operationalDate.AddDays(-offset);
                 foreach (var shiftItem in shifts)
                 {
+                    var trendShiftName = BuildShiftPeriodHint(shiftItem.NamePt, shiftItem.NameJp);
                     var dayPeriod = ResolveEffectivePeriod(
-                        GetShiftPeriod(day, BuildShiftPeriodHint(shiftItem.NamePt, shiftItem.NameJp)),
+                        GetShiftPeriod(day, trendShiftName),
                         latestKnownEventTime);
                     var daySummaries = BuildMachineSummaries(
                         machines,
@@ -443,7 +447,6 @@ namespace TeamOps.Services
                 }
             }
 
-            var selectedShiftName = BuildShiftPeriodHint(shift.NamePt, shift.NameJp);
             foreach (var area in dashboard.Areas.OrderBy(item => item.LocalNamePt, StringComparer.OrdinalIgnoreCase))
             {
                 var machineRows = machines
@@ -459,7 +462,7 @@ namespace TeamOps.Services
 
                 for (var offset = HistoryDays - 1; offset >= 0; offset--)
                 {
-                    var day = filter.Date.Date.AddDays(-offset);
+                    var day = operationalDate.AddDays(-offset);
                     var dayPeriod = ResolveEffectivePeriod(
                         GetShiftPeriod(day, selectedShiftName),
                         latestKnownEventTime);
@@ -677,9 +680,10 @@ namespace TeamOps.Services
                 ?? throw new InvalidOperationException("Turno nao encontrado para o historico do operador.");
 
             var selectedShiftHint = BuildShiftPeriodHint(shift.NamePt, shift.NameJp);
-            var historyStartDate = filter.Date.Date.AddDays(-(HistoryDays - 1));
+            var operationalDate = ResolveOperationalDate(filter.Date, selectedShiftHint);
+            var historyStartDate = operationalDate.AddDays(-(HistoryDays - 1));
             var rangeStart = historyStartDate.AddDays(-1);
-            var rangeEnd = filter.Date.Date.AddDays(2);
+            var rangeEnd = operationalDate.AddDays(2);
 
             var detail = new ProductionOperatorDetailDto
             {
@@ -708,7 +712,7 @@ namespace TeamOps.Services
                 new
                 {
                     startDate = historyStartDate.ToString("yyyy-MM-dd"),
-                    endDate = filter.Date.ToString("yyyy-MM-dd"),
+                    endDate = operationalDate.ToString("yyyy-MM-dd"),
                     shiftId = filter.ShiftId,
                     codigoFJ = operatorCodigoFJ.Trim(),
                     localId = filter.LocalId
@@ -855,7 +859,7 @@ namespace TeamOps.Services
                 {
                     codigoFJ = operatorCodigoFJ.Trim(),
                     startDate = historyStartDate.ToString("yyyy-MM-dd"),
-                    endDate = filter.Date.ToString("yyyy-MM-dd")
+                    endDate = operationalDate.ToString("yyyy-MM-dd")
                 })
                 .ToList();
 
@@ -885,7 +889,7 @@ namespace TeamOps.Services
                 }
 
                 var baselinePeriod = GetShiftPeriod(scheduleRow.ScheduleDate.Date, selectedShiftHint);
-                if (scheduleRow.ScheduleDate.Date == filter.Date.Date)
+                if (scheduleRow.ScheduleDate.Date == operationalDate)
                 {
                     baselinePeriod = ResolveEffectivePeriod(baselinePeriod, latestKnownEventTime);
                 }
@@ -894,6 +898,18 @@ namespace TeamOps.Services
                 latestReplacementMovementByDay.TryGetValue(dayKey, out var replacementMovement);
                 var coverage = DescribeCoverage(baselinePeriod, movement, replacementMovement);
                 var period = coverage.EffectivePeriod;
+                var eventsCount = CountEventsInPeriod(localMachines, eventsByMachine, period);
+                var countsInAverage = ShouldCountOperatorHistoryEntry(
+                    coverage,
+                    eventsCount,
+                    out var averageReason);
+
+                if (!countsInAverage && coverage.EffectiveMinutes <= 0)
+                {
+                    WriteDiagnostic(
+                        $"[ProductionMonitor][YakinOperatorHistory] Operator={operatorCodigoFJ.Trim()} Date={scheduleRow.ScheduleDate:yyyy-MM-dd} Shift={selectedShiftHint} Area={scheduleRow.LocalId} WindowStart={period.Start:yyyy-MM-dd HH:mm:ss} WindowEnd={period.End:yyyy-MM-dd HH:mm:ss} EventsCount={eventsCount} CountsInAverage=nao Reason={averageReason}");
+                    continue;
+                }
 
                 var summaries = BuildMachineSummaries(
                     localMachines,
@@ -922,7 +938,12 @@ namespace TeamOps.Services
                         CoverageMode = coverage.Mode,
                         IsPartialCoverage = coverage.IsPartial,
                         EffectiveMinutes = Math.Round(coverage.EffectiveMinutes, 1),
-                        PlannedMinutes = Math.Round(coverage.PlannedMinutes, 1)
+                        PlannedMinutes = Math.Round(coverage.PlannedMinutes, 1),
+                        EventsCount = eventsCount,
+                        CountsInAverage = countsInAverage,
+                        AverageReason = averageReason,
+                        WindowStart = period.Start,
+                        WindowEnd = period.End
                     });
                 }
 
@@ -940,11 +961,12 @@ namespace TeamOps.Services
                 ? detail.LocalNamesPt.Count
                 : detail.LocalNamesJp.Count;
             detail.TotalRunningMinutes = Math.Round(detail.Entries.Sum(entry => entry.RunningMinutes), 1);
-            detail.AverageKadouritsuPercent = detail.Entries.Count == 0
+            var averageEntries = detail.Entries.Where(entry => entry.CountsInAverage).ToList();
+            detail.AverageKadouritsuPercent = averageEntries.Count == 0
                 ? 0
-                : Math.Round(detail.Entries.Average(entry => entry.KadouritsuPercent), 1);
-            detail.FullCoverageDays = detail.Entries.Count(entry => !entry.IsPartialCoverage);
-            detail.PartialCoverageDays = detail.Entries.Count(entry => entry.IsPartialCoverage);
+                : Math.Round(averageEntries.Average(entry => entry.KadouritsuPercent), 1);
+            detail.FullCoverageDays = averageEntries.Count(entry => !entry.IsPartialCoverage);
+            detail.PartialCoverageDays = averageEntries.Count(entry => entry.IsPartialCoverage);
 
             return detail;
         }
@@ -965,6 +987,34 @@ namespace TeamOps.Services
             }
 
             return string.IsNullOrWhiteSpace(combined) ? "hirukin" : combined;
+        }
+
+        private static bool IsYakinShiftHint(string shiftName)
+        {
+            var normalized = (shiftName ?? string.Empty).Trim().ToLowerInvariant();
+            return normalized.Contains("yakin", StringComparison.Ordinal)
+                || normalized.Contains("noite", StringComparison.Ordinal)
+                || normalized.Contains("night", StringComparison.Ordinal)
+                || normalized.Contains("\u591C", StringComparison.Ordinal)
+                || normalized.Contains("\u591C\u52E4", StringComparison.Ordinal)
+                || normalized.Contains("ﾃ･ﾂ､ﾅ禿･窶ｹﾂ､", StringComparison.Ordinal);
+        }
+
+        private static DateTime ResolveOperationalDate(DateTime requestedDate, string shiftName)
+        {
+            var date = requestedDate.Date;
+            if (!IsYakinShiftHint(shiftName))
+            {
+                return date;
+            }
+
+            var now = DateTime.Now;
+            if (date == now.Date && now.TimeOfDay <= new TimeSpan(8, 35, 0))
+            {
+                return date.AddDays(-1);
+            }
+
+            return date;
         }
 
         private static Dictionary<int, Ec2StateRow> LoadEc2States(System.Data.IDbConnection conn, IReadOnlyCollection<int> machineIds)
@@ -1047,6 +1097,10 @@ namespace TeamOps.Services
                 var displayCode = NormalizeStatusCode(statusSectorId, rawStatusCode, statusDefinitions);
                 ec2States.TryGetValue(machine.Id, out var ec2State);
 
+                var productionDenominatorMinutes = metrics.ProductionDenominatorMinutes > 0
+                    ? metrics.ProductionDenominatorMinutes
+                    : metrics.TotalMinutes;
+
                 var summary = new ProductionMachineSummaryDto
                 {
                     MachineId = machine.Id,
@@ -1091,9 +1145,10 @@ namespace TeamOps.Services
                     InactiveMinutes = metrics.InactiveMinutes,
                     ErrorMinutes = metrics.ErrorMinutes,
                     TotalMinutes = metrics.TotalMinutes,
-                    ProductionPercent = metrics.TotalMinutes <= 0
+                    ProductionDenominatorMinutes = productionDenominatorMinutes,
+                    ProductionPercent = productionDenominatorMinutes <= 0
                         ? 0
-                        : Math.Round((metrics.RunningMinutes / metrics.TotalMinutes) * 100d, 1)
+                        : Math.Round((metrics.RunningMinutes / productionDenominatorMinutes) * 100d, 1)
                 };
 
                 if (ec2State != null)
@@ -1114,6 +1169,7 @@ namespace TeamOps.Services
                         summary.InactiveMinutes = 0;
                         summary.ErrorMinutes = 0;
                         summary.TotalMinutes = 0;
+                        summary.ProductionDenominatorMinutes = 0;
                         summary.ProductionPercent = 0;
                     }
                     else if (ec2State.IsRunning == 0)
@@ -1220,6 +1276,9 @@ namespace TeamOps.Services
         {
             var machineList = machines.ToList();
             var totalMinutes = machineList.Sum(machine => machine.TotalMinutes);
+            var productionDenominatorMinutes = machineList.Sum(machine => machine.ProductionDenominatorMinutes > 0
+                ? machine.ProductionDenominatorMinutes
+                : machine.TotalMinutes);
             var runningMinutes = machineList.Sum(machine => machine.RunningMinutes);
             var operatingProcessTotal = 0d;
             var operatingProcessCount = 0;
@@ -1260,9 +1319,9 @@ namespace TeamOps.Services
                 InactiveMinutes: Math.Round(machineList.Sum(machine => machine.InactiveMinutes), 1),
                 ErrorMinutes: Math.Round(machineList.Sum(machine => machine.ErrorMinutes), 1),
                 TotalMinutes: Math.Round(totalMinutes, 1),
-                ProductionPercent: totalMinutes <= 0
+                ProductionPercent: productionDenominatorMinutes <= 0
                     ? 0
-                    : Math.Round((runningMinutes / totalMinutes) * 100d, 1),
+                    : Math.Round((runningMinutes / productionDenominatorMinutes) * 100d, 1),
                 MachinesRunning: machineList.Count(machine => machine.DisplayCode == 0),
                 MachinesStopped: machineList.Count(machine => machine.DisplayCode == 3),
                 MachinesIgnored: machineList.Count(machine => machine.IsEc2Ignored),
@@ -1418,6 +1477,9 @@ namespace TeamOps.Services
             var inactive = 0d;
             var error = 0d;
             var noCount = 0d;
+            var dadProductionDenominator = 0d;
+            var useDadProductionRule = IsDadSector(machineSectorId)
+                || machineEvents.Any(item => IsDadSector(item.SectorId));
             var total = Math.Max(0, (period.End - period.Start).TotalMinutes);
 
             var seed = machineEvents
@@ -1436,11 +1498,13 @@ namespace TeamOps.Services
                     AddMinutes(
                         ResolveStatusDefinition(currentSectorId, currentStatus ?? 1, statusDefinitions),
                         (machineEvent.EventDateTime - cursor).TotalMinutes,
+                        IsDadSector(currentSectorId ?? machineSectorId),
                         ref running,
                         ref stopped,
                         ref inactive,
                         ref error,
-                        ref noCount);
+                        ref noCount,
+                        ref dadProductionDenominator);
                 }
 
                 cursor = machineEvent.EventDateTime < period.Start
@@ -1455,14 +1519,21 @@ namespace TeamOps.Services
                 AddMinutes(
                     ResolveStatusDefinition(currentSectorId, currentStatus ?? 1, statusDefinitions),
                     (period.End - cursor).TotalMinutes,
+                    IsDadSector(currentSectorId ?? machineSectorId),
                     ref running,
                     ref stopped,
                     ref inactive,
                     ref error,
-                    ref noCount);
+                    ref noCount,
+                    ref dadProductionDenominator);
             }
 
-            return new ProductionMetrics(running, stopped, inactive, error, Math.Max(0, total - noCount));
+            var effectiveTotal = Math.Max(0, total - noCount);
+            var productionDenominator = useDadProductionRule
+                ? Math.Max(0, dadProductionDenominator)
+                : effectiveTotal;
+
+            return new ProductionMetrics(running, stopped, inactive, error, effectiveTotal, productionDenominator);
         }
 
         private static ProductionShiftPeriod ResolveEffectivePeriod(ProductionShiftPeriod basePeriod, DateTime? latestKnownEventTime)
@@ -1628,6 +1699,51 @@ namespace TeamOps.Services
                 effectiveMinutes);
         }
 
+        private static int CountEventsInPeriod(
+            IReadOnlyCollection<MachineRow> machines,
+            IReadOnlyDictionary<int, List<EventRow>> eventsByMachine,
+            ProductionShiftPeriod period)
+        {
+            if (period.End <= period.Start)
+            {
+                return 0;
+            }
+
+            var count = 0;
+            foreach (var machine in machines)
+            {
+                if (!eventsByMachine.TryGetValue(machine.Id, out var machineEvents))
+                {
+                    continue;
+                }
+
+                count += machineEvents.Count(item => item.EventDateTime >= period.Start && item.EventDateTime <= period.End);
+            }
+
+            return count;
+        }
+
+        private static bool ShouldCountOperatorHistoryEntry(
+            ProductionCoverageDescriptor coverage,
+            int eventsCount,
+            out string reason)
+        {
+            if (coverage.PlannedMinutes <= 0 || coverage.EffectiveMinutes <= 0)
+            {
+                reason = "no_operational_window_or_events";
+                return false;
+            }
+
+            if (eventsCount <= 0)
+            {
+                reason = "no_events_in_operational_window";
+                return false;
+            }
+
+            reason = "ok";
+            return true;
+        }
+
         private static DateTime? ParseMovementMoment(string day, string eventTime, string eventDateTime)
         {
             if (!string.IsNullOrWhiteSpace(eventDateTime)
@@ -1681,21 +1797,33 @@ namespace TeamOps.Services
             return 1;
         }
 
+        private static bool IsDadSector(int? sectorId)
+            => sectorId.GetValueOrDefault() == 2;
+
         private static void AddMinutes(
             StatusDefinitionRow statusDefinition,
             double minutes,
+            bool useDadProductionRule,
             ref double running,
             ref double stopped,
             ref double inactive,
             ref double error,
-            ref double noCount)
+            ref double noCount,
+            ref double dadProductionDenominator)
         {
             if (minutes <= 0)
             {
                 return;
             }
 
-            switch (NormalizeClassification(statusDefinition.Classification, statusDefinition.DisplayCode))
+            var classification = NormalizeClassification(statusDefinition.Classification, statusDefinition.DisplayCode);
+            if (useDadProductionRule && !string.Equals(classification, "StopCounts", StringComparison.OrdinalIgnoreCase))
+            {
+                // DAD follows the spreadsheet rule: running / (all motive minutes - StopCounts machine-status minutes).
+                dadProductionDenominator += minutes;
+            }
+
+            switch (classification)
             {
                 case "Running":
                     running += minutes;
@@ -2041,6 +2169,7 @@ namespace TeamOps.Services
             double StoppedMinutes,
             double InactiveMinutes,
             double ErrorMinutes,
-            double TotalMinutes);
+            double TotalMinutes,
+            double ProductionDenominatorMinutes);
     }
 }
