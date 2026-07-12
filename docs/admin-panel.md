@@ -68,6 +68,126 @@ Os indicadores mudam conforme o cadastro. Em geral mostram total, registros visi
 | Pessoas | Shain | Editavel | Base simples de nomes romanji e nihongo para referencias internas. | Nome Romanji, Nome Nihongo. |
 | Outros | Log do Sistema | Somente leitura | Historico de eventos gravados pelo sistema. | Data/Hora, FJ, Modulo, Acao, Target, Detalhes. |
 
+## Detalhamento item por item
+
+### Turnos
+
+Mantem a lista de turnos usada pelo dashboard, tarefas, filtros e outras telas que dependem de turno. Cada registro possui **Nome PT** e **Nome JP**. Permite criar, editar e excluir turnos. Alteracoes aqui podem afetar filtros e exibicoes que esperam o nome do turno cadastrado.
+
+### Grupos
+
+Mantem agrupamentos de lideranca e leitura de area. Cada grupo possui **Nome PT** e **Nome JP**. Permite criar, editar e excluir grupos. E usado como base para organizacao operacional e pode impactar telas que agrupam operadores ou leituras por lideranca.
+
+### Setores
+
+Mantem os setores exibidos em leituras, filtros, presenca, locais e maquinas. Cada setor possui **Nome PT** e **Nome JP**. Permite criar, editar e excluir setores. E um cadastro sensivel porque locais, maquinas, tempos de procedimento e filtros operacionais dependem dele.
+
+### Locais
+
+Mantem locais, areas e codigos curtos usados em Haidai, producao, presence, exportacoes e vinculacao de maquinas. Campos: **Nome PT**, **Nome JP**, **Codigo Curto** e **Setor**. Permite criar, editar e excluir locais. A lista mostra tambem quantas maquinas ativas estao vinculadas a cada local.
+
+Funcionalidades especificas:
+
+- Ao digitar o nome PT em um novo local, o sistema sugere automaticamente o **Codigo Curto** enquanto o usuario ainda nao editou esse campo.
+- O codigo curto e obrigatorio e nao pode se repetir dentro do mesmo setor.
+- A metrica do cadastro mostra total de locais, locais com codigo, locais com maquinas e quantidade de setores usados.
+
+### Equipamentos
+
+Mantem equipamentos vinculados a cadastros operacionais, principalmente rotinas que precisam selecionar um equipamento em registros internos. Cada equipamento possui **Nome PT** e **Nome JP**. Permite criar, editar e excluir equipamentos.
+
+### Maquinas
+
+Mantem o cadastro das maquinas usadas pelo monitor de producao e relatorios. Campos: **Nome PT**, **Nome JP**, **Codigo da Maquina**, **Linha**, **Setor**, **Local** e **Ativa**. Permite criar, editar e excluir maquinas.
+
+Funcionalidades especificas:
+
+- O **Codigo da Maquina** e obrigatorio.
+- Se Nome PT ou Nome JP ficarem vazios, o sistema usa o codigo da maquina como nome.
+- A chave da maquina e formada por codigo + linha e nao pode duplicar outra maquina.
+- Ao selecionar um **Local**, o sistema sincroniza automaticamente o **Setor** da maquina com o setor do local.
+- A tabela destaca pendencias quando a maquina esta sem local, sem setor ou com setor diferente do setor do local.
+- As metricas mostram total, maquinas com local, maquinas ativas e quantidade de pendencias.
+
+### Pendencias de Maquina
+
+Consulta somente leitura para encontrar inconsistencias no cadastro de maquinas. Nao possui botao **Novo**, **Editar** ou **Excluir**. Mostra codigo da maquina, linha, setor da maquina, local e pendencia encontrada.
+
+Tipos de pendencia exibidos:
+
+- Maquina sem `LocalId`.
+- Maquina sem `SectorId`.
+- Local vinculado que nao existe mais.
+- `SectorId` da maquina diferente do setor cadastrado no local.
+
+Use esta tela como checklist antes de validar relatorios e indicadores de producao.
+
+### Status de Maquina
+
+Mantem os status brutos importados dos arquivos de producao. Campos: **Setor**, **Codigo**, **Visual**, **Regra eficiencia**, **Nome PT**, **Nome JP**, **Cor** e **Cor do Texto**. Permite criar, editar e excluir status.
+
+Funcionalidades especificas:
+
+- **Setor** vazio significa status global/fallback.
+- **Codigo** representa o status bruto vindo da origem de producao.
+- **Visual** controla a classificacao visual exibida no sistema.
+- **Regra eficiencia** controla como o status entra no calculo de eficiencia.
+- Cores sao exibidas como amostras na tabela.
+- Classificacoes aceitas: `Running`, `StopCounts`, `StopNoCount` e `Error`.
+
+### Codigos da Producao
+
+Mantem a legenda visual dos codigos destacados na tela de producao. Campos: **Codigo**, **Cor**, **Cor do Texto**, **Descricao** e **Ativo**. Permite criar, editar e excluir codigos.
+
+Funcionalidades especificas:
+
+- O codigo e normalizado para maiusculo.
+- Nao permite duplicidade do mesmo codigo.
+- As cores devem estar em formato hexadecimal e sao exibidas como amostras na tabela.
+- O campo **Ativo** permite manter o cadastro historico sem usar o codigo na exibicao operacional.
+
+### Tempos de Procedimento
+
+Mantem tempos padrao usados na previsao de capacidade do G-Bareru. Campos: **Setor**, **Area opcional**, **Procedimento**, **Tempo padrao (min)** e **Ativo**. Permite criar, editar e excluir tempos.
+
+Funcionalidades especificas:
+
+- O tempo precisa ser maior que zero.
+- O mesmo procedimento nao pode ser duplicado para o mesmo setor/area.
+- Quando a area fica vazia, o registro funciona como padrao global do setor.
+- Procedimentos aceitos pela validacao atual: `ECII`, `BUNKATSU` e `DCS`.
+- A descricao da tela menciona `KYUKEI` para descanso padrao, mas a validacao atual do codigo nao aceita esse procedimento.
+
+### Categorias
+
+Mantem categorias usadas no Hikitsugui e em outros registros. Cada categoria possui **Nome PT** e **Nome JP**. Permite criar, editar e excluir categorias. Alteracoes podem afetar padronizacao e filtros de registros que usam categoria.
+
+### Motivos Follow
+
+Mantem os motivos padrao usados em registros de follow-up. Cada motivo possui **Nome PT** e **Nome JP**. Permite criar, editar e excluir motivos. E importante para padronizar analises e relatorios de follow-up.
+
+### Tipos Follow
+
+Mantem os tipos de acompanhamento usados nos formularios de follow. Cada tipo possui **Nome PT** e **Nome JP**. Permite criar, editar e excluir tipos. Ajuda a separar naturezas diferentes de acompanhamento e melhora a qualidade dos filtros.
+
+### Shain
+
+Mantem uma base simples de pessoas com **Nome Romanji** e **Nome Nihongo** para referencias internas. Permite criar, editar e excluir registros. E usado como cadastro auxiliar para exibicoes ou referencias que precisam dos dois formatos de nome.
+
+### Log do Sistema
+
+Consulta somente leitura do historico gravado em `SystemLog`. Nao possui botao **Novo**, **Editar** ou **Excluir**. Mostra **Data/Hora**, **FJ**, **Modulo**, **Acao**, **Target** e **Detalhes**.
+
+Funcionalidades especificas:
+
+- O filtro inicial consulta os ultimos 30 dias.
+- **Data inicial** e **Data final** definem o periodo consultado.
+- **Usuario** filtra por trecho do FJ.
+- **Modulo** filtra por trecho do modulo registrado.
+- **Acao** filtra por trecho da acao registrada.
+- **Atualizar** recarrega os dados pelo backend aplicando os filtros.
+- A consulta limita o retorno a 1000 linhas quando filtros sao enviados pelo painel.
+
 ## Regras e validacoes importantes
 
 - Cadastros simples de nomes exigem **Nome PT** e **Nome JP**.
