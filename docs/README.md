@@ -76,4 +76,4 @@ Alem dos arquivos Markdown, existe uma versao HTML em `docs/index.html`. Ela usa
 
 ## Manutencao da documentacao
 
-Toda nova documentacao criada dentro de `docs/` deve ser integrada ao `docs/index.html`, com link na lista de arquivos Markdown e, quando fizer sentido, uma secao ou card de resumo na pagina HTML.
+Toda nova documentacao criada dentro de `docs/` deve ser integrada ao `docs/index.html`, com conteudo consultavel diretamente na pagina HTML. O arquivo Markdown continua como fonte de edicao, mas o usuario nao deve precisar abrir o `.md` para acessar as informacoes principais. Inclua tambem o link na lista de arquivos Markdown.

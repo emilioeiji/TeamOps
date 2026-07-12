@@ -105,6 +105,54 @@
       margin-bottom: 4px;
       color: var(--navy);
     }
+    .doc-panel {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px;
+      background: #fff;
+      margin-top: 14px;
+    }
+    .screenshot-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .screenshot-grid img {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 18px;
+      font-size: 14px;
+    }
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      background: var(--soft);
+      color: var(--navy);
+    }
+    details {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin: 10px 0;
+      background: #fff;
+    }
+    summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--navy);
+    }
     .tag {
       display: inline-block;
       margin: 4px 6px 4px 0;
@@ -158,6 +206,8 @@
         <a href="#deployment">Deployment</a>
         <a href="#modulos">Modulos</a>
         <a href="#production-monitor">Producao</a>
+        <a href="#admin-panel">Admin</a>
+        <a href="#arquivos">Arquivos</a>
       </nav>
     </div>
   </header>
@@ -233,7 +283,190 @@
 
     <section id="admin-panel">
       <h2>Painel Admin</h2>
-      <p>O guia completo do painel Administracao esta em <code>docs/admin-panel.md</code>. Ele documenta os botoes, cadastros disponiveis, validacoes, filtros do log do sistema e prints da tela.</p>
+      <p>O painel <strong>Administracao</strong> centraliza cadastros e consultas tecnicas usados por producao, Haidai, presence, follow-up, relatorios e manutencao do proprio sistema. O acesso e restrito ao perfil administrativo pelo dashboard.</p>
+      <p>Arquivos principais: <code>TeamOps.UI/Forms/HTMLFormAdmin.cs</code>, <code>TeamOps.UI/ui/admin/index.html</code>, <code>TeamOps.UI/ui/admin/app.js</code> e <code>TeamOps.UI/ui/admin/style.css</code>.</p>
+
+      <div class="screenshot-grid">
+        <img src="screenshots/admin-panel-machines.png" alt="Painel admin - maquinas">
+        <img src="screenshots/admin-panel-modal.png" alt="Painel admin - modal de cadastro">
+        <img src="screenshots/admin-panel-system-log.png" alt="Painel admin - log do sistema">
+      </div>
+
+      <div class="doc-panel">
+        <h3>Estrutura da tela</h3>
+        <p>O cabecalho mostra o nome do modulo, uma descricao curta, o cadastro ativo e a quantidade de registros carregados. A lateral esquerda lista os cadastros por grupos: Base, Producao, Follow, Pessoas e Outros. A area central mostra o cadastro selecionado, busca, acoes, indicadores e tabela.</p>
+        <p>Os indicadores mudam conforme o cadastro. Em geral mostram total, registros visiveis e modo editavel/leitura. Em <strong>Maquinas</strong>, mostram total, maquinas com local, maquinas ativas e pendencias. Em <strong>Locais</strong>, mostram total, locais com codigo, locais com maquinas e setores. Em <strong>Pendencias de Maquina</strong>, mostram total e tipos de inconsistencias encontradas.</p>
+
+        <h3>Botao a botao</h3>
+        <table>
+          <thead>
+            <tr><th>Botao ou controle</th><th>Onde aparece</th><th>Funcionalidade</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Cartoes da barra lateral</td><td>Lateral esquerda</td><td>Trocam o cadastro ativo. Ao clicar, a tela limpa os registros atuais, carrega o novo cadastro pelo WinForms e atualiza titulo, descricao, metricas, colunas e botoes.</td></tr>
+            <tr><td>Buscar</td><td>Barra superior do cadastro</td><td>Filtra localmente as linhas carregadas. A busca considera as colunas exibidas do cadastro ativo, como codigo, nome, setor, local e validacao.</td></tr>
+            <tr><td>Novo</td><td>Cadastros editaveis</td><td>Abre o modal de criacao do cadastro ativo. Fica oculto e desabilitado em telas somente leitura, como Pendencias de Maquina e Log do Sistema.</td></tr>
+            <tr><td>Editar</td><td>Coluna Acoes da tabela</td><td>Abre o modal preenchido com os dados da linha selecionada. Ao salvar, envia a acao <code>update</code> para o WinForms.</td></tr>
+            <tr><td>Excluir</td><td>Coluna Acoes da tabela</td><td>Exibe confirmacao e, se confirmada, envia a acao <code>delete</code> para o WinForms. Nao aparece em cadastros somente leitura.</td></tr>
+            <tr><td>X</td><td>Canto superior direito do modal</td><td>Fecha o modal sem salvar e limpa o estado de edicao.</td></tr>
+            <tr><td>Cancelar</td><td>Rodape do modal</td><td>Fecha o modal sem salvar e volta o estado para criacao.</td></tr>
+            <tr><td>Cadastrar</td><td>Rodape do modal em modo novo</td><td>Coleta os campos do modal e envia a acao <code>save</code> para o WinForms.</td></tr>
+            <tr><td>Salvar alteracoes</td><td>Rodape do modal em modo edicao</td><td>Coleta os campos do modal e envia a acao <code>update</code> com o <code>id</code> do registro em edicao.</td></tr>
+            <tr><td>Fundo escuro do modal</td><td>Atras do modal aberto</td><td>Fecha o modal sem salvar.</td></tr>
+            <tr><td>Data inicial</td><td>Log do Sistema</td><td>Define o inicio do periodo consultado no log. O padrao e hoje menos 30 dias.</td></tr>
+            <tr><td>Data final</td><td>Log do Sistema</td><td>Define o fim do periodo consultado no log. Se a data final for menor que a inicial, o backend inverte o periodo antes da consulta.</td></tr>
+            <tr><td>Usuario</td><td>Log do Sistema</td><td>Filtra <code>SystemLog.UserFJ</code> por trecho de FJ.</td></tr>
+            <tr><td>Modulo</td><td>Log do Sistema</td><td>Filtra <code>SystemLog.Module</code> por trecho do modulo.</td></tr>
+            <tr><td>Acao</td><td>Log do Sistema</td><td>Filtra <code>SystemLog.Action</code> por trecho da acao.</td></tr>
+            <tr><td>Atualizar</td><td>Log do Sistema</td><td>Recarrega o log usando os filtros de data, usuario, modulo e acao.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Cadastros disponiveis</h3>
+        <table>
+          <thead>
+            <tr><th>Grupo</th><th>Cadastro</th><th>Modo</th><th>Finalidade</th><th>Campos principais</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Base</td><td>Turnos</td><td>Editavel</td><td>Base dos turnos usados no dashboard, tasks e filtros.</td><td>Nome PT, Nome JP.</td></tr>
+            <tr><td>Base</td><td>Grupos</td><td>Editavel</td><td>Agrupamentos de lideranca e leitura de area.</td><td>Nome PT, Nome JP.</td></tr>
+            <tr><td>Base</td><td>Setores</td><td>Editavel</td><td>Setores exibidos nas leituras, filtros e presencas.</td><td>Nome PT, Nome JP.</td></tr>
+            <tr><td>Base</td><td>Locais</td><td>Editavel</td><td>Locais, areas e codigos curtos usados em Haidai, producao, presence e exportacoes.</td><td>Nome PT, Nome JP, Codigo Curto, Setor.</td></tr>
+            <tr><td>Producao</td><td>Equipamentos</td><td>Editavel</td><td>Equipamentos vinculados aos cadastros operacionais.</td><td>Nome PT, Nome JP.</td></tr>
+            <tr><td>Producao</td><td>Maquinas</td><td>Editavel</td><td>Cadastro das maquinas com codigo, linha, setor, LocalId e status ativo.</td><td>Nome PT, Nome JP, Codigo da Maquina, Linha, Setor, Local, Ativa.</td></tr>
+            <tr><td>Producao</td><td>Pendencias de Maquina</td><td>Somente leitura</td><td>Lista maquinas sem local, sem setor, com local inexistente ou com setor divergente.</td><td>Consulta.</td></tr>
+            <tr><td>Producao</td><td>Status de Maquina</td><td>Editavel</td><td>Status brutos importados dos arquivos de producao. Setor vazio funciona como fallback global.</td><td>Setor, Codigo, Visual, Regra eficiencia, Nome PT, Nome JP, Cor, Cor do Texto.</td></tr>
+            <tr><td>Producao</td><td>Codigos da Producao</td><td>Editavel</td><td>Legenda visual dos codigos destacados na tela de producao.</td><td>Codigo, Cor, Cor do Texto, Descricao, Ativo.</td></tr>
+            <tr><td>Producao</td><td>Tempos de Procedimento</td><td>Editavel</td><td>Tempos padrao usados na previsao de capacidade do G-Bareru.</td><td>Setor, Area opcional, Procedimento, Tempo padrao, Ativo.</td></tr>
+            <tr><td>Producao</td><td>Categorias</td><td>Editavel</td><td>Categorias usadas no Hikitsugui e em outros registros.</td><td>Nome PT, Nome JP.</td></tr>
+            <tr><td>Follow</td><td>Motivos Follow</td><td>Editavel</td><td>Motivos padrao para os acompanhamentos.</td><td>Nome PT, Nome JP.</td></tr>
+            <tr><td>Follow</td><td>Tipos Follow</td><td>Editavel</td><td>Tipos de acompanhamento para formularios de follow.</td><td>Nome PT, Nome JP.</td></tr>
+            <tr><td>Pessoas</td><td>Shain</td><td>Editavel</td><td>Base simples de nomes romanji e nihongo para referencias internas.</td><td>Nome Romanji, Nome Nihongo.</td></tr>
+            <tr><td>Outros</td><td>Log do Sistema</td><td>Somente leitura</td><td>Historico de eventos gravados pelo sistema.</td><td>Data/Hora, FJ, Modulo, Acao, Target, Detalhes.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Detalhamento item por item</h3>
+        <details open>
+          <summary>Turnos</summary>
+          <p>Mantem a lista de turnos usada pelo dashboard, tarefas, filtros e outras telas que dependem de turno. Cada registro possui Nome PT e Nome JP. Permite criar, editar e excluir turnos. Alteracoes aqui podem afetar filtros e exibicoes que esperam o nome do turno cadastrado.</p>
+        </details>
+        <details>
+          <summary>Grupos</summary>
+          <p>Mantem agrupamentos de lideranca e leitura de area. Cada grupo possui Nome PT e Nome JP. Permite criar, editar e excluir grupos. E usado como base para organizacao operacional e pode impactar telas que agrupam operadores ou leituras por lideranca.</p>
+        </details>
+        <details>
+          <summary>Setores</summary>
+          <p>Mantem os setores exibidos em leituras, filtros, presenca, locais e maquinas. Cada setor possui Nome PT e Nome JP. Permite criar, editar e excluir setores. E um cadastro sensivel porque locais, maquinas, tempos de procedimento e filtros operacionais dependem dele.</p>
+        </details>
+        <details>
+          <summary>Locais</summary>
+          <p>Mantem locais, areas e codigos curtos usados em Haidai, producao, presence, exportacoes e vinculacao de maquinas. Campos: Nome PT, Nome JP, Codigo Curto e Setor. Permite criar, editar e excluir locais. A lista mostra tambem quantas maquinas ativas estao vinculadas a cada local.</p>
+          <ul>
+            <li>Ao digitar o nome PT em um novo local, o sistema sugere automaticamente o Codigo Curto enquanto o usuario ainda nao editou esse campo.</li>
+            <li>O codigo curto e obrigatorio e nao pode se repetir dentro do mesmo setor.</li>
+            <li>A metrica do cadastro mostra total de locais, locais com codigo, locais com maquinas e quantidade de setores usados.</li>
+          </ul>
+        </details>
+        <details>
+          <summary>Equipamentos</summary>
+          <p>Mantem equipamentos vinculados a cadastros operacionais, principalmente rotinas que precisam selecionar um equipamento em registros internos. Cada equipamento possui Nome PT e Nome JP. Permite criar, editar e excluir equipamentos.</p>
+        </details>
+        <details>
+          <summary>Maquinas</summary>
+          <p>Mantem o cadastro das maquinas usadas pelo monitor de producao e relatorios. Campos: Nome PT, Nome JP, Codigo da Maquina, Linha, Setor, Local e Ativa. Permite criar, editar e excluir maquinas.</p>
+          <ul>
+            <li>O Codigo da Maquina e obrigatorio.</li>
+            <li>Se Nome PT ou Nome JP ficarem vazios, o sistema usa o codigo da maquina como nome.</li>
+            <li>A chave da maquina e formada por codigo + linha e nao pode duplicar outra maquina.</li>
+            <li>Ao selecionar um Local, o sistema sincroniza automaticamente o Setor da maquina com o setor do local.</li>
+            <li>A tabela destaca pendencias quando a maquina esta sem local, sem setor ou com setor diferente do setor do local.</li>
+            <li>As metricas mostram total, maquinas com local, maquinas ativas e quantidade de pendencias.</li>
+          </ul>
+        </details>
+        <details>
+          <summary>Pendencias de Maquina</summary>
+          <p>Consulta somente leitura para encontrar inconsistencias no cadastro de maquinas. Nao possui botao Novo, Editar ou Excluir. Mostra codigo da maquina, linha, setor da maquina, local e pendencia encontrada.</p>
+          <ul>
+            <li>Maquina sem <code>LocalId</code>.</li>
+            <li>Maquina sem <code>SectorId</code>.</li>
+            <li>Local vinculado que nao existe mais.</li>
+            <li><code>SectorId</code> da maquina diferente do setor cadastrado no local.</li>
+          </ul>
+        </details>
+        <details>
+          <summary>Status de Maquina</summary>
+          <p>Mantem os status brutos importados dos arquivos de producao. Campos: Setor, Codigo, Visual, Regra eficiencia, Nome PT, Nome JP, Cor e Cor do Texto. Permite criar, editar e excluir status.</p>
+          <ul>
+            <li>Setor vazio significa status global/fallback.</li>
+            <li>Codigo representa o status bruto vindo da origem de producao.</li>
+            <li>Visual controla a classificacao visual exibida no sistema.</li>
+            <li>Regra eficiencia controla como o status entra no calculo de eficiencia.</li>
+            <li>Classificacoes aceitas: <code>Running</code>, <code>StopCounts</code>, <code>StopNoCount</code> e <code>Error</code>.</li>
+          </ul>
+        </details>
+        <details>
+          <summary>Codigos da Producao</summary>
+          <p>Mantem a legenda visual dos codigos destacados na tela de producao. Campos: Codigo, Cor, Cor do Texto, Descricao e Ativo. Permite criar, editar e excluir codigos.</p>
+          <ul>
+            <li>O codigo e normalizado para maiusculo.</li>
+            <li>Nao permite duplicidade do mesmo codigo.</li>
+            <li>As cores devem estar em formato hexadecimal e sao exibidas como amostras na tabela.</li>
+            <li>O campo Ativo permite manter o cadastro historico sem usar o codigo na exibicao operacional.</li>
+          </ul>
+        </details>
+        <details>
+          <summary>Tempos de Procedimento</summary>
+          <p>Mantem tempos padrao usados na previsao de capacidade do G-Bareru. Campos: Setor, Area opcional, Procedimento, Tempo padrao em minutos e Ativo. Permite criar, editar e excluir tempos.</p>
+          <ul>
+            <li>O tempo precisa ser maior que zero.</li>
+            <li>O mesmo procedimento nao pode ser duplicado para o mesmo setor/area.</li>
+            <li>Quando a area fica vazia, o registro funciona como padrao global do setor.</li>
+            <li>Procedimentos aceitos pela validacao atual: <code>ECII</code>, <code>BUNKATSU</code> e <code>DCS</code>.</li>
+            <li>A descricao da tela menciona <code>KYUKEI</code> para descanso padrao, mas a validacao atual do codigo nao aceita esse procedimento.</li>
+          </ul>
+        </details>
+        <details>
+          <summary>Categorias</summary>
+          <p>Mantem categorias usadas no Hikitsugui e em outros registros. Cada categoria possui Nome PT e Nome JP. Permite criar, editar e excluir categorias. Alteracoes podem afetar padronizacao e filtros de registros que usam categoria.</p>
+        </details>
+        <details>
+          <summary>Motivos Follow</summary>
+          <p>Mantem os motivos padrao usados em registros de follow-up. Cada motivo possui Nome PT e Nome JP. Permite criar, editar e excluir motivos. E importante para padronizar analises e relatorios de follow-up.</p>
+        </details>
+        <details>
+          <summary>Tipos Follow</summary>
+          <p>Mantem os tipos de acompanhamento usados nos formularios de follow. Cada tipo possui Nome PT e Nome JP. Permite criar, editar e excluir tipos. Ajuda a separar naturezas diferentes de acompanhamento e melhora a qualidade dos filtros.</p>
+        </details>
+        <details>
+          <summary>Shain</summary>
+          <p>Mantem uma base simples de pessoas com Nome Romanji e Nome Nihongo para referencias internas. Permite criar, editar e excluir registros. E usado como cadastro auxiliar para exibicoes ou referencias que precisam dos dois formatos de nome.</p>
+        </details>
+        <details>
+          <summary>Log do Sistema</summary>
+          <p>Consulta somente leitura do historico gravado em <code>SystemLog</code>. Nao possui botao Novo, Editar ou Excluir. Mostra Data/Hora, FJ, Modulo, Acao, Target e Detalhes.</p>
+          <ul>
+            <li>O filtro inicial consulta os ultimos 30 dias.</li>
+            <li>Data inicial e Data final definem o periodo consultado.</li>
+            <li>Usuario filtra por trecho do FJ.</li>
+            <li>Modulo filtra por trecho do modulo registrado.</li>
+            <li>Acao filtra por trecho da acao registrada.</li>
+            <li>Atualizar recarrega os dados pelo backend aplicando os filtros.</li>
+            <li>A consulta limita o retorno a 1000 linhas quando filtros sao enviados pelo painel.</li>
+          </ul>
+        </details>
+
+        <h3>Regras e validacoes importantes</h3>
+        <ul>
+          <li>Cadastros simples de nomes exigem Nome PT e Nome JP.</li>
+          <li>Locais exigem nome nos dois idiomas, codigo curto e setor. O mesmo codigo curto nao pode ser repetido dentro do mesmo setor.</li>
+          <li>Maquinas exigem codigo da maquina. Se os nomes estiverem vazios, o codigo e usado como nome. Ao selecionar um local, o setor da maquina e sincronizado com o setor do local. A chave da maquina e montada por codigo + linha e nao pode duplicar outro registro.</li>
+          <li>Status de Maquina aceita apenas classificacoes de eficiencia <code>Running</code>, <code>StopCounts</code>, <code>StopNoCount</code> ou <code>Error</code>. O visual deve ser um dos codigos 0, 1, 3 ou 4.</li>
+          <li>Codigos da Producao normaliza o codigo para maiusculo, valida duplicidade e normaliza cores em hexadecimal.</li>
+          <li>Tempos de Procedimento exige setor, procedimento valido e tempo maior que zero. Procedimentos aceitos: <code>ECII</code>, <code>BUNKATSU</code>, <code>DCS</code>.</li>
+          <li>Pendencias de Maquina e Log do Sistema nao permitem inclusao, edicao ou exclusao.</li>
+        </ul>
+      </div>
     </section>
 
     <section id="deployment">
@@ -264,8 +497,9 @@
       </div>
     </section>
 
-    <section>
+    <section id="arquivos">
       <h2>Arquivos Markdown</h2>
+      <p>Os arquivos Markdown continuam disponiveis como fonte de edicao, mas as informacoes principais devem ser exibidas tambem nesta pagina HTML para consulta direta.</p>
       <ul>
         <li><a href="README.md">README.md</a></li>
         <li><a href="architecture.md">architecture.md</a></li>
