@@ -397,18 +397,50 @@
 <li>Data/hora.</li>
 <li>Indicadores resumidos, como tarefas abertas e Master Cards em andamento.</li>
 </ul>
+<p>Principais botoes do dashboard:</p>
+<ul>
+<li><strong>Operadores:</strong> abre a consulta/manutencao de operadores.</li>
+<li><strong>Atribuicoes:</strong> abre a associacao de operadores com liderancas/grupos.</li>
+<li><strong>Relatorios:</strong> abre o hub de relatorios operacionais.</li>
+<li><strong>Presenca/Layout:</strong> abre a visualizacao de presenca e posicoes por setor/turno.</li>
+<li><strong>Haidai:</strong> abre o painel operacional com exportacao para monitor/TV.</li>
+<li><strong>Follow-up:</strong> abre o registro de ocorrencias e pendencias.</li>
+<li><strong>Tarefas:</strong> abre o controle de tarefas.</li>
+<li><strong>Master Card:</strong> abre o acompanhamento de cards em andamento.</li>
+<li><strong>Monitor de Producao:</strong> abre a tela de importacao e acompanhamento de eventos de maquinas.</li>
+<li><strong>Hikitsugui Criacao:</strong> abre a criacao de comunicados/passagem de informacao.</li>
+<li><strong>Hikitsugui Leitura Lider:</strong> abre a leitura e acompanhamento de comunicados pela lideranca.</li>
+<li><strong>Sobra de Peca:</strong> abre o registro de sobras.</li>
+<li><strong>PR / CL:</strong> abre a geracao e consulta de documentos PR ou CL.</li>
+<li><strong>Yukyu/Paid Leave:</strong> abre o acompanhamento de folgas/licencas.</li>
+<li><strong>Administracao:</strong> abre cadastros base e consultas administrativas.</li>
+<li><strong>Controle de Acesso:</strong> abre a manutencao de usuarios e permissoes.</li>
+</ul>
 <h4>Modulos</h4>
 <h5>Operadores</h5>
-<p>Consulta e manutencao de informacoes de operadores. Use para localizar dados basicos e apoiar rotinas de equipe.</p>
+<p>Consulta e manutencao de informacoes de operadores. Use para localizar dados basicos, conferir <code>CodigoFJ</code>, turno, setor/grupo e apoiar rotinas de equipe.</p>
+<p>Cuidados:</p>
+<ul>
+<li>O <code>CodigoFJ</code> deve estar correto, porque ele impacta login, tarefas, presenca e associacao do usuario ao operador.</li>
+<li>Antes de alterar dados cadastrais, confirme se a mudanca vale para o turno atual ou se deve ser alinhada com administracao.</li>
+</ul>
 <h5>Atribuicoes</h5>
 <p>Modulo administrativo para atribuir operadores a liderancas/grupos. Disponivel apenas para usuarios autorizados.</p>
+<p>Use quando for necessario ajustar a relacao entre operador, grupo e lideranca. Atribuicoes incorretas podem afetar consultas, filtros por grupo e acompanhamentos de lider.</p>
 <h5>Relatorios</h5>
 <p>Consulta dados consolidados e registros operacionais. Requer perfil de lideranca.</p>
 <p>No hub de relatorios, os principais atalhos sao:</p>
 <ul>
+<li><strong>Hikitsugui:</strong> consulta comunicados/passagens de informacao e registros de leitura.</li>
+<li><strong>Follow consolidado:</strong> consulta ocorrencias de follow-up por periodo e filtros.</li>
+<li><strong>Grafico Follow:</strong> visualiza distribuicoes e indicadores graficos de follow-up.</li>
+<li><strong>Tasks:</strong> consulta tarefas, totais de abertas/concluidas/atrasadas e historico.</li>
 <li><strong>Operadores:</strong> relatorio gerencial por operador. Use para analisar presenca, producao, Master Card, follow-up e historico diario. O percentual de producao compara o tempo rodando das maquinas do local com o tempo programado para essas maquinas no periodo filtrado.</li>
 <li><strong>Presenca:</strong> relatorio focado somente em comparecimento. Use para acompanhar dias escalados, presenca conforme, Yukyu, faltas, atrasos, saidas antecipadas e Todoke pendente. Possui filtros por periodo, turno, setor, grupo, status e busca por FJ/nome.</li>
-<li><strong>Follow, Tasks e MasterCard:</strong> consultas especificas dos respectivos modulos.</li>
+<li><strong>Gerencial de Producao:</strong> consolida producao por periodo, setor, local, turno, grupo, operador, maquina, part code e lider.</li>
+<li><strong>MasterCard:</strong> lista cards por periodo/status/setor/equipamento/operador/treinador.</li>
+<li><strong>PR / CL:</strong> consulta documentos por periodo, setor, categoria, prioridade e texto, com abertura do arquivo gerado quando disponivel.</li>
+<li><strong>Sobra de Peca:</strong> consulta registros por periodo, turno, maquina, item ou busca textual, com totais de quantidade e peso.</li>
 </ul>
 <p>Para usar o relatorio de presenca:</p>
 <ol>
@@ -418,27 +450,102 @@
 <li>Use a busca para localizar um operador pelo codigo FJ ou nome.</li>
 <li>Confira os cards de resumo e a tabela de operadores.</li>
 </ol>
+<p>Para usar o relatorio gerencial de producao:</p>
+<ol>
+<li>Abra <strong>Relatorios</strong> no dashboard.</li>
+<li>Clique em <strong>Gerencial de Producao</strong>.</li>
+<li>Informe o periodo e, se necessario, filtre por setor, local, turno, grupo, operador, maquina, part code ou lider.</li>
+<li>Use as opcoes de comparativo de grupos e filtros de ativos/com producao quando precisar reduzir o resultado.</li>
+<li>Confira resumo, rankings, comparativos, tendencia diaria, cruzamento com presenca e alertas.</li>
+</ol>
+<p>Observacoes importantes:</p>
+<ul>
+<li>Relatorios com muitos dias, muitos setores ou todos os operadores podem demorar mais.</li>
+<li>Percentuais e rankings dependem de cadastros corretos de maquinas, locais, turnos, presenca e eventos importados.</li>
+<li>Quando um relatorio parecer vazio, confira primeiro periodo, turno, setor e se a importacao/cadastro de origem foi feito.</li>
+</ul>
 <h5>Presenca e layout</h5>
 <p>Exibe e organiza a presenca de operadores por setor/turno. Pode usar arquivos CSV de agenda importados pelo sistema.</p>
+<p>Uso comum:</p>
+<ol>
+<li>Abra <strong>Presenca/Layout</strong>.</li>
+<li>Selecione data, turno e setor quando a tela solicitar.</li>
+<li>Confira operadores previstos, status de presenca e posicoes.</li>
+<li>Ajuste posicoes somente quando tiver permissao e certeza do layout correto.</li>
+</ol>
+<p>Se operadores esperados nao aparecerem, verifique se o CSV/agenda do dia foi importado e se o operador esta cadastrado corretamente.</p>
 <h5>Haidai</h5>
 <p>Modulo para acompanhamento/exportacao de informacoes para visualizacao em monitor ou TV. <strong>Comportamento inferido pelo codigo:</strong> o HTML exportado e gravado em pasta configurada para consulta publica/local.</p>
+<p>Use para atualizar informacoes operacionais exibidas em monitor publico. Se o monitor/TV nao atualizar, confira se a pasta de exportacao esta acessivel e se a tela publica foi recarregada.</p>
 <h5>Follow-up</h5>
 <p>Registro e acompanhamento de ocorrencias, motivos, tipos, equipamentos e status de tratativa.</p>
+<p>Fluxo basico:</p>
+<ol>
+<li>Abra <strong>Follow-up</strong>.</li>
+<li>Informe tipo, motivo, equipamento/local, descricao e responsavel quando aplicavel.</li>
+<li>Salve o registro.</li>
+<li>Atualize o status conforme a tratativa evoluir.</li>
+<li>Use os relatorios de Follow no hub de relatorios para acompanhamento consolidado, por operador, grafico ou item unico.</li>
+</ol>
+<p>Cadastros de motivo, tipo, local e equipamento devem estar completos para facilitar filtros e analises.</p>
 <h5>Tarefas</h5>
 <p>Controle de tarefas por turno, responsavel e status. O dashboard mostra a quantidade de tarefas abertas do turno atual.</p>
+<p>Boas praticas:</p>
+<ul>
+<li>Cadastre tarefas com responsavel, prazo e status claros.</li>
+<li>Atualize o status quando a tarefa mudar de etapa.</li>
+<li>Use o relatorio de Tasks para conferir abertas, concluidas, atrasadas e historico.</li>
+</ul>
 <h5>Master Card</h5>
 <p>Modulo para acompanhamento de itens em andamento e em follow-up. O dashboard mostra contagens por status.</p>
+<p>Use para registrar cards com operador, treinador, setor, equipamento, descricao, datas e status. O relatorio permite consultar por periodo, status, setor, equipamento, operador e treinador.</p>
+<p>Quando as contagens do dashboard parecerem incorretas, confira se os status dos cards foram atualizados.</p>
 <h5>Monitor de producao</h5>
 <p>Importa e apresenta eventos de maquinas. Usa arquivos TXT/DAT e pode executar um BAT de sincronizacao antes da importacao.</p>
 <p>Para detalhes de uso, validacao e comandos de suporte, consulte <code>docs/production-monitor-guide.md</code>.</p>
+<p>Fluxo basico:</p>
+<ol>
+<li>Abra <strong>Monitor de Producao</strong>.</li>
+<li>Confira se a data/setor/local desejado esta correto.</li>
+<li>Execute a importacao quando necessario.</li>
+<li>Aguarde a conclusao antes de atualizar a visualizacao ou abrir relatorios.</li>
+<li>Confira indicadores, maquinas, status atual, EC2, codigos parametrizados e previsao G-Bareru quando configurada.</li>
+</ol>
+<p>Cuidados:</p>
+<ul>
+<li>Nao interrompa o computador durante importacao.</li>
+<li>Status desconhecido pode indicar cadastro de status incompleto.</li>
+<li>Se a tela nao trouxer dados, confirme se os arquivos TXT/DAT existem, se o BAT rodou e se o banco configurado e o correto.</li>
+<li>Comandos de suporte do <code>ProductionMonitorProbe</code> devem ser usados por equipe tecnica, principalmente comandos que alteram dados.</li>
+</ul>
 <h5>Hikitsugui</h5>
 <p>Registro e leitura de passagem de informacao. Existem telas para criacao, leitura por lider e leitura por operador.</p>
+<p>Fluxos:</p>
+<ul>
+<li><strong>Criacao:</strong> registrar comunicado/passagem de informacao, anexos e dados necessarios.</li>
+<li><strong>Leitura Lider:</strong> acompanhar mensagens, respostas, correcoes, anexos e rastreabilidade de leitura.</li>
+<li><strong>Leitura Operador:</strong> visualizar comunicados no app do operador e registrar leitura/resposta quando aplicavel.</li>
+</ul>
+<p>Se anexos nao abrirem, verifique permissao e disponibilidade da pasta de anexos.</p>
 <h5>Sobra de peca</h5>
 <p>Registro e acompanhamento de sobras de peca. Requer perfil autorizado.</p>
+<p>Ao registrar uma sobra, informe lote, operador, maquina, item, peso, quantidade, shain, lider e observacao quando aplicavel. Use o relatorio de Sobra de Peca para consultar por periodo, turno, maquina, item ou busca textual.</p>
+<p>Padronize nomes de item e observacoes para facilitar filtros futuros.</p>
 <h5>PR e CL</h5>
 <p>Geracao/controle de documentos PR e CL com uso de templates e pastas configuradas.</p>
+<p>Fluxo basico:</p>
+<ol>
+<li>Abra <strong>PR</strong> ou <strong>CL</strong> pelo dashboard.</li>
+<li>Selecione setor, categoria e prioridade.</li>
+<li>Informe titulo e nome do arquivo.</li>
+<li>Gere o documento.</li>
+<li>Abra o arquivo gerado quando precisar conferir ou complementar o documento.</li>
+</ol>
+<p>Os arquivos sao gerados a partir de templates Excel e dependem das pastas configuradas. Se houver erro de template ou pasta, acione suporte com o tipo do documento e a mensagem exibida.</p>
+<p>Use os relatorios PR/CL no hub de relatorios para consultar documentos por periodo, setor, categoria, prioridade e texto.</p>
 <h5>Yukyu/Paid leave</h5>
 <p>Acompanhamento de solicitacoes/controles relacionados a folga/licenca paga. Usa dados de operador, turno e motivos cadastrados.</p>
+<p>Use para acompanhar folgas/licencas, conferencias, Todoke e motivos. Dados incompletos de operador, turno ou motivo podem deixar o controle inconsistente.</p>
 <h5>Administracao</h5>
 <p>Modulo restrito para manter os cadastros base do sistema. Use para revisar turnos, grupos, setores, locais, maquinas, equipamentos, status de maquina, codigos visuais da producao, tempos de procedimento, categorias, motivos/tipos de follow, shain, pendencias de maquina e log do sistema.</p>
 <p>Operacoes principais:</p>
@@ -454,6 +561,30 @@
 <p>Para a documentacao completa do painel e dos botoes, consulte <code>docs/admin-panel.md</code>.</p>
 <h5>Controle de acesso</h5>
 <p>Modulo para usuarios, niveis de permissao e configuracoes de acesso. Uso restrito.</p>
+<p>Use para:</p>
+<ul>
+<li>Criar ou editar usuarios.</li>
+<li>Definir nivel de acesso.</li>
+<li>Associar usuario ao <code>CodigoFJ</code> correto.</li>
+<li>Alterar senha quando necessario.</li>
+<li>Ativar, desativar ou revisar usuarios conforme permissao da tela.</li>
+</ul>
+<p>Cuidados:</p>
+<ul>
+<li>Senhas sao protegidas por BCrypt; nao ha consulta de senha original.</li>
+<li>Usuario sem <code>CodigoFJ</code> valido pode conseguir autenticar, mas nao abrir o dashboard corretamente.</li>
+<li>Alteracoes de nivel de acesso devem seguir autorizacao da lideranca/responsavel.</li>
+</ul>
+<h5>Aplicacao do operador</h5>
+<p>Aplicacao separada para leitura de Hikitsugui pelo operador.</p>
+<p>Uso esperado:</p>
+<ol>
+<li>O operador abre a aplicacao do operador.</li>
+<li>Consulta comunicados disponiveis.</li>
+<li>Registra leitura e resposta quando solicitado.</li>
+<li>Informa a lideranca se houver erro de banco, anexo ou mensagem nao exibida.</li>
+</ol>
+<p>O app do operador deve apontar para o mesmo banco operacional usado pelo TeamOps principal.</p>
 <h4>Operacoes comuns</h4>
 <ul>
 <li>Entrar no sistema no inicio do turno.</li>
