@@ -73,3 +73,7 @@ O app inicializa a cultura `pt-BR`, cria/atualiza o banco na inicializacao e abr
 ## Versao HTML da documentacao
 
 Alem dos arquivos Markdown, existe uma versao HTML em `docs/index.html`. Ela usa a logo `TeamOps.UI/Logo.png` por referencia relativa para apresentar a documentacao em formato mais visual.
+
+## Manutencao da documentacao
+
+Toda nova documentacao criada dentro de `docs/` deve ser integrada ao `docs/index.html`, com link na lista de arquivos Markdown e, quando fizer sentido, uma secao ou card de resumo na pagina HTML.
