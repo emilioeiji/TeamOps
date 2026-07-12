@@ -375,7 +375,7 @@
 <p>Toda nova documentacao criada dentro de <code>docs/</code> deve ser integrada ao <code>docs/index.html</code>, com conteudo consultavel diretamente na pagina HTML. O arquivo Markdown continua como fonte de edicao, mas o usuario nao deve precisar abrir o <code>.md</code> para acessar as informacoes principais. Inclua tambem o link na lista de arquivos Markdown.</p>
 </div>
 </details>
-<details class="doc-detail" id="doc-user-manual">
+  <details class="doc-detail" id="doc-user-manual">
 <summary>Manual do usuario <span>docs/user-manual.md</span></summary>
 <div class="markdown-doc">
 <h3>Manual do usuario</h3>
@@ -491,7 +491,7 @@
 </ol>
 </div>
 </details>
-<details class="doc-detail" id="doc-module-reference">
+  <details class="doc-detail" id="doc-module-reference">
 <summary>Referencia de modulos <span>docs/module-reference.md</span></summary>
 <div class="markdown-doc">
 <h3>Referencia de modulos</h3>
@@ -500,8 +500,9 @@
 <li><strong>Finalidade:</strong> menu principal, indicadores resumidos e roteamento para modulos.</li>
 <li><strong>Arquivos principais:</strong> <code>Forms/FormDashboardHtml.cs</code>, <code>ui/dashboard/*</code>.</li>
 <li><strong>Dependencias:</strong> usuario logado, operador, turno, WebView2, repositorios.</li>
-<li><strong>Inputs:</strong> mensagens <code>open:*</code>, locale.</li>
-<li><strong>Outputs:</strong> abertura de forms, payload inicial para HTML.</li>
+<li><strong>Inputs:</strong> usuario autenticado, operador associado, turno, locale e mensagens <code>open:*</code>.</li>
+<li><strong>Outputs:</strong> abertura de forms HTML/WinForms, payload inicial para HTML e contadores resumidos.</li>
+<li><strong>Aberturas diretas:</strong> Operadores, Atribuicoes, Relatorios, Presenca/Layout, Haidai, Follow-up, Tarefas, Master Card, Monitor de Producao, Hikitsugui Criacao, Hikitsugui Leitura Lider, Sobra de Peca, PR, CL, Yukyu/Paid Leave, Administracao e Controle de acesso.</li>
 <li><strong>Riscos:</strong> usuario sem operador/turno impede abertura; WebView2 ausente gera tela branca.</li>
 </ul>
 <h4>Operadores</h4>
@@ -524,22 +525,27 @@
 </ul>
 <h4>Relatorios</h4>
 <ul>
-<li><strong>Finalidade:</strong> consulta consolidada de dados operacionais.</li>
-<li><strong>Arquivos principais:</strong> <code>HTMLFormReports.cs</code>, <code>ui/reports/*</code>, <code>HTMLFormOperatorManagerReport.cs</code>, <code>ui/operator-manager-report/*</code>, <code>HTMLFormPresenceReport.cs</code>, <code>ui/presence-report/*</code>, <code>OperatorManagerReportService.cs</code>.</li>
-<li><strong>Dependencias:</strong> Hikitsugui, leituras, operadores e SQLite.</li>
-<li><strong>Inputs:</strong> filtros de relatorio.</li>
-<li><strong>Outputs:</strong> visualizacao e possiveis exportacoes/impressao.</li>
-<li><strong>Relatorio gerencial de operadores:</strong> consolida presenca, producao, Master Card, follow-up e historico diario do operador selecionado. O percentual de producao usa minutos rodando divididos pelos minutos programados por maquina/local no periodo.</li>
-<li><strong>Relatorio de presenca:</strong> consulta focada em escala e comparecimento, com filtros por periodo, turno, setor, grupo, status e busca por FJ/nome. Considera Haidai, registros de presenca, Yukyu/Todoke e movimentos para destacar presenca conforme, falta, Yukyu, atraso, saida antecipada e Todoke pendente.</li>
-<li><strong>Riscos:</strong> consultas grandes podem ficar lentas em banco de rede; percentuais dependem de escala/local e eventos de maquina cadastrados corretamente.</li>
+<li><strong>Finalidade:</strong> hub de acesso a consultas consolidadas e relatorios especificos.</li>
+<li><strong>Arquivos principais:</strong> <code>HTMLFormReports.cs</code>, <code>ui/reports/*</code>, <code>ui/operator-manager-report/*</code>, <code>ui/presence-report/*</code>, <code>ui/production-management-report/*</code>, <code>ui/mastercard-report/*</code>, <code>ui/pr-cl-report/*</code>, <code>ui/sobra-de-peca-report/*</code>, forms <code>HTMLForm*Report.cs</code> e services correspondentes.</li>
+<li><strong>Dependencias:</strong> Hikitsugui, Follow-up, Tasks, operadores, presenca, producao, Master Card, PR/CL, Sobra de Peca, WebView2 e SQLite.</li>
+<li><strong>Inputs:</strong> acao selecionada no hub e filtros de cada relatorio.</li>
+<li><strong>Outputs:</strong> abertura de relatorios, visualizacao consolidada e possiveis exportacoes/impressao conforme tela.</li>
+<li><strong>Atalhos do hub:</strong> Hikitsugui, Follow consolidado, Grafico Follow, Tasks, Operadores, Presenca, Gerencial de Producao, MasterCard, PR, CL e Sobra de Peca.</li>
+<li><strong>Relatorio gerencial de operadores:</strong> <code>HTMLFormOperatorManagerReport</code> consolida presenca, producao, Master Card, follow-up e historico diario do operador selecionado. O percentual de producao usa minutos rodando divididos pelos minutos programados por maquina/local no periodo.</li>
+<li><strong>Relatorio de presenca:</strong> <code>HTMLFormPresenceReport</code> consulta escala e comparecimento, com filtros por periodo, turno, setor, grupo, status e busca por FJ/nome. Considera Haidai, registros de presenca, Yukyu/Todoke e movimentos para destacar presenca conforme, falta, Yukyu, atraso, saida antecipada e Todoke pendente.</li>
+<li><strong>Relatorio gerencial de producao:</strong> consolida producao, operadores, maquinas, setores, rankings, comparativo por turno/grupo, tendencia diaria, cruzamento de presenca e alertas.</li>
+<li><strong>Relatorios PR/CL:</strong> filtram documentos por periodo, setor, categoria, prioridade e texto, com abertura do arquivo gerado.</li>
+<li><strong>Relatorios MasterCard, Tasks e Sobra de Peca:</strong> listam registros, totais e detalhes/historico quando disponivel.</li>
+<li><strong>Riscos:</strong> consultas grandes podem ficar lentas em banco de rede; percentuais dependem de escala/local, eventos de maquina, cadastros de maquinas e eventos de presenca cadastrados corretamente.</li>
 </ul>
 <h4>Presenca/Layout</h4>
 <ul>
-<li><strong>Finalidade:</strong> exibir presenca e posicoes de operadores.</li>
+<li><strong>Finalidade:</strong> exibir presenca e posicoes de operadores por setor/turno, com suporte a layout visual.</li>
 <li><strong>Arquivos principais:</strong> <code>HTMLFormPresenceLayout.cs</code>, <code>FormPresenceLayout.cs</code>, <code>ui/presence-layout/*</code>, <code>ui/presence/*</code>.</li>
 <li><strong>Dependencias:</strong> <code>OperatorPresence</code>, <code>OperatorPositions</code>, <code>OperatorSchedule</code>, CSVs de agenda.</li>
-<li><strong>Inputs:</strong> setor, turno, data, CSV de schedule.</li>
-<li><strong>Outputs:</strong> layout/posicoes/presenca.</li>
+<li><strong>Inputs:</strong> setor, turno, data, CSV de schedule e posicoes salvas.</li>
+<li><strong>Outputs:</strong> layout visual, posicoes e status de presenca.</li>
+<li><strong>Observacao:</strong> <code>ui/presence-layout</code> e a tela moderna de layout; <code>ui/presence</code> e assets de presenca continuam no projeto e devem ser tratados como parte do dominio de presenca.</li>
 <li><strong>Riscos:</strong> CSV ausente ou fora do padrao deixa operadores fora do layout.</li>
 </ul>
 <h4>Haidai</h4>
@@ -563,7 +569,7 @@
 <h4>Relatorios de Follow-up</h4>
 <ul>
 <li><strong>Finalidade:</strong> analise por operador, consolidado, grafico ou item unico.</li>
-<li><strong>Arquivos principais:</strong> <code>HTMLFormFollowReport.cs</code>, <code>HTMLFormFollowOperatorReport.cs</code>, <code>HTMLFormFollowSingleReport.cs</code>, <code>HTMLFormFollowChart.cs</code>, <code>ui/follow-*/*</code>.</li>
+<li><strong>Arquivos principais:</strong> <code>HTMLFormFollowReport.cs</code>, <code>HTMLFormFollowOperatorReport.cs</code>, <code>HTMLFormFollowSingleReport.cs</code>, <code>HTMLFormFollowChart.cs</code>, <code>ui/follow-report/*</code>, <code>ui/follow-operator-report/*</code>, <code>ui/follow-single-report/*</code>, <code>ui/follow-chart/*</code>.</li>
 <li><strong>Dependencias:</strong> dados de follow-up e WebView2.</li>
 <li><strong>Inputs:</strong> filtros e comandos de impressao/PDF.</li>
 <li><strong>Outputs:</strong> relatorios e PDFs.</li>
@@ -575,7 +581,7 @@
 <li><strong>Arquivos principais:</strong> <code>HTMLFormTasks.cs</code>, <code>HTMLFormTasksReport.cs</code>, <code>ui/tasks/*</code>, <code>ui/tasks-report/*</code>.</li>
 <li><strong>Dependencias:</strong> tabelas <code>Tasks</code> e <code>TaskStatusHistory</code>.</li>
 <li><strong>Inputs:</strong> tarefa, responsavel, prazo, status.</li>
-<li><strong>Outputs:</strong> tarefas e historico de status.</li>
+<li><strong>Outputs:</strong> tarefas, historico de status, relatorio com totais de abertas/concluidas/atrasadas e detalhe por tarefa.</li>
 <li><strong>Riscos:</strong> status inconsistentes afetam contagem de tarefas abertas.</li>
 </ul>
 <h4>Master Card</h4>
@@ -583,8 +589,8 @@
 <li><strong>Finalidade:</strong> acompanhamento de itens em andamento/follow-up.</li>
 <li><strong>Arquivos principais:</strong> <code>HTMLFormMasterCard.cs</code>, <code>HTMLFormMasterCardReport.cs</code>, <code>MasterCardModuleService.cs</code>, <code>ui/mastercard/*</code>.</li>
 <li><strong>Dependencias:</strong> schema garantido pelo service e SQLite.</li>
-<li><strong>Inputs:</strong> dados do card e status.</li>
-<li><strong>Outputs:</strong> cards, relatorios e contagens no dashboard.</li>
+<li><strong>Inputs:</strong> operador, treinador, setor, equipamento, descricao, datas, status e filtros de relatorio.</li>
+<li><strong>Outputs:</strong> cards, historico, relatorio por periodo/status/setor/equipamento/operador/treinador e contagens no dashboard.</li>
 <li><strong>Riscos:</strong> schema dinamico precisa ser garantido antes das consultas.</li>
 </ul>
 <h4>Monitor de producao</h4>
@@ -597,10 +603,28 @@
 <li><strong>Probe:</strong> comandos documentados em <code>docs/production-monitor-guide.md</code>.</li>
 <li><strong>Riscos:</strong> layout/encoding inesperado, timeout do BAT, rede lenta, status desconhecido sem classificacao setorial, config apontando para banco errado.</li>
 </ul>
+<h4>Relatorio gerencial de producao</h4>
+<ul>
+<li><strong>Finalidade:</strong> consolidar indicadores gerenciais de producao por periodo, setor, local, turno, grupo, operador, maquina, part code e lider.</li>
+<li><strong>Arquivos principais:</strong> <code>HTMLFormProductionManagementReport.cs</code>, <code>ProductionManagementReportService.cs</code>, <code>ui/production-management-report/*</code>.</li>
+<li><strong>Dependencias:</strong> <code>ProductionAnalyticsService</code>, <code>HaidaiAssignments</code>, <code>OperatorPresence</code>, <code>Operators</code>, <code>Shifts</code>, <code>Sectors</code>, <code>Groups</code>, <code>Locals</code>, <code>Machines</code>, <code>MachineEvents</code>, <code>Ec2MachineCurrentState</code> e <code>SystemLog</code>.</li>
+<li><strong>Inputs:</strong> periodo, setor, local, turno, grupo, comparativo grupo A/B, operador, maquina, part code, lider, somente ativos e somente com producao.</li>
+<li><strong>Outputs:</strong> resumo de producao/meta/eficiencia, ranking de operadores/setores/grupos/maquinas, comparativo de turnos, comparativo de grupos, tendencia diaria, linhas de operador/maquina/setor, cruzamento de presenca, alertas e tempos de execucao.</li>
+<li><strong>Riscos:</strong> consultas por muitos dias/turnos podem ficar pesadas; resultado depende da consistencia entre Haidai, presenca, maquinas e eventos importados.</li>
+</ul>
+<h4>ProductionMonitorProbe</h4>
+<ul>
+<li><strong>Finalidade:</strong> ferramenta de linha de comando para diagnostico, validacao, auditoria e manutencao do monitor de producao.</li>
+<li><strong>Arquivos principais:</strong> <code>ProductionMonitorProbe/Program.cs</code>, <code>ProductionMonitorProbe/ProductionMonitorProbe.csproj</code>, <code>ProductionMonitorProbe/App.config</code>, <code>ProductionMonitorProbe/Comandos.txt</code>.</li>
+<li><strong>Dependencias:</strong> <code>TeamOps.Config</code>, <code>TeamOps.Data</code>, <code>TeamOps.Core</code>, banco SQLite e mesmos arquivos/configuracoes usados pelo monitor de producao.</li>
+<li><strong>Inputs:</strong> comandos CLI como <code>schema-check</code>, <code>schema-repair</code>, <code>db-index-check</code>, <code>production-diagnostics</code>, <code>production-audit</code>, <code>validate-reports</code>, <code>validate-yakin-production</code>, <code>validate-overtime-rules</code>, <code>validate-overtime-real</code>, <code>ec2-diagnostics</code>, <code>status-report</code>, <code>import</code>, <code>import-profile</code>, <code>machine-cleanup</code>, <code>machine-location-guard</code> e <code>dashboard</code>.</li>
+<li><strong>Outputs:</strong> diagnosticos no console, validacoes de schema, auditorias de producao/presenca/horas extras, relatorios CSV opcionais e importacoes quando comandos de alteracao sao usados.</li>
+<li><strong>Riscos:</strong> comandos de diagnostico sao seguros, mas <code>import</code>, <code>import-profile</code>, <code>schema-repair</code>, <code>ec2-reset-latest</code> e <code>machine-cleanup --apply</code> podem alterar dados; sempre conferir <code>DatabasePath</code> antes de executar.</li>
+</ul>
 <h4>Hikitsugui</h4>
 <ul>
 <li><strong>Finalidade:</strong> passagem de informacao, leitura, respostas, correcoes e anexos.</li>
-<li><strong>Arquivos principais:</strong> <code>HTMLHikitsuguiCreate.cs</code>, <code>HTMLHikitsuguiLeaderRead.cs</code>, <code>HTMLFormHikitsuguiReader.cs</code>, <code>TeamOps.OperatorApp/Forms/HTMLHikitsuguiOperatorRead.cs</code>, <code>ui/hikitsugui-*/*</code>.</li>
+<li><strong>Arquivos principais:</strong> <code>HTMLHikitsuguiCreate.cs</code>, <code>HTMLHikitsuguiLeaderRead.cs</code>, <code>HTMLFormHikitsuguiReader.cs</code>, <code>TeamOps.OperatorApp/Forms/HTMLHikitsuguiOperatorRead.cs</code>, <code>ui/hikitsugui-create/*</code>, <code>ui/hikitsugui-leader-read/*</code>, <code>ui/hikitsugui-reader/*</code>, <code>TeamOps.OperatorApp/ui/hikitsugui-operator-read/*</code>.</li>
 <li><strong>Dependencias:</strong> <code>Hikitsugui</code>, <code>HikitsuguiResponses</code>, <code>HikitsuguiCorrections</code>, <code>HikitsuguiReads</code>, <code>HikitsuguiAttachments</code>, pasta de anexos.</li>
 <li><strong>Inputs:</strong> registro, resposta, leitura, anexo.</li>
 <li><strong>Outputs:</strong> comunicados e rastreabilidade de leitura.</li>
@@ -609,28 +633,28 @@
 <h4>Sobra de peca</h4>
 <ul>
 <li><strong>Finalidade:</strong> registrar e acompanhar sobra de pecas.</li>
-<li><strong>Arquivos principais:</strong> <code>HTMLFormSobraDePeca.cs</code>, <code>ui/sobra-de-peca/*</code>, <code>SobraDePecaRepository.cs</code>.</li>
-<li><strong>Dependencias:</strong> tabela <code>SobraDePeca</code>, operador atual.</li>
-<li><strong>Inputs:</strong> dados da sobra.</li>
-<li><strong>Outputs:</strong> registros consultaveis.</li>
+<li><strong>Arquivos principais:</strong> <code>HTMLFormSobraDePeca.cs</code>, <code>HTMLFormSobraDePecaReport.cs</code>, <code>ui/sobra-de-peca/*</code>, <code>ui/sobra-de-peca-report/*</code>, <code>SobraDePecaRepository.cs</code>.</li>
+<li><strong>Dependencias:</strong> tabela <code>SobraDePeca</code>, operador atual, <code>Shifts</code>, <code>Machines</code>, <code>Operators</code> e <code>Shain</code>.</li>
+<li><strong>Inputs:</strong> dados da sobra, lote, operador, maquina, item, peso, quantidade, shain, lider, observacao e filtros de relatorio.</li>
+<li><strong>Outputs:</strong> registros consultaveis, relatorio por periodo/turno/maquina/item/busca, totais de quantidade, peso e itens distintos.</li>
 <li><strong>Riscos:</strong> falta de padronizacao nos campos pode dificultar relatorio.</li>
 </ul>
 <h4>PR</h4>
 <ul>
 <li><strong>Finalidade:</strong> criar/controlar documentos PR.</li>
-<li><strong>Arquivos principais:</strong> <code>FormPR.cs</code>, <code>PRRepository.cs</code>, <code>PRCategoriaRepository.cs</code>, <code>PRPrioridadeRepository.cs</code>.</li>
-<li><strong>Dependencias:</strong> <code>PR</code>, categorias, prioridades, setores, operadores, <code>PRTemplate</code>, <code>PRDirectory</code>.</li>
-<li><strong>Inputs:</strong> dados do PR.</li>
-<li><strong>Outputs:</strong> registro e arquivo gerado.</li>
+<li><strong>Arquivos principais:</strong> <code>HTMLFormPrCl.cs</code>, <code>HTMLFormPrClReport.cs</code>, <code>ui/pr-cl/*</code>, <code>ui/pr-cl-report/*</code>, <code>PRRepository.cs</code>, <code>PRCategoriaRepository.cs</code>, <code>PRPrioridadeRepository.cs</code>, <code>FormPR.cs</code> legado.</li>
+<li><strong>Dependencias:</strong> <code>PR</code>, <code>PRCategorias</code>, <code>PRPrioridades</code>, setores, operadores, <code>PRTemplate</code>, <code>PRDirectory</code>, ClosedXML.</li>
+<li><strong>Inputs:</strong> setor, categoria, prioridade, titulo e nome do arquivo.</li>
+<li><strong>Outputs:</strong> registro no banco, arquivo Excel gerado a partir do template, aba de operadores preenchida e relatorio com filtros por periodo/setor/categoria/prioridade/busca.</li>
 <li><strong>Riscos:</strong> template/pasta ausente.</li>
 </ul>
 <h4>CL</h4>
 <ul>
 <li><strong>Finalidade:</strong> criar/controlar documentos CL.</li>
-<li><strong>Arquivos principais:</strong> <code>FormCL.cs</code>, <code>CLRepository.cs</code>, <code>CLCategoriaRepository.cs</code>, <code>CLPrioridadeRepository.cs</code>.</li>
-<li><strong>Dependencias:</strong> <code>CL</code>, categorias, prioridades, setores, operadores, <code>CLTemplate</code>, <code>CLDirectory</code>.</li>
-<li><strong>Inputs:</strong> dados do CL.</li>
-<li><strong>Outputs:</strong> registro e arquivo gerado.</li>
+<li><strong>Arquivos principais:</strong> <code>HTMLFormPrCl.cs</code>, <code>HTMLFormPrClReport.cs</code>, <code>ui/pr-cl/*</code>, <code>ui/pr-cl-report/*</code>, <code>CLRepository.cs</code>, <code>CLCategoriaRepository.cs</code>, <code>CLPrioridadeRepository.cs</code>, <code>FormCL.cs</code> legado.</li>
+<li><strong>Dependencias:</strong> <code>CL</code>, <code>CLCategorias</code>, <code>CLPrioridades</code>, setores, operadores, <code>CLTemplate</code>, <code>CLDirectory</code>, ClosedXML.</li>
+<li><strong>Inputs:</strong> setor, categoria, prioridade, titulo e nome do arquivo.</li>
+<li><strong>Outputs:</strong> registro no banco, arquivo Excel gerado a partir do template, aba de operadores preenchida e relatorio com filtros por periodo/setor/categoria/prioridade/busca.</li>
 <li><strong>Riscos:</strong> template/pasta ausente.</li>
 </ul>
 <h4>Yukyu/Paid Leave</h4>
@@ -657,8 +681,8 @@
 <li><strong>Finalidade:</strong> gerenciar usuarios e permissoes.</li>
 <li><strong>Arquivos principais:</strong> <code>HTMLFormAccessControl.cs</code>, <code>FormAccessControl.cs</code>, <code>FormAddUser.cs</code>, <code>FormChangePassword.cs</code>, <code>ui/access-control/*</code>, <code>UserRepository.cs</code>.</li>
 <li><strong>Dependencias:</strong> <code>Users</code>, BCrypt, niveis <code>AccessLevel</code>.</li>
-<li><strong>Inputs:</strong> usuario, senha, nivel, CodigoFJ.</li>
-<li><strong>Outputs:</strong> usuarios e permissoes.</li>
+<li><strong>Inputs:</strong> usuario, senha, nivel, CodigoFJ, troca de senha e comandos de ativacao/edicao conforme tela.</li>
+<li><strong>Outputs:</strong> usuarios, permissoes, senhas protegidas por BCrypt e contadores de usuarios/admins.</li>
 <li><strong>Riscos:</strong> usuario sem <code>CodigoFJ</code> valido nao abre dashboard corretamente.</li>
 </ul>
 <h4>Aplicacao do operador</h4>
@@ -670,9 +694,18 @@
 <li><strong>Outputs:</strong> registro de leitura e visualizacao de comunicados.</li>
 <li><strong>Riscos:</strong> configuracao do <code>DatabasePath</code> deve apontar para o mesmo banco operacional.</li>
 </ul>
+<h4>Infraestrutura, configuracao e dados</h4>
+<ul>
+<li><strong>Finalidade:</strong> fornecer base compartilhada para configuracao, entidades, validacoes, banco, migrations, repositorios e services.</li>
+<li><strong>Arquivos principais:</strong> <code>TeamOps.Config/*</code>, <code>TeamOps.Core/*</code>, <code>TeamOps.Data/*</code>, <code>TeamOps.UI/App.config</code>, <code>TeamOps.OperatorApp/App.config</code>.</li>
+<li><strong>Dependencias:</strong> SQLite, Dapper, app settings, migrations SQL e caminhos configurados.</li>
+<li><strong>Inputs:</strong> <code>DatabasePath</code>, caminhos de templates/pastas, arquivos TXT/DAT/CSV, dados operacionais e comandos dos modulos.</li>
+<li><strong>Outputs:</strong> conexoes SQLite, schema atualizado, entidades, validacoes, repositorios e services usados pelas telas.</li>
+<li><strong>Riscos:</strong> configuracao divergente entre UI, OperatorApp e Probe pode apontar para bancos diferentes; migrations incompletas ou app settings ausentes geram erro em tempo de execucao.</li>
+</ul>
 </div>
 </details>
-<details class="doc-detail" id="doc-admin-panel">
+  <details class="doc-detail" id="doc-admin-panel">
 <summary>Painel Admin <span>docs/admin-panel.md</span></summary>
 <div class="markdown-doc">
 <h3>Painel Admin</h3>
@@ -687,16 +720,49 @@
 </ul>
 <h4>Prints</h4>
 <p>Os prints abaixo foram capturados com a tela HTML real do modulo e dados simulados, sem gravar no banco operacional.</p>
-<p><img class="doc-image" src="screenshots/admin-panel-machines.png" alt="Painel admin - maquinas"></p>
-<p><img class="doc-image" src="screenshots/admin-panel-modal.png" alt="Painel admin - modal de cadastro"></p>
-<p><img class="doc-image" src="screenshots/admin-panel-system-log.png" alt="Painel admin - log do sistema"></p>
+<p><img src="screenshots/admin-panel-machines.png" alt="Painel admin - maquinas"></p>
+<p><img src="screenshots/admin-panel-modal.png" alt="Painel admin - modal de cadastro"></p>
+<p><img src="screenshots/admin-panel-system-log.png" alt="Painel admin - log do sistema"></p>
 <h4>Estrutura da tela</h4>
 <p>O cabecalho mostra o nome do modulo, uma descricao curta, o cadastro ativo e a quantidade de registros carregados. A lateral esquerda lista os cadastros por grupos: Base, Producao, Follow, Pessoas e Outros. A area central mostra o cadastro selecionado, busca, acoes, indicadores e tabela.</p>
 <p>Os indicadores mudam conforme o cadastro. Em geral mostram total, registros visiveis e modo editavel/leitura. Em <strong>Maquinas</strong>, mostram total, maquinas com local, maquinas ativas e pendencias. Em <strong>Locais</strong>, mostram total, locais com codigo, locais com maquinas e setores. Em <strong>Pendencias de Maquina</strong>, mostram total e tipos de inconsistencias encontradas.</p>
 <h4>Botao a botao</h4>
-<div class="table-scroll"><table><thead><tr><th>Botao ou controle</th><th>Onde aparece</th><th>Funcionalidade</th></tr></thead><tbody><tr><td>Cartoes da barra lateral</td><td>Lateral esquerda</td><td>Trocam o cadastro ativo. Ao clicar, a tela limpa os registros atuais, carrega o novo cadastro pelo WinForms e atualiza titulo, descricao, metricas, colunas e botoes.</td></tr><tr><td>Buscar</td><td>Barra superior do cadastro</td><td>Filtra localmente as linhas carregadas. A busca considera as colunas exibidas do cadastro ativo, como codigo, nome, setor, local e validacao.</td></tr><tr><td>Novo</td><td>Cadastros editaveis</td><td>Abre o modal de criacao do cadastro ativo. Fica oculto e desabilitado em telas somente leitura, como <strong>Pendencias de Maquina</strong> e <strong>Log do Sistema</strong>.</td></tr><tr><td>Editar</td><td>Coluna <strong>Acoes</strong> da tabela</td><td>Abre o modal preenchido com os dados da linha selecionada. Ao salvar, envia a acao <code>update</code> para o WinForms.</td></tr><tr><td>Excluir</td><td>Coluna <strong>Acoes</strong> da tabela</td><td>Exibe confirmacao e, se confirmada, envia a acao <code>delete</code> para o WinForms. Nao aparece em cadastros somente leitura.</td></tr><tr><td>X</td><td>Canto superior direito do modal</td><td>Fecha o modal sem salvar e limpa o estado de edicao.</td></tr><tr><td>Cancelar</td><td>Rodape do modal</td><td>Fecha o modal sem salvar e volta o estado para criacao.</td></tr><tr><td>Cadastrar</td><td>Rodape do modal em modo novo</td><td>Coleta os campos do modal e envia a acao <code>save</code> para o WinForms.</td></tr><tr><td>Salvar alteracoes</td><td>Rodape do modal em modo edicao</td><td>Coleta os campos do modal e envia a acao <code>update</code> com o <code>id</code> do registro em edicao.</td></tr><tr><td>Fundo escuro do modal</td><td>Atras do modal aberto</td><td>Fecha o modal sem salvar.</td></tr><tr><td>Data inicial</td><td>Log do Sistema</td><td>Define o inicio do periodo consultado no log. O padrao e hoje menos 30 dias.</td></tr><tr><td>Data final</td><td>Log do Sistema</td><td>Define o fim do periodo consultado no log. Se a data final for menor que a inicial, o backend inverte o periodo antes da consulta.</td></tr><tr><td>Usuario</td><td>Log do Sistema</td><td>Filtra <code>SystemLog.UserFJ</code> por trecho de FJ.</td></tr><tr><td>Modulo</td><td>Log do Sistema</td><td>Filtra <code>SystemLog.Module</code> por trecho do modulo.</td></tr><tr><td>Acao</td><td>Log do Sistema</td><td>Filtra <code>SystemLog.Action</code> por trecho da acao.</td></tr><tr><td>Atualizar</td><td>Log do Sistema</td><td>Recarrega o log usando os filtros de data, usuario, modulo e acao.</td></tr></tbody></table></div>
+<table><thead><tr><th>Botao ou controle</th><th>Onde aparece</th><th>Funcionalidade</th></tr></thead><tbody>
+<tr><td>Cartoes da barra lateral</td><td>Lateral esquerda</td><td>Trocam o cadastro ativo. Ao clicar, a tela limpa os registros atuais, carrega o novo cadastro pelo WinForms e atualiza titulo, descricao, metricas, colunas e botoes.</td></tr>
+<tr><td>Buscar</td><td>Barra superior do cadastro</td><td>Filtra localmente as linhas carregadas. A busca considera as colunas exibidas do cadastro ativo, como codigo, nome, setor, local e validacao.</td></tr>
+<tr><td>Novo</td><td>Cadastros editaveis</td><td>Abre o modal de criacao do cadastro ativo. Fica oculto e desabilitado em telas somente leitura, como <strong>Pendencias de Maquina</strong> e <strong>Log do Sistema</strong>.</td></tr>
+<tr><td>Editar</td><td>Coluna <strong>Acoes</strong> da tabela</td><td>Abre o modal preenchido com os dados da linha selecionada. Ao salvar, envia a acao <code>update</code> para o WinForms.</td></tr>
+<tr><td>Excluir</td><td>Coluna <strong>Acoes</strong> da tabela</td><td>Exibe confirmacao e, se confirmada, envia a acao <code>delete</code> para o WinForms. Nao aparece em cadastros somente leitura.</td></tr>
+<tr><td>X</td><td>Canto superior direito do modal</td><td>Fecha o modal sem salvar e limpa o estado de edicao.</td></tr>
+<tr><td>Cancelar</td><td>Rodape do modal</td><td>Fecha o modal sem salvar e volta o estado para criacao.</td></tr>
+<tr><td>Cadastrar</td><td>Rodape do modal em modo novo</td><td>Coleta os campos do modal e envia a acao <code>save</code> para o WinForms.</td></tr>
+<tr><td>Salvar alteracoes</td><td>Rodape do modal em modo edicao</td><td>Coleta os campos do modal e envia a acao <code>update</code> com o <code>id</code> do registro em edicao.</td></tr>
+<tr><td>Fundo escuro do modal</td><td>Atras do modal aberto</td><td>Fecha o modal sem salvar.</td></tr>
+<tr><td>Data inicial</td><td>Log do Sistema</td><td>Define o inicio do periodo consultado no log. O padrao e hoje menos 30 dias.</td></tr>
+<tr><td>Data final</td><td>Log do Sistema</td><td>Define o fim do periodo consultado no log. Se a data final for menor que a inicial, o backend inverte o periodo antes da consulta.</td></tr>
+<tr><td>Usuario</td><td>Log do Sistema</td><td>Filtra <code>SystemLog.UserFJ</code> por trecho de FJ.</td></tr>
+<tr><td>Modulo</td><td>Log do Sistema</td><td>Filtra <code>SystemLog.Module</code> por trecho do modulo.</td></tr>
+<tr><td>Acao</td><td>Log do Sistema</td><td>Filtra <code>SystemLog.Action</code> por trecho da acao.</td></tr>
+<tr><td>Atualizar</td><td>Log do Sistema</td><td>Recarrega o log usando os filtros de data, usuario, modulo e acao.</td></tr>
+</tbody></table>
 <h4>Cadastros disponiveis</h4>
-<div class="table-scroll"><table><thead><tr><th>Grupo</th><th>Cadastro</th><th>Modo</th><th>Finalidade</th><th>Campos principais</th></tr></thead><tbody><tr><td>Base</td><td>Turnos</td><td>Editavel</td><td>Base dos turnos usados no dashboard, tasks e filtros.</td><td>Nome PT, Nome JP.</td></tr><tr><td>Base</td><td>Grupos</td><td>Editavel</td><td>Agrupamentos de lideranca e leitura de area.</td><td>Nome PT, Nome JP.</td></tr><tr><td>Base</td><td>Setores</td><td>Editavel</td><td>Setores exibidos nas leituras, filtros e presencas.</td><td>Nome PT, Nome JP.</td></tr><tr><td>Base</td><td>Locais</td><td>Editavel</td><td>Locais, areas e codigos curtos usados em Haidai, producao, presence e exportacoes.</td><td>Nome PT, Nome JP, Codigo Curto, Setor.</td></tr><tr><td>Producao</td><td>Equipamentos</td><td>Editavel</td><td>Equipamentos vinculados aos cadastros operacionais.</td><td>Nome PT, Nome JP.</td></tr><tr><td>Producao</td><td>Maquinas</td><td>Editavel</td><td>Cadastro das maquinas com codigo, linha, setor, LocalId e status ativo.</td><td>Nome PT, Nome JP, Codigo da Maquina, Linha, Setor, Local, Ativa.</td></tr><tr><td>Producao</td><td>Pendencias de Maquina</td><td>Somente leitura</td><td>Lista maquinas sem local, sem setor, com local inexistente ou com setor divergente.</td><td>Consulta.</td></tr><tr><td>Producao</td><td>Status de Maquina</td><td>Editavel</td><td>Status brutos importados dos arquivos de producao. Setor vazio funciona como fallback global.</td><td>Setor, Codigo, Visual, Regra eficiencia, Nome PT, Nome JP, Cor, Cor do Texto.</td></tr><tr><td>Producao</td><td>Codigos da Producao</td><td>Editavel</td><td>Legenda visual dos codigos destacados na tela de producao.</td><td>Codigo, Cor, Cor do Texto, Descricao, Ativo.</td></tr><tr><td>Producao</td><td>Tempos de Procedimento</td><td>Editavel</td><td>Tempos padrao usados na previsao de capacidade do G-Bareru.</td><td>Setor, Area opcional, Procedimento, Tempo padrao, Ativo.</td></tr><tr><td>Producao</td><td>Categorias</td><td>Editavel</td><td>Categorias usadas no Hikitsugui e em outros registros.</td><td>Nome PT, Nome JP.</td></tr><tr><td>Follow</td><td>Motivos Follow</td><td>Editavel</td><td>Motivos padrao para os acompanhamentos.</td><td>Nome PT, Nome JP.</td></tr><tr><td>Follow</td><td>Tipos Follow</td><td>Editavel</td><td>Tipos de acompanhamento para formularios de follow.</td><td>Nome PT, Nome JP.</td></tr><tr><td>Pessoas</td><td>Shain</td><td>Editavel</td><td>Base simples de nomes romanji e nihongo para referencias internas.</td><td>Nome Romanji, Nome Nihongo.</td></tr><tr><td>Outros</td><td>Log do Sistema</td><td>Somente leitura</td><td>Historico de eventos gravados pelo sistema.</td><td>Data/Hora, FJ, Modulo, Acao, Target, Detalhes.</td></tr></tbody></table></div>
+<table><thead><tr><th>Grupo</th><th>Cadastro</th><th>Modo</th><th>Finalidade</th><th>Campos principais</th></tr></thead><tbody>
+<tr><td>Base</td><td>Turnos</td><td>Editavel</td><td>Base dos turnos usados no dashboard, tasks e filtros.</td><td>Nome PT, Nome JP.</td></tr>
+<tr><td>Base</td><td>Grupos</td><td>Editavel</td><td>Agrupamentos de lideranca e leitura de area.</td><td>Nome PT, Nome JP.</td></tr>
+<tr><td>Base</td><td>Setores</td><td>Editavel</td><td>Setores exibidos nas leituras, filtros e presencas.</td><td>Nome PT, Nome JP.</td></tr>
+<tr><td>Base</td><td>Locais</td><td>Editavel</td><td>Locais, areas e codigos curtos usados em Haidai, producao, presence e exportacoes.</td><td>Nome PT, Nome JP, Codigo Curto, Setor.</td></tr>
+<tr><td>Producao</td><td>Equipamentos</td><td>Editavel</td><td>Equipamentos vinculados aos cadastros operacionais.</td><td>Nome PT, Nome JP.</td></tr>
+<tr><td>Producao</td><td>Maquinas</td><td>Editavel</td><td>Cadastro das maquinas com codigo, linha, setor, LocalId e status ativo.</td><td>Nome PT, Nome JP, Codigo da Maquina, Linha, Setor, Local, Ativa.</td></tr>
+<tr><td>Producao</td><td>Pendencias de Maquina</td><td>Somente leitura</td><td>Lista maquinas sem local, sem setor, com local inexistente ou com setor divergente.</td><td>Consulta.</td></tr>
+<tr><td>Producao</td><td>Status de Maquina</td><td>Editavel</td><td>Status brutos importados dos arquivos de producao. Setor vazio funciona como fallback global.</td><td>Setor, Codigo, Visual, Regra eficiencia, Nome PT, Nome JP, Cor, Cor do Texto.</td></tr>
+<tr><td>Producao</td><td>Codigos da Producao</td><td>Editavel</td><td>Legenda visual dos codigos destacados na tela de producao.</td><td>Codigo, Cor, Cor do Texto, Descricao, Ativo.</td></tr>
+<tr><td>Producao</td><td>Tempos de Procedimento</td><td>Editavel</td><td>Tempos padrao usados na previsao de capacidade do G-Bareru.</td><td>Setor, Area opcional, Procedimento, Tempo padrao, Ativo.</td></tr>
+<tr><td>Producao</td><td>Categorias</td><td>Editavel</td><td>Categorias usadas no Hikitsugui e em outros registros.</td><td>Nome PT, Nome JP.</td></tr>
+<tr><td>Follow</td><td>Motivos Follow</td><td>Editavel</td><td>Motivos padrao para os acompanhamentos.</td><td>Nome PT, Nome JP.</td></tr>
+<tr><td>Follow</td><td>Tipos Follow</td><td>Editavel</td><td>Tipos de acompanhamento para formularios de follow.</td><td>Nome PT, Nome JP.</td></tr>
+<tr><td>Pessoas</td><td>Shain</td><td>Editavel</td><td>Base simples de nomes romanji e nihongo para referencias internas.</td><td>Nome Romanji, Nome Nihongo.</td></tr>
+<tr><td>Outros</td><td>Log do Sistema</td><td>Somente leitura</td><td>Historico de eventos gravados pelo sistema.</td><td>Data/Hora, FJ, Modulo, Acao, Target, Detalhes.</td></tr>
+</tbody></table>
 <h4>Detalhamento item por item</h4>
 <h5>Turnos</h5>
 <p>Mantem a lista de turnos usada pelo dashboard, tarefas, filtros e outras telas que dependem de turno. Cada registro possui <strong>Nome PT</strong> e <strong>Nome JP</strong>. Permite criar, editar e excluir turnos. Alteracoes aqui podem afetar filtros e exibicoes que esperam o nome do turno cadastrado.</p>
@@ -805,8 +871,8 @@
 </ul>
 </div>
 </details>
-<details class="doc-detail" id="doc-production-monitor-guide">
-<summary>Monitor de producao <span>docs/production-monitor-guide.md</span></summary>
+  <details class="doc-detail" id="doc-production-monitor-guide">
+<summary>Guia do monitor de producao <span>docs/production-monitor-guide.md</span></summary>
 <div class="markdown-doc">
 <h3>Production Monitor e ProductionMonitorProbe</h3>
 <h4>Objetivo</h4>
@@ -814,16 +880,30 @@
 <p>Use o Probe para validacao tecnica, diagnostico de banco, conferencia de importacao, status por setor, EC2 Administrator e performance. O usuario final normalmente usa apenas a tela <strong>Producao</strong> dentro do dashboard do TeamOps.</p>
 <h4>Onde executar o Probe</h4>
 <p>No ambiente publicado, abra PowerShell ou Prompt de Comando na pasta onde esta o executavel:</p>
-<pre><code class="language-powershell">cd C:\caminho\do\publish\ProductionMonitorProbe
+<pre><code>cd C:\caminho\do\publish\ProductionMonitorProbe
 .\ProductionMonitorProbe.exe schema-check</code></pre>
 <p>O banco usado pelo Probe vem do arquivo <code>.config</code> publicado, pela chave:</p>
-<pre><code class="language-xml">&lt;add key=&quot;DatabasePath&quot; value=&quot;C:\TeamOps\DB\teamops.db&quot; /&gt;</code></pre>
+<pre><code>&lt;add key="DatabasePath" value="C:\TeamOps\DB\teamops.db" /&gt;</code></pre>
 <p>Em producao, confirme que o <code>.config</code> do Probe aponta para o mesmo banco usado pelo TeamOps.</p>
 <h4>Comandos do ProductionMonitorProbe</h4>
-<div class="table-scroll"><table><thead><tr><th>Comando</th><th>Exemplo</th><th>O que faz</th><th>Quando usar</th></tr></thead><tbody><tr><td><code>import</code></td><td><code>.\ProductionMonitorProbe.exe import</code></td><td>Executa a importacao de producao usando as configuracoes atuais. Mostra arquivos lidos, linhas importadas/ignoradas, maquinas criadas, resultado do BAT, resultado EC2 e tempos de performance.</td><td>Validar se a importacao roda fora da tela principal.</td></tr><tr><td><code>import-profile</code></td><td><code>.\ProductionMonitorProbe.exe import-profile --date 2026-06-01 --sector dad</code></td><td>Executa importacao normal e, se houver <code>--date</code>, mede tambem analytics pos-importacao para a data/setor informado. Use <code>--reimport</code> para limpar e reprocessar a data informada.</td><td>Investigar lentidao, travamento ou divergencia depois de importar.</td></tr><tr><td><code>dashboard</code></td><td><code>.\ProductionMonitorProbe.exe dashboard</code></td><td>Monta dashboards de exemplo pelo backend e imprime kadouritsu, maquinas, areas e ranking.</td><td>Conferir se o backend do dashboard consegue calcular dados sem abrir a UI.</td></tr><tr><td><code>db-index-check</code></td><td><code>.\ProductionMonitorProbe.exe db-index-check</code></td><td>Lista os indices existentes e marca indices obrigatorios como <code>OK</code> ou <code>MISSING</code>.</td><td>Validar performance e migrations em producao/homologacao.</td></tr><tr><td><code>schema-check</code></td><td><code>.\ProductionMonitorProbe.exe schema-check</code></td><td>Valida schema do monitor de producao, integridade SQLite, tabelas, colunas, indices e seeds principais. Nao altera dados.</td><td>Primeiro comando para checar banco em producao.</td></tr><tr><td><code>schema-repair</code></td><td><code>.\ProductionMonitorProbe.exe schema-repair</code></td><td>Executa o migrator e repara seeds de status de producao/DAD. Depois roda a mesma validacao do <code>schema-check</code>.</td><td>Corrigir banco com migration/seeds faltando, com suporte tecnico acompanhando.</td></tr><tr><td><code>status-hardening</code></td><td><code>.\ProductionMonitorProbe.exe status-hardening</code></td><td>Valida regra defensiva de status por setor, fallback global, seeds DAD e formula de <code>StopNoCount</code>.</td><td>Antes de publicar ou depois de reparar schema.</td></tr><tr><td><code>status-report</code></td><td><code>.\ProductionMonitorProbe.exe status-report --start 2026-06-01 --end 2026-06-02 --sector dad --csv dad-status.csv</code></td><td>Gera relatorio de status encontrados em <code>MachineEvents</code>, com classificacao, fonte, fallback, minutos, impacto estimado e warnings. Pode exportar CSV.</td><td>Validar codigos reais do DAD/G-Bareru sem alterar classificacao automaticamente.</td></tr><tr><td><code>production-diagnostics</code></td><td><code>.\ProductionMonitorProbe.exe production-diagnostics</code></td><td>Mostra contagens de eventos, status, maquinas ativas, primeira/ultima data e distribuicoes principais.</td><td>Confirmar se a importacao gravou dados e se o dashboard tem base para exibir.</td></tr><tr><td><code>machine-cleanup</code></td><td><code>.\ProductionMonitorProbe.exe machine-cleanup</code></td><td>Lista maquinas ativas com codigo invalido, como valores numericos/decimais inseridos por importacao incorreta. Nao altera dados sem <code>--apply</code>.</td><td>Limpar seletores de maquina sem apagar historico ligado por FK.</td></tr><tr><td><code>ec2-diagnostics</code></td><td><code>.\ProductionMonitorProbe.exe ec2-diagnostics</code></td><td>Mostra ultima importacao EC2, arquivo/hash, maquinas atuais, rodando/paradas/desconsideradas, media, linhas auditadas e estilos de codigo de peca.</td><td>Conferir EC2 Administrator e cards EC2 do dashboard.</td></tr><tr><td><code>ec2-reset-latest</code></td><td><code>.\ProductionMonitorProbe.exe ec2-reset-latest</code></td><td>Remove a ultima importacao EC2 do arquivo configurado e seus snapshots.</td><td>Uso restrito de suporte para forcar reimportacao do mesmo arquivo EC2.</td></tr><tr><td><code>demo</code> ou sem comando</td><td><code>.\ProductionMonitorProbe.exe</code></td><td>Executa <code>import</code> e depois <code>dashboard</code>.</td><td>Teste rapido em ambiente de desenvolvimento.</td></tr></tbody></table></div>
+<table><thead><tr><th>Comando</th><th>Exemplo</th><th>O que faz</th><th>Quando usar</th></tr></thead><tbody>
+<tr><td><code>import</code></td><td><code>.\ProductionMonitorProbe.exe import</code></td><td>Executa a importacao de producao usando as configuracoes atuais. Mostra arquivos lidos, linhas importadas/ignoradas, maquinas criadas, resultado do BAT, resultado EC2 e tempos de performance.</td><td>Validar se a importacao roda fora da tela principal.</td></tr>
+<tr><td><code>import-profile</code></td><td><code>.\ProductionMonitorProbe.exe import-profile --date 2026-06-01 --sector dad</code></td><td>Executa importacao normal e, se houver <code>--date</code>, mede tambem analytics pos-importacao para a data/setor informado. Use <code>--reimport</code> para limpar e reprocessar a data informada.</td><td>Investigar lentidao, travamento ou divergencia depois de importar.</td></tr>
+<tr><td><code>dashboard</code></td><td><code>.\ProductionMonitorProbe.exe dashboard</code></td><td>Monta dashboards de exemplo pelo backend e imprime kadouritsu, maquinas, areas e ranking.</td><td>Conferir se o backend do dashboard consegue calcular dados sem abrir a UI.</td></tr>
+<tr><td><code>db-index-check</code></td><td><code>.\ProductionMonitorProbe.exe db-index-check</code></td><td>Lista os indices existentes e marca indices obrigatorios como <code>OK</code> ou <code>MISSING</code>.</td><td>Validar performance e migrations em producao/homologacao.</td></tr>
+<tr><td><code>schema-check</code></td><td><code>.\ProductionMonitorProbe.exe schema-check</code></td><td>Valida schema do monitor de producao, integridade SQLite, tabelas, colunas, indices e seeds principais. Nao altera dados.</td><td>Primeiro comando para checar banco em producao.</td></tr>
+<tr><td><code>schema-repair</code></td><td><code>.\ProductionMonitorProbe.exe schema-repair</code></td><td>Executa o migrator e repara seeds de status de producao/DAD. Depois roda a mesma validacao do <code>schema-check</code>.</td><td>Corrigir banco com migration/seeds faltando, com suporte tecnico acompanhando.</td></tr>
+<tr><td><code>status-hardening</code></td><td><code>.\ProductionMonitorProbe.exe status-hardening</code></td><td>Valida regra defensiva de status por setor, fallback global, seeds DAD e formula de <code>StopNoCount</code>.</td><td>Antes de publicar ou depois de reparar schema.</td></tr>
+<tr><td><code>status-report</code></td><td><code>.\ProductionMonitorProbe.exe status-report --start 2026-06-01 --end 2026-06-02 --sector dad --csv dad-status.csv</code></td><td>Gera relatorio de status encontrados em <code>MachineEvents</code>, com classificacao, fonte, fallback, minutos, impacto estimado e warnings. Pode exportar CSV.</td><td>Validar codigos reais do DAD/G-Bareru sem alterar classificacao automaticamente.</td></tr>
+<tr><td><code>production-diagnostics</code></td><td><code>.\ProductionMonitorProbe.exe production-diagnostics</code></td><td>Mostra contagens de eventos, status, maquinas ativas, primeira/ultima data e distribuicoes principais.</td><td>Confirmar se a importacao gravou dados e se o dashboard tem base para exibir.</td></tr>
+<tr><td><code>machine-cleanup</code></td><td><code>.\ProductionMonitorProbe.exe machine-cleanup</code></td><td>Lista maquinas ativas com codigo invalido, como valores numericos/decimais inseridos por importacao incorreta. Nao altera dados sem <code>--apply</code>.</td><td>Limpar seletores de maquina sem apagar historico ligado por FK.</td></tr>
+<tr><td><code>ec2-diagnostics</code></td><td><code>.\ProductionMonitorProbe.exe ec2-diagnostics</code></td><td>Mostra ultima importacao EC2, arquivo/hash, maquinas atuais, rodando/paradas/desconsideradas, media, linhas auditadas e estilos de codigo de peca.</td><td>Conferir EC2 Administrator e cards EC2 do dashboard.</td></tr>
+<tr><td><code>ec2-reset-latest</code></td><td><code>.\ProductionMonitorProbe.exe ec2-reset-latest</code></td><td>Remove a ultima importacao EC2 do arquivo configurado e seus snapshots.</td><td>Uso restrito de suporte para forcar reimportacao do mesmo arquivo EC2.</td></tr>
+<tr><td><code>demo</code> ou sem comando</td><td><code>.\ProductionMonitorProbe.exe</code></td><td>Executa <code>import</code> e depois <code>dashboard</code>.</td><td>Teste rapido em ambiente de desenvolvimento.</td></tr>
+</tbody></table>
 <h4>Parametros aceitos</h4>
 <h5><code>import-profile</code></h5>
-<pre><code class="language-powershell">.\ProductionMonitorProbe.exe import-profile --date 2026-06-01 --sector dad</code></pre>
+<pre><code>.\ProductionMonitorProbe.exe import-profile --date 2026-06-01 --sector dad</code></pre>
 <ul>
 <li><code>--date yyyy-MM-dd</code>: data usada para medir analytics depois da importacao.</li>
 <li><code>--sector dad</code>: filtra o analytics para DAD.</li>
@@ -832,9 +912,9 @@
 <li><code>--reimport</code>: opcional e destrutivo para o recorte informado; exige <code>--date</code>, limpa eventos/status do filtro e procura arquivos <code>YYMMDD_211D_E.txt</code> e <code>YYMMDD_2400_E.txt</code>.</li>
 </ul>
 <p>Exemplo de reprocessamento controlado por data:</p>
-<pre><code class="language-powershell">.\ProductionMonitorProbe.exe import-profile --date 2026-04-29 --sector dad --reimport</code></pre>
+<pre><code>.\ProductionMonitorProbe.exe import-profile --date 2026-04-29 --sector dad --reimport</code></pre>
 <h5><code>status-report</code></h5>
-<pre><code class="language-powershell">.\ProductionMonitorProbe.exe status-report --start 2026-06-01 --end 2026-06-02 --sector dad --csv dad-status.csv</code></pre>
+<pre><code>.\ProductionMonitorProbe.exe status-report --start 2026-06-01 --end 2026-06-02 --sector dad --csv dad-status.csv</code></pre>
 <ul>
 <li><code>--start yyyy-MM-dd</code> ou <code>yyyy-MM-dd HH:mm:ss</code>: inicio do periodo.</li>
 <li><code>--end yyyy-MM-dd</code> ou <code>yyyy-MM-dd HH:mm:ss</code>: fim do periodo. O fim e exclusivo.</li>
@@ -846,38 +926,38 @@
 <li>Fechar telas do TeamOps que estejam importando ou atualizando producao.</li>
 <li>Rodar:</li>
 </ol>
-<pre><code class="language-powershell">.\ProductionMonitorProbe.exe schema-check</code></pre>
+<pre><code>.\ProductionMonitorProbe.exe schema-check</code></pre>
 <ol>
 <li>Se aparecer issue de schema/seeds, rodar com suporte:</li>
 </ol>
-<pre><code class="language-powershell">.\ProductionMonitorProbe.exe schema-repair
+<pre><code>.\ProductionMonitorProbe.exe schema-repair
 .\ProductionMonitorProbe.exe schema-check</code></pre>
 <ol>
 <li>Validar indices:</li>
 </ol>
-<pre><code class="language-powershell">.\ProductionMonitorProbe.exe db-index-check</code></pre>
+<pre><code>.\ProductionMonitorProbe.exe db-index-check</code></pre>
 <ol>
 <li>Conferir dados importados:</li>
 </ol>
-<pre><code class="language-powershell">.\ProductionMonitorProbe.exe production-diagnostics</code></pre>
+<pre><code>.\ProductionMonitorProbe.exe production-diagnostics</code></pre>
 <ol>
 <li>Conferir se ha maquinas invalidas contaminando seletores:</li>
 </ol>
-<pre><code class="language-powershell">.\ProductionMonitorProbe.exe machine-cleanup</code></pre>
+<pre><code>.\ProductionMonitorProbe.exe machine-cleanup</code></pre>
 <p>Se a lista estiver correta, aplicar:</p>
-<pre><code class="language-powershell">.\ProductionMonitorProbe.exe machine-cleanup --apply</code></pre>
+<pre><code>.\ProductionMonitorProbe.exe machine-cleanup --apply</code></pre>
 <ol>
 <li>Validar status reais do DAD:</li>
 </ol>
-<pre><code class="language-powershell">.\ProductionMonitorProbe.exe status-report --start 2026-06-01 --end 2026-06-02 --sector dad --csv dad-status.csv</code></pre>
+<pre><code>.\ProductionMonitorProbe.exe status-report --start 2026-06-01 --end 2026-06-02 --sector dad --csv dad-status.csv</code></pre>
 <ol>
 <li>Se usa EC2 Administrator:</li>
 </ol>
-<pre><code class="language-powershell">.\ProductionMonitorProbe.exe ec2-diagnostics</code></pre>
+<pre><code>.\ProductionMonitorProbe.exe ec2-diagnostics</code></pre>
 <ol>
 <li>Medir importacao e analytics:</li>
 </ol>
-<pre><code class="language-powershell">.\ProductionMonitorProbe.exe import-profile --date 2026-06-01 --sector dad</code></pre>
+<pre><code>.\ProductionMonitorProbe.exe import-profile --date 2026-06-01 --sector dad</code></pre>
 <h4>Manutencao segura para dados antigos de producao</h4>
 <p>Dados antigos nao conformes podem deixar a tela <strong>Producao</strong> mais pesada e tambem poluir seletores, listas de maquinas e diagnosticos. Exemplos comuns:</p>
 <ul>
@@ -889,7 +969,7 @@
 <p>O procedimento recomendado para producao e sempre executar primeiro em modo diagnostico, revisar a saida e aplicar limpeza apenas quando o dry-run mostrar somente itens seguros.</p>
 <h5>Script pronto para producao</h5>
 <p>O publish do <code>ProductionMonitorProbe</code> inclui o script:</p>
-<pre><code class="language-powershell">.\RunProductionMaintenance.ps1</code></pre>
+<pre><code>.\RunProductionMaintenance.ps1</code></pre>
 <p>Por padrao, ele <strong>nao altera dados</strong>. Ele faz:</p>
 <ul>
 <li>identifica o banco pelo <code>.config</code> do probe;</li>
@@ -901,16 +981,16 @@
 <li>grava todas as saidas em arquivos <code>.out.txt</code> e <code>.err.txt</code>.</li>
 </ul>
 <p>Exemplo seguro para primeira execucao:</p>
-<pre><code class="language-powershell">cd C:\caminho\do\publish\ProductionMonitorProbe
+<pre><code>cd C:\caminho\do\publish\ProductionMonitorProbe
 .\RunProductionMaintenance.ps1</code></pre>
 <p>Depois de revisar <code>04-machine-cleanup-dry-run.out.txt</code>, se a lista tiver apenas maquinas invalidas confirmadas, aplique:</p>
-<pre><code class="language-powershell">.\RunProductionMaintenance.ps1 -ApplyCleanup</code></pre>
+<pre><code>.\RunProductionMaintenance.ps1 -ApplyCleanup</code></pre>
 <p>Tambem e possivel informar o banco e a pasta de saida manualmente:</p>
-<pre><code class="language-powershell">.\RunProductionMaintenance.ps1 -DatabasePath C:\TeamOps\DB\teamops.db -OutputDirectory C:\TeamOps\Maintenance\production-20260604</code></pre>
+<pre><code>.\RunProductionMaintenance.ps1 -DatabasePath C:\TeamOps\DB\teamops.db -OutputDirectory C:\TeamOps\Maintenance\production-20260604</code></pre>
 <h5>O que o <code>machine-cleanup --apply</code> faz</h5>
 <p>O comando nao apaga historico de producao. Ele inativa maquinas ativas com codigo claramente invalido, por exemplo registros criados por importacao incorreta onde o codigo da maquina virou uma data ou numero quebrado.</p>
 <p>Use o modo apply somente depois de confirmar o dry-run:</p>
-<pre><code class="language-powershell">.\ProductionMonitorProbe.exe machine-cleanup
+<pre><code>.\ProductionMonitorProbe.exe machine-cleanup
 .\ProductionMonitorProbe.exe machine-cleanup --apply</code></pre>
 <h5>Checklist antes de aplicar em producao</h5>
 <ol>
@@ -935,7 +1015,12 @@
 <h5>Sobre <code>.wal</code> e <code>.shm</code></h5>
 <p>O TeamOps configura SQLite com <code>journal_mode=DELETE</code>, para evitar arquivos persistentes <code>.wal</code> e <code>.shm</code>. Se algum <code>.wal</code> ou <code>.shm</code> aparecer, nao apague com o sistema aberto. Primeiro feche UI/probe/importacoes, confirme que nao ha processo usando o banco e entao investigue a configuracao do executavel que criou esses arquivos.</p>
 <h4>Como interpretar warnings do <code>status-report</code></h4>
-<div class="table-scroll"><table><thead><tr><th>Warning</th><th>Significado</th><th>Acao recomendada</th></tr></thead><tbody><tr><td><code>UNKNOWN_DAD_STATUS</code></td><td>O DAD teve codigo fora da lista esperada <code>0, 1, 3, 4, 17, 18, 19</code>.</td><td>Conferir com amostra real antes de cadastrar regra nova.</td></tr><tr><td><code>FALLBACK_USED_FOR_DAD</code></td><td>Nao encontrou status setorial DAD e usou status global.</td><td>Cadastrar status setorial se o significado do DAD for diferente.</td></tr><tr><td><code>AUTO_CREATED_STATUS</code></td><td>Status parece ter sido criado automaticamente ou manualmente fora do seed esperado.</td><td>Conferir classificacao no Admin/banco.</td></tr><tr><td><code>POSSIBLE_EFFICIENCY_IMPACT</code></td><td>Status nao rodando esta entrando no denominador do kadouritsu.</td><td>Validar se deve ser <code>StopCounts</code> ou <code>StopNoCount</code>.</td></tr></tbody></table></div>
+<table><thead><tr><th>Warning</th><th>Significado</th><th>Acao recomendada</th></tr></thead><tbody>
+<tr><td><code>UNKNOWN_DAD_STATUS</code></td><td>O DAD teve codigo fora da lista esperada <code>0, 1, 3, 4, 17, 18, 19</code>.</td><td>Conferir com amostra real antes de cadastrar regra nova.</td></tr>
+<tr><td><code>FALLBACK_USED_FOR_DAD</code></td><td>Nao encontrou status setorial DAD e usou status global.</td><td>Cadastrar status setorial se o significado do DAD for diferente.</td></tr>
+<tr><td><code>AUTO_CREATED_STATUS</code></td><td>Status parece ter sido criado automaticamente ou manualmente fora do seed esperado.</td><td>Conferir classificacao no Admin/banco.</td></tr>
+<tr><td><code>POSSIBLE_EFFICIENCY_IMPACT</code></td><td>Status nao rodando esta entrando no denominador do kadouritsu.</td><td>Validar se deve ser <code>StopCounts</code> ou <code>StopNoCount</code>.</td></tr>
+</tbody></table>
 <h4>Uso da tela Producao</h4>
 <p>Abra pelo dashboard:</p>
 <ol>
@@ -958,9 +1043,36 @@
 <li><strong>Detalhes por maquina/area:</strong> lista operacional usada para investigar divergencias.</li>
 </ul>
 <h4>Modulos relacionados no dashboard</h4>
-<div class="table-scroll"><table><thead><tr><th>Grupo</th><th>Botao</th><th>Uso principal</th></tr></thead><tbody><tr><td>Operacao</td><td><strong>Operadores</strong></td><td>Cadastro e consulta de operadores.</td></tr><tr><td>Operacao</td><td><strong>Acompanhamento</strong></td><td>Follow-up, registro e orientacao.</td></tr><tr><td>Operacao</td><td><strong>Tasks</strong></td><td>Planejamento e acompanhamento de tarefas do turno.</td></tr><tr><td>Operacao</td><td><strong>MasterCard</strong></td><td>Treinamento, follow e fechamento.</td></tr><tr><td>Operacao</td><td><strong>Producao</strong></td><td>Monitor de maquinas, importacao, EC2 e kadouritsu.</td></tr><tr><td>Operacao</td><td><strong>Sobra de Peca</strong></td><td>Lancamento de perdas/sobras.</td></tr><tr><td>Operacao</td><td><strong>Relatorios</strong></td><td>Hub de relatorios e impressoes.</td></tr><tr><td>Hikitsugui e Documentos</td><td><strong>Hikitsugui</strong></td><td>Cadastro rapido de passagem de informacao.</td></tr><tr><td>Hikitsugui e Documentos</td><td><strong>Leitura Hikitsugui</strong></td><td>Consulta, leitura, resposta e correcao.</td></tr><tr><td>Hikitsugui e Documentos</td><td><strong>PR</strong></td><td>Documento de processo.</td></tr><tr><td>Hikitsugui e Documentos</td><td><strong>CL</strong></td><td>Controle de linha.</td></tr><tr><td>Hikitsugui e Documentos</td><td><strong>Todoke</strong></td><td>Solicitacoes e folhas relacionadas a Yukyu/Todoke.</td></tr><tr><td>Presenca</td><td><strong>Presenca</strong></td><td>Painel dos setores e presenca operacional.</td></tr><tr><td>Presenca</td><td><strong>Haidai</strong></td><td>Escala diaria por grupo, usada tambem na previsao G-Bareru.</td></tr><tr><td>Administracao</td><td><strong>Admin</strong></td><td>Parametrizacoes do sistema, incluindo status/producao/codigos.</td></tr><tr><td>Administracao</td><td><strong>Acesso</strong></td><td>Usuarios e permissoes.</td></tr></tbody></table></div>
+<table><thead><tr><th>Grupo</th><th>Botao</th><th>Uso principal</th></tr></thead><tbody>
+<tr><td>Operacao</td><td><strong>Operadores</strong></td><td>Cadastro e consulta de operadores.</td></tr>
+<tr><td>Operacao</td><td><strong>Acompanhamento</strong></td><td>Follow-up, registro e orientacao.</td></tr>
+<tr><td>Operacao</td><td><strong>Tasks</strong></td><td>Planejamento e acompanhamento de tarefas do turno.</td></tr>
+<tr><td>Operacao</td><td><strong>MasterCard</strong></td><td>Treinamento, follow e fechamento.</td></tr>
+<tr><td>Operacao</td><td><strong>Producao</strong></td><td>Monitor de maquinas, importacao, EC2 e kadouritsu.</td></tr>
+<tr><td>Operacao</td><td><strong>Sobra de Peca</strong></td><td>Lancamento de perdas/sobras.</td></tr>
+<tr><td>Operacao</td><td><strong>Relatorios</strong></td><td>Hub de relatorios e impressoes.</td></tr>
+<tr><td>Hikitsugui e Documentos</td><td><strong>Hikitsugui</strong></td><td>Cadastro rapido de passagem de informacao.</td></tr>
+<tr><td>Hikitsugui e Documentos</td><td><strong>Leitura Hikitsugui</strong></td><td>Consulta, leitura, resposta e correcao.</td></tr>
+<tr><td>Hikitsugui e Documentos</td><td><strong>PR</strong></td><td>Documento de processo.</td></tr>
+<tr><td>Hikitsugui e Documentos</td><td><strong>CL</strong></td><td>Controle de linha.</td></tr>
+<tr><td>Hikitsugui e Documentos</td><td><strong>Todoke</strong></td><td>Solicitacoes e folhas relacionadas a Yukyu/Todoke.</td></tr>
+<tr><td>Presenca</td><td><strong>Presenca</strong></td><td>Painel dos setores e presenca operacional.</td></tr>
+<tr><td>Presenca</td><td><strong>Haidai</strong></td><td>Escala diaria por grupo, usada tambem na previsao G-Bareru.</td></tr>
+<tr><td>Administracao</td><td><strong>Admin</strong></td><td>Parametrizacoes do sistema, incluindo status/producao/codigos.</td></tr>
+<tr><td>Administracao</td><td><strong>Acesso</strong></td><td>Usuarios e permissoes.</td></tr>
+</tbody></table>
 <h4>Modulos do hub Relatorios</h4>
-<div class="table-scroll"><table><thead><tr><th>Botao</th><th>Uso principal</th></tr></thead><tbody><tr><td><strong>Hikitsugui</strong></td><td>Relatorio/consulta de passagem de informacao.</td></tr><tr><td><strong>Follow-up</strong></td><td>Relatorio consolidado de follow-up.</td></tr><tr><td><strong>Graficos de Follow-up</strong></td><td>Analise grafica de follow-up.</td></tr><tr><td><strong>Tasks</strong></td><td>Relatorio de tarefas.</td></tr><tr><td><strong>Operadores</strong></td><td>Relatorio gerencial por operador.</td></tr><tr><td><strong>Presenca</strong></td><td>Relatorio de presenca, ausencias, Yukyu e ocorrencias.</td></tr><tr><td><strong>MasterCard</strong></td><td>Relatorio de Master Card.</td></tr><tr><td><strong>PR</strong></td><td>Relatorio de PR.</td></tr><tr><td><strong>CL</strong></td><td>Relatorio de CL.</td></tr></tbody></table></div>
+<table><thead><tr><th>Botao</th><th>Uso principal</th></tr></thead><tbody>
+<tr><td><strong>Hikitsugui</strong></td><td>Relatorio/consulta de passagem de informacao.</td></tr>
+<tr><td><strong>Follow-up</strong></td><td>Relatorio consolidado de follow-up.</td></tr>
+<tr><td><strong>Graficos de Follow-up</strong></td><td>Analise grafica de follow-up.</td></tr>
+<tr><td><strong>Tasks</strong></td><td>Relatorio de tarefas.</td></tr>
+<tr><td><strong>Operadores</strong></td><td>Relatorio gerencial por operador.</td></tr>
+<tr><td><strong>Presenca</strong></td><td>Relatorio de presenca, ausencias, Yukyu e ocorrencias.</td></tr>
+<tr><td><strong>MasterCard</strong></td><td>Relatorio de Master Card.</td></tr>
+<tr><td><strong>PR</strong></td><td>Relatorio de PR.</td></tr>
+<tr><td><strong>CL</strong></td><td>Relatorio de CL.</td></tr>
+</tbody></table>
 <h4>Parametrizacoes importantes no Admin</h4>
 <p>Na tela <strong>Admin</strong>, confira as parametrizacoes ligadas a producao:</p>
 <ul>
@@ -972,9 +1084,15 @@
 <h4>Prints das telas</h4>
 <p>E possivel colocar prints na documentacao. Como as telas recebem dados reais pelo WinForms/WebView2, os prints mais confiaveis devem ser capturados com o TeamOps aberto e logado no ambiente correto.</p>
 <p>Sugestao de arquivos:</p>
-<div class="table-scroll"><table><thead><tr><th>Tela</th><th>Caminho sugerido</th></tr></thead><tbody><tr><td>Dashboard principal</td><td><code>docs/screenshots/dashboard.png</code></td></tr><tr><td>Hub de relatorios</td><td><code>docs/screenshots/reports.png</code></td></tr><tr><td>Monitor de producao</td><td><code>docs/screenshots/production-monitor.png</code></td></tr><tr><td>Admin - parametrizacoes de producao</td><td><code>docs/screenshots/admin-production.png</code></td></tr><tr><td>ProductionMonitorProbe no console</td><td><code>docs/screenshots/production-monitor-probe.png</code></td></tr></tbody></table></div>
+<table><thead><tr><th>Tela</th><th>Caminho sugerido</th></tr></thead><tbody>
+<tr><td>Dashboard principal</td><td><code>docs/screenshots/dashboard.png</code></td></tr>
+<tr><td>Hub de relatorios</td><td><code>docs/screenshots/reports.png</code></td></tr>
+<tr><td>Monitor de producao</td><td><code>docs/screenshots/production-monitor.png</code></td></tr>
+<tr><td>Admin - parametrizacoes de producao</td><td><code>docs/screenshots/admin-production.png</code></td></tr>
+<tr><td>ProductionMonitorProbe no console</td><td><code>docs/screenshots/production-monitor-probe.png</code></td></tr>
+</tbody></table>
 <p>Depois de salvar os prints nesses caminhos, eles podem ser referenciados no Markdown assim:</p>
-<pre><code class="language-markdown">![Dashboard principal](screenshots/dashboard.png)</code></pre>
+<pre><code>![Dashboard principal](screenshots/dashboard.png)</code></pre>
 <p>No momento, esta documentacao deixa a estrutura pronta para os prints reais, mas nao inclui imagem gerada automaticamente porque a renderizacao estatica fora do TeamOps nao carrega os dados do WebView2.</p>
 <h4>Cuidados operacionais</h4>
 <ul>
@@ -986,13 +1104,13 @@
 </ul>
 </div>
 </details>
-<details class="doc-detail" id="doc-architecture">
+  <details class="doc-detail" id="doc-architecture">
 <summary>Arquitetura <span>docs/architecture.md</span></summary>
 <div class="markdown-doc">
 <h3>Arquitetura</h3>
 <h4>Visao geral</h4>
 <p>TeamOps segue uma separacao em camadas simples:</p>
-<pre><code class="language-mermaid">flowchart TD
+<pre><code>flowchart TD
     UI[TeamOps.UI WinForms] --&gt; Core[TeamOps.Core]
     UI --&gt; Data[TeamOps.Data]
     UI --&gt; Config[TeamOps.Config]
@@ -1034,7 +1152,7 @@
 <h5>TeamOps.Config</h5>
 <p>Centraliza resolucao de caminhos. <code>AppPaths.GetDatabasePath</code> busca <code>DatabasePath</code> no <code>App.config</code>; se ausente, usa <code>%LOCALAPPDATA%\TeamOps\TeamOps\teamops.db</code> ou uma pasta <code>data</code> no modo portable.</p>
 <h4>Inicializacao</h4>
-<pre><code class="language-mermaid">sequenceDiagram
+<pre><code>sequenceDiagram
     participant App as Program.Main
     participant Config as DbSettings/AppPaths
     participant Init as DbInitializer
@@ -1069,9 +1187,9 @@
 </ul>
 <p>Em producao, esses caminhos podem apontar para compartilhamentos de rede ou drives mapeados. Isso torna rede, permissao e disponibilidade de pasta dependencias criticas.</p>
 <h4>WebView2 e modulos HTML</h4>
-<p>Os forms HTML chamam <code>EnsureCoreWebView2Async</code>, configuram <code>SetVirtualHostNameToFolderMapping(&quot;app&quot;, ...)</code> e navegam para <code>https://app/index.html</code>. Os arquivos HTML sao copiados para o output via <code>TeamOps.UI.csproj</code>.</p>
+<p>Os forms HTML chamam <code>EnsureCoreWebView2Async</code>, configuram <code>SetVirtualHostNameToFolderMapping("app", ...)</code> e navegam para <code>https://app/index.html</code>. Os arquivos HTML sao copiados para o output via <code>TeamOps.UI.csproj</code>.</p>
 <p>Fluxo padrao:</p>
-<pre><code class="language-mermaid">sequenceDiagram
+<pre><code>sequenceDiagram
     participant JS as Modulo HTML/JS
     participant WV as WebView2
     participant Form as Form C#
@@ -1119,7 +1237,7 @@
 <p>O dashboard consulta o usuario logado e compara <code>AccessLevel</code> antes de abrir modulos sensiveis. O acesso a atribuicoes, administracao e controle de acesso exige nivel administrativo. Relatorios, presenca, Haidai, tarefas e producao exigem nivel de lideranca. Follow-up, Master Card, Hikitsugui, Sobra de Peca, PR e CL exigem nivel KL ou superior.</p>
 <h4>Banco de dados</h4>
 <p>O banco usa SQLite com connection string:</p>
-<pre><code class="language-text">Data Source=&lt;DatabasePath&gt;;Cache=Shared;Mode=ReadWriteCreate</code></pre>
+<pre><code>Data Source=&lt;DatabasePath&gt;;Cache=Shared;Mode=ReadWriteCreate</code></pre>
 <p>O schema inclui tabelas para operadores, turnos, grupos, setores, usuarios, locais, follow-up, Hikitsugui, anexos, PR, CL, maquinas, eventos de maquina, paid leave, presenca, agenda de operadores, logs, tarefas e historico de tarefas.</p>
 <p>Repositorios usam <code>SqliteConnectionFactory</code> e Dapper ou comandos <code>Microsoft.Data.Sqlite</code>.</p>
 <h4>Migrations e schema</h4>
@@ -1137,8 +1255,8 @@
 </ul>
 </div>
 </details>
-<details class="doc-detail" id="doc-deployment">
-<summary>Deployment <span>docs/deployment.md</span></summary>
+  <details class="doc-detail" id="doc-deployment">
+<summary>Publicacao e deploy <span>docs/deployment.md</span></summary>
 <div class="markdown-doc">
 <h3>Deployment</h3>
 <h4>Pre-requisitos</h4>
@@ -1167,7 +1285,7 @@
 </ul>
 <h4>Estrutura esperada de pastas</h4>
 <p>Configuracao padrao em <code>TeamOps.UI/App.config</code>:</p>
-<pre><code class="language-text">C:\TeamOps\
+<pre><code>C:\TeamOps\
   DB\teamops.db
   PR\
   CL\
@@ -1234,7 +1352,7 @@
 </ul>
 </div>
 </details>
-<details class="doc-detail" id="doc-troubleshooting">
+  <details class="doc-detail" id="doc-troubleshooting">
 <summary>Troubleshooting <span>docs/troubleshooting.md</span></summary>
 <div class="markdown-doc">
 <h3>Troubleshooting</h3>
@@ -1371,7 +1489,7 @@
 <p><strong>COMO PREVENIR:</strong> nao mover anexos manualmente e usar pasta compartilhada estavel.</p>
 <h4>Acesso negado</h4>
 <p><strong>PROBLEMA:</strong> usuario nao consegue abrir um modulo.</p>
-<p><strong>SINTOMA:</strong> mensagem &quot;Acesso negado. Permissao insuficiente.&quot;</p>
+<p><strong>SINTOMA:</strong> mensagem "Acesso negado. Permissao insuficiente."</p>
 <p><strong>CAUSA PROVAVEL:</strong> nivel de acesso abaixo do exigido ou cadastro de usuario desatualizado.</p>
 <p><strong>COMO RESOLVER:</strong></p>
 <ol>
@@ -1382,7 +1500,7 @@
 <p><strong>COMO PREVENIR:</strong> revisar acessos periodicamente e remover permissoes antigas.</p>
 </div>
 </details>
-<details class="doc-detail" id="doc-domain-observations">
+  <details class="doc-detail" id="doc-domain-observations">
 <summary>Observacoes de dominio <span>docs/domain-observations.md</span></summary>
 <div class="markdown-doc">
 <h3>Observacoes de dominio</h3>
@@ -1390,7 +1508,7 @@
 <h4>Contexto operacional</h4>
 <p>TeamOps apoia rotinas de fabrica com foco em turno, operadores, liderancas, producao e comunicacao operacional. O sistema parece ser usado no inicio e durante o turno para consultar pessoas, registrar ocorrencias e acompanhar status.</p>
 <h4>Turnos, setores e operadores</h4>
-<p>O cadastro de operador se relaciona com turno e setor. O login do usuario precisa estar associado a um operador por <code>CodigoFJ</code>; caso contrario, o dashboard falha com &quot;Operador nao encontrado&quot;.</p>
+<p>O cadastro de operador se relaciona com turno e setor. O login do usuario precisa estar associado a um operador por <code>CodigoFJ</code>; caso contrario, o dashboard falha com "Operador nao encontrado".</p>
 <p><strong>Inferido pelo codigo:</strong> <code>CodigoFJ</code> e identificador importante para usuario, operador, tarefas e escala.</p>
 <h4>Niveis de acesso</h4>
 <p>O sistema usa <code>AccessLevel</code> para liberar modulos. Administradores acessam cadastros e permissoes; liderancas acessam relatorios, presenca, producao e exportacoes; KL ou superior acessa modulos operacionais mais sensiveis.</p>
@@ -1431,21 +1549,33 @@
 </ul>
 </div>
 </details>
-<details class="doc-detail" id="doc-i18n-audit-report">
-<summary>Auditoria i18n <span>docs/i18n-audit-report.md</span></summary>
+  <details class="doc-detail" id="doc-i18n-audit-report">
+<summary>Auditoria I18N <span>docs/i18n-audit-report.md</span></summary>
 <div class="markdown-doc">
 <h3>Auditoria de Internacionalizacao PT-BR / JA - TeamOps</h3>
 <p>Data da auditoria: 2026-06-17</p>
 <p>Escopo: TeamOps.UI, TeamOps.OperatorApp, Forms WinForms, HTML Forms, WebView UIs, dashboards e relatorios.</p>
 <p>Restricoes respeitadas: nenhuma regra de negocio, calculo ou banco de dados foi alterado. Esta entrega documenta a auditoria e o padrao de apresentacao bilíngue.</p>
 <h4>Sumario executivo</h4>
-<div class="table-scroll"><table><thead><tr><th>Metrica</th><th>Total</th></tr></thead><tbody><tr><td>Arquivos auditados</td><td>97</td></tr><tr><td>Telas/superficies auditadas</td><td>66</td></tr><tr><td>Forms C# auditados</td><td>37</td></tr><tr><td>UIs de formulario auditadas</td><td>14</td></tr><tr><td>Relatorios auditados</td><td>11</td></tr><tr><td>Dashboards auditados</td><td>3</td></tr><tr><td>OperatorApp auditado</td><td>1</td></tr><tr><td>Totalmente bilíngues</td><td>48</td></tr><tr><td>Parcialmente bilíngues</td><td>7</td></tr><tr><td>Fora do padrao bilíngue</td><td>9</td></tr><tr><td>Tecnico/sem UI direta</td><td>2</td></tr></tbody></table></div>
+<table><thead><tr><th>Metrica</th><th>Total</th></tr></thead><tbody>
+<tr><td>Arquivos auditados</td><td>97</td></tr>
+<tr><td>Telas/superficies auditadas</td><td>66</td></tr>
+<tr><td>Forms C# auditados</td><td>37</td></tr>
+<tr><td>UIs de formulario auditadas</td><td>14</td></tr>
+<tr><td>Relatorios auditados</td><td>11</td></tr>
+<tr><td>Dashboards auditados</td><td>3</td></tr>
+<tr><td>OperatorApp auditado</td><td>1</td></tr>
+<tr><td>Totalmente bilíngues</td><td>48</td></tr>
+<tr><td>Parcialmente bilíngues</td><td>7</td></tr>
+<tr><td>Fora do padrao bilíngue</td><td>9</td></tr>
+<tr><td>Tecnico/sem UI direta</td><td>2</td></tr>
+</tbody></table>
 <h4>Padrao de referencia encontrado</h4>
 <h5>WebView moderna</h5>
 <p>Arquivos de referencia: <code>TeamOps.UI/ui/access-control/app.js</code>, <code>TeamOps.UI/ui/follow-chart/app.js</code>, <code>TeamOps.UI/ui/sobra-de-peca/app.js</code>, <code>TeamOps.UI/ui/production-monitor/app.js</code>.</p>
 <p>Padrao:</p>
 <ul>
-<li><code>const I18N = { &quot;pt-BR&quot;: { ... }, &quot;ja-JP&quot;: { ... } }</code>.</li>
+<li><code>const I18N = { "pt-BR": { ... }, "ja-JP": { ... } }</code>.</li>
 <li>Estado de idioma vindo de <code>Program.CurrentLocale</code>.</li>
 <li>Funcao <code>t(key)</code> para leitura de textos.</li>
 <li><code>applyLocale()</code> aplica titulo, labels, botoes, colunas, placeholders e opcoes.</li>
@@ -1456,7 +1586,7 @@
 <p>Arquivos de referencia: <code>TeamOps.UI/Forms/HTMLFormAccessControl.cs</code>, <code>TeamOps.UI/Forms/HTMLFormHaidai.cs</code>, <code>TeamOps.UI/Forms/HTMLFormOperators.cs</code>, <code>TeamOps.UI/Forms/HTMLFormPresenceReport.cs</code>.</p>
 <p>Padrao:</p>
 <ul>
-<li><code>Text = L(&quot;Portugues&quot;, &quot;Japones&quot;)</code>.</li>
+<li><code>Text = L("Portugues", "Japones")</code>.</li>
 <li>Mensagens de excecao, erro, sucesso e validacao usando <code>L(pt, ja)</code>.</li>
 <li>Payload inicial envia <code>locale = Program.CurrentLocale</code>.</li>
 <li>Consultas de lookup retornam <code>NamePt</code> e <code>NameJp</code>, ou nome ja resolvido por locale.</li>
@@ -1469,21 +1599,145 @@
 <li>Fallback tecnico permitido: <code>Turno {Id}</code>, <code>Setor {Id}</code>, <code>Grupo {Id}</code>, <code>LocalId</code>.</li>
 </ul>
 <h4>Glossario recomendado</h4>
-<div class="table-scroll"><table><thead><tr><th>PT-BR</th><th>JA</th></tr></thead><tbody><tr><td>Operador</td><td>作業者</td></tr><tr><td>Setor</td><td>工程</td></tr><tr><td>Maquina</td><td>設備</td></tr><tr><td>Data</td><td>日付</td></tr><tr><td>Producao</td><td>生産</td></tr><tr><td>Presenca</td><td>出勤</td></tr><tr><td>Horas Extras</td><td>残業</td></tr><tr><td>Salvar</td><td>保存</td></tr><tr><td>Atualizar</td><td>更新</td></tr><tr><td>Pesquisar</td><td>検索</td></tr><tr><td>Cancelar</td><td>キャンセル</td></tr><tr><td>Excluir</td><td>削除</td></tr><tr><td>Importar</td><td>取込</td></tr><tr><td>Exportar</td><td>出力</td></tr><tr><td>Imprimir</td><td>印刷</td></tr><tr><td>Rodando</td><td>運転</td></tr><tr><td>Parado</td><td>停止</td></tr><tr><td>Erro</td><td>異常</td></tr><tr><td>Suspenso</td><td>除外</td></tr><tr><td>Desconsiderado</td><td>除外</td></tr><tr><td>Ativo</td><td>有効</td></tr><tr><td>Inativo</td><td>無効</td></tr><tr><td>Aviso</td><td>通知</td></tr><tr><td>Erro ao carregar</td><td>読込エラー</td></tr><tr><td>Salvo com sucesso</td><td>保存しました</td></tr><tr><td>Registro excluido</td><td>削除しました</td></tr></tbody></table></div>
+<table><thead><tr><th>PT-BR</th><th>JA</th></tr></thead><tbody>
+<tr><td>Operador</td><td>作業者</td></tr>
+<tr><td>Setor</td><td>工程</td></tr>
+<tr><td>Maquina</td><td>設備</td></tr>
+<tr><td>Data</td><td>日付</td></tr>
+<tr><td>Producao</td><td>生産</td></tr>
+<tr><td>Presenca</td><td>出勤</td></tr>
+<tr><td>Horas Extras</td><td>残業</td></tr>
+<tr><td>Salvar</td><td>保存</td></tr>
+<tr><td>Atualizar</td><td>更新</td></tr>
+<tr><td>Pesquisar</td><td>検索</td></tr>
+<tr><td>Cancelar</td><td>キャンセル</td></tr>
+<tr><td>Excluir</td><td>削除</td></tr>
+<tr><td>Importar</td><td>取込</td></tr>
+<tr><td>Exportar</td><td>出力</td></tr>
+<tr><td>Imprimir</td><td>印刷</td></tr>
+<tr><td>Rodando</td><td>運転</td></tr>
+<tr><td>Parado</td><td>停止</td></tr>
+<tr><td>Erro</td><td>異常</td></tr>
+<tr><td>Suspenso</td><td>除外</td></tr>
+<tr><td>Desconsiderado</td><td>除外</td></tr>
+<tr><td>Ativo</td><td>有効</td></tr>
+<tr><td>Inativo</td><td>無効</td></tr>
+<tr><td>Aviso</td><td>通知</td></tr>
+<tr><td>Erro ao carregar</td><td>読込エラー</td></tr>
+<tr><td>Salvo com sucesso</td><td>保存しました</td></tr>
+<tr><td>Registro excluido</td><td>削除しました</td></tr>
+</tbody></table>
 <h4>Termos tecnicos que nao devem ser traduzidos</h4>
 <p>Manter como estao: <code>MachineCode</code>, <code>MachineId</code>, <code>OperatorId</code>, <code>ShiftId</code>, <code>LocalId</code>, <code>SectorId</code>, <code>EC2</code>, <code>DCS</code>, <code>BUNKATSU</code>, <code>CAD</code>, <code>ID</code>, <code>UUID</code>, <code>FJ</code>.</p>
 <h4>Inventario por tela</h4>
-<div class="table-scroll"><table><thead><tr><th>Tipo</th><th>Tela</th><th>Arquivo principal</th><th>Status</th></tr></thead><tbody><tr><td>Dashboard</td><td>dashboard</td><td><code>TeamOps.UI/ui/dashboard/app.js</code></td><td>Bilíngue</td></tr><tr><td>Dashboard</td><td>presence</td><td><code>TeamOps.UI/ui/presence/app.js</code></td><td>Nao bilíngue</td></tr><tr><td>Dashboard</td><td>production-monitor</td><td><code>TeamOps.UI/ui/production-monitor/app.js</code></td><td>Bilíngue</td></tr><tr><td>Report</td><td>follow-chart</td><td><code>TeamOps.UI/ui/follow-chart/app.js</code></td><td>Bilíngue</td></tr><tr><td>Report</td><td>follow-operator-report</td><td><code>TeamOps.UI/ui/follow-operator-report/app.js</code></td><td>Bilíngue</td></tr><tr><td>Report</td><td>follow-report</td><td><code>TeamOps.UI/ui/follow-report/app.js</code></td><td>Bilíngue</td></tr><tr><td>Report</td><td>follow-single-report</td><td><code>TeamOps.UI/ui/follow-single-report/app.js</code></td><td>Bilíngue</td></tr><tr><td>Report</td><td>mastercard-report</td><td><code>TeamOps.UI/ui/mastercard-report/app.js</code></td><td>Bilíngue</td></tr><tr><td>Report</td><td>operator-manager-report</td><td><code>TeamOps.UI/ui/operator-manager-report/app.js</code></td><td>Bilíngue</td></tr><tr><td>Report</td><td>pr-cl-report</td><td><code>TeamOps.UI/ui/pr-cl-report/app.js</code></td><td>Bilíngue</td></tr><tr><td>Report</td><td>presence-report</td><td><code>TeamOps.UI/ui/presence-report/app.js</code></td><td>Bilíngue</td></tr><tr><td>Report</td><td>reports</td><td><code>TeamOps.UI/ui/reports/app.js</code></td><td>Bilíngue</td></tr><tr><td>Report</td><td>sobra-de-peca-report</td><td><code>TeamOps.UI/ui/sobra-de-peca-report/app.js</code></td><td>Bilíngue</td></tr><tr><td>Report</td><td>tasks-report</td><td><code>TeamOps.UI/ui/tasks-report/app.js</code></td><td>Bilíngue</td></tr><tr><td>UI Form</td><td>access-control</td><td><code>TeamOps.UI/ui/access-control/app.js</code></td><td>Bilíngue</td></tr><tr><td>UI Form</td><td>admin</td><td><code>TeamOps.UI/ui/admin/app.js</code></td><td>Bilíngue</td></tr><tr><td>UI Form</td><td>follow-up</td><td><code>TeamOps.UI/ui/follow-up/app.js</code></td><td>Bilíngue</td></tr><tr><td>UI Form</td><td>haidai</td><td><code>TeamOps.UI/ui/haidai/app.js</code></td><td>Parcial</td></tr><tr><td>UI Form</td><td>hikitsugui-create</td><td><code>TeamOps.UI/ui/hikitsugui-create/app.js</code></td><td>Bilíngue</td></tr><tr><td>UI Form</td><td>hikitsugui-leader-read</td><td><code>TeamOps.UI/ui/hikitsugui-leader-read/app.js</code></td><td>Bilíngue</td></tr><tr><td>UI Form</td><td>hikitsugui-reader</td><td><code>TeamOps.UI/ui/hikitsugui-reader/app.js</code></td><td>Bilíngue</td></tr><tr><td>UI Form</td><td>mastercard</td><td><code>TeamOps.UI/ui/mastercard/app.js</code></td><td>Bilíngue</td></tr><tr><td>UI Form</td><td>operators</td><td><code>TeamOps.UI/ui/operators/app.js</code></td><td>Bilíngue</td></tr><tr><td>UI Form</td><td>paidleave</td><td><code>TeamOps.UI/ui/paidleave/app.js</code></td><td>Nao bilíngue</td></tr><tr><td>UI Form</td><td>pr-cl</td><td><code>TeamOps.UI/ui/pr-cl/app.js</code></td><td>Bilíngue</td></tr><tr><td>UI Form</td><td>presence-layout</td><td><code>TeamOps.UI/ui/presence-layout/app.js</code></td><td>Bilíngue</td></tr><tr><td>UI Form</td><td>sobra-de-peca</td><td><code>TeamOps.UI/ui/sobra-de-peca/app.js</code></td><td>Bilíngue</td></tr><tr><td>UI Form</td><td>tasks</td><td><code>TeamOps.UI/ui/tasks/app.js</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>FormAccessControl</td><td><code>TeamOps.UI/Forms/FormAccessControl.cs</code></td><td>Tecnico/sem UI</td></tr><tr><td>Form</td><td>FormAddUser</td><td><code>TeamOps.UI/Forms/FormAddUser.cs</code></td><td>Nao bilíngue</td></tr><tr><td>Form</td><td>FormAssignments</td><td><code>TeamOps.UI/Forms/FormAssignments.cs</code></td><td>Nao bilíngue</td></tr><tr><td>Form</td><td>FormChangePassword</td><td><code>TeamOps.UI/Forms/FormChangePassword.cs</code></td><td>Nao bilíngue</td></tr><tr><td>Form</td><td>FormCL</td><td><code>TeamOps.UI/Forms/FormCL.cs</code></td><td>Parcial</td></tr><tr><td>Form</td><td>FormDashboardHtml</td><td><code>TeamOps.UI/Forms/FormDashboardHtml.cs</code></td><td>Parcial</td></tr><tr><td>Form</td><td>FormHikitsuguiPreview</td><td><code>TeamOps.UI/Forms/FormHikitsuguiPreview.cs</code></td><td>Tecnico/sem UI</td></tr><tr><td>Form</td><td>FormHikitsuguiReader</td><td><code>TeamOps.UI/Forms/FormHikitsuguiReader.cs</code></td><td>Parcial</td></tr><tr><td>Form</td><td>FormLogin</td><td><code>TeamOps.UI/Forms/FormLogin.cs</code></td><td>Nao bilíngue</td></tr><tr><td>Form</td><td>FormPaidLeaveTracking</td><td><code>TeamOps.UI/Forms/FormPaidLeaveTracking.cs</code></td><td>Nao bilíngue</td></tr><tr><td>Form</td><td>FormPR</td><td><code>TeamOps.UI/Forms/FormPR.cs</code></td><td>Parcial</td></tr><tr><td>Form</td><td>FormPresenceLayout</td><td><code>TeamOps.UI/Forms/FormPresenceLayout.cs</code></td><td>Nao bilíngue</td></tr><tr><td>Form</td><td>HTMLFormAccessControl</td><td><code>TeamOps.UI/Forms/HTMLFormAccessControl.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormAdmin</td><td><code>TeamOps.UI/Forms/HTMLFormAdmin.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormFollowChart</td><td><code>TeamOps.UI/Forms/HTMLFormFollowChart.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormFollowOperatorReport</td><td><code>TeamOps.UI/Forms/HTMLFormFollowOperatorReport.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormFollowReport</td><td><code>TeamOps.UI/Forms/HTMLFormFollowReport.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormFollowSingleReport</td><td><code>TeamOps.UI/Forms/HTMLFormFollowSingleReport.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormFollowUp</td><td><code>TeamOps.UI/Forms/HTMLFormFollowUp.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormHaidai</td><td><code>TeamOps.UI/Forms/HTMLFormHaidai.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormHikitsuguiReader</td><td><code>TeamOps.UI/Forms/HTMLFormHikitsuguiReader.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormMasterCard</td><td><code>TeamOps.UI/Forms/HTMLFormMasterCard.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormMasterCardReport</td><td><code>TeamOps.UI/Forms/HTMLFormMasterCardReport.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormOperatorManagerReport</td><td><code>TeamOps.UI/Forms/HTMLFormOperatorManagerReport.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormOperators</td><td><code>TeamOps.UI/Forms/HTMLFormOperators.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormPrCl</td><td><code>TeamOps.UI/Forms/HTMLFormPrCl.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormPrClReport</td><td><code>TeamOps.UI/Forms/HTMLFormPrClReport.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormPresenceLayout</td><td><code>TeamOps.UI/Forms/HTMLFormPresenceLayout.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormPresenceReport</td><td><code>TeamOps.UI/Forms/HTMLFormPresenceReport.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormProductionMonitor</td><td><code>TeamOps.UI/Forms/HTMLFormProductionMonitor.cs</code></td><td>Parcial</td></tr><tr><td>Form</td><td>HTMLFormReports</td><td><code>TeamOps.UI/Forms/HTMLFormReports.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormSobraDePeca</td><td><code>TeamOps.UI/Forms/HTMLFormSobraDePeca.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormSobraDePecaReport</td><td><code>TeamOps.UI/Forms/HTMLFormSobraDePecaReport.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormTasks</td><td><code>TeamOps.UI/Forms/HTMLFormTasks.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLFormTasksReport</td><td><code>TeamOps.UI/Forms/HTMLFormTasksReport.cs</code></td><td>Bilíngue</td></tr><tr><td>Form</td><td>HTMLHikitsuguiCreate</td><td><code>TeamOps.UI/Forms/HTMLHikitsuguiCreate.cs</code></td><td>Parcial</td></tr><tr><td>Form</td><td>HTMLHikitsuguiLeaderRead</td><td><code>TeamOps.UI/Forms/HTMLHikitsuguiLeaderRead.cs</code></td><td>Bilíngue</td></tr><tr><td>OperatorApp</td><td>hikitsugui-operator-read</td><td><code>TeamOps.OperatorApp/ui/hikitsugui-operator-read/app.js</code></td><td>Nao bilíngue</td></tr></tbody></table></div>
+<table><thead><tr><th>Tipo</th><th>Tela</th><th>Arquivo principal</th><th>Status</th></tr></thead><tbody>
+<tr><td>Dashboard</td><td>dashboard</td><td><code>TeamOps.UI/ui/dashboard/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>Dashboard</td><td>presence</td><td><code>TeamOps.UI/ui/presence/app.js</code></td><td>Nao bilíngue</td></tr>
+<tr><td>Dashboard</td><td>production-monitor</td><td><code>TeamOps.UI/ui/production-monitor/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>Report</td><td>follow-chart</td><td><code>TeamOps.UI/ui/follow-chart/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>Report</td><td>follow-operator-report</td><td><code>TeamOps.UI/ui/follow-operator-report/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>Report</td><td>follow-report</td><td><code>TeamOps.UI/ui/follow-report/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>Report</td><td>follow-single-report</td><td><code>TeamOps.UI/ui/follow-single-report/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>Report</td><td>mastercard-report</td><td><code>TeamOps.UI/ui/mastercard-report/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>Report</td><td>operator-manager-report</td><td><code>TeamOps.UI/ui/operator-manager-report/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>Report</td><td>pr-cl-report</td><td><code>TeamOps.UI/ui/pr-cl-report/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>Report</td><td>presence-report</td><td><code>TeamOps.UI/ui/presence-report/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>Report</td><td>reports</td><td><code>TeamOps.UI/ui/reports/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>Report</td><td>sobra-de-peca-report</td><td><code>TeamOps.UI/ui/sobra-de-peca-report/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>Report</td><td>tasks-report</td><td><code>TeamOps.UI/ui/tasks-report/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>UI Form</td><td>access-control</td><td><code>TeamOps.UI/ui/access-control/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>UI Form</td><td>admin</td><td><code>TeamOps.UI/ui/admin/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>UI Form</td><td>follow-up</td><td><code>TeamOps.UI/ui/follow-up/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>UI Form</td><td>haidai</td><td><code>TeamOps.UI/ui/haidai/app.js</code></td><td>Parcial</td></tr>
+<tr><td>UI Form</td><td>hikitsugui-create</td><td><code>TeamOps.UI/ui/hikitsugui-create/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>UI Form</td><td>hikitsugui-leader-read</td><td><code>TeamOps.UI/ui/hikitsugui-leader-read/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>UI Form</td><td>hikitsugui-reader</td><td><code>TeamOps.UI/ui/hikitsugui-reader/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>UI Form</td><td>mastercard</td><td><code>TeamOps.UI/ui/mastercard/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>UI Form</td><td>operators</td><td><code>TeamOps.UI/ui/operators/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>UI Form</td><td>paidleave</td><td><code>TeamOps.UI/ui/paidleave/app.js</code></td><td>Nao bilíngue</td></tr>
+<tr><td>UI Form</td><td>pr-cl</td><td><code>TeamOps.UI/ui/pr-cl/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>UI Form</td><td>presence-layout</td><td><code>TeamOps.UI/ui/presence-layout/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>UI Form</td><td>sobra-de-peca</td><td><code>TeamOps.UI/ui/sobra-de-peca/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>UI Form</td><td>tasks</td><td><code>TeamOps.UI/ui/tasks/app.js</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>FormAccessControl</td><td><code>TeamOps.UI/Forms/FormAccessControl.cs</code></td><td>Tecnico/sem UI</td></tr>
+<tr><td>Form</td><td>FormAddUser</td><td><code>TeamOps.UI/Forms/FormAddUser.cs</code></td><td>Nao bilíngue</td></tr>
+<tr><td>Form</td><td>FormAssignments</td><td><code>TeamOps.UI/Forms/FormAssignments.cs</code></td><td>Nao bilíngue</td></tr>
+<tr><td>Form</td><td>FormChangePassword</td><td><code>TeamOps.UI/Forms/FormChangePassword.cs</code></td><td>Nao bilíngue</td></tr>
+<tr><td>Form</td><td>FormCL</td><td><code>TeamOps.UI/Forms/FormCL.cs</code></td><td>Parcial</td></tr>
+<tr><td>Form</td><td>FormDashboardHtml</td><td><code>TeamOps.UI/Forms/FormDashboardHtml.cs</code></td><td>Parcial</td></tr>
+<tr><td>Form</td><td>FormHikitsuguiPreview</td><td><code>TeamOps.UI/Forms/FormHikitsuguiPreview.cs</code></td><td>Tecnico/sem UI</td></tr>
+<tr><td>Form</td><td>FormHikitsuguiReader</td><td><code>TeamOps.UI/Forms/FormHikitsuguiReader.cs</code></td><td>Parcial</td></tr>
+<tr><td>Form</td><td>FormLogin</td><td><code>TeamOps.UI/Forms/FormLogin.cs</code></td><td>Nao bilíngue</td></tr>
+<tr><td>Form</td><td>FormPaidLeaveTracking</td><td><code>TeamOps.UI/Forms/FormPaidLeaveTracking.cs</code></td><td>Nao bilíngue</td></tr>
+<tr><td>Form</td><td>FormPR</td><td><code>TeamOps.UI/Forms/FormPR.cs</code></td><td>Parcial</td></tr>
+<tr><td>Form</td><td>FormPresenceLayout</td><td><code>TeamOps.UI/Forms/FormPresenceLayout.cs</code></td><td>Nao bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormAccessControl</td><td><code>TeamOps.UI/Forms/HTMLFormAccessControl.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormAdmin</td><td><code>TeamOps.UI/Forms/HTMLFormAdmin.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormFollowChart</td><td><code>TeamOps.UI/Forms/HTMLFormFollowChart.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormFollowOperatorReport</td><td><code>TeamOps.UI/Forms/HTMLFormFollowOperatorReport.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormFollowReport</td><td><code>TeamOps.UI/Forms/HTMLFormFollowReport.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormFollowSingleReport</td><td><code>TeamOps.UI/Forms/HTMLFormFollowSingleReport.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormFollowUp</td><td><code>TeamOps.UI/Forms/HTMLFormFollowUp.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormHaidai</td><td><code>TeamOps.UI/Forms/HTMLFormHaidai.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormHikitsuguiReader</td><td><code>TeamOps.UI/Forms/HTMLFormHikitsuguiReader.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormMasterCard</td><td><code>TeamOps.UI/Forms/HTMLFormMasterCard.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormMasterCardReport</td><td><code>TeamOps.UI/Forms/HTMLFormMasterCardReport.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormOperatorManagerReport</td><td><code>TeamOps.UI/Forms/HTMLFormOperatorManagerReport.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormOperators</td><td><code>TeamOps.UI/Forms/HTMLFormOperators.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormPrCl</td><td><code>TeamOps.UI/Forms/HTMLFormPrCl.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormPrClReport</td><td><code>TeamOps.UI/Forms/HTMLFormPrClReport.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormPresenceLayout</td><td><code>TeamOps.UI/Forms/HTMLFormPresenceLayout.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormPresenceReport</td><td><code>TeamOps.UI/Forms/HTMLFormPresenceReport.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormProductionMonitor</td><td><code>TeamOps.UI/Forms/HTMLFormProductionMonitor.cs</code></td><td>Parcial</td></tr>
+<tr><td>Form</td><td>HTMLFormReports</td><td><code>TeamOps.UI/Forms/HTMLFormReports.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormSobraDePeca</td><td><code>TeamOps.UI/Forms/HTMLFormSobraDePeca.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormSobraDePecaReport</td><td><code>TeamOps.UI/Forms/HTMLFormSobraDePecaReport.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormTasks</td><td><code>TeamOps.UI/Forms/HTMLFormTasks.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLFormTasksReport</td><td><code>TeamOps.UI/Forms/HTMLFormTasksReport.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>Form</td><td>HTMLHikitsuguiCreate</td><td><code>TeamOps.UI/Forms/HTMLHikitsuguiCreate.cs</code></td><td>Parcial</td></tr>
+<tr><td>Form</td><td>HTMLHikitsuguiLeaderRead</td><td><code>TeamOps.UI/Forms/HTMLHikitsuguiLeaderRead.cs</code></td><td>Bilíngue</td></tr>
+<tr><td>OperatorApp</td><td>hikitsugui-operator-read</td><td><code>TeamOps.OperatorApp/ui/hikitsugui-operator-read/app.js</code></td><td>Nao bilíngue</td></tr>
+</tbody></table>
 <h4>Telas totalmente conformes</h4>
 <p>Principais conformes: <code>access-control</code>, <code>dashboard</code>, <code>follow-chart</code>, <code>follow-report</code>, <code>follow-up</code>, <code>hikitsugui-reader</code>, <code>mastercard</code>, <code>mastercard-report</code>, <code>operator-manager-report</code>, <code>operators</code>, <code>presence-layout</code>, <code>presence-report</code>, <code>production-monitor</code>, <code>reports</code>, <code>sobra-de-peca</code>, <code>sobra-de-peca-report</code>, <code>tasks</code>, <code>tasks-report</code>, e os HTML Forms correspondentes com <code>L(pt, ja)</code>.</p>
 <h4>Telas parcialmente conformes</h4>
-<div class="table-scroll"><table><thead><tr><th>Tela</th><th>Campo/problema</th><th>Atual</th><th>Esperado</th></tr></thead><tbody><tr><td><code>ui/haidai</code></td><td>Estrutura i18n</td><td>Textos PT/JA misturados sem <code>I18N</code> central</td><td>Migrar para <code>I18N[&quot;pt-BR&quot;]</code> e <code>I18N[&quot;ja-JP&quot;]</code></td></tr><tr><td><code>HTMLFormProductionMonitor</code></td><td>Wrapper C#</td><td>Tem PT/JA por dados e titulo, mas sem <code>L(pt, ja)</code> consistente</td><td>Padronizar titulo/mensagens com <code>L()</code></td></tr><tr><td><code>HTMLHikitsuguiCreate</code></td><td>Wrapper C#</td><td>Textos bilíngues parciais</td><td>Usar <code>L()</code> para titulo e mensagens</td></tr><tr><td><code>FormCL</code></td><td>WinForms legado</td><td>Mistura PT e JA em codigo</td><td>Substituir literais por <code>L()</code> ou recurso localizado</td></tr><tr><td><code>FormPR</code></td><td>WinForms legado</td><td>Mistura PT e JA em codigo</td><td>Substituir literais por <code>L()</code> ou recurso localizado</td></tr><tr><td><code>FormDashboardHtml</code></td><td>Wrapper legado</td><td>Resolucao parcial por locale</td><td>Padronizar com <code>L()</code></td></tr><tr><td><code>FormHikitsuguiReader</code></td><td>WinForms legado</td><td>Leitura parcial com textos fixos</td><td>Padronizar labels/mensagens</td></tr></tbody></table></div>
+<table><thead><tr><th>Tela</th><th>Campo/problema</th><th>Atual</th><th>Esperado</th></tr></thead><tbody>
+<tr><td><code>ui/haidai</code></td><td>Estrutura i18n</td><td>Textos PT/JA misturados sem <code>I18N</code> central</td><td>Migrar para <code>I18N["pt-BR"]</code> e <code>I18N["ja-JP"]</code></td></tr>
+<tr><td><code>HTMLFormProductionMonitor</code></td><td>Wrapper C#</td><td>Tem PT/JA por dados e titulo, mas sem <code>L(pt, ja)</code> consistente</td><td>Padronizar titulo/mensagens com <code>L()</code></td></tr>
+<tr><td><code>HTMLHikitsuguiCreate</code></td><td>Wrapper C#</td><td>Textos bilíngues parciais</td><td>Usar <code>L()</code> para titulo e mensagens</td></tr>
+<tr><td><code>FormCL</code></td><td>WinForms legado</td><td>Mistura PT e JA em codigo</td><td>Substituir literais por <code>L()</code> ou recurso localizado</td></tr>
+<tr><td><code>FormPR</code></td><td>WinForms legado</td><td>Mistura PT e JA em codigo</td><td>Substituir literais por <code>L()</code> ou recurso localizado</td></tr>
+<tr><td><code>FormDashboardHtml</code></td><td>Wrapper legado</td><td>Resolucao parcial por locale</td><td>Padronizar com <code>L()</code></td></tr>
+<tr><td><code>FormHikitsuguiReader</code></td><td>WinForms legado</td><td>Leitura parcial com textos fixos</td><td>Padronizar labels/mensagens</td></tr>
+</tbody></table>
 <h4>Telas fora do padrao</h4>
-<div class="table-scroll"><table><thead><tr><th>Tela</th><th>Campo/problema</th><th>Atual</th><th>Esperado</th></tr></thead><tbody><tr><td><code>ui/presence</code></td><td>Dashboard de presenca</td><td>Textos fixos em PT-BR</td><td>Criar <code>I18N</code> PT-BR/JA e aplicar <code>Program.CurrentLocale</code></td></tr><tr><td><code>ui/paidleave</code></td><td>Paid leave</td><td>Textos fixos em PT-BR</td><td>Criar <code>I18N</code> PT-BR/JA</td></tr><tr><td><code>TeamOps.OperatorApp/ui/hikitsugui-operator-read</code></td><td>OperatorApp</td><td>Textos fixos em PT-BR</td><td>Criar <code>I18N</code> PT-BR/JA e receber locale</td></tr><tr><td><code>FormAddUser</code></td><td>WinForms legado</td><td>Mensagens/titulo em PT</td><td>Usar <code>L(pt, ja)</code></td></tr><tr><td><code>FormAssignments</code></td><td>WinForms legado</td><td>Mensagens/titulo em PT</td><td>Usar <code>L(pt, ja)</code></td></tr><tr><td><code>FormChangePassword</code></td><td>WinForms legado</td><td>Mensagens/titulo em PT</td><td>Usar <code>L(pt, ja)</code></td></tr><tr><td><code>FormLogin</code></td><td>Login</td><td>Textos majoritariamente em JA/legado sem par PT</td><td>Definir PT-BR/JA por locale</td></tr><tr><td><code>FormPaidLeaveTracking</code></td><td>Paid leave wrapper</td><td>Textos em PT</td><td>Usar <code>L(pt, ja)</code></td></tr><tr><td><code>FormPresenceLayout</code></td><td>Presenca layout wrapper</td><td>Textos em PT</td><td>Usar <code>L(pt, ja)</code></td></tr></tbody></table></div>
+<table><thead><tr><th>Tela</th><th>Campo/problema</th><th>Atual</th><th>Esperado</th></tr></thead><tbody>
+<tr><td><code>ui/presence</code></td><td>Dashboard de presenca</td><td>Textos fixos em PT-BR</td><td>Criar <code>I18N</code> PT-BR/JA e aplicar <code>Program.CurrentLocale</code></td></tr>
+<tr><td><code>ui/paidleave</code></td><td>Paid leave</td><td>Textos fixos em PT-BR</td><td>Criar <code>I18N</code> PT-BR/JA</td></tr>
+<tr><td><code>TeamOps.OperatorApp/ui/hikitsugui-operator-read</code></td><td>OperatorApp</td><td>Textos fixos em PT-BR</td><td>Criar <code>I18N</code> PT-BR/JA e receber locale</td></tr>
+<tr><td><code>FormAddUser</code></td><td>WinForms legado</td><td>Mensagens/titulo em PT</td><td>Usar <code>L(pt, ja)</code></td></tr>
+<tr><td><code>FormAssignments</code></td><td>WinForms legado</td><td>Mensagens/titulo em PT</td><td>Usar <code>L(pt, ja)</code></td></tr>
+<tr><td><code>FormChangePassword</code></td><td>WinForms legado</td><td>Mensagens/titulo em PT</td><td>Usar <code>L(pt, ja)</code></td></tr>
+<tr><td><code>FormLogin</code></td><td>Login</td><td>Textos majoritariamente em JA/legado sem par PT</td><td>Definir PT-BR/JA por locale</td></tr>
+<tr><td><code>FormPaidLeaveTracking</code></td><td>Paid leave wrapper</td><td>Textos em PT</td><td>Usar <code>L(pt, ja)</code></td></tr>
+<tr><td><code>FormPresenceLayout</code></td><td>Presenca layout wrapper</td><td>Textos em PT</td><td>Usar <code>L(pt, ja)</code></td></tr>
+</tbody></table>
 <h4>Auditoria de relatorios</h4>
-<div class="table-scroll"><table><thead><tr><th>Relatorio</th><th>Status</th><th>Observacao</th></tr></thead><tbody><tr><td>Relatorio de Presenca</td><td>Bilíngue</td><td><code>I18N</code> em <code>presence-report/app.js</code>; atencao a chaves JA ainda em ingles em alguns titulos operacionais.</td></tr><tr><td>Relatorio de Producao / Production Monitor</td><td>Bilíngue</td><td>WebView tem <code>I18N</code>; parte PT usa termos sem acento por padrao ASCII do projeto.</td></tr><tr><td>Relatorio de Operadores</td><td>Bilíngue</td><td><code>operator-manager-report</code> usa <code>I18N</code> e dados <code>NameJp</code>.</td></tr><tr><td>Relatorio de Sobra de Pecas</td><td>Bilíngue</td><td><code>sobra-de-peca-report</code> usa <code>I18N</code>.</td></tr><tr><td>Relatorios EC2</td><td>Bilíngue parcial</td><td>EC2 aparece dentro de Production Monitor; termo tecnico nao deve ser traduzido.</td></tr><tr><td>Relatorios Gerenciais</td><td>Bilíngue</td><td><code>presence-report</code> e <code>operator-manager-report</code> seguem padrao moderno.</td></tr></tbody></table></div>
+<table><thead><tr><th>Relatorio</th><th>Status</th><th>Observacao</th></tr></thead><tbody>
+<tr><td>Relatorio de Presenca</td><td>Bilíngue</td><td><code>I18N</code> em <code>presence-report/app.js</code>; atencao a chaves JA ainda em ingles em alguns titulos operacionais.</td></tr>
+<tr><td>Relatorio de Producao / Production Monitor</td><td>Bilíngue</td><td>WebView tem <code>I18N</code>; parte PT usa termos sem acento por padrao ASCII do projeto.</td></tr>
+<tr><td>Relatorio de Operadores</td><td>Bilíngue</td><td><code>operator-manager-report</code> usa <code>I18N</code> e dados <code>NameJp</code>.</td></tr>
+<tr><td>Relatorio de Sobra de Pecas</td><td>Bilíngue</td><td><code>sobra-de-peca-report</code> usa <code>I18N</code>.</td></tr>
+<tr><td>Relatorios EC2</td><td>Bilíngue parcial</td><td>EC2 aparece dentro de Production Monitor; termo tecnico nao deve ser traduzido.</td></tr>
+<tr><td>Relatorios Gerenciais</td><td>Bilíngue</td><td><code>presence-report</code> e <code>operator-manager-report</code> seguem padrao moderno.</td></tr>
+</tbody></table>
 <h4>Auditoria de dashboards</h4>
-<div class="table-scroll"><table><thead><tr><th>Dashboard</th><th>Status</th><th>Observacao</th></tr></thead><tbody><tr><td>Dashboard Produção</td><td>Bilíngue</td><td><code>production-monitor</code> usa <code>I18N</code>; status operacionais precisam manter glossario unico.</td></tr><tr><td>Dashboard Operador</td><td>Nao bilíngue</td><td>OperatorApp precisa receber locale e aplicar <code>I18N</code>.</td></tr><tr><td>Dashboard Presenca</td><td>Nao bilíngue</td><td><code>ui/presence</code> tem textos fixos em PT-BR.</td></tr><tr><td>Dashboard EC2</td><td>Bilíngue parcial</td><td>Integrado ao Production Monitor; manter <code>EC2</code> tecnico sem traducao.</td></tr></tbody></table></div>
+<table><thead><tr><th>Dashboard</th><th>Status</th><th>Observacao</th></tr></thead><tbody>
+<tr><td>Dashboard Produção</td><td>Bilíngue</td><td><code>production-monitor</code> usa <code>I18N</code>; status operacionais precisam manter glossario unico.</td></tr>
+<tr><td>Dashboard Operador</td><td>Nao bilíngue</td><td>OperatorApp precisa receber locale e aplicar <code>I18N</code>.</td></tr>
+<tr><td>Dashboard Presenca</td><td>Nao bilíngue</td><td><code>ui/presence</code> tem textos fixos em PT-BR.</td></tr>
+<tr><td>Dashboard EC2</td><td>Bilíngue parcial</td><td>Integrado ao Production Monitor; manter <code>EC2</code> tecnico sem traducao.</td></tr>
+</tbody></table>
 <h4>Status operacionais</h4>
 <p>Padrao recomendado:</p>
 <ul>
@@ -1527,7 +1781,21 @@
 <li>Manter termos tecnicos em monospace/labels originais quando forem IDs, codigos ou siglas.</li>
 </ul>
 <h4>Arquivo x quantidade de ajustes recomendados</h4>
-<div class="table-scroll"><table><thead><tr><th>Arquivo/tela</th><th>Ajustes recomendados</th></tr></thead><tbody><tr><td><code>TeamOps.UI/ui/presence/app.js</code></td><td>20+</td></tr><tr><td><code>TeamOps.UI/ui/paidleave/app.js</code></td><td>20+</td></tr><tr><td><code>TeamOps.OperatorApp/ui/hikitsugui-operator-read/app.js</code></td><td>15+</td></tr><tr><td><code>TeamOps.UI/ui/haidai/app.js</code></td><td>20+</td></tr><tr><td><code>TeamOps.UI/Forms/FormAddUser.cs</code></td><td>5+</td></tr><tr><td><code>TeamOps.UI/Forms/FormAssignments.cs</code></td><td>5+</td></tr><tr><td><code>TeamOps.UI/Forms/FormChangePassword.cs</code></td><td>5+</td></tr><tr><td><code>TeamOps.UI/Forms/FormLogin.cs</code></td><td>5+</td></tr><tr><td><code>TeamOps.UI/Forms/FormPaidLeaveTracking.cs</code></td><td>5+</td></tr><tr><td><code>TeamOps.UI/Forms/FormPresenceLayout.cs</code></td><td>5+</td></tr><tr><td><code>TeamOps.UI/Forms/FormCL.cs</code></td><td>5+</td></tr><tr><td><code>TeamOps.UI/Forms/FormPR.cs</code></td><td>5+</td></tr><tr><td><code>TeamOps.UI/Forms/FormHikitsuguiReader.cs</code></td><td>5+</td></tr></tbody></table></div>
+<table><thead><tr><th>Arquivo/tela</th><th>Ajustes recomendados</th></tr></thead><tbody>
+<tr><td><code>TeamOps.UI/ui/presence/app.js</code></td><td>20+</td></tr>
+<tr><td><code>TeamOps.UI/ui/paidleave/app.js</code></td><td>20+</td></tr>
+<tr><td><code>TeamOps.OperatorApp/ui/hikitsugui-operator-read/app.js</code></td><td>15+</td></tr>
+<tr><td><code>TeamOps.UI/ui/haidai/app.js</code></td><td>20+</td></tr>
+<tr><td><code>TeamOps.UI/Forms/FormAddUser.cs</code></td><td>5+</td></tr>
+<tr><td><code>TeamOps.UI/Forms/FormAssignments.cs</code></td><td>5+</td></tr>
+<tr><td><code>TeamOps.UI/Forms/FormChangePassword.cs</code></td><td>5+</td></tr>
+<tr><td><code>TeamOps.UI/Forms/FormLogin.cs</code></td><td>5+</td></tr>
+<tr><td><code>TeamOps.UI/Forms/FormPaidLeaveTracking.cs</code></td><td>5+</td></tr>
+<tr><td><code>TeamOps.UI/Forms/FormPresenceLayout.cs</code></td><td>5+</td></tr>
+<tr><td><code>TeamOps.UI/Forms/FormCL.cs</code></td><td>5+</td></tr>
+<tr><td><code>TeamOps.UI/Forms/FormPR.cs</code></td><td>5+</td></tr>
+<tr><td><code>TeamOps.UI/Forms/FormHikitsuguiReader.cs</code></td><td>5+</td></tr>
+</tbody></table>
 <h4>Ajustes realizados nesta auditoria</h4>
 <ul>
 <li>Criado este relatorio de auditoria bilíngue.</li>
@@ -1553,7 +1821,7 @@
 </ul>
 </div>
 </details>
-<details class="doc-detail" id="doc-screenshots-readme">
+  <details class="doc-detail" id="doc-screenshots-readme">
 <summary>Prints da documentacao <span>docs/screenshots/README.md</span></summary>
 <div class="markdown-doc">
 <h3>Prints da documentacao</h3>
