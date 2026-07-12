@@ -91,9 +91,25 @@ Geracao/controle de documentos PR e CL com uso de templates e pastas configurada
 
 Acompanhamento de solicitacoes/controles relacionados a folga/licenca paga. Usa dados de operador, turno e motivos cadastrados.
 
-### Administracao e controle de acesso
+### Administracao
 
-Modulos para usuarios, niveis de permissao e configuracoes administrativas. Uso restrito.
+Modulo restrito para manter os cadastros base do sistema. Use para revisar turnos, grupos, setores, locais, maquinas, equipamentos, status de maquina, codigos visuais da producao, tempos de procedimento, categorias, motivos/tipos de follow, shain, pendencias de maquina e log do sistema.
+
+Operacoes principais:
+
+- Selecione um cadastro na lateral esquerda.
+- Use **Buscar** para filtrar os registros carregados.
+- Clique em **Novo** para cadastrar um item editavel.
+- Use o icone de lapis para editar uma linha existente.
+- Use o icone de lixeira para excluir uma linha, apos confirmar.
+- Em telas somente leitura, como **Pendencias de Maquina** e **Log do Sistema**, os botoes de novo, editar e excluir ficam indisponiveis.
+- No **Log do Sistema**, preencha os filtros de data, usuario, modulo ou acao e clique em **Atualizar**.
+
+Para a documentacao completa do painel e dos botoes, consulte `docs/admin-panel.md`.
+
+### Controle de acesso
+
+Modulo para usuarios, niveis de permissao e configuracoes de acesso. Uso restrito.
 
 ## Operacoes comuns
 

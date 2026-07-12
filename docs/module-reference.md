@@ -149,12 +149,13 @@
 
 ## Administracao
 
-- **Finalidade:** administracao do sistema.
+- **Finalidade:** manter cadastros e consultas administrativas usados por producao, Haidai, presence, follow-up, relatorios e suporte.
 - **Arquivos principais:** `HTMLFormAdmin.cs`, `ui/admin/*`.
 - **Dependencias:** usuario administrador e SQLite.
-- **Inputs:** configuracoes/cadastros administrativos.
-- **Outputs:** alteracoes administrativas.
-- **Riscos:** acesso indevido pode afetar operacao geral.
+- **Inputs:** cadastros base, maquinas, locais, status de maquina, codigos de producao, tempos de procedimento, motivos/tipos de follow, shain e filtros do log do sistema.
+- **Outputs:** alteracoes administrativas, consultas de pendencias de maquina e consulta ao log do sistema.
+- **Riscos:** alteracoes incorretas em locais, maquinas, status ou tempos de procedimento afetam producao, relatorios e indicadores. Acesso indevido pode afetar operacao geral.
+- **Guia detalhado:** `docs/admin-panel.md`.
 
 ## Controle de acesso
 

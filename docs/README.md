@@ -37,6 +37,7 @@ Centralizar informacoes operacionais usadas no ambiente industrial, reduzindo de
 ## Guias operacionais especificos
 
 - `docs/production-monitor-guide.md`: uso do Monitor de Producao, comandos do `ProductionMonitorProbe.exe`, validacao de banco, status por setor, EC2 Administrator, dashboard e orientacao para prints.
+- `docs/admin-panel.md`: documentacao do painel Administracao, com botoes, cadastros, validacoes e prints.
 
 ## Tecnologias utilizadas
 
