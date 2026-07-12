@@ -281,6 +281,7 @@
         <a href="#doc-module-reference">Modulos</a>
         <a href="#doc-troubleshooting">Suporte</a>
         <a href="#doc-i18n-audit-report">I18N</a>
+        <a href="#doc-ja-readme">JP</a>
         <a href="#arquivos">Arquivos</a>
       </nav>
     </div>
@@ -295,12 +296,15 @@
         <a class="card" href="#doc-admin-panel"><strong>Painel Admin</strong>Botoes, cadastros, validacoes, prints e item por item.</a>
         <a class="card" href="#doc-production-monitor-guide"><strong>Monitor de producao</strong>Importacao, EC2, status, G-Bareru, probe e diagnosticos.</a>
         <a class="card" href="#doc-module-reference"><strong>Modulos</strong>Referencia tecnica por modulo, dependencias, entradas, saidas e riscos.</a>
+        <a class="card" href="#doc-ja-user-manual"><strong>JP - User Manual</strong>Versao japonesa do manual do usuario e dos fluxos operacionais.</a>
+        <a class="card" href="#doc-ja-module-reference"><strong>JP - Modulos</strong>Referencia japonesa dos modulos, dependencias e riscos.</a>
       </div>
     </section>
 
     <section id="documentacao-completa">
-  <h2>Documentacao completa</h2>
-  <p>Esta secao replica o conteudo dos arquivos Markdown para consulta direta no HTML. Os arquivos <code>.md</code> continuam como fonte de edicao.</p>
+  <h2>Documentacao completa / 完全ドキュメント</h2>
+  <p>Esta secao replica o conteudo dos arquivos Markdown para consulta direta no HTML. Os arquivos <code>.md</code> continuam como fonte de edicao. A documentacao esta disponivel em PT-BR e JP.</p>
+<h3>PT-BR</h3>
   <details class="doc-detail" id="doc-readme">
 <summary>README da documentacao <span>docs/README.md</span></summary>
 <div class="markdown-doc">
@@ -338,6 +342,7 @@
 <ul>
 <li><code>docs/production-monitor-guide.md</code>: uso do Monitor de Producao, comandos do <code>ProductionMonitorProbe.exe</code>, validacao de banco, status por setor, EC2 Administrator, dashboard e orientacao para prints.</li>
 <li><code>docs/admin-panel.md</code>: documentacao do painel Administracao, com botoes, cadastros, validacoes e prints.</li>
+<li><code>docs/ja/</code>: versoes em japones dos principais documentos, integradas tambem ao <code>docs/index.html</code>.</li>
 </ul>
 <h4>Tecnologias utilizadas</h4>
 <ul>
@@ -373,6 +378,7 @@
 <p>Alem dos arquivos Markdown, existe uma versao HTML em <code>docs/index.html</code>. Ela usa a logo <code>TeamOps.UI/Logo.png</code> por referencia relativa para apresentar a documentacao em formato mais visual.</p>
 <h4>Manutencao da documentacao</h4>
 <p>Toda nova documentacao criada dentro de <code>docs/</code> deve ser integrada ao <code>docs/index.html</code>, com conteudo consultavel diretamente na pagina HTML. O arquivo Markdown continua como fonte de edicao, mas o usuario nao deve precisar abrir o <code>.md</code> para acessar as informacoes principais. Inclua tambem o link na lista de arquivos Markdown.</p>
+<p>Quando a documentacao for nova ou alterada, manter a versao PT-BR e a versao JP correspondente atualizadas.</p>
 </div>
 </details>
   <details class="doc-detail" id="doc-user-manual">
@@ -1972,12 +1978,740 @@
 <p>Os prints <code>admin-panel-*</code> foram capturados com a tela HTML real do painel admin e dados simulados para documentacao, sem gravacao no banco operacional.</p>
 </div>
 </details>
+<h3>日本語</h3>
+  <details class="doc-detail" id="doc-ja-readme">
+<summary>TeamOps ドキュメント <span>docs/ja/README.md</span></summary>
+<div class="markdown-doc">
+<h3>TeamOps - ドキュメント</h3>
+<h4>概要</h4>
+<p>TeamOps は工場運用を支援する社内システムです。WinForms、WebView2、HTML/CSS/JavaScript モジュール、SQLite を組み合わせ、リーダー、オペレーター、管理者がシフト、作業者、設備、タスク、引き継ぎ、帳票、製造データを確認できるようにします。</p>
+<p>この日本語版は <code>docs/</code> 配下の PT-BR ドキュメントと同じ情報を参照できるようにしたものです。画面名、ファイル名、コマンド名、設定名は実システムに合わせて原文の表記を残しています。</p>
+<h4>対象者</h4>
+<ul>
+<li>工場オペレーター。</li>
+<li>グループリーダー、現場リーダー、管理担当者。</li>
+<li>ユーザー、権限、基本マスタを管理する管理者。</li>
+<li>SQLite、共有フォルダー、配布、サポートを担当する技術チーム。</li>
+</ul>
+<h4>主なモジュール</h4>
+<ul>
+<li>Dashboard。</li>
+<li>Operadores と Atribuicoes。</li>
+<li>Relatorios。</li>
+<li>Presenca/Layout。</li>
+<li>Haidai。</li>
+<li>Follow-up。</li>
+<li>Tarefas。</li>
+<li>Master Card。</li>
+<li>Monitor de Producao。</li>
+<li>Hikitsugui。</li>
+<li>Sobra de Peca。</li>
+<li>PR と CL。</li>
+<li>Yukyu/Paid Leave。</li>
+<li>Administracao。</li>
+<li>Controle de acesso。</li>
+<li>OperatorApp。</li>
+</ul>
+<h4>主要ドキュメント</h4>
+<ul>
+<li><code>docs/user-manual.md</code>: ユーザー向け操作手順。</li>
+<li><code>docs/module-reference.md</code>: モジュール別の目的、依存関係、入力、出力、リスク。</li>
+<li><code>docs/admin-panel.md</code>: 管理パネルのボタン、マスタ、読み取り専用画面、ログ。</li>
+<li><code>docs/production-monitor-guide.md</code>: 製造モニター、インポート、EC2、Probe コマンド。</li>
+<li><code>docs/architecture.md</code>: 構成とデータフロー。</li>
+<li><code>docs/deployment.md</code>: 配布、設定、公開前チェック。</li>
+<li><code>docs/troubleshooting.md</code>: よくある障害と確認手順。</li>
+<li><code>docs/i18n-audit-report.md</code>: 多言語対応の監査結果。</li>
+</ul>
+<h4>ドキュメント更新ルール</h4>
+<p>新しい Markdown ドキュメントを <code>docs/</code> に追加した場合は、必ず <code>docs/index.html</code> にも統合し、HTML だけで内容を読める状態にします。PT-BR と JP の両方で読めるようにすることを標準とします。</p>
+</div>
+</details>
+  <details class="doc-detail" id="doc-ja-user-manual">
+<summary>ユーザーマニュアル <span>docs/ja/user-manual.md</span></summary>
+<div class="markdown-doc">
+<h3>ユーザーマニュアル</h3>
+<h4>システム起動</h4>
+<ol>
+<li>TeamOps の実行ファイルを開きます。</li>
+<li>ログイン画面が表示されるまで待ちます。</li>
+<li>ユーザー名とパスワードを入力します。</li>
+<li>ログイン後、メイン Dashboard が表示されます。</li>
+</ol>
+<p>システムが起動しない、または DB/フォルダー関連のエラーが出る場合は、表示されたメッセージをサポートへ連絡してください。</p>
+<h4>メイン画面</h4>
+<p>メイン画面は各モジュールへの入口です。表示されるボタンはユーザー権限によって変わる場合があります。</p>
+<p>Dashboard で確認できる情報:</p>
+<ul>
+<li>ログインユーザー。</li>
+<li>紐づくオペレーター。</li>
+<li>シフト。</li>
+<li>日時。</li>
+<li>未完了タスク、進行中 Master Card などの概要指標。</li>
+</ul>
+<p>主なボタン:</p>
+<ul>
+<li><strong>Operadores:</strong> オペレーター情報の検索と保守。</li>
+<li><strong>Atribuicoes:</strong> オペレーターとリーダー/グループの紐づけ。</li>
+<li><strong>Relatorios:</strong> 運用帳票のハブ。</li>
+<li><strong>Presenca/Layout:</strong> 出勤状況と配置の確認。</li>
+<li><strong>Haidai:</strong> TV/モニター表示向けの運用パネル。</li>
+<li><strong>Follow-up:</strong> 発生事項、理由、対応状況の登録。</li>
+<li><strong>Tarefas:</strong> タスク管理。</li>
+<li><strong>Master Card:</strong> 進行中カードの管理。</li>
+<li><strong>Monitor de Producao:</strong> 設備イベントのインポートと確認。</li>
+<li><strong>Hikitsugui Criacao:</strong> 引き継ぎ情報の作成。</li>
+<li><strong>Hikitsugui Leitura Lider:</strong> リーダー向け引き継ぎ確認。</li>
+<li><strong>Sobra de Peca:</strong> 余剰部品の登録。</li>
+<li><strong>PR / CL:</strong> PR/CL 文書の作成と参照。</li>
+<li><strong>Yukyu/Paid Leave:</strong> 有休/休暇関連の確認。</li>
+<li><strong>Administracao:</strong> 基本マスタと管理情報。</li>
+<li><strong>Controle de Acesso:</strong> ユーザーと権限の管理。</li>
+</ul>
+<h4>モジュール別操作</h4>
+<h5>Operadores</h5>
+<p>オペレーターの基本情報、<code>CodigoFJ</code>、シフト、セクター/グループを確認します。<code>CodigoFJ</code> はログイン、タスク、出勤、ユーザー連携に影響するため、変更前に内容を確認してください。</p>
+<h5>Atribuicoes</h5>
+<p>オペレーター、グループ、リーダーの関係を設定します。設定ミスはグループ別フィルターやリーダー向け確認に影響します。</p>
+<h5>Relatorios</h5>
+<p>帳票ハブでは、Hikitsugui、Follow、Tasks、Operadores、Presenca、Gerencial de Producao、MasterCard、PR、CL、Sobra de Peca を開けます。</p>
+<p>Presenca 帳票の基本手順:</p>
+<ol>
+<li>Dashboard から <strong>Relatorios</strong> を開きます。</li>
+<li><strong>Presenca</strong> を選びます。</li>
+<li>期間、シフト、セクター、グループ、ステータスを必要に応じて指定します。</li>
+<li>FJ コードまたは氏名で検索します。</li>
+<li>概要カードとオペレーター一覧を確認します。</li>
+</ol>
+<p>Gerencial de Producao の基本手順:</p>
+<ol>
+<li><strong>Relatorios</strong> を開きます。</li>
+<li><strong>Gerencial de Producao</strong> を選びます。</li>
+<li>期間、セクター、ローカル、シフト、グループ、オペレーター、設備、Part Code、リーダーで絞り込みます。</li>
+<li>ランキング、比較、日別傾向、出勤との突合、アラートを確認します。</li>
+</ol>
+<p>期間や対象が広い帳票は時間がかかる場合があります。データが空の場合は、まず期間、シフト、セクター、元データのインポート状況を確認してください。</p>
+<h5>Presenca/Layout</h5>
+<p>日付、シフト、セクターを選択し、予定オペレーター、出勤状況、配置を確認します。配置変更は権限があり、正しいレイアウトを確認できる場合のみ行ってください。</p>
+<h5>Haidai</h5>
+<p>運用情報を TV/モニター向けに表示・エクスポートします。モニターが更新されない場合は、エクスポート先フォルダーの権限と画面の再読み込みを確認してください。</p>
+<h5>Follow-up</h5>
+<p>種類、理由、設備/ローカル、説明、担当者、ステータスを登録します。対応が進んだらステータスを更新し、Follow 帳票で集計を確認します。</p>
+<h5>Tarefas</h5>
+<p>タスクには担当者、期限、ステータスを明確に設定します。ステータス変更時は履歴が残るため、進捗に合わせて更新してください。</p>
+<h5>Master Card</h5>
+<p>オペレーター、トレーナー、セクター、設備、説明、日付、ステータスを登録します。Dashboard の件数が合わない場合は、カードのステータスを確認してください。</p>
+<h5>Monitor de Producao</h5>
+<p>TXT/DAT ファイルと設定された BAT を使って製造イベントをインポートします。</p>
+<p>基本手順:</p>
+<ol>
+<li><strong>Monitor de Producao</strong> を開きます。</li>
+<li>日付、セクター、ローカルを確認します。</li>
+<li>必要に応じてインポートを実行します。</li>
+<li>完了するまで待ちます。</li>
+<li>設備、現在ステータス、Kadouritsu、EC2、G-Bareru 予測を確認します。</li>
+</ol>
+<p>インポート中に PC を終了しないでください。<code>ProductionMonitorProbe</code> のデータ変更コマンドは技術チームが実行します。</p>
+<h5>Hikitsugui</h5>
+<p>引き継ぎ情報の作成、リーダー確認、オペレーター確認を行います。添付ファイルが開けない場合は、添付フォルダーの権限と接続を確認してください。</p>
+<h5>Sobra de Peca</h5>
+<p>ロット、オペレーター、設備、品目、重量、数量、shain、リーダー、備考を登録します。後で検索しやすいよう、品目名と備考は標準化してください。</p>
+<h5>PR と CL</h5>
+<p>セクター、カテゴリ、優先度、タイトル、ファイル名を入力し、Excel テンプレートから文書を生成します。テンプレートや保存先フォルダーがない場合はサポートへ連絡してください。</p>
+<h5>Yukyu/Paid Leave</h5>
+<p>有休、休暇、Todoke、理由、確認状況を管理します。オペレーター、シフト、理由の登録が不足していると結果が不整合になります。</p>
+<h5>Administracao</h5>
+<p>シフト、グループ、セクター、ローカル、設備、Machine Status、製造表示コード、手順時間、Follow-up マスタ、shain、Machine Pendencies、System Log を管理します。詳細は <code>docs/admin-panel.md</code> を参照してください。</p>
+<h5>Controle de Acesso</h5>
+<p>ユーザー作成/編集、アクセスレベル、<code>CodigoFJ</code>、パスワード変更、ユーザー有効/無効を管理します。パスワードは BCrypt で保護され、元の値は確認できません。</p>
+<h5>OperatorApp</h5>
+<p>オペレーターが Hikitsugui を確認する別アプリです。TeamOps 本体と同じ運用 DB を参照する必要があります。</p>
+<h4>よくある運用</h4>
+<ul>
+<li>シフト開始時にログインします。</li>
+<li>氏名、シフト、セクターが正しいか確認します。</li>
+<li>必要なモジュールを Dashboard から開きます。</li>
+<li>日付、シフト、セクター、オペレーター、添付を正しく入力します。</li>
+<li>画面を閉じる前に保存します。</li>
+<li>帳票では印刷/エクスポート前にフィルターを確認します。</li>
+</ul>
+<h4>エラー時</h4>
+<ol>
+<li>メッセージを記録します。</li>
+<li>可能であればエラー画面だけを閉じます。</li>
+<li>ネットワークと共有フォルダーを確認します。</li>
+<li>もう一度モジュールを開きます。</li>
+<li>解決しない場合は、ユーザー、モジュール、時刻、操作内容をサポートへ連絡します。</li>
+</ol>
+</div>
+</details>
+  <details class="doc-detail" id="doc-ja-module-reference">
+<summary>モジュールリファレンス <span>docs/ja/module-reference.md</span></summary>
+<div class="markdown-doc">
+<h3>モジュールリファレンス</h3>
+<h4>Dashboard</h4>
+<ul>
+<li><strong>目的:</strong> メインメニュー、概要指標、各モジュールへのルーティング。</li>
+<li><strong>主なファイル:</strong> <code>Forms/FormDashboardHtml.cs</code>, <code>ui/dashboard/*</code>。</li>
+<li><strong>依存:</strong> ログインユーザー、オペレーター、シフト、WebView2、Repository。</li>
+<li><strong>入力:</strong> 認証済みユーザー、紐づくオペレーター、シフト、locale、<code>open:*</code> メッセージ。</li>
+<li><strong>出力:</strong> HTML/WinForms 画面の起動、初期 payload、概要件数。</li>
+<li><strong>リスク:</strong> ユーザーにオペレーター/シフトがない場合、Dashboard を開けません。WebView2 がない場合は白画面になります。</li>
+</ul>
+<h4>Operadores</h4>
+<ul>
+<li><strong>目的:</strong> オペレーター情報の検索と保守。</li>
+<li><strong>主なファイル:</strong> <code>HTMLFormOperators.cs</code>, <code>ui/operators/*</code>, <code>OperatorRepository.cs</code>。</li>
+<li><strong>依存:</strong> SQLite、<code>Operators</code>。</li>
+<li><strong>リスク:</strong> <code>CodigoFJ</code> の不整合はログイン、タスク、出勤、スケジュールに影響します。</li>
+</ul>
+<h4>Atribuicoes</h4>
+<ul>
+<li><strong>目的:</strong> オペレーターをリーダー/グループへ紐づけます。</li>
+<li><strong>依存:</strong> <code>Assignments</code>, <code>GroupLeaders</code>, <code>Operators</code>。</li>
+<li><strong>リスク:</strong> 誤った紐づけは運用フローと帳票に影響します。</li>
+</ul>
+<h4>Relatorios</h4>
+<ul>
+<li><strong>目的:</strong> 運用データの集計と専用帳票のハブ。</li>
+<li><strong>主な対象:</strong> Hikitsugui、Follow、Tasks、Operadores、Presenca、Gerencial de Producao、MasterCard、PR、CL、Sobra de Peca。</li>
+<li><strong>入力:</strong> 帳票選択、期間、シフト、セクター、グループ、ステータス、検索語など。</li>
+<li><strong>出力:</strong> 集計表示、詳細一覧、印刷/エクスポート。</li>
+<li><strong>リスク:</strong> 大きな期間やネットワーク DB では処理が遅くなる場合があります。</li>
+</ul>
+<h4>Presenca/Layout</h4>
+<ul>
+<li><strong>目的:</strong> セクター/シフト別の出勤状況と配置を表示します。</li>
+<li><strong>依存:</strong> <code>OperatorPresence</code>, <code>OperatorPositions</code>, <code>OperatorSchedule</code>, CSV スケジュール。</li>
+<li><strong>リスク:</strong> CSV 不備や未登録オペレーターは表示漏れの原因になります。</li>
+</ul>
+<h4>Haidai</h4>
+<ul>
+<li><strong>目的:</strong> 運用パネルと TV/モニター向け HTML エクスポート。</li>
+<li><strong>依存:</strong> SQLite、<code>HaidaiExportDirectory</code>。</li>
+<li><strong>リスク:</strong> エクスポート先フォルダーに権限がないと公開画面が更新されません。</li>
+</ul>
+<h4>Follow-up</h4>
+<ul>
+<li><strong>目的:</strong> 発生事項、保留事項、理由、種類、設備、対応ステータスの管理。</li>
+<li><strong>依存:</strong> <code>FollowUps</code>, <code>FollowUpReasons</code>, <code>FollowUpTypes</code>, <code>Equipments</code>, <code>Locals</code>。</li>
+<li><strong>リスク:</strong> 補助マスタ不足は記録品質と分析品質を下げます。</li>
+</ul>
+<h4>Tarefas</h4>
+<ul>
+<li><strong>目的:</strong> シフト、担当者、ステータス別のタスク管理。</li>
+<li><strong>依存:</strong> <code>Tasks</code>, <code>TaskStatusHistory</code>。</li>
+<li><strong>出力:</strong> タスク、ステータス履歴、未完了/完了/遅延の集計。</li>
+</ul>
+<h4>Master Card</h4>
+<ul>
+<li><strong>目的:</strong> 進行中カードと follow-up 対象の管理。</li>
+<li><strong>依存:</strong> SQLite、<code>MasterCardModuleService</code> による schema 保証。</li>
+<li><strong>出力:</strong> カード、履歴、Dashboard 件数、帳票。</li>
+</ul>
+<h4>Monitor de Producao</h4>
+<ul>
+<li><strong>目的:</strong> 設備イベントのインポート、現在状態、履歴、Kadouritsu、EC2、G-Bareru 予測の表示。</li>
+<li><strong>主なファイル:</strong> <code>HTMLFormProductionMonitor.cs</code>, <code>ProductionFileImporter.cs</code>, <code>ProductionPlanDatImporter.cs</code>, <code>ProductionAnalyticsService.cs</code>, <code>ui/production-monitor/*</code>。</li>
+<li><strong>入力:</strong> <code>yyMMdd_211D_E.txt</code>, <code>yyMMdd_2400_E.txt</code>, DAT 計画ファイル。</li>
+<li><strong>リスク:</strong> ファイル形式、エンコード、BAT timeout、ネットワーク遅延、未知ステータス、DB 設定ミス。</li>
+</ul>
+<h4>Gerencial de Producao</h4>
+<ul>
+<li><strong>目的:</strong> 期間、セクター、ローカル、シフト、グループ、オペレーター、設備、Part Code、リーダー別の製造指標を集計します。</li>
+<li><strong>出力:</strong> 概要、ランキング、シフト比較、グループ比較、日別傾向、出勤との突合、アラート。</li>
+<li><strong>リスク:</strong> Haidai、出勤、設備、イベントの整合性に依存します。</li>
+</ul>
+<h4>ProductionMonitorProbe</h4>
+<ul>
+<li><strong>目的:</strong> 製造モニターの診断、検証、監査、保守用 CLI。</li>
+<li><strong>主なコマンド:</strong> <code>schema-check</code>, <code>schema-repair</code>, <code>db-index-check</code>, <code>production-diagnostics</code>, <code>production-audit</code>, <code>status-report</code>, <code>import</code>, <code>import-profile</code>, <code>machine-cleanup</code>, <code>dashboard</code>。</li>
+<li><strong>リスク:</strong> <code>import</code>, <code>schema-repair</code>, <code>ec2-reset-latest</code>, <code>machine-cleanup --apply</code> はデータを変更する可能性があります。実行前に <code>DatabasePath</code> を確認してください。</li>
+</ul>
+<h4>Hikitsugui</h4>
+<ul>
+<li><strong>目的:</strong> 引き継ぎ情報、読了、返信、修正、添付の管理。</li>
+<li><strong>対象:</strong> 作成画面、リーダー閲覧画面、管理者閲覧画面、OperatorApp 閲覧画面。</li>
+<li><strong>リスク:</strong> 添付フォルダーまたは DB に問題があると読了履歴が残らない可能性があります。</li>
+</ul>
+<h4>Sobra de Peca</h4>
+<ul>
+<li><strong>目的:</strong> 余剰部品の登録と確認。</li>
+<li><strong>入力:</strong> ロット、オペレーター、設備、品目、重量、数量、shain、リーダー、備考。</li>
+<li><strong>出力:</strong> 登録一覧、期間/シフト/設備/品目別帳票、数量と重量の合計。</li>
+</ul>
+<h4>PR と CL</h4>
+<ul>
+<li><strong>目的:</strong> PR/CL 文書の作成、管理、帳票検索。</li>
+<li><strong>依存:</strong> カテゴリ、優先度、セクター、オペレーター、Excel テンプレート、出力フォルダー、ClosedXML。</li>
+<li><strong>リスク:</strong> テンプレートやフォルダーがないと文書を生成できません。</li>
+</ul>
+<h4>Yukyu/Paid Leave</h4>
+<ul>
+<li><strong>目的:</strong> 有休/休暇関連の確認と管理。</li>
+<li><strong>依存:</strong> <code>AcompYukyu</code>, <code>YukyuConferencia</code>, <code>YukyuTodoke</code>, <code>YukyuFolhaControle</code>, <code>TodokeMotivo</code>。</li>
+</ul>
+<h4>Administracao</h4>
+<ul>
+<li><strong>目的:</strong> 運用、製造、Haidai、Presence、Follow-up、帳票、サポートで使う基本マスタを管理します。</li>
+<li><strong>詳細:</strong> <code>docs/admin-panel.md</code> を参照してください。</li>
+</ul>
+<h4>Controle de acesso</h4>
+<ul>
+<li><strong>目的:</strong> ユーザー、権限、パスワード、<code>CodigoFJ</code> の管理。</li>
+<li><strong>リスク:</strong> <code>CodigoFJ</code> が不正なユーザーは Dashboard を正しく開けない場合があります。</li>
+</ul>
+<h4>OperatorApp</h4>
+<ul>
+<li><strong>目的:</strong> オペレーター用 Hikitsugui 閲覧アプリ。</li>
+<li><strong>リスク:</strong> TeamOps 本体と同じ <code>DatabasePath</code> を参照する必要があります。</li>
+</ul>
+<h4>インフラ、設定、データ</h4>
+<ul>
+<li><strong>目的:</strong> 設定、エンティティ、検証、SQLite、migration、Repository、Service を提供します。</li>
+<li><strong>主な構成:</strong> <code>TeamOps.Config/*</code>, <code>TeamOps.Core/*</code>, <code>TeamOps.Data/*</code>, <code>TeamOps.UI/App.config</code>, <code>TeamOps.OperatorApp/App.config</code>。</li>
+<li><strong>リスク:</strong> UI、OperatorApp、Probe の DB 設定が異なると別データを参照します。</li>
+</ul>
+</div>
+</details>
+  <details class="doc-detail" id="doc-ja-admin-panel">
+<summary>管理パネル <span>docs/ja/admin-panel.md</span></summary>
+<div class="markdown-doc">
+<h3>管理パネル</h3>
+<h4>目的</h4>
+<p>管理パネルは TeamOps の基本マスタとサポート用情報を管理する画面です。製造、出勤、Haidai、Follow-up、PR/CL、帳票、サポートに影響するため、管理者のみが使用します。</p>
+<h4>画面構成</h4>
+<ul>
+<li>左側メニューで管理対象を選択します。</li>
+<li>上部に検索やフィルターがあります。</li>
+<li>一覧で登録済みデータを確認します。</li>
+<li><code>Novo</code>、編集、削除、<code>Atualizar</code> などの操作を行います。</li>
+</ul>
+<h4>共通ボタン</h4>
+<ul>
+<li><strong>Novo:</strong> 新しいレコードを作成します。</li>
+<li><strong>Editar:</strong> 選択行を編集します。</li>
+<li><strong>Excluir:</strong> 選択行を削除します。確認後に実行されます。</li>
+<li><strong>Buscar:</strong> 入力した語句で一覧を絞り込みます。</li>
+<li><strong>Atualizar:</strong> 一覧またはログを再読み込みします。</li>
+<li><strong>Salvar:</strong> 入力内容を保存します。</li>
+<li><strong>Cancelar/Fechar:</strong> 変更せずに閉じます。</li>
+</ul>
+<p>読み取り専用画面では、<code>Novo</code>、編集、削除は無効になります。</p>
+<h4>管理対象</h4>
+<h5>Turnos</h5>
+<p>シフトを管理します。オペレーター、出勤、帳票の基準になるため、名称と時間帯を正しく登録します。</p>
+<h5>Grupos</h5>
+<p>グループを管理します。リーダー別確認、帳票フィルター、配置確認で使用されます。</p>
+<h5>Setores</h5>
+<p>セクターを管理します。製造、Haidai、PR/CL、Follow-up、帳票に影響します。</p>
+<h5>Locais</h5>
+<p>ローカル/場所を管理します。設備や製造イベントの集計単位になります。</p>
+<h5>Maquinas</h5>
+<p>設備マスタを管理します。設備コード、ローカル、セクターの不整合は製造モニターや帳票に影響します。</p>
+<h5>Equipamentos</h5>
+<p>Follow-up や運用記録で使う設備/装置を管理します。</p>
+<h5>Machine Status</h5>
+<p>設備ステータスの分類を管理します。稼働、停止、除外、未知ステータスの扱いに影響します。</p>
+<h5>Production Display Codes</h5>
+<p>製造画面で使う表示コードを管理します。色や表示名の不整合は現場確認を難しくします。</p>
+<h5>Procedure Times</h5>
+<p>手順時間を管理します。製造指標や比較に影響する可能性があります。</p>
+<h5>Follow-up Reasons / Types</h5>
+<p>Follow-up の理由と種類を管理します。未登録の場合、記録や分析の品質が下がります。</p>
+<h5>Shain</h5>
+<p>社員/担当者関連の参照マスタです。Sobra de Peca などで使用します。</p>
+<h5>Machine Pendencies</h5>
+<p>設備の未処理/注意情報を確認する読み取り専用領域です。</p>
+<h5>System Log</h5>
+<p>システムログを確認します。日付、ユーザー、モジュール、アクションで絞り込み、障害調査や操作確認に使います。</p>
+<h4>操作時の注意</h4>
+<ul>
+<li>マスタ変更は他モジュールへ即時に影響する可能性があります。</li>
+<li>削除前に、その値が既存データで使われていないか確認してください。</li>
+<li>製造や出勤に関係するマスタは、現場担当者と確認してから変更してください。</li>
+<li>System Log は調査用であり、通常は編集しません。</li>
+</ul>
+<h4>サポート時に確認すること</h4>
+<ul>
+<li>どの管理対象を変更したか。</li>
+<li>変更前後の値。</li>
+<li>変更したユーザーと時刻。</li>
+<li>関連するエラーメッセージ。</li>
+<li>影響が出たモジュール。</li>
+</ul>
+</div>
+</details>
+  <details class="doc-detail" id="doc-ja-production-monitor-guide">
+<summary>Production Monitor ガイド <span>docs/ja/production-monitor-guide.md</span></summary>
+<div class="markdown-doc">
+<h3>Production Monitor と ProductionMonitorProbe</h3>
+<h4>目的</h4>
+<p>Monitor de Producao は設備イベント、現在状態、Kadouritsu、EC2、G-Bareru 予測などを確認するための画面です。<code>ProductionMonitorProbe</code> は同じバックエンドを使って診断、検証、監査、保守を行う CLI です。</p>
+<h4>Monitor de Producao の基本手順</h4>
+<ol>
+<li>Dashboard から <strong>Monitor de Producao</strong> を開きます。</li>
+<li>対象日、セクター、ローカルを確認します。</li>
+<li>必要に応じてインポートを実行します。</li>
+<li>処理完了まで待ちます。</li>
+<li>設備カード、現在ステータス、Kadouritsu、EC2、G-Bareru 予測を確認します。</li>
+</ol>
+<h4>入力ファイル</h4>
+<ul>
+<li><code>yyMMdd_211D_E.txt</code></li>
+<li><code>yyMMdd_2400_E.txt</code></li>
+<li>DAT 形式の生産計画ファイル</li>
+<li>EC2 Administrator 関連ファイル</li>
+<li><code>App.config</code> で設定された BAT、フォルダー、DB パス</li>
+</ul>
+<h4>よくある確認</h4>
+<ul>
+<li>インポート対象ファイルが存在するか。</li>
+<li>ファイルが使用中またはロックされていないか。</li>
+<li>BAT が timeout していないか。</li>
+<li><code>DatabasePath</code> が正しい DB を指しているか。</li>
+<li>未知ステータスが Machine Status に登録されているか。</li>
+<li>EC2 の最新ファイルが想定どおりか。</li>
+</ul>
+<h4>ProductionMonitorProbe の主なコマンド</h4>
+<table><thead><tr><th>コマンド</th><th>用途</th></tr></thead><tbody>
+<tr><td><code>schema-check</code></td><td>schema、テーブル、列、インデックス、seed を検証します。</td></tr>
+<tr><td><code>schema-repair</code></td><td>migration と seed 修復を実行します。データ変更の可能性があります。</td></tr>
+<tr><td><code>db-index-check</code></td><td>必要なインデックスを確認します。</td></tr>
+<tr><td><code>production-diagnostics</code></td><td>イベント数、ステータス、設備、日付範囲を診断します。</td></tr>
+<tr><td><code>production-audit</code></td><td>製造データを監査します。</td></tr>
+<tr><td><code>validate-reports</code></td><td>帳票計算の検証を行います。</td></tr>
+<tr><td><code>validate-yakin-production</code></td><td>夜勤製造ルールを検証します。</td></tr>
+<tr><td><code>validate-overtime-rules</code></td><td>残業ルールを検証します。</td></tr>
+<tr><td><code>validate-overtime-real</code></td><td>実データで残業関連を確認します。</td></tr>
+<tr><td><code>ec2-diagnostics</code></td><td>EC2 最新状態、hash、設備、部品コードを確認します。</td></tr>
+<tr><td><code>status-report</code></td><td>ステータス分類、分数、影響を出力します。CSV 出力も可能です。</td></tr>
+<tr><td><code>import</code></td><td>通常インポートを実行します。</td></tr>
+<tr><td><code>import-profile</code></td><td>インポートと性能測定を行います。</td></tr>
+<tr><td><code>machine-cleanup</code></td><td>不正な設備コードを確認します。<code>--apply</code> で変更します。</td></tr>
+<tr><td><code>machine-location-guard</code></td><td>設備とローカルの整合性を確認します。</td></tr>
+<tr><td><code>dashboard</code></td><td>バックエンドの Dashboard 計算を確認します。</td></tr>
+</tbody></table>
+<h4>実行例</h4>
+<pre><code>.\ProductionMonitorProbe.exe schema-check
+.\ProductionMonitorProbe.exe db-index-check
+.\ProductionMonitorProbe.exe production-diagnostics
+.\ProductionMonitorProbe.exe status-report --start 2026-06-01 --end 2026-06-02 --sector dad --csv dad-status.csv</code></pre>
+<h4>データ変更を伴う可能性がある操作</h4>
+<ul>
+<li><code>schema-repair</code></li>
+<li><code>import</code></li>
+<li><code>import-profile</code></li>
+<li><code>ec2-reset-latest</code></li>
+<li><code>machine-cleanup --apply</code></li>
+</ul>
+<p>これらは実行前に必ず <code>DatabasePath</code>、対象日、対象セクター、バックアップ状況を確認してください。</p>
+<h4>トラブル時の切り分け</h4>
+<ol>
+<li><code>schema-check</code> で schema を確認します。</li>
+<li><code>db-index-check</code> で性能前提を確認します。</li>
+<li><code>production-diagnostics</code> でデータ有無を確認します。</li>
+<li><code>status-report</code> で未知ステータスや分類を確認します。</li>
+<li><code>ec2-diagnostics</code> で EC2 の取り込み状態を確認します。</li>
+</ol>
+<h4>リスク</h4>
+<ul>
+<li>ファイル形式やエンコードが想定外の場合、インポート結果が不正になります。</li>
+<li>ネットワークフォルダーが遅い場合、画面や Probe が遅くなります。</li>
+<li>UI、OperatorApp、Probe の DB 設定が異なると結果が一致しません。</li>
+</ul>
+</div>
+</details>
+  <details class="doc-detail" id="doc-ja-architecture">
+<summary>アーキテクチャ <span>docs/ja/architecture.md</span></summary>
+<div class="markdown-doc">
+<h3>アーキテクチャ</h3>
+<h4>概要</h4>
+<p>TeamOps は複数プロジェクトで構成されます。</p>
+<ul>
+<li><code>TeamOps.UI</code>: メイン WinForms アプリ。WebView2 で HTML 画面を表示します。</li>
+<li><code>TeamOps.OperatorApp</code>: オペレーター向け Hikitsugui 閲覧アプリ。</li>
+<li><code>TeamOps.Core</code>: ドメインモデル、サービス、共通ロジック。</li>
+<li><code>TeamOps.Data</code>: SQLite 接続、Repository、migration。</li>
+<li><code>TeamOps.Config</code>: 設定値とパス取得。</li>
+<li><code>ProductionMonitorProbe</code>: 製造モニター用 CLI 診断ツール。</li>
+</ul>
+<h4>UI 構成</h4>
+<p>WinForms の Form が WebView2 をホストし、<code>ui/&lt;module&gt;/</code> 配下の HTML/CSS/JavaScript を読み込みます。画面操作は WebView2 メッセージを通じて C# 側へ送られ、Repository や Service が DB を操作します。</p>
+<h4>データ層</h4>
+<p>SQLite を中心に、Dapper と Repository パターンでアクセスします。migration と seed は <code>TeamOps.Data</code> が管理します。</p>
+<h4>主なデータフロー</h4>
+<ol>
+<li>ユーザーがログインします。</li>
+<li>Dashboard がユーザー、オペレーター、シフト、概要件数を取得します。</li>
+<li>HTML ボタンから <code>open:*</code> メッセージが送信されます。</li>
+<li>対応する WinForms/WebView2 画面が開きます。</li>
+<li>JS から C# へ操作が送られます。</li>
+<li>Service/Repository が SQLite、ファイル、共有フォルダーを読み書きします。</li>
+<li>結果が HTML へ戻ります。</li>
+</ol>
+<h4>外部ファイルと設定</h4>
+<ul>
+<li>SQLite DB パス。</li>
+<li>PR/CL テンプレートと出力フォルダー。</li>
+<li>Hikitsugui 添付フォルダー。</li>
+<li>Haidai HTML エクスポート先。</li>
+<li>製造 TXT/DAT/EC2 ファイル。</li>
+<li>BAT 実行パス。</li>
+</ul>
+<h4>リスク</h4>
+<ul>
+<li>WebView2 がない場合、HTML 画面が表示されません。</li>
+<li>DB パスが環境ごとに異なるとデータ不一致になります。</li>
+<li>ネットワーク共有の遅延や権限不足は保存、添付、インポートに影響します。</li>
+<li>migration 未適用や seed 不足は画面エラーにつながります。</li>
+</ul>
+<h4>保守方針</h4>
+<ul>
+<li>UI 表示は <code>ui/&lt;module&gt;</code> に閉じ、業務ロジックは C# Service/Repository に寄せます。</li>
+<li>新しいドキュメントは <code>docs/index.html</code> に統合します。</li>
+<li>多言語化する場合は PT-BR と JP の両方で表示確認します。</li>
+</ul>
+</div>
+</details>
+  <details class="doc-detail" id="doc-ja-deployment">
+<summary>配布とデプロイ <span>docs/ja/deployment.md</span></summary>
+<div class="markdown-doc">
+<h3>配布とデプロイ</h3>
+<h4>目的</h4>
+<p>このドキュメントは TeamOps の配布前確認、設定、公開後確認をまとめます。</p>
+<h4>配布前チェック</h4>
+<ul>
+<li>Solution がビルドできること。</li>
+<li><code>App.config</code> の <code>DatabasePath</code> が正しいこと。</li>
+<li>PR/CL テンプレートと出力フォルダーが存在すること。</li>
+<li>Hikitsugui 添付フォルダーにアクセスできること。</li>
+<li>Haidai エクスポート先に書き込みできること。</li>
+<li>製造 TXT/DAT/EC2 フォルダーにアクセスできること。</li>
+<li>WebView2 Runtime が対象 PC にあること。</li>
+<li>migration と seed が適用済みであること。</li>
+</ul>
+<h4>配布手順</h4>
+<ol>
+<li>対象ブランチを最新化します。</li>
+<li>Release 構成でビルドします。</li>
+<li>必要な <code>ui/</code> assets、DLL、設定ファイル、テンプレート参照が含まれているか確認します。</li>
+<li>配布先へコピーします。</li>
+<li><code>App.config</code> と接続先 DB を確認します。</li>
+<li>起動、ログイン、Dashboard 表示を確認します。</li>
+</ol>
+<h4>ProductionMonitorProbe</h4>
+<p>製造モニター関連を公開する場合は Probe も同じ設定で配布します。Probe の config が UI と同じ DB を指しているか確認してください。</p>
+<h4>公開後確認</h4>
+<ul>
+<li>ログインできること。</li>
+<li>Dashboard が白画面にならないこと。</li>
+<li>Operadores、Relatorios、Administracao など代表画面が開くこと。</li>
+<li>製造インポートが必要な環境では <code>schema-check</code> と <code>production-diagnostics</code> を実行できること。</li>
+<li>System Log に重大なエラーが出ていないこと。</li>
+</ul>
+<h4>ロールバック</h4>
+<p>問題が出た場合は、直前の配布フォルダー、設定ファイル、DB バックアップを使って戻します。DB を変更する作業の前にはバックアップを取得してください。</p>
+</div>
+</details>
+  <details class="doc-detail" id="doc-ja-troubleshooting">
+<summary>トラブルシューティング <span>docs/ja/troubleshooting.md</span></summary>
+<div class="markdown-doc">
+<h3>トラブルシューティング</h3>
+<h4>システムが起動しない</h4>
+<p>確認:</p>
+<ul>
+<li>実行ファイルが存在するか。</li>
+<li>必要 DLL が同じフォルダーにあるか。</li>
+<li>WebView2 Runtime がインストールされているか。</li>
+<li><code>App.config</code> が壊れていないか。</li>
+<li>DB パス、共有フォルダーにアクセスできるか。</li>
+</ul>
+<h4>ログインできない</h4>
+<p>確認:</p>
+<ul>
+<li>ユーザー名とパスワード。</li>
+<li>ユーザーが有効か。</li>
+<li><code>CodigoFJ</code> が正しいか。</li>
+<li>DB が正しい環境を指しているか。</li>
+</ul>
+<h4>Dashboard が開かない</h4>
+<p>原因例:</p>
+<ul>
+<li>ユーザーにオペレーターが紐づいていない。</li>
+<li>オペレーターのシフトが存在しない。</li>
+<li>WebView2 がない。</li>
+<li>DB に必要な seed がない。</li>
+</ul>
+<h4>画面が白い</h4>
+<p>確認:</p>
+<ul>
+<li>WebView2 Runtime。</li>
+<li><code>ui/&lt;module&gt;</code> の HTML/CSS/JS が配布されているか。</li>
+<li>JS エラー。</li>
+<li>Form 側の初期 payload エラー。</li>
+</ul>
+<h4>帳票が遅い</h4>
+<p>確認:</p>
+<ul>
+<li>期間が広すぎないか。</li>
+<li>ネットワーク DB が遅くないか。</li>
+<li>インデックスが不足していないか。</li>
+<li>対象セクター/グループで絞り込めるか。</li>
+</ul>
+<p>製造関連では <code>ProductionMonitorProbe.exe db-index-check</code> と <code>production-diagnostics</code> を使用します。</p>
+<h4>製造データが表示されない</h4>
+<p>確認:</p>
+<ul>
+<li>TXT/DAT ファイルの存在。</li>
+<li>BAT の実行結果。</li>
+<li><code>DatabasePath</code>。</li>
+<li>インポート対象日。</li>
+<li>Machine、Local、Status のマスタ。</li>
+<li>未知ステータス。</li>
+</ul>
+<h4>EC2 が更新されない</h4>
+<p>確認:</p>
+<ul>
+<li>EC2 Administrator のファイル。</li>
+<li>最新ファイルの日時。</li>
+<li>hash または同一ファイル再取り込みの扱い。</li>
+<li><code>ec2-diagnostics</code> の結果。</li>
+</ul>
+<h4>PR/CL が生成されない</h4>
+<p>確認:</p>
+<ul>
+<li>テンプレートファイルが存在するか。</li>
+<li>出力フォルダーに書き込み権限があるか。</li>
+<li>ファイル名に使用できない文字がないか。</li>
+<li>Excel テンプレートが壊れていないか。</li>
+</ul>
+<h4>添付ファイルが開けない</h4>
+<p>確認:</p>
+<ul>
+<li>添付フォルダー。</li>
+<li>ネットワーク権限。</li>
+<li>ファイルが移動/削除されていないか。</li>
+<li>同じ DB と添付フォルダーを参照しているか。</li>
+</ul>
+<h4>サポートへ連絡するとき</h4>
+<p>以下を伝えてください。</p>
+<ul>
+<li>ユーザー名。</li>
+<li>モジュール名。</li>
+<li>発生日時。</li>
+<li>実行した操作。</li>
+<li>表示されたエラー全文。</li>
+<li>対象日、シフト、セクター、オペレーター。</li>
+<li>可能であれば System Log の関連行。</li>
+</ul>
+</div>
+</details>
+  <details class="doc-detail" id="doc-ja-domain-observations">
+<summary>ドメイン観察メモ <span>docs/ja/domain-observations.md</span></summary>
+<div class="markdown-doc">
+<h3>ドメイン観察メモ</h3>
+<h4>概要</h4>
+<p>このメモは、コードと既存ドキュメントから読み取れる TeamOps の業務領域を整理したものです。明示されていない業務判断は、運用担当者に確認する必要があります。</p>
+<h4>重要な概念</h4>
+<ul>
+<li><code>CodigoFJ</code>: ユーザー、オペレーター、出勤、タスク、帳票をつなぐ重要な識別子。</li>
+<li>Turno: シフト。Dashboard、出勤、製造、タスクに影響。</li>
+<li>Setor/Local/Maquina: 製造と帳票の集計軸。</li>
+<li>Grupo/Lider: リーダー別確認と運用管理の軸。</li>
+<li>Machine Status: Kadouritsu や停止扱いに影響する分類。</li>
+<li>Hikitsugui: 引き継ぎ、読了、返信、添付、修正を管理する情報。</li>
+<li>PR/CL: テンプレートから生成する運用文書。</li>
+</ul>
+<h4>注意点</h4>
+<ul>
+<li>オペレーター、ユーザー、シフト、グループの整合性が崩れると、多くの画面に影響します。</li>
+<li>製造イベントはファイル、設備マスタ、ステータスマスタ、DB 設定に依存します。</li>
+<li>帳票の正確性は元データの登録品質に依存します。</li>
+<li>共有フォルダーの権限不足は添付、テンプレート、エクスポート、インポートに影響します。</li>
+</ul>
+<h4>確認が必要な事項</h4>
+<ul>
+<li>現場で正式に使うステータス名と分類。</li>
+<li>PR/CL のテンプレート管理ルール。</li>
+<li>Haidai の公開先と更新頻度。</li>
+<li>添付ファイルの保管期間。</li>
+<li>ProductionMonitorProbe の実行権限と運用手順。</li>
+</ul>
+</div>
+</details>
+  <details class="doc-detail" id="doc-ja-i18n-audit-report">
+<summary>I18N 監査レポート <span>docs/ja/i18n-audit-report.md</span></summary>
+<div class="markdown-doc">
+<h3>I18N 監査レポート</h3>
+<h4>目的</h4>
+<p>TeamOps の画面表示を PT-BR と JP で扱えるようにするため、表示文字列、ローカライズ方式、未対応箇所を整理します。</p>
+<h4>現状</h4>
+<ul>
+<li>一部の HTML 画面は <code>I18N</code> オブジェクトや <code>L(pt, ja)</code> のような helper を使っています。</li>
+<li>すべての画面が完全に同じ方式に統一されているわけではありません。</li>
+<li>WinForms 側のラベル、メッセージ、ダイアログには固定文字列が残る可能性があります。</li>
+<li><code>ui/presence</code>、<code>ui/paidleave</code>、OperatorApp などは追加確認が必要です。</li>
+</ul>
+<h4>推奨方針</h4>
+<ul>
+<li>画面ごとに PT-BR と JP の文言を同じ構造で管理します。</li>
+<li>ボタン、ステータス、エラーメッセージ、列名、placeholder、toast、confirm を対象にします。</li>
+<li>新規画面では、最初から PT-BR/JP の両方を登録します。</li>
+<li>表示文言をコード内に直接増やさないようにします。</li>
+</ul>
+<h4>監査対象</h4>
+<ul>
+<li>HTML タイトル。</li>
+<li>ボタンラベル。</li>
+<li>テーブル列名。</li>
+<li>フィルターラベル。</li>
+<li>placeholder。</li>
+<li>empty state。</li>
+<li>toast/alert/confirm。</li>
+<li>CSV/印刷/PDF 出力文言。</li>
+<li>WinForms メッセージ。</li>
+</ul>
+<h4>残課題</h4>
+<ol>
+<li>すべての <code>ui/</code> 配下で固定文字列を洗い出す。</li>
+<li>PT-BR と JP のキー差分を検出する。</li>
+<li>OperatorApp の文言を同じ方式に統一する。</li>
+<li>WinForms 側のメッセージを helper 化する。</li>
+<li>QA で PT-BR と JP の両方の画面崩れを確認する。</li>
+</ol>
+<h4>ドキュメント方針</h4>
+<p><code>docs/</code> のドキュメントは PT-BR を原文とし、<code>docs/ja/</code> に JP 版を配置します。<code>docs/index.html</code> では両方を読めるようにします。</p>
+</div>
+</details>
+  <details class="doc-detail" id="doc-ja-screenshots-readme">
+<summary>スクリーンショット <span>docs/ja/screenshots-README.md</span></summary>
+<div class="markdown-doc">
+<h3>ドキュメント用スクリーンショット</h3>
+<h4>目的</h4>
+<p>このフォルダーには、マニュアルや説明用に使用する TeamOps のスクリーンショットを保存します。</p>
+<h4>推奨ファイル</h4>
+<ul>
+<li><code>dashboard.png</code></li>
+<li><code>reports.png</code></li>
+<li><code>production-monitor.png</code></li>
+<li><code>admin-production.png</code></li>
+<li><code>admin-panel-machines.png</code></li>
+<li><code>admin-panel-modal.png</code></li>
+<li><code>admin-panel-system-log.png</code></li>
+<li><code>production-monitor-probe.png</code></li>
+</ul>
+<h4>注意</h4>
+<p>スクリーンショットは TeamOps にログインした状態で取得します。HTML 画面は WinForms/WebView2 からデータを受け取るため、単独で開くと実データが表示されない場合があります。</p>
+<p><code>admin-panel-*</code> の画像は、ドキュメント用のシミュレーションデータで取得されたものです。運用 DB へ書き込みません。</p>
+</div>
+</details>
 </section>
 
 
     <section id="arquivos">
       <h2>Arquivos Markdown</h2>
-      <p>Os arquivos Markdown continuam disponiveis como fonte de edicao, mas as informacoes principais devem ser exibidas tambem nesta pagina HTML para consulta direta.</p>
+      <p>Os arquivos Markdown continuam disponiveis como fonte de edicao, mas as informacoes principais devem ser exibidas tambem nesta pagina HTML para consulta direta. A documentacao esta organizada em PT-BR e JP.</p>
       <ul>
         <li><a href="README.md">README.md</a></li>
         <li><a href="architecture.md">architecture.md</a></li>
@@ -1987,6 +2721,20 @@
         <li><a href="domain-observations.md">domain-observations.md</a></li>
         <li><a href="module-reference.md">module-reference.md</a></li>
         <li><a href="admin-panel.md">admin-panel.md</a></li>
+        <li><a href="production-monitor-guide.md">production-monitor-guide.md</a></li>
+        <li><a href="i18n-audit-report.md">i18n-audit-report.md</a></li>
+        <li><a href="screenshots/README.md">screenshots/README.md</a></li>
+        <li><a href="ja/README.md">ja/README.md</a></li>
+        <li><a href="ja/user-manual.md">ja/user-manual.md</a></li>
+        <li><a href="ja/module-reference.md">ja/module-reference.md</a></li>
+        <li><a href="ja/admin-panel.md">ja/admin-panel.md</a></li>
+        <li><a href="ja/production-monitor-guide.md">ja/production-monitor-guide.md</a></li>
+        <li><a href="ja/architecture.md">ja/architecture.md</a></li>
+        <li><a href="ja/deployment.md">ja/deployment.md</a></li>
+        <li><a href="ja/troubleshooting.md">ja/troubleshooting.md</a></li>
+        <li><a href="ja/domain-observations.md">ja/domain-observations.md</a></li>
+        <li><a href="ja/i18n-audit-report.md">ja/i18n-audit-report.md</a></li>
+        <li><a href="ja/screenshots-README.md">ja/screenshots-README.md</a></li>
       </ul>
     </section>
   </main>

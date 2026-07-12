@@ -38,6 +38,7 @@ Centralizar informacoes operacionais usadas no ambiente industrial, reduzindo de
 
 - `docs/production-monitor-guide.md`: uso do Monitor de Producao, comandos do `ProductionMonitorProbe.exe`, validacao de banco, status por setor, EC2 Administrator, dashboard e orientacao para prints.
 - `docs/admin-panel.md`: documentacao do painel Administracao, com botoes, cadastros, validacoes e prints.
+- `docs/ja/`: versoes em japones dos principais documentos, integradas tambem ao `docs/index.html`.
 
 ## Tecnologias utilizadas
 
@@ -77,3 +78,5 @@ Alem dos arquivos Markdown, existe uma versao HTML em `docs/index.html`. Ela usa
 ## Manutencao da documentacao
 
 Toda nova documentacao criada dentro de `docs/` deve ser integrada ao `docs/index.html`, com conteudo consultavel diretamente na pagina HTML. O arquivo Markdown continua como fonte de edicao, mas o usuario nao deve precisar abrir o `.md` para acessar as informacoes principais. Inclua tambem o link na lista de arquivos Markdown.
+
+Quando a documentacao for nova ou alterada, manter a versao PT-BR e a versao JP correspondente atualizadas.
